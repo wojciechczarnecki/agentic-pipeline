@@ -7,8 +7,9 @@ true, and the roadmap must not lie.
 
 - [x] Import of the plugin 0.2.0 from the owner's private project repository (tag `pipeline--v0.2.0`)
 - [x] Project scaffold: documents, configuration, dev tools, CI and the manual eval workflow
-- [x] Post-import cleanup: the marketplace source pinned to the release tag, GitHub
-      rulesets documented as the first enforcer, project documents de-duplicated
+- [x] Post-import cleanup: the marketplace source declares the release tag, what the GitHub
+      rulesets do and do not enforce is written down, project documents de-duplicated
+      (each machine still needs the one-time marketplace re-registration from `CLAUDE.md`)
 
 ## Later
 

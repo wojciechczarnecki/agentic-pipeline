@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -66,3 +67,21 @@ def test_the_git_hook_template_is_executable_and_its_setup_is_printed():
 
 def test_ci_variants_are_driven_by_stack_detection():
     assert "ci-python.yml" in TEXT and "ci-node.yml" in TEXT and "ci-placeholder.yml" in TEXT
+
+
+# The consumer's settings must not carry a `hooks` block of its own: the plugin already
+# registers the format and notify hooks, and a copy in the project would fire them twice.
+def test_the_settings_template_registers_no_hooks():
+    settings = json.loads((TEMPLATES / "settings.json").read_text())
+    assert "hooks" not in settings
+
+
+# `github-actions` is stack-independent, so it stays in dependabot.yml for every project,
+# whichever CI variant the skill picks.
+def test_the_dependabot_template_covers_github_actions():
+    ecosystems = [
+        line.split(":", 1)[1].strip()
+        for line in (TEMPLATES / "github" / "dependabot.yml").read_text().splitlines()
+        if line.strip().startswith("- package-ecosystem:")
+    ]
+    assert "github-actions" in ecosystems
