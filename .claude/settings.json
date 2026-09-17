@@ -1,0 +1,57 @@
+{
+  "extraKnownMarketplaces": {
+    "wcz-tools": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/wojciechczarnecki/agentic-pipeline.git"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "pipeline@wcz-tools": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh pr *)",
+      "Bash(gh run *)",
+      "Bash(gh api *)",
+      "Bash(gh issue *)",
+      "Bash(gh repo view*)",
+      "Bash(gh auth status*)",
+      "Bash(uv *)",
+      "Bash(curl http://localhost*)",
+      "Bash(curl * http://localhost*)",
+      "Bash(curl * http://127.0.0.1*)",
+      "Bash(bash scripts/*)",
+      "Bash(scripts/*)",
+      "Bash(./scripts/*)",
+      "Bash(claude plugin list*)",
+      "Bash(claude plugin validate*)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(find *)",
+      "Bash(ls *)",
+      "Bash(wc *)",
+      "Bash(diff *)",
+      "Bash(mkdir *)",
+      "Bash(rm *)",
+      "Bash(chmod +x *)",
+      "Bash(date *)",
+      "WebSearch"
+    ],
+    "ask": [
+      "Edit(**/.claude/settings*.json)",
+      "Edit(**/.claude/workflow.json)",
+      "Edit(**/scripts/git-hooks/**)"
+    ],
+    "deny": [
+      "Bash(gh pr merge*)",
+      "Bash(claude plugin disable*)",
+      "Bash(claude plugin enable*)",
+      "Bash(claude plugin uninstall*)",
+      "Bash(claude plugin remove*)",
+      "Bash(claude plugin marketplace remove*)"
+    ]
+  }
+}

@@ -99,4 +99,3 @@ def test_a_broken_config_is_reported(tmp_path):
     )
     assert result.returncode == 1
     assert "unknown key `nope`" in result.stderr
-
