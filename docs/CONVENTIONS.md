@@ -49,6 +49,8 @@ Not applicable — the project has no user interface.
 - Imperative mood (`add`, `fix`, `harden`).
 - One branch per task: `feat/NNN-<slug>`, `fix/...`, `chore/...`, `docs/...`.
 - PRs to `main` are **squash** merged; CI must be green before merge.
+- The PR title becomes the commit message after the squash, so it follows the commit rules:
+  a type prefix and imperative mood (`chore: add the project scaffold`).
 - Agent commits: after every green step, only the files of that step.
 - Updating a branch: `git merge origin/main`, not rebase.
 
