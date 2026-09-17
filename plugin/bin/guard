@@ -1,0 +1,15 @@
+#!/bin/sh
+# PreToolUse hook entry point. The guard itself is Python; a project without an interpreter
+# has to stay usable, so the missing interpreter only warns and lets the command through.
+# No external program is used before the check — PATH may be empty on purpose.
+dir=${0%/*}
+case "$dir" in /*) ;; *) dir="$PWD/$dir" ;; esac
+
+for candidate in python3 python; do
+  if command -v "$candidate" >/dev/null 2>&1; then
+    exec "$candidate" "$dir/guard.py"
+  fi
+done
+
+echo "pipeline guard: no python3 in PATH, so the command guard is off for this session" >&2
+exit 0

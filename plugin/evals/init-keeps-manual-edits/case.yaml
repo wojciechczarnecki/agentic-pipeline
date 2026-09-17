@@ -1,0 +1,18 @@
+schema_version: "1.0"
+name: init-keeps-manual-edits
+description: Powtórzony /pipeline:init zachowuje treść dopisaną ręcznie i nie rusza reszty.
+runs: 1
+execution:
+  max_turns: 30
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
+  prompt: |
+    Jesteś w pustym katalogu przygotowanym pod nowy projekt (`git init` już wykonany).
+    Wykonaj po kolei:
+    1. uruchom `/pipeline:init` dla projektu „Zbiórka" — narzędzie do prowadzenia zbiórek
+       charytatywnych, stack nieznany, brak produkcji, dokumenty po polsku;
+    2. dopisz na końcu `CLAUDE.md` sekcję `## Zasada domowa` z jednym zdaniem od siebie
+       i dopisz do rejestru decyzji jeden wiersz z dzisiejszą datą;
+    3. zapamiętaj `git status --porcelain` i uruchom `/pipeline:init` po raz drugi
+       z tymi samymi odpowiedziami;
+    4. pokaż `git status --porcelain`, zawartość sekcji `## Zasada domowa` i ostatni
+       wiersz rejestru decyzji.

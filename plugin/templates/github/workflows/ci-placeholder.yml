@@ -1,0 +1,24 @@
+# CI skeleton for a stack the generator does not know. Fill in the steps below; every
+# job has to be a blocking gate, so do not add `continue-on-error`.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # TODO: install the toolchain of this project
+      # TODO: install dependencies from the lock file
+      # TODO: run the linter
+      # TODO: run the test suite
+      # TODO: build the artefact, if the project produces one
+      - name: Verify
+        run: echo "TODO: replace this step with the real verification of this project"

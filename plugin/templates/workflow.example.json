@@ -1,0 +1,31 @@
+{
+  "production": {
+    "hosts": ["example.com", "app.example.net"],
+    "commands": ["flyctl", "heroku"]
+  },
+  "worktree": {
+    "dir": "../worktrees"
+  },
+  "verify": {
+    "command": "bash scripts/verify.sh",
+    "scopes": ["backend", "frontend", "ui"]
+  },
+  "format": [
+    { "match": "backend/*.py", "command": "uv run --project backend black -q {file}" },
+    { "match": "frontend/src/*.ts*", "command": "frontend/node_modules/.bin/eslint --fix" }
+  ],
+  "docs": {
+    "roadmap": "docs/ROADMAP.md",
+    "backlog": "docs/BACKLOG.md",
+    "decisions": "docs/DECISIONS.md",
+    "conventions": "docs/CONVENTIONS.md",
+    "project": "docs/PROJECT.md",
+    "specsDir": "specs"
+  },
+  "migrations": {
+    "command": "alembic",
+    "localHosts": ["localhost", "127.0.0.1", "::1", "db"]
+  },
+  "gitHooksDir": "scripts/git-hooks",
+  "language": "pl"
+}

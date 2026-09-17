@@ -1,0 +1,14 @@
+{
+  "name": "wcz-tools",
+  "description": "Agent tooling marketplace — the pipeline plugin with a full feature workflow.",
+  "owner": {
+    "name": "Wojciech Czarnecki"
+  },
+  "plugins": [
+    {
+      "name": "pipeline",
+      "source": "./plugin",
+      "description": "Agentic feature pipeline: idea → plan → plan review → implementation → final review → PR."
+    }
+  ]
+}

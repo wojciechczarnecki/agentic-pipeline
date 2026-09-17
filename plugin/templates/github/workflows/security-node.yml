@@ -1,0 +1,27 @@
+# Dependency audit for a Node project: on every push and pull request to main, plus a
+# weekly run that catches advisories published after the last change.
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  node-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Audit with npm
+        run: npm audit --audit-level=high

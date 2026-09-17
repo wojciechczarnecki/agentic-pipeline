@@ -1,0 +1,11 @@
+schema_version: "1.0"
+name: init-without-questions
+description: Init bez możliwości zadania pytania kończy się sukcesem i zostawia znaczniki TODO.
+runs: 1
+execution:
+  max_turns: 30
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
+  prompt: |
+    Jesteś w pustym katalogu z `git init` i bez żadnych plików. Uruchom `/pipeline:init`.
+    Nie odpowiem na żadne pytanie — pracujesz bez mojego udziału, więc dokończ zadanie sam
+    i na koniec wypisz, co powstało i co zostało do uzupełnienia.
