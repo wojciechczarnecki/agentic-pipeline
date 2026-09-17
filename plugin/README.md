@@ -48,6 +48,22 @@ Albo deklaratywnie w `.claude/settings.json` projektu (kształt jak w
 }
 ```
 
+**Uwaga — instalacja w zakresie projektu jest przypisana do katalogu.** Sam wpis
+`enabledPlugins` nie wystarcza: Claude Code ładuje plugin tylko wtedy, gdy w
+`~/.claude/plugins/installed_plugins.json` jest instalacja z `projectPath` wskazującym
+bieżący katalog. Instalacja wykonana w innym repozytorium się nie liczy — `claude plugin
+list` pokaże plugin jako `enabled`, a komend `/pipeline:*` w sesji nie będzie, także po
+restarcie. W każdym nowym repozytorium (i w każdym nowym klonie) uruchom raz w jego
+katalogu:
+
+```bash
+claude plugin install pipeline@wcz-tools --scope project
+```
+
+Instalator przepisuje `.claude/settings.json` (zmienia kolejność kluczy) — jeśli plik
+już zawiera powyższą konfigurację, zmianę można cofnąć (`git checkout --
+.claude/settings.json`). Potem uruchom nową sesję.
+
 Aktualizacja: `/plugin update pipeline`. Wydania są znaczone tagami `pipeline--vX.Y.Z`.
 
 Po instalacji w projekcie uruchom `/pipeline:init`, żeby powstał `.claude/workflow.json`
