@@ -1,5 +1,5 @@
+import json
 import os
-import re
 from pathlib import Path
 
 import pytest
@@ -26,10 +26,10 @@ GENERATED = {
 WRITE_SCOPE = [".claude/", "CLAUDE.md", "docs/", "scripts/", ".github/"]
 
 
-# The contract is pinned through structural anchors — the numbered steps and the named
-# sections of the skill — not through prose that a rewording would break and a change of
-# meaning could slip past. Whether init actually behaves this way is measured by the eval
-# cases in plugin/evals (init-keeps-manual-edits, init-without-questions).
+# The contract is pinned through the identifiers the skill has to name — paths, templates,
+# configuration keys — not through its prose, which a rewording (or a translation) would
+# break while a change of meaning slipped past. Whether init actually behaves this way is
+# measured by the eval cases in plugin/evals.
 def step(number: int) -> str:
     start = TEXT.index(f"\n{number}. ")
     end = TEXT.find(f"\n{number + 1}. ", start)
@@ -40,37 +40,10 @@ def section(heading: str) -> str:
     return TEXT.split(f"## {heading}", 1)[1].split("\n## ", 1)[0]
 
 
-def test_first_round_is_capped():
-    questions_step = step(2)
-    assert re.search(r"maksymalnie 4|max(imum)? 4|maks\. 4", questions_step)
-    questions = re.findall(r"^[ \t]+\d+\. ", questions_step, re.MULTILINE)
-    assert 1 <= len(questions) <= 4, questions
-    assert "Druga runda" in questions_step
-
-
-def test_non_interactive_contract():
-    non_interactive = step(3)
-    assert "claude -p" in non_interactive
-    assert "TODO:" in non_interactive
-    assert re.search(r"NIE pytasz i NIE\s+blokujesz", non_interactive)
-
-
-def test_write_scope_and_overwrite_rule():
+def test_write_scope_is_declared():
     scope = section("Zakres zapisu (bezwzględny)")
     for prefix in WRITE_SCOPE:
         assert prefix in scope, prefix
-    assert "Nic poza tymi prefiksami" in scope
-    existing = step(5)
-    assert "ZAPYTAJ przed" in existing and "NIGDY nie nadpisujesz" in existing
-    assert "pominiętych" in existing
-
-
-def test_idempotency_rules():
-    idempotency = step(6)
-    assert "Idempotencja" in idempotency
-    assert "zostaje nietknięta" in idempotency
-    assert "NOWYCH odpowiedzi" in idempotency
-    assert "git status" in idempotency
 
 
 def test_configurable_values_are_substituted_into_the_templates():
@@ -92,11 +65,23 @@ def test_the_git_hook_template_is_executable_and_its_setup_is_printed():
     assert "git config core.hooksPath" in TEXT
 
 
-def test_generated_settings_carry_no_duplicate_hooks():
-    assert "Bez sekcji `hooks`" in TEXT
-
-
 def test_ci_variants_are_driven_by_stack_detection():
     assert "ci-python.yml" in TEXT and "ci-node.yml" in TEXT and "ci-placeholder.yml" in TEXT
-    assert "oba → OBA joby" in TEXT
-    assert "`github-actions` zostaje ZAWSZE" in TEXT
+
+
+# The consumer's settings must not carry a `hooks` block of its own: the plugin already
+# registers the format and notify hooks, and a copy in the project would fire them twice.
+def test_the_settings_template_registers_no_hooks():
+    settings = json.loads((TEMPLATES / "settings.json").read_text())
+    assert "hooks" not in settings
+
+
+# `github-actions` is stack-independent, so it stays in dependabot.yml for every project,
+# whichever CI variant the skill picks.
+def test_the_dependabot_template_covers_github_actions():
+    ecosystems = [
+        line.split(":", 1)[1].strip()
+        for line in (TEMPLATES / "github" / "dependabot.yml").read_text().splitlines()
+        if line.strip().startswith("- package-ecosystem:")
+    ]
+    assert "github-actions" in ecosystems

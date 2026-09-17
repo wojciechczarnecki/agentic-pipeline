@@ -27,9 +27,22 @@ Instructions for agents working in this repository.
 
 The workflow comes from the `pipeline` plugin **released** from this repository and
 installed from GitHub (marketplace `wcz-tools`, git + HTTPS) — not from the working tree:
-a stable release guards work on unstable code. The mechanics (statuses, the `RESULT`
-contract, escalation triggers, metrics format) are described in `plugin/README.md` — the
-single source of truth. Project configuration for the plugin lives in `.claude/workflow.json`.
+a stable release guards work on unstable code. `.claude/settings.json` pins the source to
+the release tag, but the pin only takes effect once the marketplace is registered with that
+`ref`; a marketplace registered earlier without one keeps tracking `main`. Once per machine
+(the owner, outside an agent session):
+
+```bash
+claude plugin marketplace remove wcz-tools
+claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#pipeline--v0.2.0'
+```
+
+Check with `git -C ~/.claude/plugins/marketplaces/wcz-tools log --oneline -1`: it must show
+the tagged commit, not the head of `main`.
+
+The mechanics (statuses, the `RESULT` contract, escalation triggers, metrics format) are
+described in `plugin/README.md` — the single source of truth. Project configuration for
+the plugin lives in `.claude/workflow.json`.
 
 ```
 /pipeline:idea (dialog)   → SPEC.md (spec-ready)   ← GATE 1: the owner approves the SPEC
@@ -55,9 +68,28 @@ on the diff → owner decisions → PR. When in doubt → full pipeline.
 The agent creates its branch, commits, pushes and opens the PR (`gh pr create`). It updates
 the branch with `git merge origin/main` (not rebase). Out of the agent's reach: commit,
 merge and push to `main` (only `git pull --ff-only`), merging PRs, force-push,
-`reset --hard`, `clean -f`, `--no-verify`, pushing release tags. Enforced by the plugin's
-command guard and the `pre-push` hook (enable once per clone:
-`git config core.hooksPath scripts/git-hooks`).
+`reset --hard`, `clean -f`, `--no-verify`, pushing release tags.
+
+Two layers enforce this, and they do not cover the same ground.
+
+**GitHub rulesets — server-side, no bypass actors, they hold for everyone:**
+
+- `main` (the default branch): a pull request is required, squash is the only merge method,
+  the `plugin` check must be green, and deletion and non-fast-forward pushes are blocked.
+- `release tags` (`refs/tags/pipeline--v*`): an existing tag cannot be deleted, moved or
+  force-updated.
+
+**Only the local layer — the plugin's command guard and the `deny` list in
+`.claude/settings.json` — stops the rest:**
+
+- creating and pushing a *new* release tag: the tag ruleset has no `creation` rule, and the
+  `pre-push` hook matches branches only, so GitHub accepts `pipeline--vX.Y.Z` from anyone
+  who can push. Tagging stays the owner's move by agreement, not by mechanism.
+- merging a PR: `required_approving_review_count` is 0, so a squash merge is server-side
+  allowed; only the guard and `deny` keep an agent off it.
+
+The `pre-push` hook makes the branch rules fail fast, before the network round trip — enable
+it once per clone: `git config core.hooksPath scripts/git-hooks`.
 
 ## Iron rules
 

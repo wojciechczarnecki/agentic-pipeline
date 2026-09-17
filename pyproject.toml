@@ -1,6 +1,8 @@
 [project]
 name = "agentic-pipeline"
-version = "0.2.0"
+# Required by [project] even though the package is never built; the plugin's own version
+# lives solely in plugin/.claude-plugin/plugin.json and this field does not track it.
+version = "0"
 description = "Agentic feature pipeline plugin for Claude Code"
 requires-python = ">=3.12"
 dependencies = []

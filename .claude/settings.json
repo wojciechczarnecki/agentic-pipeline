@@ -3,7 +3,8 @@
     "wcz-tools": {
       "source": {
         "source": "git",
-        "url": "https://github.com/wojciechczarnecki/agentic-pipeline.git"
+        "url": "https://github.com/wojciechczarnecki/agentic-pipeline.git",
+        "ref": "pipeline--v0.2.0"
       }
     }
   },
