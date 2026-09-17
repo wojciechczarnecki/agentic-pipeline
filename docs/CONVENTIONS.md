@@ -5,9 +5,9 @@ this document holds the details.
 
 ## Language
 
-- Code, identifiers, comments and commit messages: English.
-- Project documents (`docs/`, `specs/`, `CLAUDE.md`, root `README.md`): English
-  (`language: "en"` in `.claude/workflow.json`).
+- Project documents (`docs/`, `specs/`, `CLAUDE.md`, root `README.md`) follow
+  `language: "en"` in `.claude/workflow.json`; code, identifiers, comments and commit
+  messages are English regardless of it.
 - Plugin skills, agents and `plugin/README.md` are in Polish until translated
   (`docs/BACKLOG.md`); a translation is a behaviour change and ships as a release.
 - No mixing of languages within one document.
@@ -28,8 +28,6 @@ and the way out (for the guard: which configuration or approval unlocks the acti
 
 ## Tests
 
-**Every behaviour change MUST come with tests.**
-
 - `plugin/tests` (pytest), run by `uv run pytest`; hooks and scripts are exercised as
   subprocesses on plain `python3` where their contract is the command line.
 - Test mechanisms, not the prose of skills: structure, frontmatter, templates, the guard's
@@ -38,10 +36,6 @@ and the way out (for the guard: which configuration or approval unlocks the acti
 - Cover key paths and edge cases; assertions check content where content matters.
 - Full verification in one command: `bash scripts/check.sh`.
 - `claude plugin eval` runs a real model and is manual only (`plugin-eval` workflow).
-
-### UI tests
-
-Not applicable — the project has no user interface.
 
 ## Commits and branches
 

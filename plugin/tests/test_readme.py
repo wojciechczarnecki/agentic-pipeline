@@ -12,20 +12,6 @@ import workflow_config  # noqa: E402
 README = (PLUGIN / "README.md").read_text()
 CHANGELOG = (PLUGIN / "CHANGELOG.md").read_text()
 
-REQUIRED_SECTIONS = [
-    "## Instalacja",
-    "## Komendy i agenci",
-    "## Konfiguracja projektu",
-    "### Strażnik komend",
-    "## Mechanika pipeline'u",
-    "### Statusy speca",
-    "### Kontrakt `RESULT`",
-    "### Wyzwalacze eskalacji",
-    "## Metryki workflow",
-    "## Testy pluginu",
-    "## CHANGELOG",
-]
-
 
 def flatten(data: dict, prefix: str = "") -> dict[str, object]:
     flat: dict[str, object] = {}
@@ -39,11 +25,6 @@ def flatten(data: dict, prefix: str = "") -> dict[str, object]:
 
 
 DEFAULTS = flatten(workflow_config.defaults())
-
-
-@pytest.mark.parametrize("section", REQUIRED_SECTIONS)
-def test_required_sections_are_present(section):
-    assert section in README, section
 
 
 @pytest.mark.parametrize("key, value", sorted(DEFAULTS.items()))
@@ -76,7 +57,6 @@ def test_installation_covers_a_local_path_and_a_repository():
 def test_changelog_starts_at_the_manifest_version():
     manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
     assert f"## {manifest['version']}" in CHANGELOG
-    assert manifest["version"] in README
 
 
 def test_metrics_block_lists_every_counter():

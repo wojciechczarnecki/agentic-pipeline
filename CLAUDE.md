@@ -55,8 +55,16 @@ on the diff → owner decisions → PR. When in doubt → full pipeline.
 The agent creates its branch, commits, pushes and opens the PR (`gh pr create`). It updates
 the branch with `git merge origin/main` (not rebase). Out of the agent's reach: commit,
 merge and push to `main` (only `git pull --ff-only`), merging PRs, force-push,
-`reset --hard`, `clean -f`, `--no-verify`, pushing release tags. Enforced by the plugin's
-command guard and the `pre-push` hook (enable once per clone:
+`reset --hard`, `clean -f`, `--no-verify`, pushing release tags.
+
+Enforced server-side by GitHub rulesets, with no bypass actors:
+
+- `main` (the default branch): a pull request is required, squash is the only merge method,
+  the `plugin` check must be green, and deletion and non-fast-forward pushes are blocked.
+- `release tags` (`refs/tags/pipeline--v*`): tags cannot be deleted, moved or force-updated.
+
+The plugin's command guard and the `pre-push` hook are the local layer — they fail fast,
+before the network round trip (enable the hook once per clone:
 `git config core.hooksPath scripts/git-hooks`).
 
 ## Iron rules

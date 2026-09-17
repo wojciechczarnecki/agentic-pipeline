@@ -224,24 +224,6 @@ python3 bin/workflow_metrics.py [katalog-speców]
 
 Bez argumentu katalog bierze się z `docs.specsDir`.
 
-## Testy pluginu
-
-```bash
-python3 -m pytest tests            # dowolny interpreter z zainstalowanym pytest
-```
-
-Testy są czystym pytestem na bibliotece standardowej — nie wymagają zależności projektu.
-Uruchamiaj je osobnym przebiegiem, jeśli repozytorium ma własny katalog testów skryptów
-o tych samych nazwach modułów.
-
 ## CHANGELOG
 
 Pełna historia wersji: [CHANGELOG.md](CHANGELOG.md).
-
-- **0.2.0** — pierwsze wydanie w tym repozytorium; skille `idea`, `plan` i `implement`
-  prowadzą do dokumentów domenowych przez mapę dokumentów w `CLAUDE.md`; SPEC ma sekcję
-  „Przeczytany kontekst".
-- **0.1.0** — pierwsza wersja: siedem skilli (`init`, `idea`, `plan`, `plan-review`,
-  `implement`, `final-review`, `ship`), czterech agentów etapów, strażnik komend
-  sterowany konfiguracją, hooki formatowania i powiadomień, zestawienie metryk,
-  szablony projektu i CI.
