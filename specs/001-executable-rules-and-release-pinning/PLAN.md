@@ -302,7 +302,7 @@ Reused patterns, with paths:
       Automatic verification: `uv run pytest -q plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py`;
       `awk 'length > 100 {print FILENAME": "FNR}' plugin/skills/*/SKILL.md` (expected: no output)
 
-- [ ] 6. **Measure the AC23 net budget** (the gross half was measured at the end of step 4) —
+- [x] 6. **Measure the AC23 net budget** (the gross half was measured at the end of step 4) —
       files: possibly
       `plugin/skills/{idea,plan,plan-review,implement,final-review,ship}/SKILL.md` (wording
       tightened only).
@@ -488,7 +488,13 @@ exercise it, on plain `python3`:
    - **Gross (end of step 4, steps 2–4 only)** —
      `git diff --numstat origin/main -- <the six stage skills>` →
      `added=40 deleted=68 net=-28`. `deleted=68` ≥ 52 required. ✔
-   - **Net (step 6, after step 5)** — recorded in step 6 below.
+   - **Net (step 6, after step 5)** — first measurement `added=67 deleted=74 net=-7`, short of
+     the required ≤ −12. Remedy per step 6: the first bullet of the step-3 configuration block
+     was tightened from two wrapped lines to one (96 columns), in all six skills; no rule from
+     AC1–AC22 was dropped (`.claude/workflow.json`, README and `/pipeline:init` all stay, and
+     `test_the_configuration_block_keeps_the_fallback` proves it). Re-measured:
+     `added=61 deleted=74 net=-13`. ✔
+   - `grep -rn "to jedyne miejsce, w którym projekt" plugin/skills` → no match. ✔
 6. `python3 -c "import json,sys;json.load(open('plugin/templates/settings.json'))"` and
    `claude plugin validate --strict plugin/ && claude plugin validate --strict .`
    (skipped with a note if `claude` is off PATH; CI runs it).

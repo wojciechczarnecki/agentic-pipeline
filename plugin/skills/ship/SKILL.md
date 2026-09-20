@@ -13,8 +13,7 @@ właściciela" z PLAN.md i bloki RESULT od subagentów — nie diff, nie kod.
 
 ## Konfiguracja projektu
 
-- Zanim zaczniesz, przeczytaj `.claude/workflow.json` — tam projekt opisuje sam siebie;
-  brak pliku = wartości domyślne z README pluginu, wtedy zaproponuj `/pipeline:init`.
+- Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
 - `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
 ## Stan
