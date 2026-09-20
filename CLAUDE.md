@@ -34,7 +34,7 @@ the release tag, but the pin only takes effect once the marketplace is registere
 
 ```bash
 claude plugin marketplace remove wcz-tools
-claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#pipeline--v0.2.0'
+claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#pipeline--v0.3.0'
 ```
 
 Check with `git -C ~/.claude/plugins/marketplaces/wcz-tools log --oneline -1`: it must show
