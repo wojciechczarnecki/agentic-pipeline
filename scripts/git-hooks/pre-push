@@ -48,6 +48,18 @@ while read -r local_ref _local_sha remote_ref _remote_sha; do
       exit 1
     fi
 
+    # `eval.sh --case X` writes a receipt too, and a one-case run is trivially green.
+    # The release needs the whole suite, so count the cases that exist at the tag.
+    expected=$(git ls-tree -r --name-only "$tagged" -- plugin/evals/ |
+      grep -c '/case\.yaml$')
+    counted=$(python3 -c 'import json;print(json.load(open("'"$receipt"'"))["cases_total"])')
+
+    if [[ "$counted" != "$expected" ]]; then
+      echo "pre-push: the receipt covers $counted case(s) but the suite has $expected." >&2
+      echo "pre-push: run the whole suite: bash scripts/eval.sh" >&2
+      exit 1
+    fi
+
     if [[ "$green" != "True" ]]; then
       echo "pre-push: the last eval run was not green; ${remote_ref#refs/tags/} is blocked." >&2
       exit 1

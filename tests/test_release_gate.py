@@ -33,8 +33,19 @@ def receipt():
     """Swap in a receipt and restore whatever was there, so a real one is never lost."""
     previous = RECEIPT.read_text() if RECEIPT.exists() else None
 
-    def write(fingerprint: str, green: bool):
-        RECEIPT.write_text(json.dumps({"plugin_fingerprint": fingerprint, "green": green}) + "\n")
+    total = len(list((ROOT / "plugin" / "evals").glob("*/case.yaml")))
+
+    def write(fingerprint: str, green: bool, cases_total: int = None):
+        RECEIPT.write_text(
+            json.dumps(
+                {
+                    "plugin_fingerprint": fingerprint,
+                    "green": green,
+                    "cases_total": total if cases_total is None else cases_total,
+                }
+            )
+            + "\n"
+        )
 
     yield write
 
@@ -105,3 +116,11 @@ def test_a_red_receipt_is_rejected(receipt):
 def test_a_green_receipt_with_plugin_unchanged_passes(receipt):
     receipt(fingerprint(), green=True)
     assert push("refs/tags/pipeline--v0.3.0", local_ref="HEAD").returncode == 0
+
+
+# `eval.sh --case X` writes a receipt too, and a single-case run is trivially green.
+def test_a_receipt_covering_only_some_cases_is_rejected(receipt):
+    receipt(fingerprint(), green=True, cases_total=1)
+    result = push("refs/tags/pipeline--v0.3.0", local_ref="HEAD")
+    assert result.returncode == 1
+    assert "run the whole suite" in result.stderr
