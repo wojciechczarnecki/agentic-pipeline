@@ -80,3 +80,21 @@ def test_metrics_block_lists_every_counter():
     section = README.split("## Metryki workflow", 1)[1]
     for counter in counters:
         assert f"{counter}:" in section, counter
+
+
+def installation_section() -> str:
+    return README.split("## Instalacja", 1)[1].split("\n## ", 1)[0]
+
+
+def test_installation_pins_the_release_tag():
+    section = installation_section()
+    assert '"ref"' in section
+    assert "pipeline--v" in section
+    assert "main" in section
+
+
+def test_installation_explains_the_marketplace_registration():
+    section = installation_section()
+    assert "marketplace remove" in section
+    assert "marketplace add" in section
+    assert "~/.claude/plugins/marketplaces" in section

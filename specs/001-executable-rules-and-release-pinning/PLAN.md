@@ -319,7 +319,7 @@ Reused patterns, with paths:
       `grep -rn "to jedyne miejsce, w którym projekt" plugin/skills` (expected: no match);
       `uv run pytest -q plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py`
 
-- [ ] 7. **Install and release pinning** — files: `plugin/templates/settings.json`,
+- [x] 7. **Install and release pinning** — files: `plugin/templates/settings.json`,
       `plugin/README.md`, `plugin/skills/init/SKILL.md`, `plugin/tests/test_init_templates.py`,
       `plugin/tests/test_init_skill.py`, `plugin/tests/test_readme.py`.
       `plugin/templates/settings.json` → `extraKnownMarketplaces` becomes

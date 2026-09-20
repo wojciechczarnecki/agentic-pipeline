@@ -24,6 +24,7 @@
       "Bash(rm *)",
       "Bash(chmod +x *)",
       "Bash(date *)",
+      "Bash(python3 *workflow_metrics.py*)",
       "WebSearch"
     ],
     "ask": [
@@ -37,8 +38,9 @@
   "extraKnownMarketplaces": {
     "TODO-marketplace": {
       "source": {
-        "source": "github",
-        "repo": "TODO: owner/repo of the marketplace carrying the pipeline plugin"
+        "source": "git",
+        "url": "TODO: https://github.com/<owner>/<repo>.git",
+        "ref": "TODO: pipeline--vX.Y.Z"
       }
     }
   },

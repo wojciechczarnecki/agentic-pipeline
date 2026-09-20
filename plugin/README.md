@@ -40,12 +40,26 @@ Albo deklaratywnie w `.claude/settings.json` projektu (kształt jak w
     "wcz-tools": {
       "source": {
         "source": "git",
-        "url": "https://github.com/wojciechczarnecki/agentic-pipeline.git"
+        "url": "https://github.com/wojciechczarnecki/agentic-pipeline.git",
+        "ref": "pipeline--vX.Y.Z"
       }
     }
   },
   "enabledPlugins": { "pipeline@wcz-tools": true }
 }
+```
+
+Bez `ref` konsument śledzi `main`, czyli kod niewydany — pin na tag wydania jest tym,
+co odróżnia stabilną wersję od bieżącej gałęzi.
+
+**Pin działa dopiero po rejestracji marketplace'u z tym `ref`.** Marketplace zarejestrowany
+wcześniej bez `ref` dalej śledzi `main`, niezależnie od tego, co mówi `.claude/settings.json`.
+Raz na maszynę:
+
+```bash
+claude plugin marketplace remove <nazwa>
+claude plugin marketplace add '<url>#pipeline--vX.Y.Z'
+git -C ~/.claude/plugins/marketplaces/<nazwa> log --oneline -1   # ma pokazać commit taga
 ```
 
 **Uwaga — instalacja w zakresie projektu jest przypisana do katalogu.** Sam wpis

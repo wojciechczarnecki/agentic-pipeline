@@ -85,3 +85,12 @@ def test_the_dependabot_template_covers_github_actions():
         if line.strip().startswith("- package-ecosystem:")
     ]
     assert "github-actions" in ecosystems
+
+
+def test_the_marketplace_ref_is_derived_from_the_plugin_root():
+    settings = [line for line in step(4).splitlines() if "ref" in line or "TODO:" in line]
+    text = step(4)
+    assert "CLAUDE_PLUGIN_ROOT" in text
+    assert "`ref`" in text
+    assert "TODO:" in text
+    assert settings, "step 4 must describe the ref substitution and its TODO fallback"
