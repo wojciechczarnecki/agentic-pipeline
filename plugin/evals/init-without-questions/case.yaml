@@ -3,7 +3,14 @@ name: init-without-questions
 description: Init bez możliwości zadania pytania kończy się sukcesem i zostawia znaczniki TODO.
 runs: 1
 execution:
-  max_turns: 30
+  # /pipeline:init writes a dozen files, and a real run of it overruns the default
+  # 300 s timeout: the case then dies mid-skill and the grader scores a truncated
+  # transcript. Measured 2026-09-20: 29 turns still unfinished at 300 s.
+  timeout_seconds: 900
+  # A real /pipeline:init needs well past 30 turns: measured 2026-09-20, it was still
+  # writing docs/PROJECT.md on turn 31. Too low a cap kills the run mid-skill and the
+  # grader scores a truncated transcript rather than the behaviour under test.
+  max_turns: 80
   allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
   prompt: |
     Jesteś w pustym katalogu z `git init` i bez żadnych plików. Uruchom `/pipeline:init`.
