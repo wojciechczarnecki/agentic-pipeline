@@ -429,7 +429,7 @@ Reused patterns, with paths:
       Automatic verification:
       `git diff --stat origin/main -- plugin/tests/test_guard.py pyproject.toml uv.lock` (expected: empty);
       `git diff origin/main -- plugin/bin/workflow_metrics.py | grep -E "^[-+].*COUNTERS = |^-\s+\"[a-z_]+\",$"` (expected: no removed counter);
-      `grep -rnE "^\s*(import|from) " plugin/bin plugin/hooks | grep -vE "(argparse|json|os|re|sys|shlex|subprocess|datetime|pathlib|fnmatch|typing|importlib|workflow_config)"` (expected: no output);
+      `grep -rnE "^\s*(import|from) " plugin/bin plugin/hooks | grep -vE "(argparse|json|os|re|sys|shlex|subprocess|datetime|pathlib|fnmatch|typing|importlib|workflow_config)"` (expected: three lines — `glob`, `tempfile` and `urllib.parse` in `guard.py`, all standard library; the allow-list in the grep is incomplete, the imports are not);
       `bash scripts/check.sh` (expected: `ALL GREEN`)
 
 ## Risks and traps
@@ -657,8 +657,18 @@ was updated for all of the above.
 - **Step 3/5 `awk 'length > 100'` expectation.** The plan expects no output; on `origin/main`
   the same command already prints 16 lines (every skill's frontmatter `description:`, plus
   table rows in `plan`, `plan-review`, `final-review`, `idea`, `ship`), none of which this
-  spec touches. Read instead as "no NEW line over 100 columns", verified by running the same
-  awk against `origin/main` and comparing the sets — they are identical. No rule is lost.
+  spec touches. Read instead as "no NEW line over 100 **characters**". `awk` counts bytes
+  and the skills are Polish, so every two-byte character inflates its count: byte-measured
+  HEAD prints 20 lines against main's 16, character-measured both print the same 9 lines
+  (one each in `final-review`, `idea`, `implement`, `init`, `plan`, two in `plan-review`,
+  two in `ship` — only their line numbers moved). Measured with
+  `python3 -c 'import sys
+  for f in sys.argv[1:]:
+      for n, l in enumerate(open(f, encoding="utf-8"), 1):
+          if len(l.rstrip("\n")) > 100: print(f"{f}:{n}")' plugin/skills/*/SKILL.md`
+  run against a checkout of `origin/main` and against HEAD. No rule is lost. (The earlier
+  wording of this deviation claimed the *byte* sets were identical; they are not — corrected
+  as finding F11 of the final review.)
 
 ## Final review
 
@@ -860,3 +870,58 @@ entered the branch — this repository's `.claude/settings.json` and `CLAUDE.md`
 - AC23's recorded numbers were re-derived independently and are correct; no finding.
 - No visual-artifact or review-scenario findings: `.claude/workflow.json` declares no
   `verify.scopes`, so the rule is inert in this project.
+
+### 2026-09-20 — /pipeline:final-review (apply)
+
+Owner decision of 2026-09-20: **all 26 findings accepted, none rejected**
+(`findings_accepted: 26`, `findings_rejected: 0`). F2 was authorised explicitly, with the
+narrowed pattern from F9; the same shape went into the template. What changed, id → change:
+
+| id | change |
+|----|--------|
+| F1 | `test_stage_contract.py::test_every_agent_carries_the_contract` compares the section by equality (`agent_section(...) == section(SHIP, ...)`), not containment; mutation re-run: the injected rule in `agents/planner.md` now fails the test |
+| F2 | `.claude/settings.json` (this repo) gained `Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" *)` in F9's narrowed shape |
+| F3 | new `test_every_missing_key_is_named` — a `done` spec with only `started_at`, asserting every remaining key in one stderr line |
+| F4 | the AC3 guard matches `readme` together with `metric` **or** `metryk`, case-insensitively |
+| F5 | new `test_the_required_table_is_exactly_ac9` asserts `REQUIRED` by equality; the containment test stays as the per-key probe |
+| F6 | `test_the_marketplace_ref_is_derived_from_the_plugin_root` now requires one sentence of the `.claude/settings.json` bullet carrying `CLAUDE_PLUGIN_ROOT`, `` `ref` `` and `--v` together, plus the `TODO:` fallback sentence; helper `settings_bullet()` added |
+| F7 | the non-integer parametrisation dropped `""` and asserts the message text; `""` got its own `test_an_empty_counter_is_reported_as_missing`, documenting that branch |
+| F8 | `evals/init-question-cap/case.yaml` gained a `scaffold_script` writing `pyproject.toml`, a step 0 that verifies it, and `plugin-eval.yml` now passes `--scaffold` |
+| F9 | `templates/settings.json` rule narrowed to `Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" *)`; `test_settings_template_allows_the_metrics_checker` pins the literal and forbids a `Bash(python3 *` prefix |
+| F10 | `collect()` wraps `read_text()` in `except OSError`, skipping the file with a stderr note; covered by `test_an_unreadable_spec_is_skipped_by_the_report_and_named_by_the_check` (also F24) |
+| F11 | the `## Deviations` entry restated: measured in **characters**, both `origin/main` and HEAD carry the same 9 over-100 lines (byte-measured 16 vs 20); the measuring command is given |
+| F12 | `deviations: 3` corrected to the value the artifacts back — `1` |
+| F13 | `plugin/README.md` gained "Kontrola metryk (`--check`)": what it validates, exit codes 0/1/2 and the status → required-keys table |
+| F14 | `docs/BACKLOG.md` P3 / Guard gained the migration-generalisation item with the trigger `docs/DECISIONS.md` already points at |
+| F15 | frontmatter without `status` now reports `` frontmatter has no `status` key ``; `test_frontmatter_without_a_status_says_so` |
+| F16 | `docs/CONVENTIONS.md` and `plugin/README.md` address the script through `${CLAUDE_PLUGIN_ROOT}`, and say why a `PATH`/cwd-relative call resolves only here |
+| F17 | `final-review` apply step 2: a finding deferred to `<docs.backlog>` counts as `findings_rejected`, reason "backlog" |
+| F18 | the report path exits 1 with `<dir> is not a directory` instead of "No spec carries a metrics block yet."; `test_a_missing_specs_directory_is_not_an_empty_report` |
+| F19 | the header comment documents exit codes 0/1/2, including argparse's 2 |
+| F20 | `--check` reports metric keys outside `{*COUNTERS, *TIMESTAMPS}`; `test_a_key_that_is_not_a_metric_is_reported` |
+| F21 | the frontmatter regex is the module constant `FRONTMATTER`, used in all three places |
+| F22 | the dead `assert settings` and the `"ref" in line` substring match are gone with the F6 rewrite |
+| F23 | `test_readme.py` imports `workflow_metrics` and iterates `TIMESTAMPS + COUNTERS`; the hand-copied list is gone |
+| F24 | covered by the F10 test (report side skips with a note, `--check` side names the file, neither tracebacks) |
+| F25 | the grader marks zero rounds as a failed run, and a missing `pyproject.toml` reported in step 0 as a broken scaffold |
+| F26 | step 11's grep is annotated with its real output (`glob`, `tempfile`, `urllib.parse` in `guard.py` — all standard library; the grep's allow-list is incomplete, the imports are not) |
+
+Re-verification after the fixes: `bash scripts/check.sh` → ALL GREEN (validate plugin ✔,
+validate marketplace ✔, ruff, black, pytest 470 passed — 6 new tests) and
+`python3 plugin/bin/workflow_metrics.py --check specs/001-executable-rules-and-release-pinning`
+→ exit 0, silent.
+
+AC23 re-measured after the fixes: the six stage skills are `added=65 deleted=77 net=-12`
+against `origin/main` — F17's sentence costs one line, so the net threshold (≤ −12) is met
+exactly. The gross measurement at step 4 is unaffected.
+
+No new dependency (`pyproject.toml` and `uv.lock` untouched), no data migration, no change
+to the guard's verdicts (`plugin/tests/test_guard.py` untouched), no metric or configuration
+key added, removed or renamed. The `0.3.0` release is not yet tagged, so the behaviour
+changed here (the narrowed permission rule, `--check`'s extra diagnostics, the report's
+handling of an unreadable spec and a missing directory) is recorded in the existing
+`## 0.3.0` section of `plugin/CHANGELOG.md` rather than in a new version.
+
+Backlog: one item added (Guard / generalise the migration module, P3, F14). No item's
+trigger has fired that is not already handled: the two delivered items were removed during
+implementation, and the remaining `Init` items keep their triggers.

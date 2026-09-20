@@ -8,6 +8,7 @@ PLUGIN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN / "bin"))
 
 import workflow_config  # noqa: E402
+import workflow_metrics  # noqa: E402
 
 README = (PLUGIN / "README.md").read_text()
 CHANGELOG = (PLUGIN / "CHANGELOG.md").read_text()
@@ -59,26 +60,11 @@ def test_changelog_starts_at_the_manifest_version():
     assert f"## {manifest['version']}" in CHANGELOG
 
 
+# The key list is not copied here: a third copy beside workflow_metrics.COUNTERS and the
+# check test's COMPLETE would be one more place to drift.
 def test_metrics_block_lists_every_counter():
-    counters = [
-        "started_at",
-        "plan_steps",
-        "plan_review_blockers",
-        "plan_review_majors",
-        "plan_changes",
-        "implement_steps",
-        "implement_iterations",
-        "deviations",
-        "escalations",
-        "final_review_blockers",
-        "final_review_worth_fixing",
-        "final_review_nits",
-        "findings_accepted",
-        "findings_rejected",
-        "finished_at",
-    ]
     section = README.split("## Metryki workflow", 1)[1]
-    for counter in counters:
+    for counter in [*workflow_metrics.TIMESTAMPS, *workflow_metrics.COUNTERS]:
         assert f"{counter}:" in section, counter
 
 

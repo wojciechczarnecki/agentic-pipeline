@@ -158,7 +158,11 @@ def test_apply_mode_gates_done_on_the_checker():
 
 @pytest.mark.parametrize("name", STAGE_SKILLS)
 def test_no_stage_skill_sends_metrics_rules_to_the_readme(name):
+    # The skills are written in Polish, so the guard has to reject `metryk`/`metryki` as
+    # well — otherwise the sentence this spec removed walks straight back in.
     for line in skill_text(name).splitlines():
-        assert not ("README" in line and "metrics" in line), f"{name}: {line}"
+        lowered = line.lower()
+        sends_to_readme = "readme" in lowered and ("metric" in lowered or "metryk" in lowered)
+        assert not sends_to_readme, f"{name}: {line}"
     if name == "ship":
         assert "Metryki workflow" not in skill_text(name)

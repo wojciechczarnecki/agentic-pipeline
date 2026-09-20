@@ -22,6 +22,10 @@ def section(text: str, heading_prefix: str) -> str:
     return "\n".join(lines[start:end]).rstrip()
 
 
+def agent_section(name: str, heading_prefix: str) -> str:
+    return section(agent_text(name), heading_prefix)
+
+
 def agent_text(name: str) -> str:
     return (PLUGIN / "agents" / f"{name}.md").read_text()
 
@@ -33,10 +37,12 @@ def skill_text(name: str) -> str:
 @pytest.mark.parametrize("agent", AGENTS)
 @pytest.mark.parametrize("heading", CONTRACT_HEADINGS)
 def test_every_agent_carries_the_contract(agent, heading):
-    block = section(SHIP, heading)
-    assert block in agent_text(agent), (
-        f"{agent}.md does not carry `{heading}` verbatim from skills/ship/SKILL.md — "
-        "the contract lives in five files and every change has to be repeated in all of them"
+    text = agent_text(agent)
+    assert heading in text, f"{agent}.md is missing `{heading}`"
+    assert agent_section(agent, heading) == section(SHIP, heading), (
+        f"{agent}.md's `{heading}` is not character-identical to skills/ship/SKILL.md — "
+        "the contract lives in five files and every change has to be repeated in all of "
+        "them; neither an added nor a removed line is allowed in one copy alone"
     )
 
 

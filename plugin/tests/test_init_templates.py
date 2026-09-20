@@ -159,4 +159,8 @@ def test_settings_template_allows_the_metrics_checker():
     allow = settings["permissions"]["allow"]
     # Every stage closes by running the checker; a subagent under /pipeline:ship cannot
     # answer a permission prompt, so the pattern has to be allowed up front.
-    assert any("workflow_metrics.py" in rule for rule in allow), allow
+    # The rule is anchored on the whole literal the skills call: a pattern with a wildcard
+    # on both sides of `workflow_metrics.py` would auto-approve any python3 command merely
+    # containing that text.
+    assert 'Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" *)' in allow, allow
+    assert not any(rule.startswith("Bash(python3 *") for rule in allow), allow

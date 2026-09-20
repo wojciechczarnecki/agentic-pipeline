@@ -23,6 +23,7 @@ whose trigger has fired.
 
 | Area | Item | Trigger | Context |
 |------|------|---------|---------|
+| Guard | Generalise the guard's migration module beyond Alembic (verbs `upgrade`, `downgrade`, `stamp`, `revision`, `current`, `check`; variables `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`) | The first consumer project using another migration tool | Recorded in `docs/DECISIONS.md` (2026-09-20) as a deliberate limitation: the owner uses Alembic, and an honest gap beats an abstraction nobody exercises. A project on another tool must not mistake the guard's silence for protection |
 | Guard | The guard knows the `claude` program (blocks `claude plugin disable`, `claude plugin uninstall`, `claude plugin marketplace remove`) | A second consumer project, or the first session that detached the plugin | Today the only barrier is the `deny` list in the consumer's `.claude/settings.json` — configuration, not code; the guard should protect its own attachment |
 | Guard | `protected_file_pattern` covers `.claude-plugin/marketplace.json` | Same as above | The file points at the plugin source, so replacing it redirects the whole workflow; today only an `ask` rule on the consumer side protects it |
 | Guard | Read-only `git config core.hooksPath` (no value) is not blocked | The next guard change | The guard treats reading the key as changing it and blocks it; sessions work around it with `grep .git/config` |

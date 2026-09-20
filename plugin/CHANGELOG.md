@@ -12,7 +12,8 @@ Format bloku `metrics:` jest nazwany w każdym skillu etapu i sprawdzany przez
 **wpływ na konsumenta:** po aktualizacji zarejestruj marketplace ponownie z nowym `ref`
 (`claude plugin marketplace remove <nazwa>` + `add '<url>#pipeline--v0.3.0'`) — bez tego pin
 w `.claude/settings.json` jest bezczynny; dopisz do `permissions.allow` we własnym
-`.claude/settings.json` wpis `"Bash(python3 *workflow_metrics.py*)"` (zmiana szablonu
+`.claude/settings.json` wpis
+`"Bash(python3 \"${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py\" *)"` (zmiana szablonu
 dotyczy tylko nowych projektów); spec zaczęty przed tym wydaniem może raz eskalować
 brakującymi kluczami metryk — uzupełnia je właściciel, agent ich nie zmyśla.
 
@@ -21,7 +22,11 @@ brakującymi kluczami metryk — uzupełnia je właściciel, agent ich nie zmyś
 - `bin/workflow_metrics.py --check <katalog-speca>` — komplet kluczy należnych dla
   osiągniętego statusu, parsowalne znaczniki czasu i zgodność
   `findings_accepted + findings_rejected` z sumą znalezisk końcowego review; kod 1
-  i czytelny komunikat nazywający każdy brak. Domyślne wywołanie (raport) bez zmian.
+  i czytelny komunikat nazywający każdy brak. `--check` zgłasza też klucz spoza listy
+  metryk (literówka gubiłaby wartość po cichu) i osobno nazywa frontmatter bez `status`.
+  Domyślne wywołanie (raport) bez zmian poza tym, że nieistniejący katalog speców kończy
+  się kodem 1 z komunikatem zamiast „brak metryk", a niedostępnego `SPEC.md` raport
+  pomija z ostrzeżeniem zamiast tracebacku.
 - Przypadek ewaluacyjny `init-question-cap` — limit pierwszej rundy pytań `init`.
 - Testy strukturalne `test_stage_skills.py` i `test_stage_contract.py`.
 
@@ -37,9 +42,16 @@ brakującymi kluczami metryk — uzupełnia je właściciel, agent ich nie zmyś
   została tylko w README. Reguła artefaktów wizualnych to jedno zdanie rozkazujące,
   warunkowe na zakresie UI w `verify.scopes`, z odesłaniem do konwencji projektu.
 - `templates/settings.json` wskazuje źródło `git` po HTTPS z widocznym `ref` (TODO)
-  i pozwala na uruchomienie `workflow_metrics.py`; `init` podstawia nazwę marketplace'u
-  i `ref` ze ścieżki `${CLAUDE_PLUGIN_ROOT}`, a przy innym kształcie zostawia `TODO:`.
-- README: `ref` w przykładzie deklaratywnym, zastrzeżenie o ponownej rejestracji
+  i pozwala na jedno konkretne wywołanie
+  `Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" *)` — wzorzec jest
+  zakotwiczony na całym literale, więc nie przepuszcza dowolnej komendy `python3`;
+  `init` podstawia nazwę marketplace'u i `ref` ze ścieżki `${CLAUDE_PLUGIN_ROOT}`,
+  a przy innym kształcie zostawia `TODO:`.
+- `final-review` w trybie `apply`: znalezisko odłożone do backlogu liczy się jako
+  `findings_rejected`, żeby bilans `--check` się zgadzał.
+- README: sekcja o `--check` (kody wyjścia, tabela kluczy należnych według statusu)
+  i wywołanie przez `${CLAUDE_PLUGIN_ROOT}` zamiast ścieżki względnej; `ref` w przykładzie
+  deklaratywnym, zastrzeżenie o ponownej rejestracji
   marketplace'u i jednozdaniowy zakres modułu migracji (tylko Alembic).
 
 ## 0.2.0

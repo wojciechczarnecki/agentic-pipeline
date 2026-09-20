@@ -4,6 +4,9 @@
 # from .claude/workflow.json (`docs.specsDir`).
 # Usage: python3 workflow_metrics.py [dir]
 #        python3 workflow_metrics.py --check <spec-dir>
+# Exit codes: 0 — report rendered, or --check found nothing wrong; 1 — --check found a
+# problem (every one named on stderr), an unreadable spec directory or a broken
+# workflow.json; 2 — argparse rejected the arguments.
 import argparse
 import re
 import sys
@@ -29,6 +32,7 @@ COUNTERS = [
     "findings_accepted",
     "findings_rejected",
 ]
+FRONTMATTER = re.compile(r"---\n(.*?)\n---", re.DOTALL)
 TIME_FORMAT = "%Y-%m-%dT%H:%M"
 TIMESTAMPS = ("started_at", "finished_at")
 _PLAN_DRAFT = ["started_at", "escalations", "plan_steps"]
@@ -49,7 +53,7 @@ BALANCE = (
 
 
 def parse_metrics(text: str) -> dict[str, str]:
-    match = re.match(r"---\n(.*?)\n---", text, re.DOTALL)
+    match = FRONTMATTER.match(text)
     if not match:
         return {}
     metrics: dict[str, str] = {}
@@ -64,7 +68,7 @@ def parse_metrics(text: str) -> dict[str, str]:
 
 
 def parse_status(text: str) -> str | None:
-    match = re.match(r"---\n(.*?)\n---", text, re.DOTALL)
+    match = FRONTMATTER.match(text)
     if not match:
         return None
     for line in match.group(1).splitlines():
@@ -84,11 +88,11 @@ def check(spec_dir: Path) -> list[str]:
         text = spec.read_text()
     except OSError as exc:
         return [f"{spec} cannot be read: {exc}"]
-    if not re.match(r"---\n(.*?)\n---", text, re.DOTALL):
+    if not FRONTMATTER.match(text):
         return [f"{spec} has no frontmatter"]
     status = parse_status(text)
     if status is None:
-        return [f"{spec} has no frontmatter"]
+        return [f"{spec}: frontmatter has no `status` key"]
     if status not in REQUIRED:
         return [f'{spec}: unknown status "{status}"']
 
@@ -113,6 +117,12 @@ def check(spec_dir: Path) -> list[str]:
         value = metrics[key]
         if not re.fullmatch(r"\d+", value):
             problems.append(f'metrics.{key} "{value}" is not a non-negative integer')
+    unknown = [key for key in metrics if key not in (*COUNTERS, *TIMESTAMPS)]
+    if unknown:
+        problems.append(
+            "metrics holds keys that are not metrics (a typo drops the value silently): "
+            + ", ".join(sorted(unknown))
+        )
     balance_keys = [key for group in BALANCE for key in group]
     if all(re.fullmatch(r"\d+", metrics.get(key, "")) for key in balance_keys):
         left = sum(int(metrics[key]) for key in BALANCE[0])
@@ -137,7 +147,12 @@ def lead_time_hours(metrics: dict[str, str]) -> float | None:
 def collect(specs_dir: Path) -> list[tuple[str, dict[str, str]]]:
     rows = []
     for spec in sorted(specs_dir.glob("*/SPEC.md")):
-        metrics = parse_metrics(spec.read_text())
+        try:
+            text = spec.read_text()
+        except OSError as exc:
+            print(f"{spec} cannot be read, skipped: {exc}", file=sys.stderr)
+            continue
+        metrics = parse_metrics(text)
         if metrics:
             rows.append((spec.parent.name, metrics))
     return rows
@@ -206,6 +221,9 @@ def main(argv: list[str]) -> int:
         except workflow_config.ConfigError as exc:
             print(f"workflow.json: {exc}", file=sys.stderr)
             return 1
+    if not specs_dir.is_dir():
+        print(f"{specs_dir} is not a directory", file=sys.stderr)
+        return 1
     print(render(collect(specs_dir)))
     return 0
 

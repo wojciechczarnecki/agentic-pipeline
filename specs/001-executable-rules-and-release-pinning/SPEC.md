@@ -9,10 +9,12 @@ metrics:
   plan_changes: 19
   implement_steps: 11
   implement_iterations: 3
-  deviations: 3
+  deviations: 1
   final_review_blockers: 2
   final_review_worth_fixing: 15
   final_review_nits: 9
+  findings_accepted: 26
+  findings_rejected: 0
 stage_history:
   - "spec-draft — 2026-09-20"
   - "spec-ready — 2026-09-20"

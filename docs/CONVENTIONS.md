@@ -64,8 +64,10 @@ worktrees.
 ## Workflow metrics
 
 Every spec carries a flat `metrics:` block in its SPEC.md frontmatter, filled in by the
-pipeline stages. Keys and report: `plugin/README.md` → metrics section
-(`workflow_metrics.py`, on `PATH` inside a Claude Code session with the plugin).
+pipeline stages. Keys, the report and the `--check` gate: `plugin/README.md` → metrics
+section. The script is addressed through the plugin root
+(`python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py"`), never relative to `PATH` or
+the working directory — those resolve only inside this repository.
 
 ## Dependencies
 

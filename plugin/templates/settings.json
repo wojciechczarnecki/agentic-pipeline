@@ -24,7 +24,7 @@
       "Bash(rm *)",
       "Bash(chmod +x *)",
       "Bash(date *)",
-      "Bash(python3 *workflow_metrics.py*)",
+      "Bash(python3 \"${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py\" *)",
       "WebSearch"
     ],
     "ask": [

@@ -158,11 +158,22 @@ def test_check_rejects_a_malformed_timestamp(tmp_path):
     assert any("started_at" in problem and "%Y-%m-%dT%H:%M" in problem for problem in problems)
 
 
-@pytest.mark.parametrize("value", ["", "two", "3.5", "-1"])
+@pytest.mark.parametrize("value", ["two", "3.5", "-1"])
 def test_check_rejects_a_non_integer_counter(tmp_path, value):
     metrics = dict(COMPLETE, plan_steps=value)
     problems = workflow_metrics.check(spec_dir(tmp_path, "done", metrics))
-    assert any("plan_steps" in problem for problem in problems)
+    assert any(
+        "plan_steps" in problem and "is not a non-negative integer" in problem
+        for problem in problems
+    )
+
+
+# An empty value is deliberately reported as a missing key rather than as a bad integer —
+# there is nothing there to have measured. Pinned so the two branches cannot be confused.
+def test_an_empty_counter_is_reported_as_missing(tmp_path):
+    metrics = dict(COMPLETE, plan_steps="")
+    problems = workflow_metrics.check(spec_dir(tmp_path, "done", metrics))
+    assert any("missing" in problem and "plan_steps" in problem for problem in problems)
 
 
 def test_check_reports_unbalanced_findings(tmp_path):
@@ -198,6 +209,36 @@ def test_keys_due_per_status(tmp_path, status, due):
         assert any("missing" in problem and key in problem for problem in problems)
 
 
+# AC9 says "exactly": an extra key in REQUIRED would hand every consumer a false
+# escalation, so the whole table is asserted by equality, not by containment.
+def test_the_required_table_is_exactly_ac9():
+    assert workflow_metrics.REQUIRED == {
+        "spec-draft": [],
+        "spec-ready": [],
+        "plan-draft": ["started_at", "escalations", "plan_steps"],
+        "plan-approved": [
+            "started_at",
+            "escalations",
+            "plan_steps",
+            "plan_review_blockers",
+            "plan_review_majors",
+            "plan_changes",
+        ],
+        "implemented": [
+            "started_at",
+            "escalations",
+            "plan_steps",
+            "plan_review_blockers",
+            "plan_review_majors",
+            "plan_changes",
+            "implement_steps",
+            "implement_iterations",
+            "deviations",
+        ],
+        "done": ["started_at", "finished_at", *workflow_metrics.COUNTERS],
+    }
+
+
 @pytest.mark.parametrize("status", ["spec-draft", "spec-ready"])
 def test_early_statuses_require_nothing(tmp_path, status):
     assert workflow_metrics.check(spec_dir(tmp_path, status, {})) == []
@@ -211,6 +252,17 @@ def test_missing_keys_are_named_with_the_status(tmp_path):
     assert "escalations" in result.stderr
     assert "plan-draft" in result.stderr
     assert "Traceback" not in result.stderr
+
+
+# AC10 says "every missing key", so more than one has to be missing here — with a single
+# one the message passes whether it joins the list or prints only the first entry.
+def test_every_missing_key_is_named(tmp_path):
+    result = run_check(spec_dir(tmp_path, "done", {"started_at": '"2026-09-15T09:00"'}))
+    assert result.returncode == 1
+    missing = [line for line in result.stderr.splitlines() if "missing" in line]
+    assert len(missing) == 1
+    for key in ["finished_at", *workflow_metrics.COUNTERS]:
+        assert key in missing[0], key
 
 
 def test_a_directory_without_a_readable_spec_fails_cleanly(tmp_path):
@@ -241,3 +293,66 @@ def test_check_without_a_directory_is_a_usage_error():
 def test_an_unknown_status_is_reported(tmp_path):
     problems = workflow_metrics.check(spec_dir(tmp_path, "shipped", COMPLETE))
     assert problems == [f'{tmp_path / "014-e2e" / "SPEC.md"}: unknown status "shipped"']
+
+
+def test_frontmatter_without_a_status_says_so(tmp_path):
+    directory = tmp_path / "017-no-status"
+    directory.mkdir()
+    (directory / "SPEC.md").write_text("---\nmetrics:\n  escalations: 0\n---\n\n# SPEC 017\n")
+    result = run_check(directory)
+    assert result.returncode == 1
+    assert "has no `status` key" in result.stderr
+    assert "has no frontmatter" not in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+# A typo in a metric key used to drop the value without a word; at `implemented` nothing
+# else would have caught it.
+def test_a_key_that_is_not_a_metric_is_reported(tmp_path):
+    metrics = dict(COMPLETE, final_review_nit="3")
+    problems = workflow_metrics.check(spec_dir(tmp_path, "implemented", metrics))
+    assert any(
+        "keys that are not metrics" in problem and "final_review_nit" in problem
+        for problem in problems
+    )
+
+
+def test_a_missing_specs_directory_is_not_an_empty_report(tmp_path):
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), str(tmp_path / "typo")], capture_output=True, text=True
+    )
+    assert result.returncode == 1
+    assert "is not a directory" in result.stderr
+    assert "No spec carries a metrics block yet." not in result.stdout
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="chmod does not deny reads on Windows")
+def test_an_unreadable_spec_is_skipped_by_the_report_and_named_by_the_check(tmp_path):
+    specs = write_specs(tmp_path / "specs")
+    unreadable = specs / "013-legacy" / "SPEC.md"
+    unreadable.chmod(0o000)
+    try:
+        if unreadable.is_file() and _readable(unreadable):
+            pytest.skip("running as a user that ignores file permissions")
+        report = subprocess.run(
+            [sys.executable, str(SCRIPT), str(specs)], capture_output=True, text=True
+        )
+        assert report.returncode == 0
+        assert "| 014-e2e |" in report.stdout
+        assert "cannot be read, skipped" in report.stderr
+        assert "Traceback" not in report.stderr
+
+        result = run_check(specs / "013-legacy")
+        assert result.returncode == 1
+        assert "cannot be read" in result.stderr
+        assert "Traceback" not in result.stderr
+    finally:
+        unreadable.chmod(0o644)
+
+
+def _readable(path: Path) -> bool:
+    try:
+        path.read_text()
+    except OSError:
+        return False
+    return True

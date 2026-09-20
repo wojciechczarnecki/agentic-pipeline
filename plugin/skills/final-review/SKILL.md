@@ -71,9 +71,10 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
 
 1. **Decyzje** weź z PLAN.md → `## Decyzje właściciela` (wpis dotyczący końcowego review).
    Brak wpisu → eskalacja, nie zgaduj.
-2. **Poprawki:** wprowadź przyjęte, ponów pełną weryfikację (`<verify.command>`),
-   dopisz do raportu, co poprawiono (id → zmiana). W bloku `metrics:`:
-   `findings_accepted`, `findings_rejected`.
+2. **Poprawki:** wprowadź przyjęte, ponów pełną weryfikację (`<verify.command>`), dopisz
+   do raportu, co poprawiono (id → zmiana). W bloku `metrics:`: `findings_accepted`,
+   `findings_rejected`; znalezisko odłożone do `<docs.backlog>` liczy się jako
+   `findings_rejected` (powód: „backlog"), inaczej bilans `--check` się nie zejdzie.
 3. **PR** — status speca zostaje `implemented`:
    - `<docs.roadmap>` odhaczona, `<docs.decisions>` jeśli dotyczy; `<docs.backlog>`
      zaktualizowany: nowe pozycje z priorytetem i wyzwalaczem, zrealizowane usunięte,
