@@ -1,5 +1,8 @@
 ---
 status: spec-ready
+metrics:
+  started_at: "2026-09-20T12:30"
+  escalations: 0
 stage_history:
   - "spec-draft — 2026-09-20"
   - "spec-ready — 2026-09-20"
