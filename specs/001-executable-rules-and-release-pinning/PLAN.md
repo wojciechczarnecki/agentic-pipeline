@@ -421,7 +421,7 @@ Reused patterns, with paths:
       (expected: `0.3.0`);
       `grep -n "## 0.3.0" plugin/CHANGELOG.md`
 
-- [ ] 11. **Consumer safety net and full verification** — files: none expected (fixes only if
+- [x] 11. **Consumer safety net and full verification** — files: none expected (fixes only if
       something is red).
       Confirm nothing the consumer relies on moved: the metric keys, the configuration keys
       and the guard's verdicts (AC36); no new dependency and no import outside the standard
@@ -499,6 +499,25 @@ exercise it, on plain `python3`:
    `claude plugin validate --strict plugin/ && claude plugin validate --strict .`
    (skipped with a note if `claude` is off PATH; CI runs it).
 
+**Results (2026-09-20):**
+
+1. `bash scripts/check.sh` → `ALL GREEN` (validate plugin ✔, validate marketplace ✔, ruff
+   `All checks passed!`, black clean, pytest `464 passed in 2.43s`).
+2. `python3 plugin/bin/workflow_metrics.py --check specs/001-executable-rules-and-release-pinning`
+   → `exit=0`, no output, with this stage's metrics written (`status: implemented`).
+3. Failure path on a scratch copy →
+   `014-x: status \`plan-draft\` requires metric keys that are missing: escalations`, `exit=1`,
+   no traceback (AC10, AC37).
+4. `python3 plugin/bin/workflow_metrics.py specs` → the markdown table plus the ratio lines,
+   `exit=0` (AC12).
+5. AC23: gross `deleted=68` (≥ 52 required) at the end of step 4; net `-13` (≤ −12 required)
+   after step 6's tightening. Both recorded above.
+6. `python3 -c "import json;json.load(open('plugin/templates/settings.json'))"` → parses;
+   `claude plugin validate --strict plugin/` and `… .` → both `Validation passed`.
+7. Consumer safety net (step 11):
+   `git diff --stat origin/main -- plugin/tests/test_guard.py pyproject.toml uv.lock` → empty;
+   no counter removed from `COUNTERS`; no import outside the standard library.
+
 Record each command's real output in this section.
 
 ### Manual (performed by the owner)
@@ -513,12 +532,12 @@ Record each command's real output in this section.
 
 ## Definition of Done
 
-- [ ] every step ticked
-- [ ] `bash scripts/check.sh` green in full
-- [ ] end-to-end verification (automatic) performed, its result recorded above
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` (the migration-scope row) updated;
+- [x] every step ticked
+- [x] `bash scripts/check.sh` green in full
+- [x] end-to-end verification (automatic) performed, its result recorded above
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` (the migration-scope row) updated;
       `docs/BACKLOG.md` pruned of the two delivered items
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
