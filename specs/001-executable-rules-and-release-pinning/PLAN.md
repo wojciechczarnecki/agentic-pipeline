@@ -547,6 +547,18 @@ _(appended by /pipeline:ship or by a stage on escalation: date, stage, question,
   owner before this plan was written; see SPEC.md → "Owner decisions". The plan implements
   those decisions (steps 3 and 6).
 
+- 2026-09-20 — final review — Question: which findings from the report to accept.
+  Decision: **all of them accepted — F1 through F26**, blockers, "worth fixing" and nits
+  alike. None rejected. The owner went past the reviewer's recommendation (which was to
+  drop the nits) deliberately.
+- 2026-09-20 — final review — Question: F2 needs an edit to this repository's
+  `.claude/settings.json`, an entry on the `ask` list that a stage subagent cannot approve
+  for itself. Decision: **authorised**, and the permission must use the narrowed pattern
+  from F9 — not the substring-anchored `Bash(python3 *workflow_metrics.py*)` form, which
+  auto-approves any `python3` command merely containing that literal. Fix F9 in
+  `plugin/templates/settings.json` to the same narrowed shape, so the template and this
+  repository agree.
+
 ## Review log
 
 ### 2026-09-20 — /pipeline:plan-review
