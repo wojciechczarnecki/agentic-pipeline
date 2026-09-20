@@ -1,13 +1,17 @@
 ---
-status: plan-draft
+status: plan-approved
 metrics:
   started_at: "2026-09-20T12:30"
   escalations: 1
   plan_steps: 11
+  plan_review_blockers: 1
+  plan_review_majors: 5
+  plan_changes: 19
 stage_history:
   - "spec-draft — 2026-09-20"
   - "spec-ready — 2026-09-20"
   - "plan-draft — 2026-09-20"
+  - "plan-approved — 2026-09-20"
 ---
 
 # SPEC 001 — Rules where the agent executes them, and install instructions that match reality

@@ -79,7 +79,7 @@ Reused patterns, with paths:
 | AC | Steps | Proving test |
 |----|-------|----------------|
 | AC1 | 5 | `test_stage_skills.py::test_closing_step_states_the_metrics_format` |
-| AC2 | 2, 5 | `test_stage_skills.py::test_no_stage_skill_sends_metrics_rules_to_the_readme`, `test_stage_contract.py::test_the_contract_states_the_metrics_format` |
+| AC2 | 2, 5 | `test_stage_skills.py::test_no_stage_skill_sends_metrics_rules_to_the_readme`, `::test_ship_step_three_states_the_metrics_format`, `test_stage_contract.py::test_the_contract_states_the_metrics_format` |
 | AC3 | 5 | `test_stage_skills.py::test_closing_step_states_the_metrics_format`, `::test_no_stage_skill_sends_metrics_rules_to_the_readme` |
 | AC4 | 1 | `test_workflow_metrics.py::test_check_is_silent_on_a_complete_spec` |
 | AC5 | 1 | `test_workflow_metrics.py::test_check_accepts_unquoted_timestamps` |
@@ -90,7 +90,7 @@ Reused patterns, with paths:
 | AC10 | 1 | `test_workflow_metrics.py::test_missing_keys_are_named_with_the_status` |
 | AC11 | 1 | `test_workflow_metrics.py::test_a_directory_without_a_readable_spec_fails_cleanly` |
 | AC12 | 1 | `test_workflow_metrics.py::test_report_skips_legacy_specs_and_computes_ratios` (existing), `::test_empty_specs_dir_reports_missing_metrics` (existing) |
-| AC13 | 5 | `test_stage_skills.py::test_closing_step_runs_the_checker` |
+| AC13 | 5 | `test_stage_skills.py::test_closing_step_runs_the_checker` (asserts the invocation is addressed through `${CLAUDE_PLUGIN_ROOT}`) |
 | AC14 | 5 | `test_stage_skills.py::test_apply_mode_gates_done_on_the_checker` |
 | AC15 | 5 | `test_stage_skills.py::test_closing_step_names_the_escalation_path` |
 | AC16 | 2 | `test_stage_contract.py::test_every_agent_carries_the_contract` |
@@ -100,8 +100,8 @@ Reused patterns, with paths:
 | AC20 | 3 | `test_stage_skills.py::test_the_configuration_block_keeps_the_fallback` |
 | AC21 | 4 | `test_stage_skills.py::test_the_visual_sentence_is_one_imperative_sentence` |
 | AC22 | 4 | `test_stage_skills.py::test_the_visual_sentence_is_one_imperative_sentence`, `::test_no_stage_skill_enumerates_views` |
-| AC23 | 3, 4, 5, 6 | step 6 measurement command recorded in "End-to-end verification"; `test_stage_skills.py::test_the_configuration_block_is_two_bullets_everywhere` guards the shrink from regrowing |
-| AC24 | 7 | `test_init_templates.py::test_settings_template_pins_a_git_https_source`, `::test_settings_template_names_no_marketplace_of_its_own` (existing) |
+| AC23 | 3, 4, 5, 6 | the gross measurement at the end of step 4 and the net measurement in step 6, both recorded in "End-to-end verification"; `test_stage_skills.py::test_the_configuration_block_is_two_bullets_everywhere` guards the shrink from regrowing |
+| AC24 | 7 | `test_init_templates.py::test_settings_template_pins_a_git_https_source`, `::test_settings_template_names_no_marketplace_of_its_own` (existing), `::test_settings_template_allows_the_metrics_checker` |
 | AC25 | 7 | `test_readme.py::test_installation_pins_the_release_tag` |
 | AC26 | 7 | `test_readme.py::test_installation_explains_the_marketplace_registration` |
 | AC27 | 7 | `test_init_skill.py::test_the_marketplace_ref_is_derived_from_the_plugin_root` |
@@ -142,7 +142,9 @@ Reused patterns, with paths:
       `no SPEC.md in <dir>`; no frontmatter → `<dir>/SPEC.md has no frontmatter`; unknown
       status → `<dir>/SPEC.md: unknown status "<value>"`. No exception escapes `check()`.
       `main()` switches to `argparse` with `--check` (`action="store_true"`) and the existing
-      optional positional directory; with `--check` and no directory, print a usage message to
+      optional positional directory; `main(argv)` keeps its current signature (it is called as
+      `main(sys.argv)`), so it parses `argv[1:]` — not `argv` — or the program name is read as
+      the directory; with `--check` and no directory, print a usage message to
       stderr and return 1. With `--check`: print each message to stderr, return 1 if any,
       otherwise print nothing and return 0. Without `--check` the current behaviour is
       untouched.
@@ -179,6 +181,11 @@ Reused patterns, with paths:
       kończysz blokiem RESULT" and the `METRICS tego etapu:` line).
       Also update `ship` step 3 so it states the same two-line format while still writing
       `started_at` and `escalations: 0` (AC2).
+      In the same step remove the last order to read the `ship` skill from the four stage
+      skills: `plugin/skills/{plan,plan-review,implement,final-review}/SKILL.md` → "Handoff"
+      end today with "zakończ blokiem RESULT (skill `ship` tego pluginu)", which sends the
+      stage agent to exactly the file the spec stopped it from reading. Reword to
+      "zakończ blokiem RESULT z kontraktu agenta etapu" (no new line, net 0).
       New test `plugin/tests/test_stage_contract.py`: `section(heading_prefix)` extracts from
       the line starting with the prefix up to the next line starting with `## `, right-stripped;
       `test_every_agent_carries_the_contract` parametrised over the four agents × the two
@@ -186,8 +193,16 @@ Reused patterns, with paths:
       AC17); `test_no_agent_sends_the_reader_to_the_ship_skill` asserts no agent file contains
       `skills/ship` or the phrase `skill \`ship\`` (AC18);
       `test_the_contract_states_the_metrics_format` asserts the contract section names
-      `metrics:`, `%Y-%m-%dT%H:%M` and `escalations`, and contains no `README`.
+      `metrics:`, `%Y-%m-%dT%H:%M` and `escalations`, and contains no `README`;
+      `test_no_stage_skill_orders_a_read_of_the_ship_skill` asserts none of the four stage
+      skills contains "skill `ship` tego pluginu" (the agent side is AC18's test above).
+      Add to `test_stage_skills.py` (created in step 3; if step 2 runs first, put the case in
+      `test_stage_contract.py` and move it in step 3):
+      `test_ship_step_three_states_the_metrics_format` — `ship` step 3 names `started_at`,
+      `escalations`, `metrics:` and `%Y-%m-%dT%H:%M`, and no `README` (the untested half of
+      AC2).
       Automatic verification: `uv run pytest -q plugin/tests/test_stage_contract.py plugin/tests/test_plugin_structure.py`;
+      `grep -rn "skill .ship. tego pluginu" plugin/skills plugin/agents` (expected: no match, exit 1);
       `claude plugin validate --strict plugin/`
 
 - [ ] 3. **One configuration block in all six stage skills** — files:
@@ -239,7 +254,18 @@ Reused patterns, with paths:
       Automatic verification: `uv run pytest -q plugin/tests/test_stage_skills.py`;
       `grep -rn "widok szeroki\|szeroki i wąski" plugin/skills plugin/agents` (expected: no match, exit 1);
       `grep -c "verify.scopes" plugin/skills/plan/SKILL.md plugin/skills/plan-review/SKILL.md plugin/skills/implement/SKILL.md plugin/skills/final-review/SKILL.md plugin/agents/implementer.md`
-      (expected: 1 occurrence beyond the configuration block in each)
+      (expected exactly: `plan` 1, `plan-review` 1, `implement` 2, `final-review` 1,
+      `implementer.md` 1 — `implement` legitimately keeps the second mention in
+      "Pętla samokorekty", which is about running a narrow scope fast, not about views;
+      the configuration block of step 3 no longer names `verify.scopes` anywhere);
+      the AC23 GROSS measurement, run here while the six stage skills carry only the step 2–4
+      changes:
+      `git fetch origin main && git diff --numstat origin/main -- plugin/skills/idea/SKILL.md plugin/skills/plan/SKILL.md plugin/skills/plan-review/SKILL.md plugin/skills/implement/SKILL.md plugin/skills/final-review/SKILL.md plugin/skills/ship/SKILL.md | awk '{a+=$1; d+=$2} END {print "added="a, "deleted="d}'`
+      (expected: `deleted` ≥ 52 — the ≥ 50 lines of configuration and visual prose that AC23
+      demands, plus the ≤ 2 lines step 2 replaced in `ship`; record the number in
+      "End-to-end verification"). Measuring it here and not in step 6 is the point: after
+      step 5 the same counter also absorbs the metrics rewrites and stops proving AC23's
+      gross clause.
 
 - [ ] 5. **Metrics format and the checker in every closing step** — files:
       `plugin/skills/plan/SKILL.md` (step 8), `plugin/skills/plan-review/SKILL.md` (step 6),
@@ -252,16 +278,22 @@ Reused patterns, with paths:
       `plan_review_*`/`plan_changes` keys; `implement`: `implement_steps`,
       `implement_iterations`, `deviations`; `final-review`: the three `final_review_*` keys in
       `report`, `findings_accepted`/`findings_rejected` and `finished_at` in `apply`), then
-      `workflow_metrics.py --check <docs.specsDir>/NNN-<slug>` run before the stage reports
-      success (AC13), and the sentence that a failure the stage cannot repair from its own
+      the checker run before the stage reports success (AC13), spelled exactly as
+      `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <docs.specsDir>/NNN-<slug>`
+      — the plugin is addressed only through `${CLAUDE_PLUGIN_ROOT}` (`plugin/hooks/hooks.json`,
+      `plugin/skills/init/SKILL.md` step 4); a bare `workflow_metrics.py` resolves in no
+      consumer project, so the rule would be named but never executed — and the sentence that a failure the stage cannot repair from its own
       artifacts ends the stage with `RESULT: ESCALATE` (standalone: STOP with a question),
       naming the missing keys, and that the agent never invents a value it did not measure
       (AC15). In `final-review` the `apply` closing step states that `status: done` is not set
-      while `--check` exits non-zero (AC14). No skill refers to README for the metrics format.
+      while `--check` exits non-zero (AC14); it also states that a counter the stage measured
+      as zero is written as `0` — a measured zero is not an invented value, and without it the
+      no-findings path (`ship` → "brak znalezisk") can never reach `done` past AC9.
+      No skill refers to README for the metrics format.
       Add to `test_stage_skills.py`: `test_closing_step_states_the_metrics_format`
       (parametrised over the four stage skills × their owned keys, plus `metrics:` and
       `%Y-%m-%dT%H:%M`); `test_closing_step_runs_the_checker` (each names
-      `workflow_metrics.py` and `--check`); `test_closing_step_names_the_escalation_path`
+      `workflow_metrics.py`, `--check` and `CLAUDE_PLUGIN_ROOT`); `test_closing_step_names_the_escalation_path`
       (each names `RESULT: ESCALATE`); `test_apply_mode_gates_done_on_the_checker` (the
       `final-review` `apply` closing step names both `--check` and `done`);
       `test_no_stage_skill_sends_metrics_rules_to_the_readme` (no stage skill has `README`
@@ -270,18 +302,20 @@ Reused patterns, with paths:
       Automatic verification: `uv run pytest -q plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py`;
       `awk 'length > 100 {print FILENAME": "FNR}' plugin/skills/*/SKILL.md` (expected: no output)
 
-- [ ] 6. **Measure the AC23 budget** — files: possibly
+- [ ] 6. **Measure the AC23 net budget** (the gross half was measured at the end of step 4) —
+      files: possibly
       `plugin/skills/{idea,plan,plan-review,implement,final-review,ship}/SKILL.md` (wording
       tightened only).
-      Run the measurement below. Gross deletions across the six stage skills must be ≥ 50 and
-      the net change ≤ −12. If the net misses, tighten the wording of the blocks added in
+      Run the measurement below: the net change across the six stage skills must be ≤ −12
+      (the gross ≥ 50 was recorded in step 4 and is not re-derived from this counter, which
+      now also carries the step 5 rewrites). If the net misses, tighten the wording of the blocks added in
       steps 3–5 (shorter sentences, fewer line breaks) — never by dropping a rule named in
       AC1–AC22; re-run the tests from steps 3–5 after each tightening. If the budget still
       cannot be met without losing a rule, escalate instead of trimming a rule.
       Record the measured numbers in this plan under "End-to-end verification".
       Automatic verification:
       `git fetch origin main && git diff --numstat origin/main -- plugin/skills/idea/SKILL.md plugin/skills/plan/SKILL.md plugin/skills/plan-review/SKILL.md plugin/skills/implement/SKILL.md plugin/skills/final-review/SKILL.md plugin/skills/ship/SKILL.md | awk '{a+=$1; d+=$2} END {print "added="a, "deleted="d, "net="a-d}'`
-      (expected: `deleted` ≥ 50 and `net` ≤ −12);
+      (expected: `net` ≤ −12);
       `grep -rn "to jedyne miejsce, w którym projekt" plugin/skills` (expected: no match);
       `uv run pytest -q plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py`
 
@@ -302,6 +336,11 @@ Reused patterns, with paths:
 
       — `"source": "git"`, an `https://` URL and a `ref`, all three values visibly `TODO`
       (AC24); `enabledPlugins` stays `pipeline@TODO-marketplace`.
+      In the same file add one entry to `permissions.allow`:
+      `"Bash(python3 *workflow_metrics.py*)"`. Without it the AC13 checker call prompts for
+      permission at the close of every stage, in a subagent that by contract cannot ask the
+      owner — the rule would be named, runnable and still not run. It is the narrowest
+      pattern that covers the call and grants nothing else.
       `plugin/README.md` → "Instalacja": the declarative example gains
       `"ref": "pipeline--vX.Y.Z"` and one sentence that without `ref` the consumer follows
       `main` (AC25); a short paragraph states that the pin takes effect only once the
@@ -314,7 +353,9 @@ Reused patterns, with paths:
       (`…/<marketplace>/<plugin>/<version>/`) and substitute the marketplace name and
       `"ref": "<plugin>--v<version>"`; a path of another shape leaves `TODO:` and the value
       joins the list from step 7 (AC27).
-      Tests: `test_init_templates.py::test_settings_template_pins_a_git_https_source`
+      Tests: `test_init_templates.py::test_settings_template_allows_the_metrics_checker`
+      (`permissions.allow` carries a pattern matching `workflow_metrics.py`);
+      `::test_settings_template_pins_a_git_https_source`
       (source `git`, `https://` in the url, a `ref` key, `TODO` in the marketplace key, the
       url and the ref); `test_init_skill.py::test_the_marketplace_ref_is_derived_from_the_plugin_root`
       (step 4 names `ref`, `CLAUDE_PLUGIN_ROOT` and `TODO:` — AC28);
@@ -364,8 +405,10 @@ Reused patterns, with paths:
       `docs/BACKLOG.md`, `plugin/tests/test_readme.py`.
       Version → `0.3.0`; a `## 0.3.0` CHANGELOG section (Polish, like the rest of the file)
       with "Zmienione"/"Dodane" subsections and a line labelled **wpływ na konsumenta**: the
-      consumer re-registers the marketplace with the new `ref`, and a spec started before this
-      release may escalate once over missing metric keys (AC32).
+      consumer re-registers the marketplace with the new `ref`, adds the
+      `workflow_metrics.py` entry to `permissions.allow` in their own `.claude/settings.json`
+      (the template change of step 7 reaches new projects only), and a spec started before
+      this release may escalate once over missing metric keys (AC32).
       `docs/ROADMAP.md`: add "Stage 2 — Rules the agent executes" with this spec's item,
       linked to `specs/001-executable-rules-and-release-pinning/SPEC.md`, ticked (the PR
       delivers it). `docs/BACKLOG.md`: remove the two delivered P3 items ("Releases / Document
@@ -391,8 +434,16 @@ Reused patterns, with paths:
 
 ## Risks and traps
 
-- **The AC23 budget is tight.** Removable prose is ≈59 lines gross, additions ≈41; step 6
-  measures instead of assuming, and names tightening (not rule-dropping) as the only remedy.
+- **The AC23 budget is tight.** Removable prose is ≈59 lines gross, additions ≈41; step 4
+  measures the gross half and step 6 the net one instead of assuming, and both name tightening
+  (not rule-dropping) as the only remedy.
+- **A named rule that cannot run is the spec's own failure mode.** The checker call has to be
+  written the way the plugin addresses itself everywhere else
+  (`python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py"`) and has to be permitted in the
+  consumer's settings; `docs/CONVENTIONS.md` line 68 and `plugin/README.md` line 222 describe
+  the invocation as `PATH`- and plugin-cwd-relative, which holds in this repository and in no
+  consumer. Steps 5 and 7 fix the command and the permission; correcting those two prose
+  lines is out of this spec's ACs and belongs in `<docs.backlog>` if it still bites.
 - **`ship` and the agents are now one unit.** After step 2 any edit of the contract in
   `plugin/skills/ship/SKILL.md` must be repeated in four files or CI fails — that is the
   point of AC17, but it will surprise a later editor; the test message must say so.
@@ -422,7 +473,8 @@ exercise it, on plain `python3`:
 
 1. `bash scripts/check.sh` → `ALL GREEN` (plugin and marketplace validate, ruff, black,
    pytest).
-2. The checker on a real spec tree, as a stage would call it:
+2. The checker on a real spec tree, as a stage would call it (here through the working-tree
+   path; a stage in a consumer project uses the `${CLAUDE_PLUGIN_ROOT}` form of step 5):
    `python3 plugin/bin/workflow_metrics.py --check specs/001-executable-rules-and-release-pinning; echo "exit=$?"`
    → exit 0, no output, once this plan's metrics are written.
 3. The checker's failure path, on a scratch copy — expected exit 1 and a message naming the
@@ -431,7 +483,8 @@ exercise it, on plain `python3`:
    → exit 1, stderr names `escalations` and the status `plan-draft`, no traceback (AC10, AC37).
 4. The report path unchanged: `python3 plugin/bin/workflow_metrics.py specs; echo "exit=$?"`
    → the markdown table, exit 0 (AC12).
-5. The AC23 measurement from step 6, with its numbers recorded here.
+5. The AC23 measurements: the gross number from the end of step 4 and the net number from
+   step 6, both recorded here.
 6. `python3 -c "import json,sys;json.load(open('plugin/templates/settings.json'))"` and
    `claude plugin validate --strict plugin/ && claude plugin validate --strict .`
    (skipped with a note if `claude` is off PATH; CI runs it).
@@ -467,7 +520,96 @@ _(appended by /pipeline:ship or by a stage on escalation: date, stage, question,
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-20 — /pipeline:plan-review
+
+Findings before the fixes: 1 blocker, 5 majors, 3 minors. All were repairable inside the
+plan, so the plan is approved: every AC keeps at least one proving step and command, the
+two owner decisions of 2026-09-20 are implemented rather than re-litigated, and no new
+dependency or data migration appears anywhere in it.
+
+**Blocker — B1: the checker was named but could not run (step 5).** The closing steps were to
+carry `workflow_metrics.py --check <spec-dir>`. Nothing in the plugin is reachable that way
+from a consumer project: `plugin/hooks/hooks.json` and `plugin/skills/init/SKILL.md` step 4
+address the plugin only through `${CLAUDE_PLUGIN_ROOT}`, and `plugin/README.md` line 222
+documents `python3 bin/workflow_metrics.py`, which resolves only when the cwd is this
+repository. AC13/AC14 would have passed their structural test while the mechanism never
+executed — the exact failure the spec exists to end. Fixed: step 5 now spells the invocation
+`python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <docs.specsDir>/NNN-<slug>`
+and `test_closing_step_runs_the_checker` asserts `CLAUDE_PLUGIN_ROOT` as well.
+
+**Major — M1: the AC23 gross measurement did not measure AC23 (steps 4, 6).** One
+`git diff --numstat` after step 5 mixes the prose deletions AC23 counts with the metrics
+rewrites, so `deleted ≥ 50` could hold with far less than 50 lines of prose removed. Fixed:
+the gross measurement moved to the end of step 4, where only the step 2–4 changes exist
+(threshold raised to 52 to absorb step 2's ≤ 2 lines in `ship`); step 6 keeps only the net
+`≤ −12`.
+
+**Major — M2: step 4's `grep -c "verify.scopes"` expectation was unattainable.**
+`plugin/skills/implement/SKILL.md` line 81 keeps a second, legitimate mention in
+"Pętla samokorekty" (running a narrow scope fast, not views). A verification command that
+cannot go green burns the self-correction loop up to a false escalation. Fixed: the expected
+count is now per file (implement 2, the rest 1) with the reason stated.
+
+**Major — M3: half of AC2 had no proving test.** "`ship` step 3 keeps writing `started_at`
+and `escalations: 0` and states the format" was covered by nothing. Fixed: step 2 adds
+`test_ship_step_three_states_the_metrics_format`.
+
+**Major — M4: the last order to read the `ship` skill survived in the skills.** AC18 covers
+`plugin/agents/` only, but `plugin/skills/{plan,plan-review,implement,final-review}/SKILL.md`
+end with "zakończ blokiem RESULT (skill `ship` tego pluginu)" — the same cross-directory read
+the spec removes, now pointing at a contract that lives elsewhere. Fixed: step 2 rewords all
+four (net 0 lines) and pins it with `test_no_stage_skill_orders_a_read_of_the_ship_skill`.
+
+**Major — M5: the checker call needed a permission nobody grants.** `plugin/templates/
+settings.json` allows no `python3` command, and a stage agent under `/pipeline:ship` cannot
+answer a permission prompt. Fixed: step 7 adds the narrow `"Bash(python3
+*workflow_metrics.py*)"` entry, step 10's "wpływ na konsumenta" line tells existing consumers
+to add it by hand (a template change reaches new projects only), and AC24's row names the new
+test.
+
+**Minors, fixed in place:** step 1 now warns that `main(sys.argv)` must hand argparse
+`argv[1:]`; step 5 states that a counter measured as zero is written as `0`, so the
+no-findings path can still reach `done` past AC9's complete key set; the AC → steps matrix
+was updated for all of the above.
+
+**Checked and found correct — do not re-derive:**
+
+- Coverage: all 37 ACs appear in the matrix, every step named there exists, and every step
+  carries exact commands. AC30's proof is a grep rather than a test because
+  `docs/DECISIONS.md` lies outside `plugin/` and `test_no_domain_references.py` scans
+  `plugin/` only — accepted.
+- Every test file, helper and eval directory the plan reuses exists as described:
+  `test_init_skill.py` `step()`/`section()` (lines 33–41) and its "pin identifiers, not
+  prose" comment, `test_workflow_metrics.py`'s `importlib` preamble and subprocess runs,
+  `test_readme.py::test_changelog_starts_at_the_manifest_version` and
+  `::test_metrics_block_lists_every_counter`,
+  `test_init_templates.py::test_settings_template_names_no_marketplace_of_its_own`
+  (a `TODO:`-prefixed url and ref keep it green), `plugin/evals/init-keeps-manual-edits/`,
+  and `test_plugin_structure.py` (it has no eval-case test yet, so step 8 adds one).
+- `plugin/bin/workflow_metrics.py` matches the plan: `COUNTERS` has the 13 keys AC9's `done`
+  row needs, `TIME_FORMAT` is `%Y-%m-%dT%H:%M`, and `parse_metrics()` already strips quotes,
+  so AC5 costs nothing.
+- No false escalation at `plan-draft`: `plugin/skills/plan/SKILL.md` step 8 already writes
+  `started_at` and `escalations: 0` when absent, so a standalone `/pipeline:plan` satisfies
+  AC9's `plan-draft` row without `ship`.
+- `test_no_domain_references.py` is not endangered: the forbidden skill paths are
+  `scripts/check.sh` and `docs/ROADMAP.md`, neither of which enters the new blocks, and
+  "Alembic" is not among the patterns. `idea`'s "zakres — czy nie za szeroki" does not match
+  AC22's `widok szeroki` / `szeroki i wąski` grep.
+- `test_plugin_structure.py::test_skills_and_agents_are_complete` only checks frontmatter, so
+  appending ~50 lines of contract to each agent file is safe.
+- AC13's "every stage skill" is read as the four skills that own metric keys; `ship` step 3
+  writes metrics at the start, not at a close, and is covered by AC2 instead.
+- Minimality and scope: no simpler route than a canonical block plus an identity test was
+  found, and nothing in the plan exceeds the SPEC — the two additions made above (the
+  permission entry and the Handoff reword) exist to make AC13 and scope point 3 actually work.
+- Feasibility: step order has no forward dependency (the checker precedes the skills that call
+  it; the release bump is last), and `plugin/skills/final-review/SKILL.md` really has the
+  `report` step 4 and `apply` steps 2 and 5 the plan edits.
+- Owner summary agrees with the plan, including "new dependency: no" and "data migration: no".
+- E2E split: there is no application and no `verify.scopes` here, so the automatic half is the
+  plugin exercised on plain `python3`; the manual half holds only the two things an agent
+  cannot do (tag a release, run a real-model eval).
 
 ## Deviations
 
