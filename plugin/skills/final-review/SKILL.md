@@ -15,11 +15,8 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
 
 ## Konfiguracja projektu
 
-Zanim zaczniesz, przeczytaj `.claude/workflow.json` — to jedyne miejsce, w którym projekt
-opisuje sam siebie: ścieżki dokumentów (`docs.*`), katalog speców (`docs.specsDir`),
-komenda pełnej weryfikacji i jej zakresy (`verify.command`, `verify.scopes`) oraz język
-dokumentów (`language`). Brak pliku = wartości domyślne opisane w README pluginu.
-Dalej `<verify.command>`, `<docs.backlog>` itd. oznaczają wartości z tej konfiguracji.
+- Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
+- `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
 ## Wejście / wyjście
 
@@ -47,9 +44,9 @@ Dalej `<verify.command>`, `<docs.backlog>` itd. oznaczają wartości z tej konfi
    - **Testy:** kluczowe ścieżki i edge-case'y pokryte (błędy autoryzacji, brak zasobu,
      walidacja, puste listy, duplikaty, granice długości)? asercje konkretne — nie tylko
      kod statusu tam, gdzie liczy się treść? testy interfejsu używają tych samych kluczy
-     tekstów co kod? zmiany UI mają zaktualizowany scenariusz przeglądowy (gdy dotyczą
-     jego ścieżki) i wpis w PLAN.md o uruchomionym zakresie UI oraz obejrzanych
-     artefaktach wizualnych (widok szeroki i wąski)?
+     tekstów co kod? Gdy `verify.scopes` ma zakres UI, a zmiana dotyka interfejsu — wymagaj
+     w PLAN.md wpisu o `<verify.command> <zakres UI>` oraz o obejrzanych artefaktach
+     wizualnych i scenariuszu przeglądowym wymaganych przez `<docs.conventions>`.
    Format znaleziska od perspektywy:
    `[blocker|warto poprawić|nit] plik:linia — scenariusz (wejście → złe zachowanie) — poprawka`.
 3. **Scal i zweryfikuj.** Duplikaty połącz. KAŻDE znalezisko sprawdź sam w kodzie —
@@ -57,7 +54,12 @@ Dalej `<verify.command>`, `<docs.backlog>` itd. oznaczają wartości z tej konfi
 4. **Zapisz raport** w `## Final review` w PLAN.md: data; macierz AC → dowód; znaleziska
    z id `F1…Fn` (waga, plik:linia, scenariusz, poprawka); odrzucone z powodem. W bloku
    `metrics:` SPEC.md: `final_review_blockers`, `final_review_worth_fixing`,
-   `final_review_nits`. Zacommituj (`docs: add final review of NNN <slug>`).
+   `final_review_nits`.
+   Płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
+   sukcesu `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>`.
+   Czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
+   STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz wartości, której nie zmierzyłeś.
+   Zacommituj (`docs: add final review of NNN <slug>`).
 5. **Decyzje:**
    - sesja samodzielna → pokaż tabelę znalezisk i zapytaj właściciela (`AskUserQuestion`,
      rekomendacja: przyjąć blockery i „warto poprawić", odrzucić nity); decyzje zapisz
@@ -69,9 +71,10 @@ Dalej `<verify.command>`, `<docs.backlog>` itd. oznaczają wartości z tej konfi
 
 1. **Decyzje** weź z PLAN.md → `## Decyzje właściciela` (wpis dotyczący końcowego review).
    Brak wpisu → eskalacja, nie zgaduj.
-2. **Poprawki:** wprowadź przyjęte, ponów pełną weryfikację (`<verify.command>`),
-   dopisz do raportu, co poprawiono (id → zmiana). W bloku `metrics:`:
-   `findings_accepted`, `findings_rejected`.
+2. **Poprawki:** wprowadź przyjęte, ponów pełną weryfikację (`<verify.command>`), dopisz
+   do raportu, co poprawiono (id → zmiana). W bloku `metrics:`: `findings_accepted`,
+   `findings_rejected`; znalezisko odłożone do `<docs.backlog>` liczy się jako
+   `findings_rejected` (powód: „backlog"), inaczej bilans `--check` się nie zejdzie.
 3. **PR** — status speca zostaje `implemented`:
    - `<docs.roadmap>` odhaczona, `<docs.decisions>` jeśli dotyczy; `<docs.backlog>`
      zaktualizowany: nowe pozycje z priorytetem i wyzwalaczem, zrealizowane usunięte,
@@ -95,10 +98,13 @@ Dalej `<verify.command>`, `<docs.backlog>` itd. oznaczają wartości z tej konfi
    i wymień w raporcie. Wpis wchodzi do commita zamykającego z kroku 5 — inaczej ślad
    ginie po merge'u.
 5. **Zamknięcie — dopiero przy zielonym CI:** `status: done` + wpis w `stage_history`;
-   `metrics.finished_at` (`date +%Y-%m-%dT%H:%M`); commit (`docs: close SPEC NNN <slug>`),
-   `git push`, ponowne `gh pr checks <nr> --watch` — ostatni commit PR też ma mieć zielone
-   CI. Czerwień po samym commicie statusu to niestabilność, nie wada: ponów przebieg
-   (`gh run rerun <id> --failed`), statusu nie cofaj.
+   `metrics.finished_at` (`date +%Y-%m-%dT%H:%M`). Przed `done` uruchom
+   `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>` — dopóki kończy
+   się błędem, `done` nie zapada; czerwień nie do naprawy = `RESULT: ESCALATE`. Licznik zmierzony
+   jako zero zapisujesz jako `0` — to pomiar, nie wymyślona wartość.
+   Commit (`docs: close SPEC NNN <slug>`), `git push`, ponowne `gh pr checks <nr> --watch`
+   — ostatni commit PR też ma mieć zielone CI. Czerwień po samym commicie statusu to
+   niestabilność, nie wada: ponów przebieg (`gh run rerun <id> --failed`), statusu nie cofaj.
 6. Podaj link PR, status CI i link do przebiegu z artefaktami wizualnymi
    (`gh run list --branch <branch> --workflow CI --limit 1 --json url`); gdy edytujesz
    treść PR, uwzględnij tam to samo. Merge robi właściciel.
@@ -115,4 +121,4 @@ Dalej `<verify.command>`, `<docs.backlog>` itd. oznaczają wartości z tej konfi
 
 - **Uruchomiony samodzielnie:** link PR + przypomnienie o scenariuszach ręcznych;
   merge squashem robi właściciel, kolejny feature zaczyna się od `/pipeline:idea`.
-- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT (skill `ship` tego pluginu).
+- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT z kontraktu agenta etapu.

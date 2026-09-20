@@ -12,12 +12,8 @@ gdy mówią to komendy weryfikacyjne — nigdy dlatego, że „wygląda dobrze".
 
 ## Konfiguracja projektu
 
-Zanim zaczniesz, przeczytaj `.claude/workflow.json` — to jedyne miejsce, w którym projekt
-opisuje sam siebie: ścieżki dokumentów (`docs.*`), katalog speców (`docs.specsDir`),
-komenda pełnej weryfikacji i jej zakresy (`verify.command`, `verify.scopes`), katalog
-worktree, sekcja migracji i język dokumentów (`language`). Brak pliku = wartości domyślne
-opisane w README pluginu. Dalej `<verify.command>`, `<docs.roadmap>` itd. oznaczają
-wartości z tej konfiguracji.
+- Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
+- `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
 ## Wejście / wyjście
 
@@ -56,15 +52,11 @@ wartości z tej konfiguracji.
 3. **Odstępstwa:** drobne i konieczne (inna nazwa pliku, mały helper) → wykonaj
    i dopisz do `## Deviations` z uzasadnieniem. Zmieniające zakres, architekturę lub
    schemat danych → eskalacja; nie kontynuuj na własną rękę.
-4. **Ekran:** przy zmianie interfejsu użytkownika uruchom zakres UI z `verify.scopes`
-   (`<verify.command> <zakres>`) i OBEJRZYJ artefakty wizualne (Read na plikach obrazów)
-   — co najmniej jeden widok szeroki i jeden wąski dla zmienionych ekranów. Bez tego krok
-   nie jest zielony; zielony test z rozjechanym ekranem też nie. Wynik (komenda, wynik,
-   obejrzane pliki) zapisz w PLAN.md.
+4. **Ekran:** gdy `verify.scopes` ma zakres UI, a zmiana dotyka interfejsu — uruchom
+   `<verify.command> <zakres UI>` i OBEJRZYJ artefakty wizualne wymagane przez
+   `<docs.conventions>`; bez tego krok nie jest zielony, a wynik zapisz w PLAN.md.
 5. **Finał — Definition of Done z planu:**
    - `<verify.command>` w całości zielony;
-   - przy zmianach interfejsu zakres UI zielony, artefakty wizualne obejrzane
-     (widok szeroki i wąski), wynik w PLAN.md;
    - weryfikacja end-to-end z planu (sekcja automatyczna) wykonana NAPRAWDĘ,
      wynik zapisany w PLAN.md; pozycje ręczne zostawiasz właścicielowi — wypisz je;
    - `<docs.roadmap>` zaktualizowana (checkboxy!), `<docs.decisions>` i dokumenty
@@ -72,6 +64,10 @@ wartości z tej konfiguracji.
    - `status: implemented` + wpis w `stage_history`; w bloku `metrics:` SPEC.md:
      `implement_steps`, `implement_iterations` (suma iteracji pętli ponad pierwszą próbę,
      po wszystkich krokach), `deviations`;
+   - płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
+     sukcesu `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>`;
+     czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
+     STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz niezmierzonej wartości;
    - commit domykający, potem `git push -u origin feat/NNN-<slug>`.
 
 ## Pętla samokorekty (obowiązkowa dla każdego kroku)
@@ -115,4 +111,4 @@ Bez wyjątków, bez „to pewnie flaky", bez pomijania testów.
 
 - **Uruchomiony samodzielnie:** podsumuj, co zrobione, odstępstwa, wynik weryfikacji
   i scenariusze ręczne; następny etap to `/pipeline:final-review NNN` po `/clear`.
-- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT (skill `ship` tego pluginu).
+- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT z kontraktu agenta etapu.

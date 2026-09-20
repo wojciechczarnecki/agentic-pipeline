@@ -11,6 +11,14 @@ true, and the roadmap must not lie.
       rulesets do and do not enforce is written down, project documents de-duplicated
       (each machine still needs the one-time marketplace re-registration from `CLAUDE.md`)
 
+## Stage 2 — Rules the agent executes
+
+- [x] Rules where the agent executes them, and install instructions that match reality:
+      the metrics format in every stage skill plus `workflow_metrics.py --check`, the stage
+      contract in `plugin/agents/*.md`, slimmed configuration and visual-artifact prose, and
+      a git + HTTPS marketplace source pinned with `ref`
+      (`specs/001-executable-rules-and-release-pinning/SPEC.md`)
+
 ## Later
 
 ### Reach

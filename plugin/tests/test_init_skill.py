@@ -40,6 +40,13 @@ def section(heading: str) -> str:
     return TEXT.split(f"## {heading}", 1)[1].split("\n## ", 1)[0]
 
 
+def settings_bullet(text: str) -> str:
+    start = text.index("- `.claude/settings.json`")
+    rest = text[start + 1 :]
+    end = rest.find("\n   - `")
+    return rest[: end if end != -1 else len(rest)]
+
+
 def test_write_scope_is_declared():
     scope = section("Zakres zapisu (bezwzględny)")
     for prefix in WRITE_SCOPE:
@@ -85,3 +92,22 @@ def test_the_dependabot_template_covers_github_actions():
         if line.strip().startswith("- package-ecosystem:")
     ]
     assert "github-actions" in ecosystems
+
+
+# AC27/AC28: the derivation itself is pinned, not the tokens around it — one sentence has
+# to tie ${CLAUDE_PLUGIN_ROOT} to `ref` and to the `<plugin>--v<version>` tag convention,
+# so deleting the paragraph fails here instead of passing on incidental mentions.
+def test_the_marketplace_ref_is_derived_from_the_plugin_root():
+    block = " ".join(settings_bullet(step(4)).split())
+    sentences = block.split(". ")
+    derivation = [
+        sentence
+        for sentence in sentences
+        if "CLAUDE_PLUGIN_ROOT" in sentence and "`ref`" in sentence and "--v" in sentence
+    ]
+    assert derivation, (
+        "init step 4 must derive `ref` from ${CLAUDE_PLUGIN_ROOT} in one sentence, naming "
+        "the `<plugin>--v<version>` tag convention"
+    )
+    fallback = [sentence for sentence in sentences if "TODO:" in sentence and "kszta" in sentence]
+    assert fallback, "init step 4 must keep the `TODO:` fallback for an unexpected path shape"

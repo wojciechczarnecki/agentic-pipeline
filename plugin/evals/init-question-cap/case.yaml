@@ -1,0 +1,29 @@
+schema_version: "1.0"
+name: init-question-cap
+description: /pipeline:init pyta jedną rundą, najwyżej cztery pytania, gdy stack da się wykryć.
+runs: 1
+# Stack detection is the whole point of the case, so the sandbox really has to carry a
+# pyproject.toml — otherwise detection fails and the grader ends up scoring the
+# "second round allowed" exception instead of the cap. Run with --scaffold.
+scaffold_script: |
+  cat > pyproject.toml <<'EOF'
+  [project]
+  name = "zbiorka"
+  version = "0.1.0"
+  requires-python = ">=3.12"
+  EOF
+execution:
+  max_turns: 30
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write, AskUserQuestion]
+  prompt: |
+    Jesteś w repozytorium przygotowanym pod nowy projekt (`git init` już wykonany),
+    w którym leży `pyproject.toml` projektu „Zbiórka" — stack jest więc wykrywalny.
+    Wykonaj po kolei:
+    0. sprawdź, że `pyproject.toml` faktycznie jest w katalogu (`ls`); gdyby go nie było,
+       napisz to wprost na koniec odpowiedzi i nie zgaduj stacku;
+    1. uruchom `/pipeline:init` dla projektu „Zbiórka" — narzędzie do prowadzenia zbiórek
+       charytatywnych, brak produkcji, dokumenty po polsku; na zadane pytania odpowiadaj
+       krótko i rzeczowo;
+    2. wypisz na koniec KAŻDE pytanie, które zadałeś, w kolejności, pogrupowane w rundy
+       (runda = jedno wywołanie `AskUserQuestion`), wraz z liczbą pytań w każdej rundzie;
+    3. napisz wprost, czy wykrycie stacku się powiodło.

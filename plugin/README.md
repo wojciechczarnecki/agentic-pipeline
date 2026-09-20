@@ -40,12 +40,26 @@ Albo deklaratywnie w `.claude/settings.json` projektu (kształt jak w
     "wcz-tools": {
       "source": {
         "source": "git",
-        "url": "https://github.com/wojciechczarnecki/agentic-pipeline.git"
+        "url": "https://github.com/wojciechczarnecki/agentic-pipeline.git",
+        "ref": "pipeline--vX.Y.Z"
       }
     }
   },
   "enabledPlugins": { "pipeline@wcz-tools": true }
 }
+```
+
+Bez `ref` konsument śledzi `main`, czyli kod niewydany — pin na tag wydania jest tym,
+co odróżnia stabilną wersję od bieżącej gałęzi.
+
+**Pin działa dopiero po rejestracji marketplace'u z tym `ref`.** Marketplace zarejestrowany
+wcześniej bez `ref` dalej śledzi `main`, niezależnie od tego, co mówi `.claude/settings.json`.
+Raz na maszynę:
+
+```bash
+claude plugin marketplace remove <nazwa>
+claude plugin marketplace add '<url>#pipeline--vX.Y.Z'
+git -C ~/.claude/plugins/marketplaces/<nazwa> log --oneline -1   # ma pokazać commit taga
 ```
 
 **Uwaga — instalacja w zakresie projektu jest przypisana do katalogu.** Sam wpis
@@ -140,6 +154,11 @@ hooka i nadanie mu bitu wykonywalności jest dozwolone, bo nie wyłącza niczego
 Z konfiguracji dochodzą: hosty i komendy
 produkcji, katalog worktree i moduł migracji.
 
+Moduł migracji rozpoznaje WYŁĄCZNIE czasowniki Alembica (`upgrade`, `downgrade`, `stamp`,
+`revision`, `current`, `check`) i zmienne `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`;
+konfigurowalne są tylko `migrations.command` i `migrations.localHosts`. Projekt na innym
+narzędziu migracji nie jest przez strażnika chroniony — jego milczenie nie jest ochroną.
+
 Fail-open jest zamierzony: brak `.claude/workflow.json`, błąd walidacji i brak `python3`
 kończą się ostrzeżeniem na stderr i kodem 0, nigdy odmową startu.
 
@@ -219,10 +238,43 @@ Zestawienie wszystkich speców — tabela per spec, sumy, odsetek istotnych znal
 złapanych przed kodem i eskalacje na spec:
 
 ```bash
-python3 bin/workflow_metrics.py [katalog-speców]
+python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" [katalog-speców]
 ```
 
-Bez argumentu katalog bierze się z `docs.specsDir`.
+Bez argumentu katalog bierze się z `docs.specsDir`. Ścieżka idzie przez
+`${CLAUDE_PLUGIN_ROOT}`, bo katalog pluginu leży poza projektem konsumenta — wywołanie
+względem `PATH` albo `cwd` rozwiąże się tylko w repozytorium samego pluginu.
+
+### Kontrola metryk (`--check`)
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <katalog-speca>
+```
+
+Sprawdza JEDEN spec: komplet kluczy należnych dla osiągniętego statusu, format czasów
+(`%Y-%m-%dT%H:%M`), liczniki jako nieujemne liczby całkowite, brak kluczy spoza listy
+metryk (literówka gubiłaby wartość po cichu) oraz bilans
+`findings_accepted + findings_rejected == final_review_blockers +
+final_review_worth_fixing + final_review_nits` (liczony dopiero, gdy jest wszystkie pięć).
+Kod wyjścia: `0` i cisza, gdy wszystko gra; `1` z opisem KAŻDEGO problemu na stderr (nigdy
+traceback); `2`, gdy argumenty są błędne. Krok zamykający każdego etapu uruchamia `--check`
+przed zgłoszeniem sukcesu, a `final-review` w trybie `apply` nie ustawi `done` przy
+czerwieni. Czerwieni, której etap nie naprawi z własnych artefaktów, nie wolno zasypać
+wymyśloną wartością — to eskalacja do właściciela.
+
+Klucze należne według statusu:
+
+| status | wymagane klucze |
+|---|---|
+| `spec-draft`, `spec-ready` | żadne |
+| `plan-draft` | `started_at`, `escalations`, `plan_steps` |
+| `plan-approved` | powyższe + `plan_review_blockers`, `plan_review_majors`, `plan_changes` |
+| `implemented` | powyższe + `implement_steps`, `implement_iterations`, `deviations` |
+| `done` | `started_at`, `finished_at` i wszystkie liczniki z bloku wyżej |
+
+Konsument musi mieć na liście `permissions.allow` regułę
+`Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" *)` — subagent etapu nie
+odpowie na pytanie o zgodę. `templates/settings.json` niesie ją dla nowych projektów.
 
 ## CHANGELOG
 

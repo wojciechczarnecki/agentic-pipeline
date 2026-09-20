@@ -17,12 +17,8 @@ eskalacji i przy raporcie z końcowego review, nie zatwierdza całego planu).
 
 ## Konfiguracja projektu
 
-Zanim zaprojektujesz cokolwiek, przeczytaj `.claude/workflow.json` — to jedyne miejsce,
-w którym projekt opisuje sam siebie: ścieżki dokumentów (`docs.*`), katalog speców
-(`docs.specsDir`), komenda pełnej weryfikacji i jej zakresy (`verify.command`,
-`verify.scopes`), katalog worktree, sekcja migracji, katalog hooków gita i język
-dokumentów (`language`). Brak pliku = wartości domyślne opisane w README pluginu.
-Dalej `<verify.command>`, `<docs.conventions>` itd. oznaczają wartości z tej konfiguracji.
+- Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
+- `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
 ## Wejście / wyjście
 
@@ -54,12 +50,9 @@ Dalej `<verify.command>`, `<docs.conventions>` itd. oznaczają wartości z tej k
    `/pipeline:implement`. Kolejność bez zależności „w przód"; migracja danych zawsze
    jako osobny krok. Weryfikację end-to-end rozdziel na automatyczną (wykona agent)
    i ręczną (wykona właściciel) — do ręcznej trafia tylko to, czego nie da się
-   zautomatyzować. Plan zmieniający interfejs użytkownika ma w weryfikacji automatycznej
-   (kroku UI i end-to-end) uruchomienie zakresu UI z `verify.scopes`
-   (`<verify.command> <zakres>`) oraz listę artefaktów wizualnych do OBEJRZENIA,
-   ze ścieżkami — nie odsyłaj ekranu do weryfikacji ręcznej z wygody. Zmiana ekranu
-   leżącego na ścieżce scenariusza przeglądowego = osobny krok aktualizacji tego
-   scenariusza; nowy ekran lub stan = nowy test wizualny (szczegóły w `<docs.conventions>`).
+   zautomatyzować. Gdy `verify.scopes` ma zakres UI, a zmiana dotyka interfejsu — zaplanuj
+   w weryfikacji automatycznej `<verify.command> <zakres UI>` oraz OBEJRZENIE artefaktów
+   wizualnych i aktualizację scenariusza przeglądowego wymaganych przez `<docs.conventions>`.
 6. **Macierz AC → kroki:** każde AC musi mieć kroki, które je realizują, i test, który
    je dowodzi. AC niemożliwe do pokrycia → eskalacja (luka w SPEC); nie łataj SPEC
    samodzielnie.
@@ -69,6 +62,10 @@ Dalej `<verify.command>`, `<docs.conventions>` itd. oznaczają wartości z tej k
 8. **Zamknięcie etapu:** w SPEC.md `status: plan-draft` + wpis w `stage_history`; w bloku
    `metrics:` ustaw `started_at` i `escalations: 0` (jeśli brak; `date +%Y-%m-%dT%H:%M`)
    oraz `plan_steps`.
+   Płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
+   sukcesu `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>`.
+   Czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
+   STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz wartości, której nie zmierzyłeś.
    Zacommituj (`docs: add PLAN NNN <slug>`). NIE implementuj niczego.
 
 ## Szablon PLAN.md
@@ -110,8 +107,6 @@ Dalej `<verify.command>`, `<docs.conventions>` itd. oznaczają wartości z tej k
 
 <komendy na uruchomionej aplikacji: podniesienie stacku, zapytania HTTP, skrypty, testy
 przeglądowe — z oczekiwanymi wynikami>
-<przy zmianach interfejsu: `<verify.command> <zakres UI>` → zielone + artefakty wizualne
-do obejrzenia (widok szeroki i wąski)>
 
 ### Ręczna (wykonuje właściciel)
 
@@ -155,4 +150,4 @@ _(wypełnia /pipeline:final-review)_
 
 - **Uruchomiony samodzielnie:** plan gotowy (status `plan-draft`); następny etap to
   `/pipeline:plan-review NNN` po `/clear` — recenzent ma ocenić plan świeżym okiem.
-- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT (skill `ship` tego pluginu).
+- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT z kontraktu agenta etapu.

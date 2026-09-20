@@ -13,12 +13,8 @@ właściciela" z PLAN.md i bloki RESULT od subagentów — nie diff, nie kod.
 
 ## Konfiguracja projektu
 
-Zanim zaczniesz, przeczytaj `.claude/workflow.json` — to jedyne miejsce, w którym projekt
-opisuje sam siebie: katalog speców (`docs.specsDir`), ścieżki dokumentów (`docs.*`),
-komenda pełnej weryfikacji i jej zakresy, katalog worktree i język dokumentów
-(`language`). Brak pliku = wartości domyślne opisane w README pluginu; wtedy zaproponuj
-właścicielowi `/pipeline:init`. Dalej `<docs.specsDir>`, `<docs.backlog>` itd. oznaczają
-wartości z tej konfiguracji.
+- Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
+- `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
 ## Stan
 
@@ -45,8 +41,9 @@ Status `spec-draft` lub brak SPEC → STOP: najpierw `/pipeline:idea`.
    nie istnieje → `git switch main && git pull --ff-only && git switch -c feat/NNN-<slug>`.
    Przy pracy równoległej sesja działa już w worktree lane'a — nie przełączaj branchy.
 3. Brak `metrics.started_at` w SPEC → dopisz (`date +%Y-%m-%dT%H:%M`) razem z
-   `escalations: 0` i zacommituj. Licznik ma istnieć od startu, żeby zestawienie metryk
-   pokazywało `0`, a nie `-` (brak pomiaru).
+   `escalations: 0` i zacommituj. Płaski blok `metrics:` trzyma liczniki jako liczby
+   całkowite, a znaczniki czasu w formacie `%Y-%m-%dT%H:%M`. Licznik ma istnieć od startu,
+   żeby zestawienie metryk pokazywało `0`, a nie `-` (brak pomiaru).
 
 ## Uruchamianie agenta etapu
 
@@ -63,7 +60,7 @@ Agent etapu działa na pierwszym planie (potrzebujesz jego wyniku, zanim pójdzi
 
 ## Kontrakt agenta etapu
 
-Obowiązuje każdego agenta uruchomionego przez `/pipeline:ship` (agent czyta tę sekcję):
+Obowiązuje każdego agenta uruchomionego przez `/pipeline:ship`:
 
 - Realizujesz wczytany skill etapu. Nie możesz pytać właściciela (`AskUserQuestion` jest
   niedostępne). Wszędzie, gdzie skill każe zapytać, poczekać albo zrobić STOP — kończysz
@@ -71,8 +68,8 @@ Obowiązuje każdego agenta uruchomionego przez `/pipeline:ship` (agent czyta t�
 - Decyzje właściciela z SPEC.md i PLAN.md → `## Decyzje właściciela` są wiążące; nie
   eskaluj ponownie kwestii już rozstrzygniętej.
 - Stan zapisujesz w plikach speca i w commitach, nigdy tylko w odpowiedzi.
-- Metryki etapu wpisujesz sam do bloku `metrics:` we frontmatterze SPEC.md
-  (format opisany w README pluginu, sekcja „Metryki workflow").
+- Metryki etapu wpisujesz sam do płaskiego bloku `metrics:` we frontmatterze SPEC.md:
+  liczniki to liczby całkowite, znaczniki czasu `%Y-%m-%dT%H:%M`, `escalations` od startu.
 - Odpowiedź końcowa zaczyna się od bloku:
 
 ```

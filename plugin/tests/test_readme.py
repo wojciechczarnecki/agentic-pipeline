@@ -8,6 +8,7 @@ PLUGIN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN / "bin"))
 
 import workflow_config  # noqa: E402
+import workflow_metrics  # noqa: E402
 
 README = (PLUGIN / "README.md").read_text()
 CHANGELOG = (PLUGIN / "CHANGELOG.md").read_text()
@@ -59,24 +60,39 @@ def test_changelog_starts_at_the_manifest_version():
     assert f"## {manifest['version']}" in CHANGELOG
 
 
+# The key list is not copied here: a third copy beside workflow_metrics.COUNTERS and the
+# check test's COMPLETE would be one more place to drift.
 def test_metrics_block_lists_every_counter():
-    counters = [
-        "started_at",
-        "plan_steps",
-        "plan_review_blockers",
-        "plan_review_majors",
-        "plan_changes",
-        "implement_steps",
-        "implement_iterations",
-        "deviations",
-        "escalations",
-        "final_review_blockers",
-        "final_review_worth_fixing",
-        "final_review_nits",
-        "findings_accepted",
-        "findings_rejected",
-        "finished_at",
-    ]
     section = README.split("## Metryki workflow", 1)[1]
-    for counter in counters:
+    for counter in [*workflow_metrics.TIMESTAMPS, *workflow_metrics.COUNTERS]:
         assert f"{counter}:" in section, counter
+
+
+def installation_section() -> str:
+    return README.split("## Instalacja", 1)[1].split("\n## ", 1)[0]
+
+
+def test_installation_pins_the_release_tag():
+    section = installation_section()
+    assert '"ref"' in section
+    assert "pipeline--v" in section
+    assert "main" in section
+
+
+def test_installation_explains_the_marketplace_registration():
+    section = installation_section()
+    assert "marketplace remove" in section
+    assert "marketplace add" in section
+    assert "~/.claude/plugins/marketplaces" in section
+
+
+def test_the_guard_section_states_the_migration_scope():
+    section = README.split("### Strażnik komend", 1)[1].split("\n## ", 1)[0]
+    for token in ["Alembic", "migrations.command", "migrations.localHosts"]:
+        assert token in section, token
+
+
+def test_the_changelog_names_the_consumer_impact():
+    manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
+    section = CHANGELOG.split(f"## {manifest['version']}", 1)[1].split("\n## ", 1)[0]
+    assert "wpływ na konsumenta" in section

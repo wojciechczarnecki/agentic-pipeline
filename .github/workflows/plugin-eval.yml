@@ -26,7 +26,8 @@ jobs:
       - name: Run the plugin eval suite
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: claude plugin eval plugin/ --trust-plugin --no-publish
+        # --scaffold: init-question-cap writes the pyproject.toml its stack detection needs.
+        run: claude plugin eval plugin/ --trust-plugin --scaffold --no-publish
 
       - name: Upload the eval report
         if: always()

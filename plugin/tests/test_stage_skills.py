@@ -1,0 +1,168 @@
+import re
+from pathlib import Path
+
+import pytest
+
+PLUGIN = Path(__file__).resolve().parents[1]
+STAGE_SKILLS = ["idea", "plan", "plan-review", "implement", "final-review", "ship"]
+
+
+# Structural cover over the identifiers the stage skills must name — the metrics format, the
+# checker, the configuration block, the visual sentence — never over their prose, which a
+# rewording (or a translation) would break while a lost rule slipped past.
+def skill_text(name: str) -> str:
+    return (PLUGIN / "skills" / name / "SKILL.md").read_text()
+
+
+def section(name: str, heading: str) -> str:
+    text = skill_text(name)
+    assert f"## {heading}" in text, f"{name}: no section `{heading}`"
+    return text.split(f"## {heading}", 1)[1].split("\n## ", 1)[0].strip()
+
+
+def test_the_configuration_block_is_two_bullets_everywhere():
+    blocks = {name: section(name, "Konfiguracja projektu") for name in STAGE_SKILLS}
+    for name, block in blocks.items():
+        bullets = [line for line in block.splitlines() if line.startswith("- ")]
+        assert len(bullets) == 2, f"{name}: the configuration block must be two bullets"
+        assert not any(
+            line.strip().startswith("|") for line in block.splitlines()
+        ), f"{name}: the key table belongs in plugin/README.md only"
+    assert (
+        len(set(blocks.values())) == 1
+    ), "the six configuration blocks have drifted apart: " + ", ".join(sorted(blocks))
+
+
+@pytest.mark.parametrize("name", STAGE_SKILLS)
+def test_the_configuration_block_keeps_the_fallback(name):
+    block = section(name, "Konfiguracja projektu")
+    for token in [".claude/workflow.json", "README", "/pipeline:init"]:
+        assert token in block, f"{name}: the configuration block must name {token}"
+
+
+VISUAL_FILES = {
+    "plan": PLUGIN / "skills" / "plan" / "SKILL.md",
+    "plan-review": PLUGIN / "skills" / "plan-review" / "SKILL.md",
+    "implement": PLUGIN / "skills" / "implement" / "SKILL.md",
+    "final-review": PLUGIN / "skills" / "final-review" / "SKILL.md",
+    "implementer": PLUGIN / "agents" / "implementer.md",
+}
+MASK = "\x00"
+
+
+def sentences(text: str) -> list[str]:
+    masked = re.sub(r"`[^`]*`", lambda m: m.group(0).replace(".", MASK), text)
+    return [part.replace(MASK, ".") for part in re.split(r"(?<=[.!?])\s+", masked)]
+
+
+@pytest.mark.parametrize("name", sorted(VISUAL_FILES))
+def test_the_visual_sentence_is_one_imperative_sentence(name):
+    text = VISUAL_FILES[name].read_text()
+    assert "verify.scopes" in text and "<docs.conventions>" in text
+    carrying = [
+        sentence
+        for sentence in sentences(text)
+        if "verify.scopes" in sentence and "<docs.conventions>" in sentence
+    ]
+    assert len(carrying) == 1, (
+        f"{name}: exactly one sentence must name both `verify.scopes` and "
+        f"`<docs.conventions>`, found {len(carrying)}"
+    )
+    sentence = carrying[0]
+    assert "rozważ" not in sentence.lower()
+    assert "warto" not in sentence.lower()
+
+
+@pytest.mark.parametrize("name", STAGE_SKILLS)
+def test_no_stage_skill_enumerates_views(name):
+    for forbidden in ["widok szeroki", "widok wąski", "szeroki i wąski"]:
+        assert forbidden not in skill_text(name)
+
+
+@pytest.mark.parametrize("name", ["planner", "plan-reviewer", "implementer", "reviewer"])
+def test_no_agent_enumerates_views(name):
+    text = (PLUGIN / "agents" / f"{name}.md").read_text()
+    for forbidden in ["widok szeroki", "widok wąski", "szeroki i wąski"]:
+        assert forbidden not in text
+
+
+CLOSING_STEPS = {
+    "plan": ("8. ", ["started_at", "escalations", "plan_steps"]),
+    "plan-review": (
+        "6. ",
+        ["plan_review_blockers", "plan_review_majors", "plan_changes"],
+    ),
+    "implement": (
+        "5. **Finał",
+        ["implement_steps", "implement_iterations", "deviations"],
+    ),
+    "final-review": (
+        "4. **Zapisz raport",
+        ["final_review_blockers", "final_review_worth_fixing", "final_review_nits"],
+    ),
+}
+METRIC_SKILLS = sorted(CLOSING_STEPS)
+
+
+def closing_step(name: str) -> str:
+    text = skill_text(name)
+    prefix, _ = CLOSING_STEPS[name]
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith(prefix))
+    end = next(
+        (
+            i
+            for i in range(start + 1, len(lines))
+            if lines[i].startswith("#") or re.match(r"\d+\. ", lines[i])
+        ),
+        len(lines),
+    )
+    return "\n".join(lines[start:end])
+
+
+def apply_closing_step() -> str:
+    text = skill_text("final-review").split("## Tryb apply", 1)[1]
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith("5. "))
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("6. ")), len(lines))
+    return "\n".join(lines[start:end])
+
+
+@pytest.mark.parametrize("name", METRIC_SKILLS)
+def test_closing_step_states_the_metrics_format(name):
+    step = closing_step(name)
+    assert "metrics:" in step
+    assert "%Y-%m-%dT%H:%M" in step
+    for key in CLOSING_STEPS[name][1]:
+        assert key in step, f"{name}: the closing step must name `{key}`"
+
+
+@pytest.mark.parametrize("name", METRIC_SKILLS)
+def test_closing_step_runs_the_checker(name):
+    step = closing_step(name)
+    for token in ["workflow_metrics.py", "--check", "CLAUDE_PLUGIN_ROOT"]:
+        assert token in step, f"{name}: the closing step must run the checker ({token})"
+
+
+@pytest.mark.parametrize("name", METRIC_SKILLS)
+def test_closing_step_names_the_escalation_path(name):
+    assert "RESULT: ESCALATE" in closing_step(name)
+
+
+def test_apply_mode_gates_done_on_the_checker():
+    step = apply_closing_step()
+    assert "--check" in step
+    assert "done" in step
+    assert "RESULT: ESCALATE" in step
+
+
+@pytest.mark.parametrize("name", STAGE_SKILLS)
+def test_no_stage_skill_sends_metrics_rules_to_the_readme(name):
+    # The skills are written in Polish, so the guard has to reject `metryk`/`metryki` as
+    # well — otherwise the sentence this spec removed walks straight back in.
+    for line in skill_text(name).splitlines():
+        lowered = line.lower()
+        sends_to_readme = "readme" in lowered and ("metric" in lowered or "metryk" in lowered)
+        assert not sends_to_readme, f"{name}: {line}"
+    if name == "ship":
+        assert "Metryki workflow" not in skill_text(name)

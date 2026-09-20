@@ -137,3 +137,30 @@ def test_dependabot_template():
     assert "package-ecosystem: github-actions" in text
     assert "package-ecosystem: uv" in text
     assert "package-ecosystem: npm" in text
+
+
+def test_settings_template_pins_a_git_https_source():
+    settings = json.loads((TEMPLATES / "settings.json").read_text())
+    entries = settings["extraKnownMarketplaces"]
+    assert len(entries) == 1
+    name, entry = next(iter(entries.items()))
+    source = entry["source"]
+    assert source["source"] == "git"
+    assert source["url"].endswith(".git") and "https://" in source["url"]
+    # Without `ref` the consumer follows `main` — the pin is the point of the entry.
+    assert "ref" in source
+    assert "TODO" in name
+    assert "TODO" in source["url"]
+    assert "TODO" in source["ref"]
+
+
+def test_settings_template_allows_the_metrics_checker():
+    settings = json.loads((TEMPLATES / "settings.json").read_text())
+    allow = settings["permissions"]["allow"]
+    # Every stage closes by running the checker; a subagent under /pipeline:ship cannot
+    # answer a permission prompt, so the pattern has to be allowed up front.
+    # The rule is anchored on the whole literal the skills call: a pattern with a wildcard
+    # on both sides of `workflow_metrics.py` would auto-approve any python3 command merely
+    # containing that text.
+    assert 'Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" *)' in allow, allow
+    assert not any(rule.startswith("Bash(python3 *") for rule in allow), allow

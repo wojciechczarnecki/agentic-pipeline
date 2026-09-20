@@ -19,14 +19,8 @@ Luka w SPEC wraca potem jako eskalacja — tańsza jest tutaj.
 
 ## Konfiguracja projektu
 
-Zanim cokolwiek ocenisz, przeczytaj `.claude/workflow.json` — to jedyne miejsce, w którym
-projekt opisuje sam siebie: ścieżki dokumentów (`docs.roadmap`, `docs.project`,
-`docs.decisions`, `docs.conventions`, `docs.backlog`), katalog speców (`docs.specsDir`),
-komenda pełnej weryfikacji i jej zakresy (`verify.command`, `verify.scopes`), katalog
-worktree, produkcja poza zasięgiem agenta, katalog hooków gita i język dokumentów
-(`language`). Brak pliku = wartości domyślne opisane w README pluginu; wtedy zaproponuj
-właścicielowi `/pipeline:init`. Dalej `<docs.roadmap>`, `<docs.specsDir>` itd. oznaczają
-wartości z tej konfiguracji.
+- Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
+- `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
 ## Wejście / wyjście
 
