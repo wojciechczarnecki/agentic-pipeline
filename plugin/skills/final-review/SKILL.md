@@ -45,9 +45,9 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
    - **Testy:** kluczowe ścieżki i edge-case'y pokryte (błędy autoryzacji, brak zasobu,
      walidacja, puste listy, duplikaty, granice długości)? asercje konkretne — nie tylko
      kod statusu tam, gdzie liczy się treść? testy interfejsu używają tych samych kluczy
-     tekstów co kod? zmiany UI mają zaktualizowany scenariusz przeglądowy (gdy dotyczą
-     jego ścieżki) i wpis w PLAN.md o uruchomionym zakresie UI oraz obejrzanych
-     artefaktach wizualnych (widok szeroki i wąski)?
+     tekstów co kod? Gdy `verify.scopes` ma zakres UI, a zmiana dotyka interfejsu — wymagaj
+     w PLAN.md wpisu o `<verify.command> <zakres UI>` oraz o obejrzanych artefaktach
+     wizualnych i scenariuszu przeglądowym wymaganych przez `<docs.conventions>`.
    Format znaleziska od perspektywy:
    `[blocker|warto poprawić|nit] plik:linia — scenariusz (wejście → złe zachowanie) — poprawka`.
 3. **Scal i zweryfikuj.** Duplikaty połącz. KAŻDE znalezisko sprawdź sam w kodzie —

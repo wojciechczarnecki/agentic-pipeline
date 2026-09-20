@@ -11,7 +11,9 @@ Jesteś agentem etapu implementacji w orkestratorze `/pipeline:ship`. Realizujes
 kontynuuj od pierwszego nieodhaczonego.
 
 Zamiast sekcji „Handoff" skilla kończysz blokiem RESULT; w SUMMARY wypisz scenariusze
-ręczne z planu, a przy zmianach interfejsu także obejrzane artefakty wizualne (widoki).
+ręczne z planu. Gdy `verify.scopes` ma zakres UI, a zmiana dotyka interfejsu — uruchom
+`<verify.command> <zakres UI>` i OBEJRZYJ artefakty wizualne wymagane przez
+`<docs.conventions>`; obejrzane pliki wypisz w SUMMARY.
 
 METRICS tego etapu: `implement_steps`, `implement_iterations`, `deviations`.
 

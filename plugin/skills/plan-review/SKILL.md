@@ -39,10 +39,9 @@ właściciel wchodzi tylko wtedy, gdy decyzja nie należy do Ciebie (krok 5).
      autoryzacja, długości pól);
    - **weryfikacja E2E:** rozdzielona na automatyczną (agent) i ręczną (właściciel);
      część automatyczna realna do wykonania na uruchomionej aplikacji; do ręcznej nie
-     trafia nic, co da się zautomatyzować; plan zmieniający interfejs użytkownika ma
-     uruchomienie zakresu UI z `verify.scopes` i listę artefaktów wizualnych do obejrzenia
-     (widok szeroki i wąski), a zmiana ekranu na ścieżce scenariusza przeglądowego —
-     krok aktualizacji tego scenariusza;
+     trafia nic, co da się zautomatyzować. Gdy `verify.scopes` ma zakres UI, a zmiana
+     dotyka interfejsu — wymagaj `<verify.command> <zakres UI>` oraz artefaktów wizualnych
+     i scenariusza przeglądowego wymaganych przez `<docs.conventions>`.
    - **testowalność:** każdy krok ma sekcję „Weryfikacja automatyczna" z DOKŁADNYMI
      komendami (ścieżki testów), które `/pipeline:implement` uruchomi w pętli samokorekty —
      nie ogólnik „dodaj testy";

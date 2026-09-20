@@ -51,12 +51,9 @@ eskalacji i przy raporcie z końcowego review, nie zatwierdza całego planu).
    `/pipeline:implement`. Kolejność bez zależności „w przód"; migracja danych zawsze
    jako osobny krok. Weryfikację end-to-end rozdziel na automatyczną (wykona agent)
    i ręczną (wykona właściciel) — do ręcznej trafia tylko to, czego nie da się
-   zautomatyzować. Plan zmieniający interfejs użytkownika ma w weryfikacji automatycznej
-   (kroku UI i end-to-end) uruchomienie zakresu UI z `verify.scopes`
-   (`<verify.command> <zakres>`) oraz listę artefaktów wizualnych do OBEJRZENIA,
-   ze ścieżkami — nie odsyłaj ekranu do weryfikacji ręcznej z wygody. Zmiana ekranu
-   leżącego na ścieżce scenariusza przeglądowego = osobny krok aktualizacji tego
-   scenariusza; nowy ekran lub stan = nowy test wizualny (szczegóły w `<docs.conventions>`).
+   zautomatyzować. Gdy `verify.scopes` ma zakres UI, a zmiana dotyka interfejsu — zaplanuj
+   w weryfikacji automatycznej `<verify.command> <zakres UI>` oraz OBEJRZENIE artefaktów
+   wizualnych i aktualizację scenariusza przeglądowego wymaganych przez `<docs.conventions>`.
 6. **Macierz AC → kroki:** każde AC musi mieć kroki, które je realizują, i test, który
    je dowodzi. AC niemożliwe do pokrycia → eskalacja (luka w SPEC); nie łataj SPEC
    samodzielnie.
@@ -107,8 +104,6 @@ eskalacji i przy raporcie z końcowego review, nie zatwierdza całego planu).
 
 <komendy na uruchomionej aplikacji: podniesienie stacku, zapytania HTTP, skrypty, testy
 przeglądowe — z oczekiwanymi wynikami>
-<przy zmianach interfejsu: `<verify.command> <zakres UI>` → zielone + artefakty wizualne
-do obejrzenia (widok szeroki i wąski)>
 
 ### Ręczna (wykonuje właściciel)
 

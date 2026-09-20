@@ -53,15 +53,11 @@ gdy mówią to komendy weryfikacyjne — nigdy dlatego, że „wygląda dobrze".
 3. **Odstępstwa:** drobne i konieczne (inna nazwa pliku, mały helper) → wykonaj
    i dopisz do `## Deviations` z uzasadnieniem. Zmieniające zakres, architekturę lub
    schemat danych → eskalacja; nie kontynuuj na własną rękę.
-4. **Ekran:** przy zmianie interfejsu użytkownika uruchom zakres UI z `verify.scopes`
-   (`<verify.command> <zakres>`) i OBEJRZYJ artefakty wizualne (Read na plikach obrazów)
-   — co najmniej jeden widok szeroki i jeden wąski dla zmienionych ekranów. Bez tego krok
-   nie jest zielony; zielony test z rozjechanym ekranem też nie. Wynik (komenda, wynik,
-   obejrzane pliki) zapisz w PLAN.md.
+4. **Ekran:** gdy `verify.scopes` ma zakres UI, a zmiana dotyka interfejsu — uruchom
+   `<verify.command> <zakres UI>` i OBEJRZYJ artefakty wizualne wymagane przez
+   `<docs.conventions>`; bez tego krok nie jest zielony, a wynik zapisz w PLAN.md.
 5. **Finał — Definition of Done z planu:**
    - `<verify.command>` w całości zielony;
-   - przy zmianach interfejsu zakres UI zielony, artefakty wizualne obejrzane
-     (widok szeroki i wąski), wynik w PLAN.md;
    - weryfikacja end-to-end z planu (sekcja automatyczna) wykonana NAPRAWDĘ,
      wynik zapisany w PLAN.md; pozycje ręczne zostawiasz właścicielowi — wypisz je;
    - `<docs.roadmap>` zaktualizowana (checkboxy!), `<docs.decisions>` i dokumenty

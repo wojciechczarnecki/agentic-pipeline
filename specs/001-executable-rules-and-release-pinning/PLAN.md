@@ -227,7 +227,7 @@ Reused patterns, with paths:
       Automatic verification: `uv run pytest -q plugin/tests/test_stage_skills.py`;
       `awk 'length > 100 {print FILENAME": "FNR}' plugin/skills/*/SKILL.md` (expected: no output)
 
-- [ ] 4. **One visual-artifact sentence** — files: `plugin/skills/plan/SKILL.md`,
+- [x] 4. **One visual-artifact sentence** — files: `plugin/skills/plan/SKILL.md`,
       `plugin/skills/plan-review/SKILL.md`, `plugin/skills/implement/SKILL.md`,
       `plugin/skills/final-review/SKILL.md`, `plugin/agents/implementer.md`,
       `plugin/tests/test_stage_skills.py`.
@@ -485,6 +485,10 @@ exercise it, on plain `python3`:
    → the markdown table, exit 0 (AC12).
 5. The AC23 measurements: the gross number from the end of step 4 and the net number from
    step 6, both recorded here.
+   - **Gross (end of step 4, steps 2–4 only)** —
+     `git diff --numstat origin/main -- <the six stage skills>` →
+     `added=40 deleted=68 net=-28`. `deleted=68` ≥ 52 required. ✔
+   - **Net (step 6, after step 5)** — recorded in step 6 below.
 6. `python3 -c "import json,sys;json.load(open('plugin/templates/settings.json'))"` and
    `claude plugin validate --strict plugin/ && claude plugin validate --strict .`
    (skipped with a note if `claude` is off PATH; CI runs it).
