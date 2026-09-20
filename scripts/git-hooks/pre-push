@@ -33,14 +33,17 @@ while read -r local_ref _local_sha remote_ref _remote_sha; do
       exit 1
     fi
 
-    recorded=$(python3 -c 'import json;print(json.load(open("'"$receipt"'"))["commit"])')
+    recorded=$(python3 -c 'import json;print(json.load(open("'"$receipt"'"))["plugin_fingerprint"])')
     green=$(python3 -c 'import json;print(json.load(open("'"$receipt"'"))["green"])')
 
-    # The receipt is committed with the release, so it can never name its own commit.
-    # What matters is that nothing under plugin/ changed since the suite ran — the receipt
-    # itself excepted, for the same reason.
-    if ! git diff --quiet "$recorded" "$tagged" -- plugin/ ":(exclude)$receipt" 2>/dev/null; then
-      echo "pre-push: plugin/ changed since the eval ran (receipt: ${recorded:0:8})." >&2
+    # The receipt ships inside the release it certifies, so it cannot name its own commit,
+    # and a squash merge would invalidate any sha it did name. It fingerprints what plugin/
+    # CONTAINS instead, which survives squashing, rebasing and a fresh clone.
+    tagged_fingerprint=$(git ls-tree -r "$tagged" -- plugin/ |
+      grep -v 'evals/last-run.json' | sha256sum | cut -d" " -f1)
+
+    if [[ "$recorded" != "$tagged_fingerprint" ]]; then
+      echo "pre-push: plugin/ changed since the eval ran." >&2
       echo "pre-push: re-run: bash scripts/eval.sh" >&2
       exit 1
     fi

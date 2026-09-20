@@ -5,6 +5,7 @@ These are repository rules, not plugin behaviour — the plugin stays project-in
 so they cannot live in plugin/tests.
 """
 
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -32,8 +33,10 @@ def receipt():
     """Swap in a receipt and restore whatever was there, so a real one is never lost."""
     previous = RECEIPT.read_text() if RECEIPT.exists() else None
 
-    def write(commit: str, green: bool):
-        RECEIPT.write_text(json.dumps({"commit": commit, "green": green}) + "\n")
+    def write(fingerprint: str, green: bool):
+        RECEIPT.write_text(
+            json.dumps({"plugin_fingerprint": fingerprint, "green": green}) + "\n"
+        )
 
     yield write
 
@@ -64,36 +67,41 @@ def test_a_minor_or_major_tag_without_a_receipt_is_rejected(tag):
     assert "scripts/eval.sh" in result.stderr
 
 
-def head() -> str:
-    return subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True
-    ).stdout.strip()
-
-
-# The receipt is committed with the release, so it can never name its own commit. The
-# check is therefore "plugin/ is unchanged since the run", not "the shas match".
-def test_a_receipt_from_before_a_plugin_change_is_rejected(receipt):
-    stale = subprocess.run(
-        ["git", "log", "--format=%H", "-1", "--skip=1", "--", "plugin/"],
+def fingerprint(ref: str = "HEAD") -> str:
+    """What plugin/ contains at `ref` — the receipt's own measure, recomputed."""
+    listing = subprocess.run(
+        ["git", "ls-tree", "-r", ref, "--", "plugin/"],
         cwd=ROOT,
         capture_output=True,
         text=True,
-    ).stdout.strip()
-    if not stale:
-        pytest.skip("history has no earlier commit touching plugin/")
-    receipt(stale, green=True)
+    ).stdout
+    kept = "".join(line + "\n" for line in listing.splitlines() if "evals/last-run.json" not in line)
+    return hashlib.sha256(kept.encode()).hexdigest()
+
+
+# A sha would not survive the squash merge that lands the release, so the receipt
+# fingerprints plugin/'s contents and the hook recomputes them at tag time.
+def test_a_receipt_from_a_different_plugin_state_is_rejected(receipt):
+    receipt("0" * 64, green=True)
     result = push("refs/tags/pipeline--v0.3.0", local_ref="HEAD")
     assert result.returncode == 1
     assert "plugin/ changed since the eval ran" in result.stderr
 
 
+def test_the_fingerprint_ignores_the_receipt_itself(receipt):
+    """Otherwise writing the receipt would invalidate the receipt."""
+    before = fingerprint()
+    receipt("whatever", green=True)
+    assert fingerprint() == before
+
+
 def test_a_red_receipt_is_rejected(receipt):
-    receipt(head(), green=False)
+    receipt(fingerprint(), green=False)
     result = push("refs/tags/pipeline--v0.3.0", local_ref="HEAD")
     assert result.returncode == 1
     assert "not green" in result.stderr
 
 
 def test_a_green_receipt_with_plugin_unchanged_passes(receipt):
-    receipt(head(), green=True)
+    receipt(fingerprint(), green=True)
     assert push("refs/tags/pipeline--v0.3.0", local_ref="HEAD").returncode == 0

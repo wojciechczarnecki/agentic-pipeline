@@ -13,6 +13,19 @@ command -v socat >/dev/null && command -v bwrap >/dev/null || {
 }
 
 receipt="plugin/evals/last-run.json"
+
+# The receipt ships inside the release it certifies, so it cannot name its own commit —
+# and a squash merge would invalidate any sha it did name. It records what plugin/ CONTAINS
+# instead, which survives squashing, rebasing and a fresh clone.
+plugin_fingerprint() {
+  git ls-tree -r "$1" -- plugin/ | grep -v 'evals/last-run.json' | sha256sum | cut -d" " -f1
+}
+
+git diff --quiet HEAD -- plugin/ ":(exclude)$receipt" || {
+  echo "eval.sh: plugin/ has uncommitted changes; commit them first so the receipt can" >&2
+  echo "eval.sh: fingerprint what actually ran." >&2
+  exit 1
+}
 raw="$(mktemp --suffix=.json)"
 trap 'rm -f "$raw"' EXIT
 
@@ -31,12 +44,13 @@ set -e
 [[ -s "$raw" ]] || { echo "eval.sh: the run produced no result file; nothing to record." >&2; exit 1; }
 
 commit="$(git rev-parse HEAD)"
+fingerprint="$(plugin_fingerprint HEAD)"
 version="$(python3 -c 'import json;print(json.load(open("plugin/.claude-plugin/plugin.json"))["version"])')"
 
-python3 - "$raw" "$receipt" "$commit" "$version" <<'PY'
+python3 - "$raw" "$receipt" "$commit" "$version" "$fingerprint" <<'PY'
 import json, sys, datetime
 
-raw, receipt, commit, version = sys.argv[1:5]
+raw, receipt, commit, version, fingerprint = sys.argv[1:6]
 result = json.load(open(raw))
 agg = result["aggregates"]
 passed = agg["casesPassed"] == agg["casesTotal"] and agg["casesTotal"] > 0
@@ -44,6 +58,7 @@ passed = agg["casesPassed"] == agg["casesTotal"] and agg["casesTotal"] > 0
 json.dump(
     {
         "commit": commit,
+        "plugin_fingerprint": fingerprint,
         "plugin_version": version,
         "ran_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M"),
         "cases_total": agg["casesTotal"],

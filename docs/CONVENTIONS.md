@@ -70,7 +70,9 @@ and the way out (for the guard: which configuration or approval unlocks the acti
 - The owner tags a clean `main` with `claude plugin tag plugin --push` (`pipeline--vX.Y.Z`).
 - A **minor or major** tag needs a green eval receipt for the commit being tagged: run
   `bash scripts/eval.sh`, which writes `plugin/evals/last-run.json` and is committed with
-  the release. The `pre-push` hook refuses the tag without it. Patches are exempt — a full
+  the release. The receipt fingerprints what `plugin/` contains rather than naming a
+  commit, because it ships inside the release it certifies and a squash merge would
+  invalidate any sha it named. The `pre-push` hook refuses the tag without it. Patches are exempt — a full
   suite costs real money and a patch is usually a hook or a documentation fix. The hook is
   the only layer that can enforce this: the `release tags` ruleset has no `creation` rule,
   so the server accepts a new tag from anyone who can push.
