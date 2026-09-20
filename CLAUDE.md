@@ -35,10 +35,27 @@ the release tag, but the pin only takes effect once the marketplace is registere
 ```bash
 claude plugin marketplace remove wcz-tools
 claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#pipeline--v0.3.0'
+git diff -- .claude/settings.json   # must be empty — see the warning below
 ```
 
-Check with `git -C ~/.claude/plugins/marketplaces/wcz-tools log --oneline -1`: it must show
-the tagged commit, not the head of `main`.
+**`remove` strips `enabledPlugins` and `extraKnownMarketplaces` out of
+`.claude/settings.json`, in this project and in `~/.claude/settings.json` alike, and `add`
+does not put them back** — it defaults to `--scope user` and only registers the
+marketplace on the machine. The session then runs with no plugin at all: no command guard,
+no `pre-push` rule, silently. Measured 2026-09-20 during the 0.3.0 release. So run
+`git diff` right after, restore the block if it went, and remember that a running session
+keeps whatever it loaded at startup — the new version needs a restart.
+
+Two checks afterwards:
+
+```bash
+git -C ~/.claude/plugins/marketplaces/wcz-tools describe --tags --exact-match HEAD
+```
+
+must name the release tag (an error means the marketplace tracks `main`, so the pin is
+inert), and in a fresh session a command the guard blocks — `sed -i` on
+`.claude/settings.json`, say — must actually be refused, with the version in the path it
+reports.
 
 The mechanics (statuses, the `RESULT` contract, escalation triggers, metrics format) are
 described in `plugin/README.md` — the single source of truth. Project configuration for
