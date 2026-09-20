@@ -84,3 +84,81 @@ def test_no_agent_enumerates_views(name):
     text = (PLUGIN / "agents" / f"{name}.md").read_text()
     for forbidden in ["widok szeroki", "widok wąski", "szeroki i wąski"]:
         assert forbidden not in text
+
+
+CLOSING_STEPS = {
+    "plan": ("8. ", ["started_at", "escalations", "plan_steps"]),
+    "plan-review": (
+        "6. ",
+        ["plan_review_blockers", "plan_review_majors", "plan_changes"],
+    ),
+    "implement": (
+        "5. **Finał",
+        ["implement_steps", "implement_iterations", "deviations"],
+    ),
+    "final-review": (
+        "4. **Zapisz raport",
+        ["final_review_blockers", "final_review_worth_fixing", "final_review_nits"],
+    ),
+}
+METRIC_SKILLS = sorted(CLOSING_STEPS)
+
+
+def closing_step(name: str) -> str:
+    text = skill_text(name)
+    prefix, _ = CLOSING_STEPS[name]
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith(prefix))
+    end = next(
+        (
+            i
+            for i in range(start + 1, len(lines))
+            if lines[i].startswith("#") or re.match(r"\d+\. ", lines[i])
+        ),
+        len(lines),
+    )
+    return "\n".join(lines[start:end])
+
+
+def apply_closing_step() -> str:
+    text = skill_text("final-review").split("## Tryb apply", 1)[1]
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith("5. "))
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("6. ")), len(lines))
+    return "\n".join(lines[start:end])
+
+
+@pytest.mark.parametrize("name", METRIC_SKILLS)
+def test_closing_step_states_the_metrics_format(name):
+    step = closing_step(name)
+    assert "metrics:" in step
+    assert "%Y-%m-%dT%H:%M" in step
+    for key in CLOSING_STEPS[name][1]:
+        assert key in step, f"{name}: the closing step must name `{key}`"
+
+
+@pytest.mark.parametrize("name", METRIC_SKILLS)
+def test_closing_step_runs_the_checker(name):
+    step = closing_step(name)
+    for token in ["workflow_metrics.py", "--check", "CLAUDE_PLUGIN_ROOT"]:
+        assert token in step, f"{name}: the closing step must run the checker ({token})"
+
+
+@pytest.mark.parametrize("name", METRIC_SKILLS)
+def test_closing_step_names_the_escalation_path(name):
+    assert "RESULT: ESCALATE" in closing_step(name)
+
+
+def test_apply_mode_gates_done_on_the_checker():
+    step = apply_closing_step()
+    assert "--check" in step
+    assert "done" in step
+    assert "RESULT: ESCALATE" in step
+
+
+@pytest.mark.parametrize("name", STAGE_SKILLS)
+def test_no_stage_skill_sends_metrics_rules_to_the_readme(name):
+    for line in skill_text(name).splitlines():
+        assert not ("README" in line and "metrics" in line), f"{name}: {line}"
+    if name == "ship":
+        assert "Metryki workflow" not in skill_text(name)

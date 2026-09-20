@@ -65,6 +65,10 @@ gdy mówią to komendy weryfikacyjne — nigdy dlatego, że „wygląda dobrze".
    - `status: implemented` + wpis w `stage_history`; w bloku `metrics:` SPEC.md:
      `implement_steps`, `implement_iterations` (suma iteracji pętli ponad pierwszą próbę,
      po wszystkich krokach), `deviations`;
+   - płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
+     sukcesu `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>`;
+     czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
+     STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz niezmierzonej wartości;
    - commit domykający, potem `git push -u origin feat/NNN-<slug>`.
 
 ## Pętla samokorekty (obowiązkowa dla każdego kroku)

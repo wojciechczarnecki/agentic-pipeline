@@ -55,7 +55,12 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
 4. **Zapisz raport** w `## Final review` w PLAN.md: data; macierz AC → dowód; znaleziska
    z id `F1…Fn` (waga, plik:linia, scenariusz, poprawka); odrzucone z powodem. W bloku
    `metrics:` SPEC.md: `final_review_blockers`, `final_review_worth_fixing`,
-   `final_review_nits`. Zacommituj (`docs: add final review of NNN <slug>`).
+   `final_review_nits`.
+   Płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
+   sukcesu `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>`.
+   Czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
+   STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz wartości, której nie zmierzyłeś.
+   Zacommituj (`docs: add final review of NNN <slug>`).
 5. **Decyzje:**
    - sesja samodzielna → pokaż tabelę znalezisk i zapytaj właściciela (`AskUserQuestion`,
      rekomendacja: przyjąć blockery i „warto poprawić", odrzucić nity); decyzje zapisz
@@ -93,10 +98,13 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
    i wymień w raporcie. Wpis wchodzi do commita zamykającego z kroku 5 — inaczej ślad
    ginie po merge'u.
 5. **Zamknięcie — dopiero przy zielonym CI:** `status: done` + wpis w `stage_history`;
-   `metrics.finished_at` (`date +%Y-%m-%dT%H:%M`); commit (`docs: close SPEC NNN <slug>`),
-   `git push`, ponowne `gh pr checks <nr> --watch` — ostatni commit PR też ma mieć zielone
-   CI. Czerwień po samym commicie statusu to niestabilność, nie wada: ponów przebieg
-   (`gh run rerun <id> --failed`), statusu nie cofaj.
+   `metrics.finished_at` (`date +%Y-%m-%dT%H:%M`). Przed `done` uruchom
+   `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>` — dopóki kończy
+   się błędem, `done` nie zapada; czerwień nie do naprawy = `RESULT: ESCALATE`. Licznik zmierzony
+   jako zero zapisujesz jako `0` — to pomiar, nie wymyślona wartość.
+   Commit (`docs: close SPEC NNN <slug>`), `git push`, ponowne `gh pr checks <nr> --watch`
+   — ostatni commit PR też ma mieć zielone CI. Czerwień po samym commicie statusu to
+   niestabilność, nie wada: ponów przebieg (`gh run rerun <id> --failed`), statusu nie cofaj.
 6. Podaj link PR, status CI i link do przebiegu z artefaktami wizualnymi
    (`gh run list --branch <branch> --workflow CI --limit 1 --json url`); gdy edytujesz
    treść PR, uwzględnij tam to samo. Merge robi właściciel.

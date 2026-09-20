@@ -267,7 +267,7 @@ Reused patterns, with paths:
       step 5 the same counter also absorbs the metrics rewrites and stops proving AC23's
       gross clause.
 
-- [ ] 5. **Metrics format and the checker in every closing step** — files:
+- [x] 5. **Metrics format and the checker in every closing step** — files:
       `plugin/skills/plan/SKILL.md` (step 8), `plugin/skills/plan-review/SKILL.md` (step 6),
       `plugin/skills/implement/SKILL.md` (step 5 "Finał"),
       `plugin/skills/final-review/SKILL.md` (`report` step 4 and `apply` steps 2 and 5),
