@@ -89,4 +89,4 @@ oczywista.
 
 - **Uruchomiony samodzielnie:** podsumuj znaleziska i zmiany; następny etap to
   `/pipeline:implement NNN` po `/clear`.
-- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT (skill `ship` tego pluginu).
+- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT z kontraktu agenta etapu.

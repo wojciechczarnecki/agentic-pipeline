@@ -155,4 +155,4 @@ _(wypełnia /pipeline:final-review)_
 
 - **Uruchomiony samodzielnie:** plan gotowy (status `plan-draft`); następny etap to
   `/pipeline:plan-review NNN` po `/clear` — recenzent ma ocenić plan świeżym okiem.
-- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT (skill `ship` tego pluginu).
+- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT z kontraktu agenta etapu.

@@ -166,7 +166,7 @@ Reused patterns, with paths:
       `plan_steps` set → expected exit 0 and no output);
       `uv run ruff check plugin/bin/workflow_metrics.py && uv run black --check plugin/bin/workflow_metrics.py`
 
-- [ ] 2. **Stage contract into the agent files** — files: `plugin/skills/ship/SKILL.md`,
+- [x] 2. **Stage contract into the agent files** — files: `plugin/skills/ship/SKILL.md`,
       `plugin/agents/planner.md`, `plugin/agents/plan-reviewer.md`,
       `plugin/agents/implementer.md`, `plugin/agents/reviewer.md`,
       `plugin/tests/test_stage_contract.py` (new).

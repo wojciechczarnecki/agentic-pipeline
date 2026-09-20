@@ -115,4 +115,4 @@ Dalej `<verify.command>`, `<docs.backlog>` itd. oznaczają wartości z tej konfi
 
 - **Uruchomiony samodzielnie:** link PR + przypomnienie o scenariuszach ręcznych;
   merge squashem robi właściciel, kolejny feature zaczyna się od `/pipeline:idea`.
-- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT (skill `ship` tego pluginu).
+- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT z kontraktu agenta etapu.

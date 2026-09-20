@@ -115,4 +115,4 @@ Bez wyjątków, bez „to pewnie flaky", bez pomijania testów.
 
 - **Uruchomiony samodzielnie:** podsumuj, co zrobione, odstępstwa, wynik weryfikacji
   i scenariusze ręczne; następny etap to `/pipeline:final-review NNN` po `/clear`.
-- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT (skill `ship` tego pluginu).
+- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT z kontraktu agenta etapu.
