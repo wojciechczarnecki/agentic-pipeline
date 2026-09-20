@@ -2,7 +2,7 @@
 status: spec-ready
 metrics:
   started_at: "2026-09-20T12:30"
-  escalations: 0
+  escalations: 1
 stage_history:
   - "spec-draft — 2026-09-20"
   - "spec-ready — 2026-09-20"
@@ -215,8 +215,10 @@ State of the code this spec touches:
 - [ ] AC22: A structural test asserts each of those five files names `verify.scopes` and
       `<docs.conventions>` in that sentence, and that no stage skill still enumerates
       required views of its own.
-- [ ] AC23: `plugin/skills/*/SKILL.md` shrink by at least 70 lines in total against
-      `main`, and no rule named in AC1–AC22 is lost in the process.
+- [ ] AC23: The configuration and visual-artifact prose in `plugin/skills/*/SKILL.md`
+      loses at least 50 lines gross, and the six stage skills shrink by at least 12 lines
+      net against `main`; no rule named in AC1–AC22 is lost in the process.
+      (Owner decision, 2026-09-20 — see "Owner decisions".)
 
 **Install and pinning**
 
@@ -301,6 +303,20 @@ State of the code this spec touches:
 - Regression cover: structural tests over identifiers, plus the one eval grader for the
   `init` question cap.
 - `init` derives `ref` from the plugin cache path, `TODO:` otherwise.
+
+### 2026-09-20 — plan stage
+
+- **AC23 line threshold.** Question: the 70-line shrink of `plugin/skills/*/SKILL.md`
+  is unreachable — removable prose measures 59 lines gross, while the same spec adds
+  ~44 lines (AC1, AC2, AC13, AC15 and the AC19–AC21 replacements), leaving ~15 net; the
+  only blocks large enough to close the gap are pinned by AC17 or protected by AC36.
+  Decision: restate AC23 as "the configuration and visual-artifact prose in
+  `plugin/skills/*/SKILL.md` loses at least 50 lines gross, and the six skills shrink by
+  at least 12 lines net against `main`; no rule named in AC1–AC22 is lost." The goal
+  (less context carried into every stage) and the machine-checkable measurement both stay.
+- **AC19 "at most two lines".** Question: two physical lines would run past the
+  100-column convention. Decision: read it as two wrapped bullets — the structural test
+  counts bullets, not physical lines.
 
 ## Open questions (non-blocking)
 
