@@ -386,7 +386,7 @@ Reused patterns, with paths:
       (expected: three cases, including `init-question-cap`);
       `claude plugin validate --strict plugin/`
 
-- [ ] 9. **Honest scope of the migration module** — files: `docs/DECISIONS.md`,
+- [x] 9. **Honest scope of the migration module** — files: `docs/DECISIONS.md`,
       `plugin/README.md`.
       Append one row to `docs/DECISIONS.md` (append-only, dated): the migration module
       recognises only Alembic's verbs (`upgrade`, `downgrade`, `stamp`, `revision`, `current`,

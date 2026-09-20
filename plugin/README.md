@@ -154,6 +154,11 @@ hooka i nadanie mu bitu wykonywalności jest dozwolone, bo nie wyłącza niczego
 Z konfiguracji dochodzą: hosty i komendy
 produkcji, katalog worktree i moduł migracji.
 
+Moduł migracji rozpoznaje WYŁĄCZNIE czasowniki Alembica (`upgrade`, `downgrade`, `stamp`,
+`revision`, `current`, `check`) i zmienne `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`;
+konfigurowalne są tylko `migrations.command` i `migrations.localHosts`. Projekt na innym
+narzędziu migracji nie jest przez strażnika chroniony — jego milczenie nie jest ochroną.
+
 Fail-open jest zamierzony: brak `.claude/workflow.json`, błąd walidacji i brak `python3`
 kończą się ostrzeżeniem na stderr i kodem 0, nigdy odmową startu.
 

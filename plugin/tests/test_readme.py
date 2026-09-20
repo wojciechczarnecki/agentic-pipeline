@@ -98,3 +98,9 @@ def test_installation_explains_the_marketplace_registration():
     assert "marketplace remove" in section
     assert "marketplace add" in section
     assert "~/.claude/plugins/marketplaces" in section
+
+
+def test_the_guard_section_states_the_migration_scope():
+    section = README.split("### Strażnik komend", 1)[1].split("\n## ", 1)[0]
+    for token in ["Alembic", "migrations.command", "migrations.localHosts"]:
+        assert token in section, token
