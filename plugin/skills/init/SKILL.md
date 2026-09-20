@@ -28,7 +28,10 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
    `pyproject.toml` → Python, `package.json` → Node, oba → oba, żaden → nieznany.
    Zajrzyj do wykrytych plików po nazwy skryptów (`scripts` w `package.json`, narzędzia
    lintu i testów w `pyproject.toml`) — to wypełni `verify` i `format` bez pytania.
-2. **Zadaj pytania — jedna runda, maksymalnie 4** (`AskUserQuestion`; każde pytanie
+2. **Sprawdź, czy masz `AskUserQuestion`. Jeśli go nie ma — pomiń ten krok i przejdź do
+   kroku 3.** Nie zadajesz wtedy pytań ŻADNĄ drogą: ani narzędziem, ani zwykłym tekstem,
+   i nie czekasz na odpowiedź, bo nie ma jej od kogo dostać.
+   Mając `AskUserQuestion` — **zadaj pytania: jedna runda, maksymalnie 4** (każde pytanie
    z rekomendacją: opcja pierwsza z dopiskiem „(Recommended)" w etykiecie):
    1. nazwa projektu i problem, który rozwiązuje (jedno zdanie);
    2. potwierdzenie wykrytego stacku i komendy pełnej weryfikacji;
@@ -38,8 +41,10 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
    o komendę weryfikacji, komendy formatowania i katalog hooków gita. W żadnym innym
    przypadku drugiej rundy nie ma.
 3. **Tryb nieinteraktywny** (`claude -p`, brak `AskUserQuestion`): NIE pytasz i NIE
-   blokujesz. Pliki w `.claude/` Claude Code traktuje jako wrażliwe i pyta o zgodę na ich
-   zapis niezależnie od reguł uprawnień, więc komplet plików powstaje tylko w sesji
+   blokujesz. Pytanie zadane prozą i zakończenie odpowiedzi prośbą o decyzję to też
+   blokada — kończysz zadanie do końca na wartościach, które masz, a nie pytaniem.
+   Pliki w `.claude/` Claude Code traktuje jako wrażliwe i pyta o zgodę na ich zapis
+   niezależnie od reguł uprawnień, więc komplet plików powstaje tylko w sesji
    uruchomionej z `--permission-mode bypassPermissions`; przy słabszym trybie zapisujesz
    wszystko poza `.claude/`, a pominięte pliki wypisujesz z treścią do wklejenia i kończysz
    sukcesem. Brakujące wartości zapisujesz jako `TODO:` — w `.claude/workflow.json`

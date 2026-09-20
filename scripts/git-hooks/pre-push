@@ -6,10 +6,49 @@
 
 protected='^refs/heads/(main|master)$'
 
-while read -r _local_ref _local_sha remote_ref _remote_sha; do
+receipt='plugin/evals/last-run.json'
+
+# A minor or major release changes behaviour, so it does not go out without a green local
+# eval run against the very commit being tagged. Patches are exempt: a full suite costs
+# real money and a patch is usually a hook or a documentation fix. The eval never runs in
+# CI (docs/DECISIONS.md, 2026-09-20), so this hook is the only place the rule can bite.
+release_needs_eval() {
+  local tag=${1#refs/tags/}
+  [[ "$tag" =~ ^[a-z-]+--v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || return 1
+  [[ "${BASH_REMATCH[3]}" == "0" ]]
+}
+
+while read -r local_ref _local_sha remote_ref _remote_sha; do
   if [[ "$remote_ref" =~ $protected ]]; then
     echo "pre-push: direct push to ${remote_ref#refs/heads/} is blocked; open a PR instead." >&2
     exit 1
+  fi
+
+  if release_needs_eval "$remote_ref"; then
+    tagged=$(git rev-list -n 1 "$local_ref" 2>/dev/null)
+
+    if [[ ! -f "$receipt" ]]; then
+      echo "pre-push: ${remote_ref#refs/tags/} is a minor or major release and there is no" >&2
+      echo "pre-push: eval receipt. Run: bash scripts/eval.sh" >&2
+      exit 1
+    fi
+
+    recorded=$(python3 -c 'import json;print(json.load(open("'"$receipt"'"))["commit"])')
+    green=$(python3 -c 'import json;print(json.load(open("'"$receipt"'"))["green"])')
+
+    # The receipt is committed with the release, so it can never name its own commit.
+    # What matters is that nothing under plugin/ changed since the suite ran — the receipt
+    # itself excepted, for the same reason.
+    if ! git diff --quiet "$recorded" "$tagged" -- plugin/ ":(exclude)$receipt" 2>/dev/null; then
+      echo "pre-push: plugin/ changed since the eval ran (receipt: ${recorded:0:8})." >&2
+      echo "pre-push: re-run: bash scripts/eval.sh" >&2
+      exit 1
+    fi
+
+    if [[ "$green" != "True" ]]; then
+      echo "pre-push: the last eval run was not green; ${remote_ref#refs/tags/} is blocked." >&2
+      exit 1
+    fi
   fi
 done
 

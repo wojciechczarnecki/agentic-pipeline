@@ -68,6 +68,12 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   behaviour (skills, agents, hooks, guard, templates), not with docs or tests.
 - Every release has a `plugin/CHANGELOG.md` section.
 - The owner tags a clean `main` with `claude plugin tag plugin --push` (`pipeline--vX.Y.Z`).
+- A **minor or major** tag needs a green eval receipt for the commit being tagged: run
+  `bash scripts/eval.sh`, which writes `plugin/evals/last-run.json` and is committed with
+  the release. The `pre-push` hook refuses the tag without it. Patches are exempt — a full
+  suite costs real money and a patch is usually a hook or a documentation fix. The hook is
+  the only layer that can enforce this: the `release tags` ruleset has no `creation` rule,
+  so the server accepts a new tag from anyone who can push.
 
 ## Parallel work
 

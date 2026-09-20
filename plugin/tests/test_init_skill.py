@@ -111,3 +111,27 @@ def test_the_marketplace_ref_is_derived_from_the_plugin_root():
     )
     fallback = [sentence for sentence in sentences if "TODO:" in sentence and "kszta" in sentence]
     assert fallback, "init step 4 must keep the `TODO:` fallback for an unexpected path shape"
+
+
+# A rule the model can reach only after it has already been told to ask is a rule it will
+# weigh rather than follow: measured 2026-09-20, two eval runs of the same commit split,
+# one finishing the skill and one asking four questions in prose and waiting. The guard is
+# therefore that step 2 itself names the absent tool and sends the reader to step 3, and
+# that the prose loophole is closed in both places.
+def test_the_question_step_checks_for_the_tool_before_asking():
+    asking = step(2)
+    head = asking[: asking.index("1. ")]
+    assert "AskUserQuestion" in head, (
+        "init step 2 must open by checking for AskUserQuestion, before it tells the "
+        "reader to ask anything"
+    )
+    assert "3" in head, "init step 2 must send a reader without the tool to step 3"
+
+
+@pytest.mark.parametrize("number", [2, 3])
+def test_the_non_interactive_mode_forbids_asking_in_prose(number):
+    body = " ".join(step(number).split())
+    assert "tekst" in body or "prozą" in body, (
+        f"init step {number} must close the prose loophole: without AskUserQuestion the "
+        "skill may not ask in plain text either"
+    )
