@@ -366,7 +366,7 @@ Reused patterns, with paths:
       Automatic verification: `uv run pytest -q plugin/tests/test_init_templates.py plugin/tests/test_init_skill.py plugin/tests/test_readme.py`;
       `python3 -c "import json;json.load(open('plugin/templates/settings.json'))"`
 
-- [ ] 8. **Eval case for the `init` question cap** — files:
+- [x] 8. **Eval case for the `init` question cap** — files:
       `plugin/evals/init-question-cap/case.yaml`,
       `plugin/evals/init-question-cap/graders/criteria.md`,
       `plugin/tests/test_plugin_structure.py`.

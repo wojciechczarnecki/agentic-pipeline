@@ -101,3 +101,14 @@ def test_hook_paths_are_plugin_relative(command):
     target = PLUGIN / relative
     assert target.is_file(), relative
     assert os.access(target, os.X_OK), relative
+
+
+def test_every_eval_case_has_a_grader():
+    cases = sorted(path for path in (PLUGIN / "evals").iterdir() if path.is_dir())
+    assert cases, "plugin/evals holds no case"
+    for case in cases:
+        manifest = case / "case.yaml"
+        assert manifest.is_file(), f"{case.name}: no case.yaml"
+        assert "schema_version" in manifest.read_text(), f"{case.name}: no schema_version"
+        graders = case / "graders"
+        assert graders.is_dir() and any(graders.iterdir()), f"{case.name}: no grader"

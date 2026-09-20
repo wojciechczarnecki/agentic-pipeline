@@ -1,0 +1,17 @@
+schema_version: "1.0"
+name: init-question-cap
+description: /pipeline:init pyta jedną rundą, najwyżej cztery pytania, gdy stack da się wykryć.
+runs: 1
+execution:
+  max_turns: 30
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write, AskUserQuestion]
+  prompt: |
+    Jesteś w pustym repozytorium przygotowanym pod nowy projekt (`git init` już wykonany),
+    w którym leży `pyproject.toml` projektu „Zbiórka" — stack jest więc wykrywalny.
+    Wykonaj po kolei:
+    1. uruchom `/pipeline:init` dla projektu „Zbiórka" — narzędzie do prowadzenia zbiórek
+       charytatywnych, brak produkcji, dokumenty po polsku; na zadane pytania odpowiadaj
+       krótko i rzeczowo;
+    2. wypisz na koniec KAŻDE pytanie, które zadałeś, w kolejności, pogrupowane w rundy
+       (runda = jedno wywołanie `AskUserQuestion`), wraz z liczbą pytań w każdej rundzie;
+    3. napisz wprost, czy wykrycie stacku się powiodło.
