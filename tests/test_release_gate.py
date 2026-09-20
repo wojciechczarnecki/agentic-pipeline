@@ -34,9 +34,7 @@ def receipt():
     previous = RECEIPT.read_text() if RECEIPT.exists() else None
 
     def write(fingerprint: str, green: bool):
-        RECEIPT.write_text(
-            json.dumps({"plugin_fingerprint": fingerprint, "green": green}) + "\n"
-        )
+        RECEIPT.write_text(json.dumps({"plugin_fingerprint": fingerprint, "green": green}) + "\n")
 
     yield write
 
@@ -75,7 +73,9 @@ def fingerprint(ref: str = "HEAD") -> str:
         capture_output=True,
         text=True,
     ).stdout
-    kept = "".join(line + "\n" for line in listing.splitlines() if "evals/last-run.json" not in line)
+    kept = "".join(
+        line + "\n" for line in listing.splitlines() if "evals/last-run.json" not in line
+    )
     return hashlib.sha256(kept.encode()).hexdigest()
 
 
