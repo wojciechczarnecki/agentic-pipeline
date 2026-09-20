@@ -26,8 +26,18 @@ jobs:
       - name: Run the plugin eval suite
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        # --scaffold: init-question-cap writes the pyproject.toml its stack detection needs.
-        run: claude plugin eval plugin/ --trust-plugin --scaffold --no-publish
+        # --trust-plugin implies none of the grants below, so each one is spelled out:
+        # --scaffold lets init-question-cap write the pyproject.toml its stack detection
+        # needs, and --allow-tools grants the gated tools the cases declare — Bash (all
+        # four) so the guard case's PreToolUse:Bash hook can actually fire, Write/Edit
+        # (three) so /pipeline:init can write files. Trimming Bash would leave the guard
+        # case scoring the model's own reluctance instead of the hook, and still green.
+        run: >
+          claude plugin eval plugin/
+          --trust-plugin
+          --scaffold
+          --allow-tools Bash Write Edit
+          --no-publish
 
       - name: Upload the eval report
         if: always()
