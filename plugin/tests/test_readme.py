@@ -104,3 +104,9 @@ def test_the_guard_section_states_the_migration_scope():
     section = README.split("### Strażnik komend", 1)[1].split("\n## ", 1)[0]
     for token in ["Alembic", "migrations.command", "migrations.localHosts"]:
         assert token in section, token
+
+
+def test_the_changelog_names_the_consumer_impact():
+    manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
+    section = CHANGELOG.split(f"## {manifest['version']}", 1)[1].split("\n## ", 1)[0]
+    assert "wpływ na konsumenta" in section

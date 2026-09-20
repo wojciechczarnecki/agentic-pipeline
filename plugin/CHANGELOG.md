@@ -2,6 +2,46 @@
 
 Wersjonowanie semantyczne. Wydanie znaczone tagiem przez `claude plugin tag`.
 
+## 0.3.0
+
+Reguły trafiają tam, gdzie agent je wykonuje, i dostają program, który ich pilnuje.
+Format bloku `metrics:` jest nazwany w każdym skillu etapu i sprawdzany przez
+`workflow_metrics.py --check`, kontrakt agenta etapu żyje w plikach `agents/*.md`
+(harness wczytuje je bez odczytu narzędziem), a instrukcja instalacji pinuje wydanie.
+
+**wpływ na konsumenta:** po aktualizacji zarejestruj marketplace ponownie z nowym `ref`
+(`claude plugin marketplace remove <nazwa>` + `add '<url>#pipeline--v0.3.0'`) — bez tego pin
+w `.claude/settings.json` jest bezczynny; dopisz do `permissions.allow` we własnym
+`.claude/settings.json` wpis `"Bash(python3 *workflow_metrics.py*)"` (zmiana szablonu
+dotyczy tylko nowych projektów); spec zaczęty przed tym wydaniem może raz eskalować
+brakującymi kluczami metryk — uzupełnia je właściciel, agent ich nie zmyśla.
+
+### Dodane
+
+- `bin/workflow_metrics.py --check <katalog-speca>` — komplet kluczy należnych dla
+  osiągniętego statusu, parsowalne znaczniki czasu i zgodność
+  `findings_accepted + findings_rejected` z sumą znalezisk końcowego review; kod 1
+  i czytelny komunikat nazywający każdy brak. Domyślne wywołanie (raport) bez zmian.
+- Przypadek ewaluacyjny `init-question-cap` — limit pierwszej rundy pytań `init`.
+- Testy strukturalne `test_stage_skills.py` i `test_stage_contract.py`.
+
+### Zmienione
+
+- Każdy skill etapu nazywa w kroku zamykającym format bloku `metrics:` i własne klucze
+  oraz uruchamia `--check` przed zgłoszeniem sukcesu; `final-review` w trybie `apply` nie
+  ustawia `done`, dopóki `--check` kończy się błędem. Żaden skill nie odsyła po format
+  metryk do README.
+- „Kontrakt agenta etapu" i „Wyzwalacze eskalacji" są w całości w `agents/*.md`; agenci nie
+  każą już czytać skilla `ship` (test pilnuje zgodności co do znaku).
+- Sekcja „Konfiguracja projektu" w sześciu skillach etapów to dwa punkty; tabela kluczy
+  została tylko w README. Reguła artefaktów wizualnych to jedno zdanie rozkazujące,
+  warunkowe na zakresie UI w `verify.scopes`, z odesłaniem do konwencji projektu.
+- `templates/settings.json` wskazuje źródło `git` po HTTPS z widocznym `ref` (TODO)
+  i pozwala na uruchomienie `workflow_metrics.py`; `init` podstawia nazwę marketplace'u
+  i `ref` ze ścieżki `${CLAUDE_PLUGIN_ROOT}`, a przy innym kształcie zostawia `TODO:`.
+- README: `ref` w przykładzie deklaratywnym, zastrzeżenie o ponownej rejestracji
+  marketplace'u i jednozdaniowy zakres modułu migracji (tylko Alembic).
+
 ## 0.2.0
 
 Pierwsze wydanie w tym repozytorium — zaimportowane z prywatnego repozytorium projektu

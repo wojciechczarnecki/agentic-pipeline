@@ -400,7 +400,7 @@ Reused patterns, with paths:
       Automatic verification: `uv run pytest -q plugin/tests/test_readme.py plugin/tests/test_no_domain_references.py`;
       `grep -n "Alembic" docs/DECISIONS.md plugin/README.md` (expected: one row and one sentence)
 
-- [ ] 10. **Release 0.3.0 and project documents** — files:
+- [x] 10. **Release 0.3.0 and project documents** — files:
       `plugin/.claude-plugin/plugin.json`, `plugin/CHANGELOG.md`, `docs/ROADMAP.md`,
       `docs/BACKLOG.md`, `plugin/tests/test_readme.py`.
       Version → `0.3.0`; a `## 0.3.0` CHANGELOG section (Polish, like the rest of the file)
