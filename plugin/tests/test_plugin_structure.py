@@ -104,7 +104,12 @@ def test_hook_paths_are_plugin_relative(command):
 
 
 def test_every_eval_case_has_a_grader():
-    cases = sorted(path for path in (PLUGIN / "evals").iterdir() if path.is_dir())
+    # `results/` is where `claude plugin eval` writes its reports; it is gitignored, so
+    # CI never sees it, but a local run would otherwise fail this test as a case
+    # without a case.yaml.
+    cases = sorted(
+        path for path in (PLUGIN / "evals").iterdir() if path.is_dir() and path.name != "results"
+    )
     assert cases, "plugin/evals holds no case"
     for case in cases:
         manifest = case / "case.yaml"
