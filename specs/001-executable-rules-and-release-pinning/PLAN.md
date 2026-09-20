@@ -118,7 +118,7 @@ Reused patterns, with paths:
 
 ## Steps
 
-- [ ] 1. **`workflow_metrics.py --check <spec-dir>`** — files: `plugin/bin/workflow_metrics.py`,
+- [x] 1. **`workflow_metrics.py --check <spec-dir>`** — files: `plugin/bin/workflow_metrics.py`,
       `plugin/tests/test_workflow_metrics.py`.
       Add, above `main()`:
       `REQUIRED: dict[str, list[str]]` keyed by status and cumulative —

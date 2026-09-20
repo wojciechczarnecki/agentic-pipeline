@@ -3,6 +3,8 @@
 # the agentic workflow are judged by numbers. Without an argument the spec directory comes
 # from .claude/workflow.json (`docs.specsDir`).
 # Usage: python3 workflow_metrics.py [dir]
+#        python3 workflow_metrics.py --check <spec-dir>
+import argparse
 import re
 import sys
 from datetime import datetime
@@ -28,6 +30,22 @@ COUNTERS = [
     "findings_rejected",
 ]
 TIME_FORMAT = "%Y-%m-%dT%H:%M"
+TIMESTAMPS = ("started_at", "finished_at")
+_PLAN_DRAFT = ["started_at", "escalations", "plan_steps"]
+_PLAN_APPROVED = _PLAN_DRAFT + ["plan_review_blockers", "plan_review_majors", "plan_changes"]
+_IMPLEMENTED = _PLAN_APPROVED + ["implement_steps", "implement_iterations", "deviations"]
+REQUIRED: dict[str, list[str]] = {
+    "spec-draft": [],
+    "spec-ready": [],
+    "plan-draft": _PLAN_DRAFT,
+    "plan-approved": _PLAN_APPROVED,
+    "implemented": _IMPLEMENTED,
+    "done": ["started_at", "finished_at", *COUNTERS],
+}
+BALANCE = (
+    ("findings_accepted", "findings_rejected"),
+    ("final_review_blockers", "final_review_worth_fixing", "final_review_nits"),
+)
 
 
 def parse_metrics(text: str) -> dict[str, str]:
@@ -43,6 +61,68 @@ def parse_metrics(text: str) -> dict[str, str]:
             key, value = line.strip().split(":", 1)
             metrics[key.strip()] = value.strip().strip("\"'")
     return metrics
+
+
+def parse_status(text: str) -> str | None:
+    match = re.match(r"---\n(.*?)\n---", text, re.DOTALL)
+    if not match:
+        return None
+    for line in match.group(1).splitlines():
+        if line.startswith(" ") or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        if key.strip() == "status":
+            return value.strip().strip("\"'")
+    return None
+
+
+def check(spec_dir: Path) -> list[str]:
+    spec = spec_dir / "SPEC.md"
+    if not spec.is_file():
+        return [f"no SPEC.md in {spec_dir}"]
+    try:
+        text = spec.read_text()
+    except OSError as exc:
+        return [f"{spec} cannot be read: {exc}"]
+    if not re.match(r"---\n(.*?)\n---", text, re.DOTALL):
+        return [f"{spec} has no frontmatter"]
+    status = parse_status(text)
+    if status is None:
+        return [f"{spec} has no frontmatter"]
+    if status not in REQUIRED:
+        return [f'{spec}: unknown status "{status}"']
+
+    metrics = parse_metrics(text)
+    problems = []
+    missing = [key for key in REQUIRED[status] if not metrics.get(key)]
+    if missing:
+        problems.append(
+            f"status `{status}` requires metric keys that are missing: " + ", ".join(missing)
+        )
+    for key in TIMESTAMPS:
+        value = metrics.get(key)
+        if not value:
+            continue
+        try:
+            datetime.strptime(value, TIME_FORMAT)
+        except ValueError:
+            problems.append(f'metrics.{key} "{value}" does not match {TIME_FORMAT}')
+    for key in COUNTERS:
+        if key not in metrics:
+            continue
+        value = metrics[key]
+        if not re.fullmatch(r"\d+", value):
+            problems.append(f'metrics.{key} "{value}" is not a non-negative integer')
+    balance_keys = [key for group in BALANCE for key in group]
+    if all(re.fullmatch(r"\d+", metrics.get(key, "")) for key in balance_keys):
+        left = sum(int(metrics[key]) for key in BALANCE[0])
+        right = sum(int(metrics[key]) for key in BALANCE[1])
+        if left != right:
+            problems.append(
+                f"decided findings ({' + '.join(BALANCE[0])} = {left}) do not match the findings "
+                f"reported ({' + '.join(BALANCE[1])} = {right})"
+            )
+    return [f"{spec_dir.name}: {problem}" for problem in problems]
 
 
 def lead_time_hours(metrics: dict[str, str]) -> float | None:
@@ -104,8 +184,22 @@ def configured_specs_dir(start: Path) -> Path:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) > 1:
-        specs_dir = Path(argv[1])
+    parser = argparse.ArgumentParser(description="Report or check workflow metrics.")
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("directory", nargs="?")
+    args = parser.parse_args(argv[1:])
+
+    if args.check:
+        if not args.directory:
+            print("usage: workflow_metrics.py --check <spec-dir>", file=sys.stderr)
+            return 1
+        problems = check(Path(args.directory))
+        for problem in problems:
+            print(problem, file=sys.stderr)
+        return 1 if problems else 0
+
+    if args.directory:
+        specs_dir = Path(args.directory)
     else:
         try:
             specs_dir = configured_specs_dir(Path.cwd())
