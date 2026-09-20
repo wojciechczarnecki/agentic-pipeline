@@ -15,11 +15,9 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
 
 ## Konfiguracja projektu
 
-Zanim zaczniesz, przeczytaj `.claude/workflow.json` — to jedyne miejsce, w którym projekt
-opisuje sam siebie: ścieżki dokumentów (`docs.*`), katalog speców (`docs.specsDir`),
-komenda pełnej weryfikacji i jej zakresy (`verify.command`, `verify.scopes`) oraz język
-dokumentów (`language`). Brak pliku = wartości domyślne opisane w README pluginu.
-Dalej `<verify.command>`, `<docs.backlog>` itd. oznaczają wartości z tej konfiguracji.
+- Zanim zaczniesz, przeczytaj `.claude/workflow.json` — tam projekt opisuje sam siebie;
+  brak pliku = wartości domyślne z README pluginu, wtedy zaproponuj `/pipeline:init`.
+- `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
 ## Wejście / wyjście
 

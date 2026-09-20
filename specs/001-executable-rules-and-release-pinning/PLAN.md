@@ -205,7 +205,7 @@ Reused patterns, with paths:
       `grep -rn "skill .ship. tego pluginu" plugin/skills plugin/agents` (expected: no match, exit 1);
       `claude plugin validate --strict plugin/`
 
-- [ ] 3. **One configuration block in all six stage skills** — files:
+- [x] 3. **One configuration block in all six stage skills** — files:
       `plugin/skills/{idea,plan,plan-review,implement,final-review,ship}/SKILL.md`,
       `plugin/tests/test_stage_skills.py` (new).
       Replace the body of "## Konfiguracja projektu" in each of the six with exactly this
@@ -613,7 +613,11 @@ was updated for all of the above.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every departure from the plan with its rationale)_
+- **Step 3/5 `awk 'length > 100'` expectation.** The plan expects no output; on `origin/main`
+  the same command already prints 16 lines (every skill's frontmatter `description:`, plus
+  table rows in `plan`, `plan-review`, `final-review`, `idea`, `ship`), none of which this
+  spec touches. Read instead as "no NEW line over 100 columns", verified by running the same
+  awk against `origin/main` and comparing the sets — they are identical. No rule is lost.
 
 ## Final review
 

@@ -13,12 +13,9 @@ właściciela" z PLAN.md i bloki RESULT od subagentów — nie diff, nie kod.
 
 ## Konfiguracja projektu
 
-Zanim zaczniesz, przeczytaj `.claude/workflow.json` — to jedyne miejsce, w którym projekt
-opisuje sam siebie: katalog speców (`docs.specsDir`), ścieżki dokumentów (`docs.*`),
-komenda pełnej weryfikacji i jej zakresy, katalog worktree i język dokumentów
-(`language`). Brak pliku = wartości domyślne opisane w README pluginu; wtedy zaproponuj
-właścicielowi `/pipeline:init`. Dalej `<docs.specsDir>`, `<docs.backlog>` itd. oznaczają
-wartości z tej konfiguracji.
+- Zanim zaczniesz, przeczytaj `.claude/workflow.json` — tam projekt opisuje sam siebie;
+  brak pliku = wartości domyślne z README pluginu, wtedy zaproponuj `/pipeline:init`.
+- `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
 ## Stan
 
