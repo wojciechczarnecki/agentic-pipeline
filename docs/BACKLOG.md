@@ -17,6 +17,7 @@ whose trigger has fired.
 
 | Area | Item | Trigger | Context |
 |------|------|---------|---------|
+| Evals | `init-question-cap` never gets its `pyproject.toml`: `scaffold_script` does not run, so the case cannot measure the question cap it exists for | The next change to the eval suite, or a `claude` release that documents the scaffold schema | Diagnosed 2026-09-20 with a throwaway probe plugin and a `file_exists` grader: with `--scaffold` passed and the CLI printing "runs each case's scaffold_script", the marker file appears nowhere — not in the agent's workspace (`sealed/home/cwd` under `--keep-temp`), not in the invoking cwd. The key is silently ignored both at the top level of `case.yaml` and under `execution:` (a wrong-typed value raises no validation error in either place), and `claude plugin validate --strict` does not look at eval case files at all. The case's own step 0 makes it fail loudly rather than silently mis-measure, so it is safe to leave red. Closing this needs the real schema, not another guess — each full-case attempt costs about $0.24 |
 | Reach | Translate the plugin's skills and agents (and `plugin/README.md`) into English | The first user or contributor other than the owner | About 700 lines of steering instructions; rewriting them is a substantive change with a risk of silently changing behaviour, so it ships as its own release with evals. The plugin's universality is about stack, not language |
 
 ## P3

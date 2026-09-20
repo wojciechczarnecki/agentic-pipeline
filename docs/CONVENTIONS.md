@@ -35,7 +35,21 @@ and the way out (for the guard: which configuration or approval unlocks the acti
 - Write tests BEFORE or TOGETHER with the implementation.
 - Cover key paths and edge cases; assertions check content where content matters.
 - Full verification in one command: `bash scripts/check.sh`.
-- `claude plugin eval` runs a real model and is manual only (`plugin-eval` workflow).
+- `claude plugin eval` runs a real model, costs money and is run locally on demand — there
+  is no CI workflow for it (`docs/DECISIONS.md`, 2026-09-20). The whole suite:
+
+  ```bash
+  claude plugin eval plugin/ --scaffold --allow-tools Bash Write Edit \
+    --trust-plugin --no-publish
+  ```
+
+  `--allow-tools` is not implied by `--trust-plugin` and every case declares `Bash`; the
+  guard case tests a `PreToolUse:Bash` hook, so without the grant it would score the
+  model's own reluctance instead of the hook — and still pass. A granted shell tool also
+  needs a sandbox backend (`bubblewrap` and `socat` on Linux): without it every run is
+  refused at `turns: 0`, yet the LLM grader still votes FAIL on the empty transcript and
+  bills for it, so the suite reads as a broken plugin. Add `--case <name>` to run one
+  case and `--max-cost-usd <n>` for a ceiling.
 
 ## Commits and branches
 
