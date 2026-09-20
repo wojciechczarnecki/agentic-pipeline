@@ -1,7 +1,8 @@
 ---
-status: implemented
+status: done
 metrics:
   started_at: "2026-09-20T12:30"
+  finished_at: "2026-09-20T13:29"
   escalations: 1
   plan_steps: 11
   plan_review_blockers: 1
@@ -21,6 +22,7 @@ stage_history:
   - "plan-draft — 2026-09-20"
   - "plan-approved — 2026-09-20"
   - "implemented — 2026-09-20"
+  - "done — 2026-09-20"
 ---
 
 # SPEC 001 — Rules where the agent executes them, and install instructions that match reality
