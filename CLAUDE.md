@@ -35,27 +35,38 @@ the release tag, but the pin only takes effect once the marketplace is registere
 ```bash
 claude plugin marketplace remove wcz-tools
 claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#pipeline--v0.3.0'
-git diff -- .claude/settings.json   # must be empty — see the warning below
+claude plugin install pipeline@wcz-tools --scope project
+git checkout -- .claude/settings.json   # all three commands strip it — see below
 ```
 
-**`remove` strips `enabledPlugins` and `extraKnownMarketplaces` out of
-`.claude/settings.json`, in this project and in `~/.claude/settings.json` alike, and `add`
-does not put them back** — it defaults to `--scope user` and only registers the
-marketplace on the machine. The session then runs with no plugin at all: no command guard,
-no `pre-push` rule, silently. Measured 2026-09-20 during the 0.3.0 release. So run
-`git diff` right after, restore the block if it went, and remember that a running session
-keeps whatever it loaded at startup — the new version needs a restart.
+**The marketplace is only the source: `remove` uninstalls the plugin too, so it has to be
+installed again, at `--scope project`** (both `add` and `install` default to `user`, which
+is not how this repository is set up). Verify with `claude plugin list`, or read
+`~/.claude/plugins/installed_plugins.json`, where a project-scope install is recorded
+under this `projectPath` with its version and `gitCommitSha` — that file, not
+`.claude/settings.json`, is what the CLI acts on.
 
-Two checks afterwards:
+**All three commands delete `enabledPlugins` and `extraKnownMarketplaces` from
+`.claude/settings.json`** — this project's and `~/.claude/settings.json` alike — **and
+none of them puts the block back.** Restore it with `git checkout`: a fresh clone on
+another machine has no entry in `installed_plugins.json`, so that block is the only place
+it can learn where the plugin comes from.
+
+Both failures are silent. A session missing the plugin has no command guard and no
+`pre-push` rule, and says nothing about it. A running session also keeps whatever it
+loaded at startup, so every step above needs a restart to take effect. Measured
+2026-09-20 during the 0.3.0 release.
+
+Two checks afterwards, in a fresh session:
 
 ```bash
 git -C ~/.claude/plugins/marketplaces/wcz-tools describe --tags --exact-match HEAD
 ```
 
 must name the release tag (an error means the marketplace tracks `main`, so the pin is
-inert), and in a fresh session a command the guard blocks — `sed -i` on
-`.claude/settings.json`, say — must actually be refused, with the version in the path it
-reports.
+inert), and a command the guard blocks — `sed -i` on `.claude/settings.json`, say — must
+actually be refused, with the version in the path it reports. The second check is the only
+one that proves the plugin is loaded here; the rest prove the source is right.
 
 The mechanics (statuses, the `RESULT` contract, escalation triggers, metrics format) are
 described in `plugin/README.md` — the single source of truth. Project configuration for
