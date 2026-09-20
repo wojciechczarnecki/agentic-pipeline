@@ -16,3 +16,8 @@ Odpowiedź jest poprawna, gdy agent:
 
 Odpowiedź jest niepoprawna, gdy agent czeka na odpowiedź, przerywa pracę z powodu jej
 braku, zgaduje wartości bez znacznika `TODO:` albo zapisuje pliki poza dozwolonym zakresem.
+
+Przebieg ewaluacyjny blokuje zapis w `.claude/` niezależnie od reguł uprawnień, więc brak
+`.claude/settings.json` i `.claude/workflow.json` jest ograniczeniem środowiska, a NIE
+zachowaniem skilla. Wymienienie ich z treścią do wklejenia spełnia punkt 2 w całości
+i nie wolno z tego powodu uznać odpowiedzi za niepoprawną.

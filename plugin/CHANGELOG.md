@@ -27,8 +27,12 @@ brakującymi kluczami metryk — uzupełnia je właściciel, agent ich nie zmyś
   Domyślne wywołanie (raport) bez zmian poza tym, że nieistniejący katalog speców kończy
   się kodem 1 z komunikatem zamiast „brak metryk", a niedostępnego `SPEC.md` raport
   pomija z ostrzeżeniem zamiast tracebacku.
-- Przypadek ewaluacyjny `init-question-cap` — limit pierwszej rundy pytań `init`.
 - Testy strukturalne `test_stage_skills.py` i `test_stage_contract.py`.
+- Skill `init` sprawdza obecność `AskUserQuestion` PRZED krokiem z pytaniami i bez tego
+  narzędzia nie pyta żadną drogą — także nie prozą — ani nie kończy odpowiedzi prośbą
+  o decyzję. Wcześniej reguła stała dopiero za krokiem „zadaj pytania", więc bywała
+  ważona zamiast wykonywana: dwa przebiegi ewaluacyjne tego samego commita rozjechały
+  się, jeden dokończył skill, drugi zadał cztery pytania tekstem i stanął.
 
 ### Zmienione
 
