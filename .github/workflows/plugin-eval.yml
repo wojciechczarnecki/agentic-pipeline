@@ -15,6 +15,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The eval grants Bash, and a granted shell tool is refused outright unless the
+      # run can be confined: "sandbox required but unavailable ... refusing to start
+      # without a working sandbox". The runner image is not guaranteed to carry the
+      # backend, and the failure is silent in the worst way — every run reports turns: 0
+      # and the LLM grader still votes FAIL on the empty transcript, so the suite scores
+      # zero as though the plugin were broken.
+      - name: Install the sandbox backend
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap socat
+
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
