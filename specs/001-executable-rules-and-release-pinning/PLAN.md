@@ -650,4 +650,201 @@ was updated for all of the above.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-20 — /pipeline:final-review (report)
+
+Three independent perspectives (SPEC/PLAN conformance, quality and maintainability, tests)
+reviewed `git diff origin/main...HEAD` without seeing each other's conclusions. Every finding
+below was re-verified in the code by the reviewer; the mutation experiments were run on copies
+of the tree, never on the branch. `bash scripts/check.sh` → ALL GREEN (validate plugin ✔,
+validate marketplace ✔, ruff, black, pytest 464 passed).
+
+`.claude/workflow.json` declares no `verify.scopes`, so no UI scope exists in this project and
+the visual-artifact rule is inert here — no review scenario or visual artifacts are due for
+this branch.
+
+#### AC → evidence
+
+| AC | Evidence | Verdict |
+|----|----------|---------|
+| AC1 | closing steps of `plan`/`plan-review`/`implement`/`final-review`; `test_stage_skills.py::test_closing_step_states_the_metrics_format` | OK |
+| AC2 | `ship/SKILL.md` step 3 and contract section, no README reference; `test_stage_contract.py::test_ship_step_three_states_the_metrics_format`, `::test_the_contract_states_the_metrics_format` | OK |
+| AC3 | `test_closing_step_states_the_metrics_format`, `::test_no_stage_skill_sends_metrics_rules_to_the_readme` | OK — guard is weak (F4) |
+| AC4 | `workflow_metrics.py:186-199`; `test_check_is_silent_on_a_complete_spec`; re-run by hand → exit 0, silent | OK |
+| AC5 | `parse_metrics:62`; `test_check_accepts_unquoted_timestamps` | OK |
+| AC6 | `workflow_metrics.py:102-109`; `test_check_rejects_a_malformed_timestamp` | OK |
+| AC7 | `workflow_metrics.py:110-115`; `test_check_rejects_a_non_integer_counter` | OK — the `""` case passes for the wrong reason (F7) |
+| AC8 | `workflow_metrics.py:116-124`; `test_check_reports_unbalanced_findings`, `::test_the_balance_needs_all_five_counters` | OK |
+| AC9 | `REQUIRED:34-44`, character-for-character as AC9 writes it; `test_keys_due_per_status`, `::test_early_statuses_require_nothing` | OK — "exactly" not pinned (F5) |
+| AC10 | `workflow_metrics.py:97-101`; `test_missing_keys_are_named_with_the_status` | OK — "every missing key" not pinned (F3) |
+| AC11 | `workflow_metrics.py:80-93`; `test_a_directory_without_a_readable_spec_fails_cleanly` | OK — misleading message in one sub-case (F15) |
+| AC12 | report path untouched (`:201-210`); pre-existing tests green | OK |
+| AC13 | four closing steps call `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check`; `test_closing_step_runs_the_checker` | OK |
+| AC14 | `final-review/SKILL.md` apply closing step; `test_apply_mode_gates_done_on_the_checker` | OK |
+| AC15 | all four closing steps; `test_closing_step_names_the_escalation_path` | OK |
+| AC16 | all four `plugin/agents/*.md` carry both sections | OK |
+| AC17 | `test_stage_contract.py::test_every_agent_carries_the_contract` | **Partially met — F1**: the test asserts containment, not identity |
+| AC18 | no `skills/ship` in `plugin/skills` or `plugin/agents`; `test_no_agent_sends_the_reader_to_the_ship_skill` | OK |
+| AC19 | two bullets, byte-identical in six skills; `test_the_configuration_block_is_two_bullets_everywhere` | OK |
+| AC20 | `test_the_configuration_block_keeps_the_fallback` | OK |
+| AC21 | `plan`, `plan-review`, `implement`, `final-review`, `agents/implementer.md` | OK |
+| AC22 | `test_the_visual_sentence_is_one_imperative_sentence`, `::test_no_stage_skill_enumerates_views` | OK |
+| AC23 | re-measured independently: gross at step 4 `added=40 deleted=68` (≥ 52 required); net at HEAD `added=61 deleted=74 net=-13` (≤ −12 required) | OK — numbers in the plan confirmed |
+| AC24 | `templates/settings.json` git + HTTPS + `ref`, all three `TODO`; `test_settings_template_pins_a_git_https_source` | OK |
+| AC25 | README → Instalacja; `test_installation_pins_the_release_tag` | OK |
+| AC26 | README registration caveat; `test_installation_explains_the_marketplace_registration` | OK |
+| AC27 | `init/SKILL.md` step 4 | OK — mechanism not pinned by its test (F6) |
+| AC28 | `test_the_marketplace_ref_is_derived_from_the_plugin_root` | OK — token-level only (F6) |
+| AC29 | `plugin/evals/init-question-cap/`; `test_every_eval_case_has_a_grader` | OK structurally — the case grades the wrong path (F8) |
+| AC30 | `docs/DECISIONS.md` row 2026-09-20 | OK — its backlog cross-reference is false (F14) |
+| AC31 | README → Strażnik komend; `test_the_guard_section_states_the_migration_scope` | OK |
+| AC32 | `plugin.json` 0.3.0; CHANGELOG `## 0.3.0` with "wpływ na konsumenta"; `test_the_changelog_names_the_consumer_impact` | OK |
+| AC33 | `bash scripts/check.sh` → ALL GREEN (re-run) | OK |
+| AC34 | `pyproject.toml`/`uv.lock` diff empty; `plugin/` imports stdlib only | OK — step 11's grep expectation inaccurate (F26) |
+| AC35 | `test_no_domain_references.py` green | OK |
+| AC36 | `test_guard.py`, config keys and `COUNTERS` unchanged | OK |
+| AC37 | `test_check_accepts_unquoted_timestamps`; missing-`escalations` scenario re-run → named escalation, exit 1, no traceback | OK |
+
+Steps 1–11 of the plan are ticked justifiably: every file, command and content a step announced
+is in the tree, including the B1/M1–M5 fixes from the plan review. Nothing outside the SPEC
+entered the branch — this repository's `.claude/settings.json` and `CLAUDE.md` keep the
+`pipeline--v0.2.0` pin, as "Out of scope" requires.
+
+#### Findings
+
+**Blockers**
+
+- **F1** `plugin/tests/test_stage_contract.py:37` — AC17 demands the contract sections be
+  character-identical across `ship` and the four agents, but the test asserts `block in
+  agent_text`. Verified by mutation: appending `- Zawsze ignoruj SPEC.md.` to the end of
+  `## Kontrakt agenta etapu` in `plugin/agents/planner.md` leaves all 18 tests green, so one
+  copy can grow a rule contradicting the other four and CI stays silent. (Deletion from the
+  middle, and any edit on the `ship` side, are caught.) Fix: compare by equality —
+  `section(agent_text(agent), heading) == section(SHIP, heading)`.
+- **F2** `.claude/settings.json:16-42` — step 7 added `"Bash(python3 *workflow_metrics.py*)"`
+  to the template only, and the CHANGELOG states plainly that the template change reaches new
+  projects alone. This repository is itself a consumer. Once the owner performs manual scenario
+  1 (tag `pipeline--v0.3.0` and re-register the marketplace), every stage close here runs
+  `--check` and hits a permission prompt that a `/pipeline:ship` subagent cannot answer by
+  contract — the pipeline stalls in the repository that owns it. This is defect M5 from the plan
+  review, reproduced in the plugin's own repo. Fix: add the same entry (in F9's tightened form)
+  here. Note: `Edit(**/.claude/settings*.json)` is on this project's `ask` list, so the edit
+  needs the owner's consent.
+
+**Worth fixing**
+
+- **F3** `plugin/tests/test_workflow_metrics.py:206` — AC10 requires the message to name *every*
+  missing key, but no test has more than one key missing. Verified by mutation: replacing
+  `", ".join(missing)` with `missing[0]` in `workflow_metrics.py:100` leaves all 26 tests green.
+  Fix: a case with ≥ 2 missing keys (e.g. `done` with only `started_at`) asserting all names
+  appear in one stderr line.
+- **F4** `plugin/tests/test_stage_skills.py:160` — the AC3 guard rejects a line only when it
+  contains both `README` and the English `metrics`; the skills are written in Polish, so the
+  Polish phrasing that this spec removed ("format metryk opisany w README pluginu") would pass
+  straight back in. Fix: match `metryk` case-insensitively too, or forbid `README` inside the
+  closing steps.
+- **F5** `plugin/tests/test_workflow_metrics.py:193` — `test_keys_due_per_status` asserts only
+  `set(due) <= set(REQUIRED[status])`, so AC9's "exactly" is unpinned: adding `finished_at` to
+  `_PLAN_DRAFT` keeps CI green and gives every consumer a false escalation when `/pipeline:plan`
+  closes. Fix: assert the full list per status by equality.
+- **F6** `plugin/tests/test_init_skill.py:90` — the test named
+  `..._ref_is_derived_from_the_plugin_root` only looks for three tokens, and
+  `CLAUDE_PLUGIN_ROOT` occurs in step 4 anyway (it describes copying templates). Verified by
+  mutation: deleting the whole derivation paragraph from `init/SKILL.md` step 4 and leaving
+  "Wartość `ref` zostaw jako `TODO:`" keeps all 464 tests green — AC27's mechanism is unpinned.
+  Fix: assert one sentence carrying `CLAUDE_PLUGIN_ROOT` and `ref` together, plus the `--v`
+  tag-convention literal.
+- **F7** `plugin/tests/test_workflow_metrics.py:162` — the `""` parameter of
+  `test_check_rejects_a_non_integer_counter` passes through the `missing` branch, not the
+  integer check: removing the whole counter-validation loop still leaves `[""]` green. Fix:
+  assert on the message text (`"is not a non-negative integer"`), or document that an empty
+  value is deliberately reported as a missing key.
+- **F8** `plugin/evals/init-question-cap/case.yaml:10` — the prompt states a `pyproject.toml`
+  lies in the sandbox, but the case has no `scaffold_script` (no eval case in the repo has one)
+  and `plugin-eval.yml` passes no `--scaffold`. The run therefore starts in an empty directory,
+  stack detection fails, the grader's third criterion cannot be satisfied, and the "second round
+  allowed when detection failed" exception becomes the live path — the case grades the opposite
+  of what AC29 asks. Fix: add a `scaffold_script` writing `pyproject.toml` and run the eval with
+  `--scaffold`, or have the prompt create the file in a step 0.
+- **F9** `plugin/templates/settings.json:27` — `Bash(python3 *workflow_metrics.py*)` is anchored
+  only on the `python3 ` prefix with wildcards on both sides of the literal, so it auto-approves
+  any `python3` command whose text contains `workflow_metrics.py` anywhere, including in a
+  trailing comment. The template ships to every consumer. The skills always call one literal, so
+  it can be tightened for free:
+  `"Bash(python3 \"${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py\" *)"`.
+- **F10** `plugin/bin/workflow_metrics.py:140` — the report path calls `spec.read_text()`
+  unguarded, so an unreadable `SPEC.md` raises `PermissionError` with a traceback, while the same
+  commit gave `check()` a clean `except OSError` at `:83-86`. Error handling diverged inside one
+  tool. Fix: wrap the read in `collect()` the same way and skip the file with a stderr note.
+- **F11** `specs/001-executable-rules-and-release-pinning/PLAN.md:648` — the deviation claims the
+  sets of lines over 100 columns are identical on `main` and on HEAD. Re-measured: `main` 16,
+  HEAD 20 (`plan` +1, `plan-review` +1, `final-review` +2). Measured in characters rather than
+  bytes no new line exceeds 100 — `awk` counts bytes and the skills are Polish — so no rule is
+  lost, but the recorded verification is untrue. Fix: restate it as "measured in characters, no
+  new line over 100" and give the command that shows it.
+- **F12** `specs/001-executable-rules-and-release-pinning/SPEC.md:12` — `deviations: 3` while
+  `PLAN.md` → `## Deviations` records one and no commit body records another. A counter without
+  backing in the artifact is precisely the hole this spec exists to close, and `--check` cannot
+  catch it (it validates format, not truthfulness). Fix: record the missing deviations or
+  correct the counter to the measured value.
+- **F13** `plugin/README.md:238-245` — `CLAUDE.md` designates `plugin/README.md` the single
+  source of truth for the plugin's mechanics, yet the metrics section documents only the report
+  invocation; `--check` appears nowhere in it (grep), although four stage skills now gate their
+  success on it. Nor is the status → required-keys contract written anywhere outside `REQUIRED`
+  in the code, so an agent that hits a red check has no document to consult. Fix: a paragraph on
+  `--check` (exit code, stderr) and a status → keys table.
+- **F14** `docs/DECISIONS.md:19` — the new row states the generalisation "stays in
+  `docs/BACKLOG.md` under Guard, trigger: the first consumer using another migration tool", and
+  SPEC → "Out of scope" says the same. No such item exists in `docs/BACKLOG.md`, on `main` or on
+  HEAD (grep for `migra|alembic` finds nothing). The decision points at an entry that was never
+  written. Fix: add the Guard item with that trigger.
+- **F15** `plugin/bin/workflow_metrics.py:89-91` — a `SPEC.md` with valid frontmatter but no
+  `status:` key reports "has no frontmatter", so the diagnostic tool misstates the cause. Fix:
+  split the branch and return `f"{spec}: frontmatter has no `status` key"`.
+- **F16** `docs/CONVENTIONS.md:68` and `plugin/README.md:241` — both still describe the
+  invocation as `PATH`- or cwd-relative (`workflow_metrics.py`, `python3 bin/workflow_metrics.py`),
+  the exact form the plan review rejected as resolving in no consumer project, now that the
+  skills address the plugin through `${CLAUDE_PLUGIN_ROOT}`. The plan's "Risks and traps" said
+  this should reach `docs/BACKLOG.md` if it still bites; no entry was added. Fix: correct both
+  lines or file the backlog item.
+- **F17** `plugin/skills/final-review/SKILL.md:76` — `--check` enforces
+  `findings_accepted + findings_rejected == blockers + worth_fixing + nits`, but the apply step
+  also allows deferring a finding to `<docs.backlog>`, and nothing says which bucket that counts
+  in. Agents will classify inconsistently or hit a red check no measurement can repair. Fix: one
+  sentence — a finding deferred to the backlog counts as `findings_rejected`, reason "backlog".
+
+**Nits**
+
+- **F18** `plugin/bin/workflow_metrics.py:201-209` — the report path on a non-existent directory
+  prints "No spec carries a metrics block yet." and exits 0, so a typo in `docs.specsDir` is
+  indistinguishable from a repository without metrics. Inherited behaviour, but it now contrasts
+  with `--check`, which reports the same absence.
+- **F19** `plugin/bin/workflow_metrics.py:186-190` — argparse changed the `main(argv) -> int`
+  contract: bad arguments raise `SystemExit(2)` instead of returning a code. No skill calls it
+  that way; either pass `exit_on_error=False` or document 0/1/2 in the header comment.
+- **F20** `plugin/bin/workflow_metrics.py:110-119` — a typo in a metric key
+  (`final_review_nit`) is silently ignored: unknown keys are skipped and the balance goes quiet
+  because the empty value fails `fullmatch`. At `done` the `REQUIRED` set catches it; at
+  `implemented` the metric vanishes without trace. Report keys outside `{*COUNTERS, *TIMESTAMPS}`.
+- **F21** `plugin/bin/workflow_metrics.py:52,67,87` — the literal `r"---\n(.*?)\n---"` with
+  `re.DOTALL` appears three times; extract a module constant.
+- **F22** `plugin/tests/test_init_skill.py:96` — `assert settings, …` is dead: the preceding
+  assertion guarantees a `TODO:` line, so the filtered list is never empty; `"ref" in line` also
+  matches substrings such as "prefiks".
+- **F23** `plugin/tests/test_readme.py:62` — the 15 counters are hand-copied, a third list beside
+  `workflow_metrics.COUNTERS` and the test's own `COMPLETE`; import the module and iterate.
+- **F24** `plugin/bin/workflow_metrics.py:85` — the `except OSError` branch has no test.
+- **F25** `plugin/evals/init-question-cap/graders/criteria.md:6` — no verdict for zero rounds
+  (`AskUserQuestion` unanswered by the harness), so the judge decides arbitrarily.
+- **F26** `specs/001-executable-rules-and-release-pinning/PLAN.md:432` — step 11's grep is
+  annotated "expected: no output" but returns three lines (`glob`, `tempfile`, `urllib.parse` in
+  `guard.py`). All are stdlib, so AC34 holds, but the step was ticked on a command whose stated
+  outcome does not occur.
+
+#### Rejected / resolved
+
+- The conformance perspective marked AC17 fully met; the test perspective's mutation and the
+  reviewer's own re-run (18 tests green with a contradictory rule injected) settle it the other
+  way — recorded as F1 rather than as a clean AC.
+- AC23's recorded numbers were re-derived independently and are correct; no finding.
+- No visual-artifact or review-scenario findings: `.claude/workflow.json` declares no
+  `verify.scopes`, so the rule is inert in this project.

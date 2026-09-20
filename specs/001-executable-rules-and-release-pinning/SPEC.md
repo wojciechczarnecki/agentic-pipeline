@@ -10,6 +10,9 @@ metrics:
   implement_steps: 11
   implement_iterations: 3
   deviations: 3
+  final_review_blockers: 2
+  final_review_worth_fixing: 15
+  final_review_nits: 9
 stage_history:
   - "spec-draft — 2026-09-20"
   - "spec-ready — 2026-09-20"
