@@ -925,3 +925,27 @@ handling of an unreadable spec and a missing directory) is recorded in the exist
 Backlog: one item added (Guard / generalise the migration module, P3, F14). No item's
 trigger has fired that is not already handled: the two delivered items were removed during
 implementation, and the remaining `Init` items keep their triggers.
+
+## Errata — 2026-09-20, after the merge
+
+Facts established after this spec was closed. The sections above are left as they were
+written, so the record of the reasoning stays intact; where they conflict with this
+section, this section is current.
+
+- **The `plugin-eval` workflow no longer exists.** It is deleted (`docs/DECISIONS.md`,
+  2026-09-20): the API console bills separately from the Claude Code subscription and the
+  owner will not add metered credits, so the workflow could never run. Wherever the manual
+  scenarios above say to run it — including "Manual", point 2 — the suite is run locally
+  instead, per `docs/CONVENTIONS.md`.
+- **AC29 is not met, and F8 was not actually closed.** `plugin/evals/init-question-cap/`
+  never received its `pyproject.toml`, because `scaffold_script` was written at the top
+  level of `case.yaml`, where it is silently ignored: it belongs under `context:`, needs
+  `schema_version: "1.1"`, and takes a path to a script rather than inline bash. Fixed
+  afterwards, which then exposed the real blocker.
+- **The case was deleted.** `AskUserQuestion` does not exist inside an eval run, so no case
+  can measure a question cap. The skill itself behaved correctly — it recognised the
+  non-interactive path and reported "0 rounds, 0 questions" — but the grader has to score
+  that as a failure. `init-without-questions` already covers that path.
+- **The suite's limits were too low for every `init` case.** The default 300 s timeout and
+  `max_turns: 30` cut `/pipeline:init` off mid-skill; a complete run takes 42 turns. Raised
+  to 900 s and 80 turns on the remaining `init` cases.

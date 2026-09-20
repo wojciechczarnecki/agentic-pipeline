@@ -27,7 +27,6 @@ brakującymi kluczami metryk — uzupełnia je właściciel, agent ich nie zmyś
   Domyślne wywołanie (raport) bez zmian poza tym, że nieistniejący katalog speców kończy
   się kodem 1 z komunikatem zamiast „brak metryk", a niedostępnego `SPEC.md` raport
   pomija z ostrzeżeniem zamiast tracebacku.
-- Przypadek ewaluacyjny `init-question-cap` — limit pierwszej rundy pytań `init`.
 - Testy strukturalne `test_stage_skills.py` i `test_stage_contract.py`.
 
 ### Zmienione
