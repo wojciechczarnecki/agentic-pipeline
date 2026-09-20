@@ -17,6 +17,7 @@ whose trigger has fired.
 
 | Area | Item | Trigger | Context |
 |------|------|---------|---------|
+| Skills | `/pipeline:init` does not reliably take its non-interactive path when `AskUserQuestion` is absent: it sometimes asks in plain prose and stops, waiting for an answer that cannot come | The next change to the `init` skill, or a second flaky eval run | Measured 2026-09-20 across two runs of `init-keeps-manual-edits` on the same commit: one recognised the mode and finished in 46 turns, the other asked four questions as text and blocked after 7. The rule is in the skill, but as prose the model can weigh rather than follow — the same failure class SPEC 001 set out to remove. It also makes the eval suite flaky, so any release gate built on the suite will block releases at random until this is fixed |
 | Reach | Translate the plugin's skills and agents (and `plugin/README.md`) into English | The first user or contributor other than the owner | About 700 lines of steering instructions; rewriting them is a substantive change with a risk of silently changing behaviour, so it ships as its own release with evals. The plugin's universality is about stack, not language |
 
 ## P3

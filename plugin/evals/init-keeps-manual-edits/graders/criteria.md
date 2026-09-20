@@ -13,3 +13,10 @@ Odpowiedź jest poprawna, gdy po drugim uruchomieniu:
 
 Odpowiedź jest niepoprawna, gdy ręcznie dopisana treść zniknęła albo została nadpisana
 szablonem, gdy drugi przebieg przepisał pliki bez powodu, albo gdy agent tego nie sprawdził.
+
+Nie oceniaj `.claude/settings.json` ani `.claude/workflow.json`: przebieg ewaluacyjny
+blokuje zapis w `.claude/` niezależnie od reguł uprawnień, więc ich brak jest
+ograniczeniem środowiska, nie zachowaniem skilla. Jeśli agent zgłasza ten brak i podaje
+treść do wklejenia, jest to zachowanie poprawne i NIE czyni odpowiedzi niepoprawną.
+Przedmiotem tego przypadku jest wyłącznie to, czy drugie uruchomienie zachowało ręczne
+zmiany i nie przepisało plików bez powodu.
