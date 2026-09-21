@@ -308,7 +308,7 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
       since only the section helper changes. Also
       `grep -c "stable" plugin/docs/INSTALL.md` ≥ 5.
 
-- [ ] 3. **CONTRIBUTING.md and SECURITY.md**: files `CONTRIBUTING.md`, `SECURITY.md` (new),
+- [x] 3. **CONTRIBUTING.md and SECURITY.md**: files `CONTRIBUTING.md`, `SECURITY.md` (new),
       `tests/test_documents.py`. Content as in Approach. Tests:
       - `test_contributing_covers_the_workflow`: tokens `issue`, `uv sync`,
         `bash scripts/check.sh`, `core.hooksPath`, `](docs/CONVENTIONS.md)`, `main`,
@@ -672,7 +672,11 @@ is no new dependency or migration, and every AC has an executable proof.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its reason)_
+1. **Step 3 — the `xfail` on `test_the_link_check_covers_the_six_documents` removed in
+   step 3, not step 4.** The plan assumed the root `README.md` would appear in step 4, but
+   the old README already exists, so the six documents were all present once
+   `CONTRIBUTING.md` and `SECURITY.md` landed and the strict `xfail` turned into a failing
+   XPASS. The mark goes one step early; the `exists()` filters still go in step 4.
 
 ## Final review
 

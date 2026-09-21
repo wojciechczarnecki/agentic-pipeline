@@ -119,7 +119,6 @@ def test_plugin_documents_link_inside_the_plugin(doc):
     assert not outside, (doc, outside)
 
 
-@pytest.mark.xfail(strict=True, reason="the root documents arrive in steps 2-4")
 def test_the_link_check_covers_the_six_documents():
     assert existing(LINKED) == LINKED
 
@@ -155,3 +154,37 @@ POLISH = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
 def test_no_polish_outside_code(doc):
     found = sorted(POLISH & set(strip_code((ROOT / doc).read_text())))
     assert not found, (doc, found)
+
+
+def read(doc: str) -> str:
+    return (ROOT / doc).read_text()
+
+
+def test_contributing_covers_the_workflow():
+    text = read("CONTRIBUTING.md")
+    for token in [
+        "issue",
+        "uv sync",
+        "bash scripts/check.sh",
+        "core.hooksPath",
+        "](docs/CONVENTIONS.md)",
+        "main",
+        "squash",
+        "`plugin`",
+        "Polish",
+        "Stage 8",
+    ]:
+        assert token in text, token
+
+
+def test_security_policy():
+    text = read("SECURITY.md")
+    for token in [
+        "stable",
+        "security/advisories/new",
+        "best effort",
+        "guard bypass",
+        "](plugin/docs/GUARD.md#known-limits)",
+    ]:
+        assert token in text, token
+    assert "issues/new" not in text
