@@ -619,6 +619,11 @@ gh repo edit wojciechczarnecki/agentic-pipeline --description "A Claude Code plu
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-21 · final review (gate 2) · Which findings to accept? · **Accept all: F1–F10.**
+  Rejected: none. F1 accepted = approval of steps 8 (GitHub Releases) and 9 (About
+  description); the owner ran the `gh repo edit --description` command from F1 before
+  answering (the description already carries the `Spec-Driven Workflow — ` prefix from F2).
+
 ## Review log
 
 ### 2026-09-21 — /pipeline:plan-review
