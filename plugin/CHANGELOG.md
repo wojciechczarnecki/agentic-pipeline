@@ -1,276 +1,281 @@
 # CHANGELOG
 
-Wersjonowanie semantyczne. Wydanie znaczone tagiem przez `claude plugin tag`.
+Semantic versioning. A release is tagged with `claude plugin tag`.
 
 ## 0.3.4
 
-Strażnik domyka znane przecieki przy pushu i aliasach gita; dokumentacja strażnika
-(`docs/GUARD.md`) i README pluginu po angielsku.
+The guard closes the known leaks around pushes and git aliases; the guard documentation
+(`docs/GUARD.md`) and the plugin README are in English, and so is this changelog.
 
-**wpływ na konsumenta:** brak kroków migracji. Nowe odmowy strażnika: push, którego
-refspec zbudowano ze zmiennych albo z podstawienia komendy, a strażnik nie umie go
-rozwinąć — np. `git push origin HEAD:$(git branch --show-current)`,
-`git push $(git remote) <gałąź>`, `git push origin $NIEZNANA`; prefiksowe przypisanie
-dla refspecu tego samego pusha (`B=feat/x git push origin $B`); `git -c alias.*`;
-zapis aliasu w konfiguracji gita, także `--unset` i `--rename-section … alias`;
-usunięcie albo przemianowanie sekcji `core`; `git push --all`/`--branches`, refspec ze
-wzorcem albo rozwinięciem nawiasów (`*`, `?`, `{a,b}`); zapis albo `-c` konfiguracji
-pusha (`remote.<nazwa>.push`, `remote.<nazwa>.mirror`, `push.default`);
-`git config --edit`; klucz konfiguracji gita zbudowany ze zmiennej; push ze zmienną
-przypisaną w bloku `if`/`while`/`for`/`case`, przez `read`/`declare`/`printf -v`/`unset`
-albo przez `B+=`. Branch trzeba w takim pushu wypisać wprost.
+**consumer impact:** no migration steps. New guard refusals: a push whose refspec is built
+from variables or command substitution that the guard cannot expand — for example
+`git push origin HEAD:$(git branch --show-current)`, `git push $(git remote) <branch>`,
+`git push origin $UNKNOWN`; a prefix assignment used for the same push's refspec
+(`B=feat/x git push origin $B`); `git -c alias.*`; writing an alias to git configuration,
+including `--unset` and `--rename-section … alias`; removing or renaming the `core`
+section; `git push --all`/`--branches`, a refspec with a pattern or brace expansion (`*`,
+`?`, `{a,b}`); writing or `-c`-setting push configuration (`remote.<name>.push`,
+`remote.<name>.mirror`, `push.default`); `git config --edit`; a git configuration key built
+from a variable; a push with a variable assigned in an `if`/`while`/`for`/`case` block,
+through `read`/`declare`/`printf -v`/`unset` or through `B+=`. Spell the branch out in such
+a push.
 
-### Naprawione
+### Fixed
 
-- Refspec pusha zbudowany ze zmiennych jest rozwijany tak jak ścieżka dla `rm`: zmienne
-  z sesji, wcześniejszych przypisań i `export`; wynik wskazujący `main`/`master` jest
-  blokowany z uzasadnieniem o pushu na `main` (także `${B}`, `HEAD:$B`, `"$B"`,
-  `refs/heads/$B`). Wcześniej `B=main; git push origin $B` przechodził.
-- Refspec, którego nie da się rozwinąć (nieznana zmienna, `$(...)`, backticki,
-  przypisanie warunkowe za `||`/`&&`), jest blokowany, a uzasadnienie podaje refspec
-  i prosi o wpisanie gałęzi wprost. Podstawienie komendy w miejscu remote'a też.
-- Semantyka powłoki: prefiksowe przypisanie nie rozwija argumentów tej samej komendy,
-  pusta wartość znika (`E=; git push origin $E` pushuje bieżącą gałąź — na `main`
-  blokowane), a wartość ze spacjami dzieli się na słowa (`B="feat/x main"`).
-- Zmienna w miejscu remote'a z dosłownymi refspecami przechodzi
-  (`git push $REMOTE feat/x`); `git push $REMOTE main` dalej jest blokowany.
-- Odczyt `core.hooksPath` bez wartości (`git config core.hooksPath`, z `--global`,
-  `--local`, `--show-origin`, `--file`) przechodzi; zapis, `--unset`, `set`/`unset`
-  i `-c core.hooksPath=…` dalej są blokowane. Jeden parser odróżnia odczyt od zapisu
-  w formie klasycznej i w podkomendach gita 2.46.
-- Alias gita jest blokowany: `git -c alias.*=…` (klucz bez rozróżniania wielkości liter)
-  i zapis aliasu w konfiguracji w dowolnym zakresie; odczyt aliasu przechodzi. Inne
-  klucze `-c` (np. `user.name`) bez zmian.
-- Po końcowym review: strażnik śledzi zmienną tylko tam, gdzie jej wartość jest pewna.
-  Przypisanie w podpowłoce `( … )`, w potoku i w tle kończy się razem z nimi (tak samo
-  `cd`); `bash -c` widzi tylko zmienne eksportowane (`export -n` odbiera eksport);
-  przypisanie warunkowe (także warunkowy `export`), w bloku `if`/`while`/`for`/`case`,
-  przez wbudowane polecenia (`read`, `declare`, `local`, `unset`, `printf -v`, `mapfile`
-  …), dopisanie `B+=`, element i tablica dają wartość nieznaną; po zmianie `IFS` każde
-  rozwinięcie w refspecu jest nieznane. Wcześniej m.in. `(B=feat/x); git push origin $B`
-  i `B=feat/x; bash -c 'git push origin $B'` przechodziły na `main`.
-- Komenda za słowem kluczowym `if`, `while`, `until`, `elif` i `!` jest sprawdzana —
-  wcześniej `if git push origin main; then :; fi` przechodził.
-- Opcje pusha są czytane po rozwinięciu zmiennych: `B=-f; git push origin $B`,
-  `--delete`, `--mirror` i `--no-verify` ze zmiennej są blokowane. Wartość opcji `-o`/
-  `--push-option`/`--repo`/`--receive-pack`/`--exec` nie jest brana za remote (wcześniej
-  `git push -o ci.skip origin` na `main` przechodził); z `--repo` każdy argument jest
-  refspecem.
-- Push, który sięga `main` bez wypisania go, jest blokowany: `--all`, `--branches`,
-  wzorce i nawiasy w refspecu, skrót `heads/main` (git dopełnia go do
-  `refs/heads/main`), konfiguracja pusha przez `-c` i zapis `remote.*.push`,
-  `remote.*.mirror`, `push.default` oraz operacje na sekcjach `push` i `remote.*`.
-- `git config --edit`/`-e`/`edit` jest blokowany (edytor może zmienić `core.hooksPath`
-  albo alias), tak samo klucz `git config` i `git -c` zbudowany ze zmiennej, której
-  strażnik nie zna; znana zmienna jest rozwijana przed sprawdzeniem klucza.
+- A push refspec built from variables is expanded the same way as an `rm` path: variables
+  from the session, earlier assignments and `export`; a result that names `main`/`master`
+  is refused with the push-to-`main` reason (also `${B}`, `HEAD:$B`, `"$B"`,
+  `refs/heads/$B`). Before, `B=main; git push origin $B` passed.
+- A refspec that cannot be expanded (an unknown variable, `$(...)`, backticks, a
+  conditional assignment after `||`/`&&`) is refused, and the reason names the refspec and
+  asks for the branch to be spelled out. So is command substitution in place of the remote.
+- Shell semantics: a prefix assignment does not expand the arguments of its own command,
+  an empty value disappears (`E=; git push origin $E` pushes the current branch — refused
+  on `main`), and a value with spaces splits into words (`B="feat/x main"`).
+- A variable in place of the remote with literal refspecs passes
+  (`git push $REMOTE feat/x`); `git push $REMOTE main` is still refused.
+- Reading `core.hooksPath` without a value (`git config core.hooksPath`, with `--global`,
+  `--local`, `--show-origin`, `--file`) passes; a write, `--unset`, `set`/`unset` and
+  `-c core.hooksPath=…` are still refused. One parser tells a read from a write, in the
+  classic form and in the git 2.46 subcommands.
+- A git alias is refused: `git -c alias.*=…` (key matched case-insensitively) and writing
+  an alias to configuration in any scope; reading an alias passes. Other `-c` keys (such
+  as `user.name`) are unchanged.
+- After the final review: the guard follows a variable only where its value is certain. An
+  assignment in a subshell `( … )`, in a pipeline or in the background ends with them (so
+  does `cd`); `bash -c` sees only exported variables (`export -n` removes the export); a
+  conditional assignment (including a conditional `export`), one in an
+  `if`/`while`/`for`/`case` block, one made by a builtin (`read`, `declare`, `local`,
+  `unset`, `printf -v`, `mapfile` …), an append `B+=`, an element and an array give an
+  unknown value; after `IFS` changes, every expansion in a refspec is unknown. Before,
+  among others, `(B=feat/x); git push origin $B` and
+  `B=feat/x; bash -c 'git push origin $B'` passed on `main`.
+- A command after the keywords `if`, `while`, `until`, `elif` and `!` is checked — before,
+  `if git push origin main; then :; fi` passed.
+- Push options are read after variables are expanded: `B=-f; git push origin $B`, and
+  `--delete`, `--mirror` and `--no-verify` from a variable, are refused. The value of
+  `-o`/`--push-option`/`--repo`/`--receive-pack`/`--exec` is not taken for the remote
+  (before, `git push -o ci.skip origin` passed on `main`); with `--repo`, every argument is
+  a refspec.
+- A push that reaches `main` without naming it is refused: `--all`, `--branches`,
+  patterns and braces in a refspec, the short form `heads/main` (git completes it to
+  `refs/heads/main`), push configuration through `-c` and writes of `remote.*.push`,
+  `remote.*.mirror`, `push.default`, and section operations on `push` and `remote.*`.
+- `git config --edit`/`-e`/`edit` is refused (an editor can change `core.hooksPath` or an
+  alias), and so is a `git config` or `git -c` key built from a variable the guard does not
+  know; a known variable is expanded before the key is checked.
 
-### Dodane
+### Added
 
-- `docs/GUARD.md` (po angielsku): model zagrożeń, trzy warstwy (strażnik → `pre-push` →
-  rulesety GitHuba), tabela komend, które omijają regułę `deny` opartą na napisie, a
-  strażnik je zatrzymuje — zmierzona `claude -p --settings` i sprawdzana testem przez
-  strażnika — fail-open i znane ograniczenia.
+- `docs/GUARD.md`: the threat model, the three layers (guard → `pre-push` → GitHub
+  rulesets), a table of commands that get past a string-based `deny` rule and that the
+  guard stops — measured with `claude -p --settings` and checked against the guard by a
+  test — fail-open behaviour and known limits.
 
-### Zmienione
+### Changed
 
-- `README.md` pluginu po angielsku; sekcja strażnika to streszczenie z linkiem do
-  `docs/GUARD.md`. Skille i agenci zostają po polsku do etapu 8.
+- The plugin `README.md` is in English; its guard section is a summary with a link to
+  `docs/GUARD.md`. Skills and agents stay in Polish until Stage 8.
+- This changelog is in English, earlier releases included.
 
 ## 0.3.3
 
-Poprawki po pierwszym pełnym przebiegu 0.3.2 u konsumenta.
+Fixes after the first full run of 0.3.2 in a consumer project.
 
-**wpływ na konsumenta:** brak kroków migracji; `gh api -X DELETE` poza terenem
-właściciela przestaje być blokowane.
+**consumer impact:** no migration steps; `gh api -X DELETE` outside the owner's territory
+is no longer refused.
 
-### Naprawione
+### Fixed
 
-- Strażnik blokował każde `gh api -X DELETE` z komunikatem o merge'ach i ochronie
-  gałęzi — także usuwanie artefaktów Actions. Teraz DELETE jest blokowane tylko na
-  ścieżkach, które są decyzją właściciela: samo repozytorium i organizacja (także pod
-  prefiksem, np. `api/v3` GitHub Enterprise Server, i jako `repositories/<id>`), refy
-  gałęzi i tagów, merges, protection, rulesets, releases, przebiegi workflow, secrets,
-  variables, environments, hooks, klucze, dostęp współpracowników, zespoły i członkowie
-  organizacji, Pages, deployments i ustawienia bezpieczeństwa; komunikat podaje ścieżkę
-  i regułę, która zadziałała. Ścieżka zbudowana ze zmiennych jest blokowana — nie da się
-  jej sprawdzić.
-- `final-review` (tryb `apply`) brał link do przebiegu z `gh run list --workflow CI` —
-  nazwa workflow z projektu źródłowego, u konsumenta nieistniejąca. Link pochodzi teraz
-  z `gh pr checks <nr> --json name,workflow,link`.
-- Kontrakt agenta etapu mówi, że licznik `escalations` zwiększa wyłącznie orkiestrator —
-  w przebiegu konsumenta podbił go reviewer w trybie `apply`.
+- The guard refused every `gh api -X DELETE` with a message about merges and branch
+  protection — including deleting Actions artifacts. DELETE is now refused only on paths
+  that are the owner's decision: the repository itself and the organisation (also under a
+  prefix, such as GitHub Enterprise Server's `api/v3`, and as `repositories/<id>`), branch
+  and tag refs, merges, protection, rulesets, releases, workflow runs, secrets, variables,
+  environments, hooks, keys, collaborator access, organisation teams and members, Pages,
+  deployments and security settings; the message names the path and the rule that
+  matched. A path built from variables is refused — it cannot be checked.
+- `final-review` (mode `apply`) took the run link from `gh run list --workflow CI` — a
+  workflow name from the source project that does not exist in a consumer project. The
+  link now comes from `gh pr checks <nr> --json name,workflow,link`.
+- The stage agent contract says that only the orchestrator increments the `escalations`
+  counter — in the consumer run the reviewer incremented it in mode `apply`.
 
-### Zmienione
+### Changed
 
-- Odmowa strażnika dla polecenia złożonego wskazuje zablokowane części i mówi, ile
-  pozostałych przeszło, żeby agent mógł je puścić osobnym wywołaniem. Potok (`|`) to
-  jedna część.
-- `ship`: zamiast „agent etapu działa na pierwszym planie" — czekasz na jego wynik, zanim
-  pójdziesz dalej (harness uruchamia agentów w tle; liczy się oczekiwanie, nie tryb).
+- The guard's refusal of a compound command names the refused parts and says how many of
+  the others passed, so the agent can run them in a separate call. A pipeline (`|`) is one
+  part.
+- `ship`: instead of "the stage agent runs in the foreground" — you wait for its result
+  before moving on (the harness runs agents in the background; what matters is waiting,
+  not the mode).
 
 ## 0.3.2
 
-Projekt przestaje włączać plugin. Sesja startująca w katalogu, którego
-`.claude/settings.json` ma `"enabledPlugins": {"pipeline@<marketplace>": true}`, sama
-zakłada instalację `--scope project` — także obok istniejącej instalacji `--scope user` —
-a `claude plugin update --scope user` podnosi tylko wpis `user`, więc duplikat `project`
-zostaje na starej wersji na zawsze (zmierzone 2026-09-21 na izolowanym
-`CLAUDE_CONFIG_DIR` z lokalnym marketplace'em). Z samym `extraKnownMarketplaces` wpis
-`project` nie powstaje, a plugin z instalacji `user` ładuje się normalnie.
+Projects stop enabling the plugin. A session starting in a directory whose
+`.claude/settings.json` has `"enabledPlugins": {"pipeline@<marketplace>": true}` creates a
+`--scope project` install on its own — also next to an existing `--scope user` install —
+and `claude plugin update --scope user` updates only the `user` entry, so the `project`
+duplicate stays on the old version forever (measured 2026-09-21 on an isolated
+`CLAUDE_CONFIG_DIR` with a local marketplace). With `extraKnownMarketplaces` alone, no
+`project` entry is created and the plugin from the `user` install loads normally.
 
-**wpływ na konsumenta:** usuń `enabledPlugins` z własnego `.claude/settings.json`
-(zostaw `extraKnownMarketplaces`; opt-out z wartością `false` zostaje) i zacommituj,
-potem w katalogu każdego repozytorium z pluginem odinstaluj duplikat: `claude plugin
-uninstall pipeline@<nazwa> --scope project` i `git checkout -- .claude/settings.json`
-(komenda potrafi wyciąć blok marketplace'u). `claude plugin list` ma pokazać plugin raz,
-w zakresie `user`.
+**consumer impact:** remove `enabledPlugins` from your own `.claude/settings.json` (keep
+`extraKnownMarketplaces`; an opt-out with the value `false` stays) and commit, then in
+every repository with the plugin uninstall the duplicate: `claude plugin
+uninstall pipeline@<name> --scope project` and `git checkout -- .claude/settings.json`
+(the command can cut out the marketplace block). `claude plugin list` should show the
+plugin once, in the `user` scope.
 
-### Naprawione
+### Fixed
 
-- `templates/settings.json` nie ma `enabledPlugins`; `/pipeline:init` go nie wpisuje.
+- `templates/settings.json` has no `enabledPlugins`; `/pipeline:init` does not write it.
 
-### Zmienione
+### Changed
 
-- README, Instalacja: przykład deklaruje tylko `extraKnownMarketplaces`, wyjaśnia, dlaczego
-  projekt nie deklaruje `enabledPlugins: true`, i jak usunąć istniejący duplikat
-  `project`; migracja z rejestracji na tagu nie przywraca `enabledPlugins`, a weryfikacja
-  sprawdza brak wpisu `project`. Instalacja `--scope project` nie jest już opcją dla
-  izolacji wersji — jedyna instalacja to `user`.
+- README, Installation: the example declares only `extraKnownMarketplaces`, explains why
+  a project does not declare `enabledPlugins: true` and how to remove an existing `project`
+  duplicate; the migration from a tag-based registration does not bring `enabledPlugins`
+  back, and the verification checks that there is no `project` entry. A `--scope project`
+  install is no longer an option for version isolation — the only install is `user`.
 
 ## 0.3.1
 
-Naprawa wywołania kontroli metryk z 0.3.0. Skille etapów uruchamiały
-`python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check`, a szablon zezwalał na to
-regułą zapisaną z tą samą zmienną. W treści skilla zmienna jest podstawiana, w regułach
-`permissions` — nie, więc reguła nigdy nie pasowała, każdy `--check` kończył się pytaniem
-o zgodę, na które subagent etapu nie odpowie, a `final-review` w trybie `apply` nie mógł
-ustawić `done`.
+Fixes the metrics check call from 0.3.0. Stage skills ran
+`python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check`, and the template allowed
+it with a rule written with the same variable. The variable is substituted in a skill's
+text but not in `permissions` rules, so the rule never matched, every `--check` ended in a
+permission prompt that a stage subagent cannot answer, and `final-review` in mode `apply`
+could not set `done`.
 
-**wpływ na konsumenta:** w `permissions.allow` własnego `.claude/settings.json` zamień wpis
-na `"Bash(workflow_metrics.py *)"` (zmiana szablonu dotyczy tylko nowych projektów).
-W `extraKnownMarketplaces` ustaw `"ref": "stable"` zamiast tagu wydania i raz na maszynę
-przejdź na kanał `stable` z instalacją `--scope user`: `claude plugin marketplace remove
-<nazwa>`, `claude plugin marketplace add '<url>#stable'`, `claude plugin install
-pipeline@<nazwa> --scope user`, a potem `git checkout -- .claude/settings.json` w każdym
-repozytorium z pluginem (te komendy kasują blok pluginu z `settings.json`). Kolejne
-wydania: `claude plugin marketplace update <nazwa> && claude plugin update
-pipeline@<nazwa> --scope user`, bez `remove`.
+**consumer impact:** in `permissions.allow` of your own `.claude/settings.json`, replace
+the entry with `"Bash(workflow_metrics.py *)"` (the template change applies only to new
+projects). In `extraKnownMarketplaces` set `"ref": "stable"` instead of a release tag and,
+once per machine, switch to the `stable` channel with a `--scope user` install: `claude
+plugin marketplace remove <name>`, `claude plugin marketplace add '<url>#stable'`, `claude
+plugin install pipeline@<name> --scope user`, then `git checkout -- .claude/settings.json`
+in every repository with the plugin (these commands delete the plugin block from
+`settings.json`). Later releases: `claude plugin marketplace update <name> && claude plugin
+update pipeline@<name> --scope user`, without `remove`.
 
-### Naprawione
+### Fixed
 
-- Kroki zamykające `plan`, `plan-review`, `implement` i `final-review` (także zamknięcie
-  w trybie `apply`) wywołują `workflow_metrics.py --check <spec-dir>` przez `PATH` —
-  Claude Code dopisuje `bin/` pluginu do `PATH` sesji.
-- `templates/settings.json` zezwala na `Bash(workflow_metrics.py *)`.
-- `templates/docs/CONVENTIONS.md` podaje wywołanie przez `PATH` zamiast
+- The closing steps of `plan`, `plan-review`, `implement` and `final-review` (including the
+  close in mode `apply`) call `workflow_metrics.py --check <spec-dir>` through `PATH` —
+  Claude Code adds the plugin's `bin/` to the session `PATH`.
+- `templates/settings.json` allows `Bash(workflow_metrics.py *)`.
+- `templates/docs/CONVENTIONS.md` gives the call through `PATH` instead of
   `python3 <plugin>/bin/workflow_metrics.py`.
 
-### Zmienione
+### Changed
 
-- README: raport i `--check` w formie `PATH`, z wyjaśnieniem, dlaczego nie
+- README: the report and `--check` in the `PATH` form, with an explanation of why not
   `${CLAUDE_PLUGIN_ROOT}`.
-- Kanał wydań `stable` zamiast pinu na tag: `templates/settings.json` ma `"ref": "stable"`
-  (zamiast `TODO:` z tagiem), a `/pipeline:init` wpisuje `stable` zamiast wyprowadzać tag
-  z wersji w `${CLAUDE_PLUGIN_ROOT}`. `ref` marketplace'u jest globalny na maszynę, więc
-  pin na tag wymuszał przy każdym wydaniu `remove`, które odinstalowuje plugin we
-  wszystkich projektach.
-- README, Instalacja: domyślnie `--scope user` (jedna instalacja na maszynę; `--scope
-  project` jako opcja dla izolacji), aktualizacja przez `marketplace update` + `plugin
-  update`, jednorazowa migracja z rejestracji na tagu (z ostrzeżeniem, że `remove`
-  odinstalowuje plugin we wszystkich projektach, a `remove`, `add` i `install` kasują
-  blok pluginu z `.claude/settings.json`) i wyłączenie pluginu w repozytorium przez
+- A `stable` release channel instead of a tag pin: `templates/settings.json` has
+  `"ref": "stable"` (instead of a `TODO:` with a tag), and `/pipeline:init` writes `stable`
+  instead of deriving a tag from the version in `${CLAUDE_PLUGIN_ROOT}`. A marketplace's
+  `ref` is global per machine, so a tag pin forced a `remove` on every release, which
+  uninstalls the plugin in all projects.
+- README, Installation: `--scope user` by default (one install per machine; `--scope
+  project` as an option for isolation), updates through `marketplace update` + `plugin
+  update`, a one-off migration from a tag-based registration (with a warning that `remove`
+  uninstalls the plugin in all projects, and that `remove`, `add` and `install` delete the
+  plugin block from `.claude/settings.json`) and disabling the plugin in a repository with
   `"enabledPlugins": {"pipeline@<marketplace>": false}`.
 
 ## 0.3.0
 
-Reguły trafiają tam, gdzie agent je wykonuje, i dostają program, który ich pilnuje.
-Format bloku `metrics:` jest nazwany w każdym skillu etapu i sprawdzany przez
-`workflow_metrics.py --check`, kontrakt agenta etapu żyje w plikach `agents/*.md`
-(harness wczytuje je bez odczytu narzędziem), a instrukcja instalacji pinuje wydanie.
+Rules go where the agent executes them and get a program that enforces them. The format of
+the `metrics:` block is named in every stage skill and checked by
+`workflow_metrics.py --check`, the stage agent contract lives in the `agents/*.md` files
+(the harness loads them without a tool read), and the installation guide pins a release.
 
-**wpływ na konsumenta:** po aktualizacji zarejestruj marketplace ponownie z nowym `ref`
-(`claude plugin marketplace remove <nazwa>` + `add '<url>#pipeline--v0.3.0'`) — bez tego pin
-w `.claude/settings.json` jest bezczynny; dopisz do `permissions.allow` we własnym
-`.claude/settings.json` wpis
-`"Bash(python3 \"${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py\" *)"` (zmiana szablonu
-dotyczy tylko nowych projektów); spec zaczęty przed tym wydaniem może raz eskalować
-brakującymi kluczami metryk — uzupełnia je właściciel, agent ich nie zmyśla.
+**consumer impact:** after updating, register the marketplace again with the new `ref`
+(`claude plugin marketplace remove <name>` + `add '<url>#pipeline--v0.3.0'`) — without it
+the pin in `.claude/settings.json` has no effect; add to `permissions.allow` in your own
+`.claude/settings.json` the entry
+`"Bash(python3 \"${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py\" *)"` (the template change
+applies only to new projects); a spec started before this release may escalate once over
+missing metrics keys — the owner fills them in, the agent does not make them up.
 
-### Dodane
+### Added
 
-- `bin/workflow_metrics.py --check <katalog-speca>` — komplet kluczy należnych dla
-  osiągniętego statusu, parsowalne znaczniki czasu i zgodność
-  `findings_accepted + findings_rejected` z sumą znalezisk końcowego review; kod 1
-  i czytelny komunikat nazywający każdy brak. `--check` zgłasza też klucz spoza listy
-  metryk (literówka gubiłaby wartość po cichu) i osobno nazywa frontmatter bez `status`.
-  Domyślne wywołanie (raport) bez zmian poza tym, że nieistniejący katalog speców kończy
-  się kodem 1 z komunikatem zamiast „brak metryk", a niedostępnego `SPEC.md` raport
-  pomija z ostrzeżeniem zamiast tracebacku.
-- Testy strukturalne `test_stage_skills.py` i `test_stage_contract.py`.
-- Skill `init` sprawdza obecność `AskUserQuestion` PRZED krokiem z pytaniami i bez tego
-  narzędzia nie pyta żadną drogą — także nie prozą — ani nie kończy odpowiedzi prośbą
-  o decyzję. Wcześniej reguła stała dopiero za krokiem „zadaj pytania", więc bywała
-  ważona zamiast wykonywana: dwa przebiegi ewaluacyjne tego samego commita rozjechały
-  się, jeden dokończył skill, drugi zadał cztery pytania tekstem i stanął.
+- `bin/workflow_metrics.py --check <spec-dir>` — the full set of keys due for the status
+  reached, parseable timestamps and `findings_accepted + findings_rejected` matching the
+  total of final review findings; exit code 1 and a readable message naming every gap.
+  `--check` also reports a key outside the metrics list (a typo would lose the value
+  silently) and names a frontmatter without `status` separately. The default call (the
+  report) is unchanged, except that a missing specs directory ends with exit code 1 and a
+  message instead of "no metrics", and the report skips an unreadable `SPEC.md` with a
+  warning instead of a traceback.
+- Structural tests `test_stage_skills.py` and `test_stage_contract.py`.
+- The `init` skill checks for `AskUserQuestion` BEFORE the question step and without that
+  tool asks nothing by any route — not in prose either — and does not end its reply with a
+  request for a decision. Before, the rule stood only after the "ask the questions" step,
+  so it was weighed rather than executed: two eval runs of the same commit diverged, one
+  finished the skill, the other asked four questions in text and stopped.
 
-### Zmienione
+### Changed
 
-- Każdy skill etapu nazywa w kroku zamykającym format bloku `metrics:` i własne klucze
-  oraz uruchamia `--check` przed zgłoszeniem sukcesu; `final-review` w trybie `apply` nie
-  ustawia `done`, dopóki `--check` kończy się błędem. Żaden skill nie odsyła po format
-  metryk do README.
-- „Kontrakt agenta etapu" i „Wyzwalacze eskalacji" są w całości w `agents/*.md`; agenci nie
-  każą już czytać skilla `ship` (test pilnuje zgodności co do znaku).
-- Sekcja „Konfiguracja projektu" w sześciu skillach etapów to dwa punkty; tabela kluczy
-  została tylko w README. Reguła artefaktów wizualnych to jedno zdanie rozkazujące,
-  warunkowe na zakresie UI w `verify.scopes`, z odesłaniem do konwencji projektu.
-- `templates/settings.json` wskazuje źródło `git` po HTTPS z widocznym `ref` (TODO)
-  i pozwala na jedno konkretne wywołanie
-  `Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" *)` — wzorzec jest
-  zakotwiczony na całym literale, więc nie przepuszcza dowolnej komendy `python3`;
-  `init` podstawia nazwę marketplace'u i `ref` ze ścieżki `${CLAUDE_PLUGIN_ROOT}`,
-  a przy innym kształcie zostawia `TODO:`.
-- `final-review` w trybie `apply`: znalezisko odłożone do backlogu liczy się jako
-  `findings_rejected`, żeby bilans `--check` się zgadzał.
-- README: sekcja o `--check` (kody wyjścia, tabela kluczy należnych według statusu)
-  i wywołanie przez `${CLAUDE_PLUGIN_ROOT}` zamiast ścieżki względnej; `ref` w przykładzie
-  deklaratywnym, zastrzeżenie o ponownej rejestracji
-  marketplace'u i jednozdaniowy zakres modułu migracji (tylko Alembic).
+- Every stage skill names the format of the `metrics:` block and its own keys in its
+  closing step and runs `--check` before reporting success; `final-review` in mode `apply`
+  does not set `done` while `--check` fails. No skill refers to the README for the metrics
+  format.
+- `## Kontrakt agenta etapu` (stage agent contract) and `## Wyzwalacze eskalacji`
+  (escalation triggers) live entirely in `agents/*.md`; agents no longer tell the reader to
+  read the `ship` skill (a test keeps them identical to the character).
+- The `## Konfiguracja projektu` (project configuration) section in the six stage skills is
+  two points; the key table stays only in the README. The visual artifacts rule is one
+  imperative sentence, conditional on a UI scope in `verify.scopes`, pointing to the
+  project's conventions.
+- `templates/settings.json` names a `git` source over HTTPS with a visible `ref` (TODO) and
+  allows one specific call
+  `Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" *)` — the pattern is
+  anchored on the whole literal, so it does not let any `python3` command through; `init`
+  fills in the marketplace name and `ref` from the `${CLAUDE_PLUGIN_ROOT}` path, and leaves
+  a `TODO:` when the path has another shape.
+- `final-review` in mode `apply`: a finding deferred to the backlog counts as
+  `findings_rejected`, so the `--check` balance adds up.
+- README: a section on `--check` (exit codes, a table of keys due per status) and the call
+  through `${CLAUDE_PLUGIN_ROOT}` instead of a relative path; a `ref` in the declarative
+  example, a note about registering the marketplace again and a one-sentence scope of the
+  migration module (Alembic only).
 
 ## 0.2.0
 
-Pierwsze wydanie w tym repozytorium — zaimportowane z prywatnego repozytorium projektu
-bez zmiany zachowania skilli, agentów, hooków ani strażnika.
+The first release in this repository — imported from a private project repository without
+changing the behaviour of skills, agents, hooks or the guard.
 
-Skille etapów prowadzą do dokumentów domenowych przez mapę dokumentów w `CLAUDE.md`
-projektu, a SPEC pokazuje, co agent przeczytał. Nowa sekcja SPEC zmienia wyjście etapu
-`idea`, dlatego wydanie minor.
+Stage skills lead to domain documents through the document map in the project's
+`CLAUDE.md`, and the SPEC shows what the agent read. A new SPEC section changes the output
+of the `idea` stage, hence a minor release.
 
-### Zmienione
+### Changed
 
-- `idea`, `plan` i `implement` odsyłają do dokumentów domenowych z mapy dokumentów
-  w `CLAUDE.md` (według warunków w mapie) zamiast listy w dokumencie stylu kodu.
-- Krok 1 `idea`: gotowy zakres lub wymagania w prompcie nie zwalniają ze zbierania
-  kontekstu.
-- Szablon SPEC ma sekcję „Przeczytany kontekst" — jedna pozycja na roadmapę, opis
-  projektu, rejestr decyzji i każdy dokument domenowy; guardrail wymaga jej dla
-  `spec-ready`.
+- `idea`, `plan` and `implement` refer to the domain documents from the document map in
+  `CLAUDE.md` (according to the conditions in the map) instead of a list in the code style
+  document.
+- Step 1 of `idea`: a ready scope or requirements in the prompt do not excuse the agent
+  from gathering context.
+- The SPEC template has a `## Przeczytany kontekst` section (context read) — one item each
+  for the roadmap, the project description, the decision log and every domain document;
+  the guardrail requires it for `spec-ready`.
 
 ## 0.1.0
 
-Pierwsza wersja — wydzielenie workflow agentowego do samodzielnego pluginu.
+The first version — the agentic workflow extracted into a standalone plugin.
 
-### Dodane
+### Added
 
-- Siedem skilli: `init`, `idea`, `plan`, `plan-review`, `implement`, `final-review`, `ship`.
-- Czterech agentów etapów: `planner`, `plan-reviewer`, `implementer`, `reviewer`.
-- Strażnik komend (`bin/guard`, `bin/guard.py`) z regułami uniwersalnymi działającymi bez
-  konfiguracji oraz modułami produkcji, worktree i migracji sterowanymi konfiguracją.
-- Hooki `PostToolUse` (formatowanie według mapy `format[]`) i `PreToolUse:
-  AskUserQuestion` / `Notification` (powiadomienie o oczekiwaniu na właściciela).
-- Warstwa konfiguracji `.claude/workflow.json` (`bin/workflow_config.py`) z walidacją
-  kluczy i dokumentowanymi wartościami domyślnymi.
-- Zestawienie metryk workflow (`bin/workflow_metrics.py`).
-- Szablony projektu: `settings.json`, `workflow.example.json`, `CLAUDE.md`, dokumenty
-  `docs/`, hook `pre-push` oraz warianty CI (Python, Node, szkielet), audytu
-  bezpieczeństwa i `dependabot.yml`.
+- Seven skills: `init`, `idea`, `plan`, `plan-review`, `implement`, `final-review`, `ship`.
+- Four stage agents: `planner`, `plan-reviewer`, `implementer`, `reviewer`.
+- The command guard (`bin/guard`, `bin/guard.py`) with universal rules that work without
+  configuration and production, worktree and migration modules driven by configuration.
+- `PostToolUse` hooks (formatting according to the `format[]` map) and `PreToolUse:
+  AskUserQuestion` / `Notification` (a notification when the owner is awaited).
+- The `.claude/workflow.json` configuration layer (`bin/workflow_config.py`) with key
+  validation and documented defaults.
+- Workflow metrics report (`bin/workflow_metrics.py`).
+- Project templates: `settings.json`, `workflow.example.json`, `CLAUDE.md`, `docs/`
+  documents, the `pre-push` hook and CI variants (Python, Node, skeleton), a security
+  audit and `dependabot.yml`.

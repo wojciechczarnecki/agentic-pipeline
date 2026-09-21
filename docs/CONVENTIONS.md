@@ -8,11 +8,11 @@ this document holds the details.
 - Project documents (`docs/`, `specs/`, `CLAUDE.md`, root `README.md`) follow
   `language: "en"` in `.claude/workflow.json`; code, identifiers, comments and commit
   messages are English regardless of it.
-- `plugin/README.md` and `plugin/docs/` are in English; they quote the Polish literals
-  the skills produce (such as `## Decyzje właściciela`) verbatim in code spans.
-- Plugin skills, agents, templates and `plugin/CHANGELOG.md` are in Polish until
-  translated (`docs/ROADMAP.md`, Stage 8); a translation is a behaviour change and ships as
-  a release.
+- `plugin/README.md`, `plugin/docs/` and `plugin/CHANGELOG.md` are in English; they quote
+  the Polish literals the skills produce (such as `## Decyzje właściciela`) verbatim in
+  code spans.
+- Plugin skills, agents and templates are in Polish until translated (`docs/ROADMAP.md`,
+  Stage 8); a translation is a behaviour change and ships as a release.
 - No mixing of languages within one document.
 
 ## Code style

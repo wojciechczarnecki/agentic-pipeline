@@ -119,9 +119,9 @@ checked against the guard by a test — and `plugin/README.md` is in English.
   Stage 5 (0.4.0).
 - `docs/INSTALL.md` and the rewritten root `README.md` — Stage 4; the installation section
   stays in `plugin/README.md`, translated.
-- Translating skills, agents, templates, tests' Polish strings and `plugin/CHANGELOG.md`
-  — Stage 8 (0.8.0). The 0.3.4 CHANGELOG section is written in Polish, like the rest of
-  that file.
+- Translating skills, agents, templates and tests' Polish strings — Stage 8 (0.8.0).
+  `plugin/CHANGELOG.md` was first left Polish here too; the owner moved it into this PR
+  after the final review (2026-09-21) — see `docs/DECISIONS.md`.
 - Guarding scripts written to files, interpreters (`python3 -c`, `node -e`) and shell
   functions defined in earlier calls — documented as known limits in GUARD.md and entered
   in `docs/BACKLOG.md` (P3, with a trigger).
@@ -188,8 +188,9 @@ the process environment.
 ### Release 0.3.4
 
 - [ ] AC13: `plugin/.claude-plugin/plugin.json` has version `0.3.4`; `plugin/CHANGELOG.md`
-      opens with a `## 0.3.4` section (Polish, like the file) that lists AC1–AC12 as fixes
-      and names the consumer impact (`wpływ na konsumenta`) — the refusals that are new.
+      opens with a `## 0.3.4` section (English, like the whole file since the owner's
+      2026-09-21 decision) that lists AC1–AC12 as fixes and names the consumer impact
+      (`**consumer impact:**`) — the refusals that are new.
 
 ### `plugin/docs/GUARD.md`
 

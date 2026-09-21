@@ -160,5 +160,5 @@ silently switch a Polish consumer's plans to English, since today only `idea` na
       (`templates/CLAUDE.md`, `templates/docs/*`), which today lands Polish documents
       even with `"language": "en"` — until then an English consumer translates them after
       `init` and states the language in its own `CLAUDE.md`
-- [ ] 0.8.0: skills, agents, tests and `plugin/CHANGELOG.md` translated into English, with
-      an eval case on `"language": "pl"`; Polish survives only in the `*.pl.md` templates
+- [ ] 0.8.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
+      is, since 0.3.4), with an eval case on `"language": "pl"`; Polish survives only in the `*.pl.md` templates

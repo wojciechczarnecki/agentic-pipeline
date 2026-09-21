@@ -125,7 +125,7 @@ def test_the_guard_section_states_the_migration_scope():
 def test_the_changelog_names_the_consumer_impact():
     manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
     section = CHANGELOG.split(f"## {manifest['version']}", 1)[1].split("\n## ", 1)[0]
-    assert "wpływ na konsumenta" in section
+    assert "**consumer impact:**" in section
 
 
 POLISH = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
@@ -149,6 +149,7 @@ def strip_code(text: str) -> str:
     [
         "README.md",
         "docs/GUARD.md",
+        "CHANGELOG.md",
     ],
 )
 def test_no_polish_outside_code(document):
