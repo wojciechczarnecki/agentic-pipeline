@@ -452,7 +452,7 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
       the new rows; `uv run pytest -q -p no:cacheprovider tests/test_documents.py`
       (names test over `docs/`).
 
-- [ ] 7. **Full verification and end-to-end**: no new files; the results go into this
+- [x] 7. **Full verification and end-to-end**: no new files; the results go into this
       PLAN → End-to-end verification → Results.
       Automated verification:
       `git diff --stat origin/main...HEAD -- plugin/bin plugin/hooks plugin/skills plugin/agents plugin/templates`
@@ -578,16 +578,42 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
 
 ### Results
 
-_(filled in by /pipeline:implement)_
+2026-09-21, /pipeline:implement:
+
+1. `bash scripts/check.sh` → `ALL GREEN` (validate plugin and marketplace, ruff, black,
+   pytest: 879 passed). `uv run pytest --co tests` lists 55 cases from
+   `tests/test_documents.py` and `tests/test_release_gate.py`, so the root directory runs.
+2. Guard by hand: a scratch repo on `feat/001-x`, `.claude/workflow.json` = `{}` written
+   with Write, payload `{"tool_input": {"command": "git push origin main"}, …}`,
+   `CLAUDE_PROJECT_DIR=<scratch> python3 plugin/bin/guard.py < payload.json` → exit `2`,
+   stderr identical (`diff`) to the second line of the README block.
+3. `claude plugin validate --strict plugin/` and `claude plugin validate --strict .` →
+   `✔ Validation passed` for both.
+4. `cd plugin && python3 -m pytest -q -p no:cacheprovider tests/test_readme.py` → 42
+   passed on the system `python3`, without the repository root.
+5. `git diff --stat origin/main...HEAD -- plugin/bin plugin/hooks plugin/skills plugin/agents plugin/templates`
+   → empty; the only change in `plugin/.claude-plugin/plugin.json` is the `description`
+   line (`version` stays `0.3.4`).
+
+Negative checks from step 4: one changed word in the README refusal line turned
+`test_readme_guard_block_matches_the_guard` red; the anchor `#known-limit` turned
+`test_relative_links_resolve[README.md]` red. Both restored with Edit.
+
+**Pending after gate 2: steps 8 (Releases) and 9 (About), see Steps intro.** The command
+for the owner (step 9), with the README pitch line (`README.md` line 5) pasted in:
+
+```bash
+gh repo edit wojciechczarnecki/agentic-pipeline --description "A Claude Code plugin that takes a feature from an approved spec to a reviewed pull request, with owner gates between the stages and a command guard that stops the agent from pushing to main, merging its own PR or touching production."
+```
 
 ## Definition of Done
 
-- [ ] steps 1–7 ticked (8–9 after gate 2, in `/pipeline:final-review` apply)
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) done, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md`,
+- [x] steps 1–7 ticked (8–9 after gate 2, in `/pipeline:final-review` apply)
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) done, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md`,
       `docs/CONVENTIONS.md`, `docs/PROJECT.md`, `CLAUDE.md` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
