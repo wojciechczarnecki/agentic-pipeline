@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -853,3 +854,97 @@ def test_hook_lets_safe_commands_through(on_feature):
 
 def test_hook_ignores_malformed_input(on_feature):
     assert run_hook("not json", on_feature).returncode == 0
+
+
+GUARD_DOC = BIN.parent / "docs" / "GUARD.md"
+
+
+def guard_doc_section(heading: str) -> str:
+    text = GUARD_DOC.read_text()
+    return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
+
+
+def split_cells(line: str) -> list[str]:
+    cells, current, index = [], "", 0
+    body = line.strip().strip("|")
+    while index < len(body):
+        if body.startswith("\\|", index):
+            current += "|"
+            index += 2
+            continue
+        if body[index] == "|":
+            cells.append(current.strip())
+            current = ""
+        else:
+            current += body[index]
+        index += 1
+    cells.append(current.strip())
+    return cells
+
+
+# The table is the document's claim that the guard stops what a string deny rule lets
+# through; parsing it here keeps the claim and the guard from drifting apart.
+def deny_table_rows() -> list[tuple[str, str, str]]:
+    lines = [
+        line
+        for line in guard_doc_section("## Deny rules versus the guard").splitlines()
+        if line.startswith("|")
+    ]
+    rows = []
+    for line in lines[2:]:
+        spans = []
+        for cell in split_cells(line):
+            assert cell.startswith("`") and cell.endswith("`") and cell.count("`") == 2, line
+            spans.append(cell[1:-1])
+        assert len(spans) == 3, line
+        rows.append((spans[0], spans[1], spans[2]))
+    return rows
+
+
+def test_the_deny_table_has_at_least_five_rows():
+    assert len(deny_table_rows()) >= 5
+
+
+@pytest.mark.parametrize("command, rule, fragment", deny_table_rows())
+def test_every_deny_table_command_is_refused(on_feature, command, rule, fragment):
+    assert rule.startswith("Bash("), rule
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert fragment in reason, reason
+
+
+def test_guard_md_records_the_deny_measurement():
+    section = guard_doc_section("## Deny rules versus the guard")
+    assert re.search(r"Measured on \d{4}-\d{2}-\d{2} with Claude Code \d+\.\d+\.\d+", section)
+
+
+def test_guard_md_has_the_required_sections():
+    lines = GUARD_DOC.read_text().splitlines()
+    for heading in [
+        "# The pipeline guard",
+        "## Threat model",
+        "## Three layers",
+        "### The command guard",
+        "### The pre-push hook",
+        "### GitHub rulesets",
+        "## Deny rules versus the guard",
+        "## Fail-open by design",
+        "## Known limits",
+    ]:
+        assert heading in lines, heading
+
+
+def test_guard_md_names_the_known_limits():
+    section = guard_doc_section("## Known limits")
+    for token in [
+        "Alembic",
+        "stable",
+        "Edit",
+        "Write",
+        "script",
+        "interpreter",
+        "function",
+        "gh api -X DELETE",
+        "docs/BACKLOG.md",
+    ]:
+        assert token in section, token

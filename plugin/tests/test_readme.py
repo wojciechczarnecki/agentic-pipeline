@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -125,3 +126,32 @@ def test_the_changelog_names_the_consumer_impact():
     manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
     section = CHANGELOG.split(f"## {manifest['version']}", 1)[1].split("\n## ", 1)[0]
     assert "wpływ na konsumenta" in section
+
+
+POLISH = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
+
+
+def strip_code(text: str) -> str:
+    kept, fenced = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if not fenced:
+            kept.append(line)
+    return re.sub(r"`[^`\n]*`", "", "\n".join(kept))
+
+
+# Quoted literals the Polish skills produce (`## Decyzje właściciela`) stay verbatim inside
+# code spans; everything around them is English.
+@pytest.mark.parametrize(
+    "document",
+    [
+        pytest.param("README.md", marks=pytest.mark.xfail(strict=True)),
+        "docs/GUARD.md",
+    ],
+)
+def test_no_polish_outside_code(document):
+    text = strip_code((PLUGIN / document).read_text())
+    found = sorted(POLISH & set(text))
+    assert not found, (document, found)

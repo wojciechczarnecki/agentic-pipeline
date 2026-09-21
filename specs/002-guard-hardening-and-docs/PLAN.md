@@ -335,7 +335,7 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
       results table has ≥ 5 rows marked `yes`; `git status --short` shows only `PLAN.md`
       changed.
 
-- [ ] 4. **`plugin/docs/GUARD.md` and its checks** — files: `plugin/docs/GUARD.md` (new),
+- [x] 4. **`plugin/docs/GUARD.md` and its checks** — files: `plugin/docs/GUARD.md` (new),
       `plugin/tests/test_guard.py`, `plugin/tests/test_readme.py`.
       Write GUARD.md with the headings from Approach → GUARD.md. Content requirements:
       threat model per AC14 (agent mistakes and shortcuts; not deliberate evasion; best
