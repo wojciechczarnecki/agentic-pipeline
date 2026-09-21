@@ -321,7 +321,7 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
       `uv run pytest -q -p no:cacheprovider tests/test_documents.py` (links of both files
       resolve, no Polish).
 
-- [ ] 4. **Root README rewritten**: files `README.md`, `tests/test_documents.py`. Layout,
+- [x] 4. **Root README rewritten**: files `README.md`, `tests/test_documents.py`. Layout,
       badges, mermaid, guard block and sections exactly as in Approach. In the tests,
       remove the `exists()` filters and the `xfail` from step 1. Tests (helper
       `section(text, heading)` = the text after the exact `## heading` line up to the next
