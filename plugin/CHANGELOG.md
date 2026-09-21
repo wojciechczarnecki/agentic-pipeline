@@ -33,10 +33,7 @@ pipeline@<nazwa> --scope user`, bez `remove`.
 ### Zmienione
 
 - README: raport i `--check` w formie `PATH`, z wyjaśnieniem, dlaczego nie
-  `${CLAUDE_PLUGIN_ROOT}`; procedura ponownej rejestracji marketplace'u mówi, że `remove`
-  odinstalowuje plugin we wszystkich projektach, że trzeba go doinstalować
-  `--scope project` w każdym z nich i że `remove`, `add` oraz `install` kasują blok
-  pluginu z `.claude/settings.json` (przywrócić `git checkout`).
+  `${CLAUDE_PLUGIN_ROOT}`.
 - Kanał wydań `stable` zamiast pinu na tag: `templates/settings.json` ma `"ref": "stable"`
   (zamiast `TODO:` z tagiem), a `/pipeline:init` wpisuje `stable` zamiast wyprowadzać tag
   z wersji w `${CLAUDE_PLUGIN_ROOT}`. `ref` marketplace'u jest globalny na maszynę, więc
@@ -44,9 +41,10 @@ pipeline@<nazwa> --scope user`, bez `remove`.
   wszystkich projektach.
 - README, Instalacja: domyślnie `--scope user` (jedna instalacja na maszynę; `--scope
   project` jako opcja dla izolacji), aktualizacja przez `marketplace update` + `plugin
-  update`, jednorazowa migracja z rejestracji na tagu i wyłączenie pluginu w repozytorium
-  przez `"enabledPlugins": {"pipeline@<marketplace>": false}`. Zastępuje procedurę
-  ponownej rejestracji opisaną wyżej.
+  update`, jednorazowa migracja z rejestracji na tagu (z ostrzeżeniem, że `remove`
+  odinstalowuje plugin we wszystkich projektach, a `remove`, `add` i `install` kasują
+  blok pluginu z `.claude/settings.json`) i wyłączenie pluginu w repozytorium przez
+  `"enabledPlugins": {"pipeline@<marketplace>": false}`.
 
 ## 0.3.0
 

@@ -11,9 +11,16 @@ The plugin lives in [`plugin/`](plugin/); this repository root is its marketplac
 ## Install
 
 ```bash
-claude plugin marketplace add https://github.com/wojciechczarnecki/agentic-pipeline.git
-/plugin install pipeline@wcz-tools
-/pipeline:init
+claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#stable'
+claude plugin install pipeline@wcz-tools --scope user
+/pipeline:init   # once in each project, inside a Claude Code session
+```
+
+`#stable` is the release channel, moved to each release; without it you track `main`,
+which is unreleased code. Update to a new release:
+
+```bash
+claude plugin marketplace update wcz-tools && claude plugin update pipeline@wcz-tools --scope user
 ```
 
 Documentation (currently in Polish): [plugin/README.md](plugin/README.md).

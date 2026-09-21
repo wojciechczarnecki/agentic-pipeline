@@ -28,8 +28,8 @@ Instructions for agents working in this repository.
 The workflow comes from the `pipeline` plugin **released** from this repository and
 installed from GitHub (marketplace `wcz-tools`, git + HTTPS) — not from the working tree:
 a stable release guards work on unstable code. `.claude/settings.json` points the source
-at the `stable` release channel (`"ref": "stable"`), a branch the owner moves to each new
-release tag. The declaration only takes effect once the marketplace is registered with that
+at the `stable` release channel (`"ref": "stable"`), a branch moved to each new release
+tag. The declaration only takes effect once the marketplace is registered with that
 `ref`: the registration is global per machine (`~/.claude/plugins/known_marketplaces.json`)
 and one registered earlier — on a tag or with no `ref` — keeps what it was given. The
 plugin is installed once per machine at `--scope user`, so it runs in every directory.
@@ -99,7 +99,8 @@ on the diff → owner decisions → PR. When in doubt → full pipeline.
 The agent creates its branch, commits, pushes and opens the PR (`gh pr create`). It updates
 the branch with `git merge origin/main` (not rebase). Out of the agent's reach: commit,
 merge and push to `main` (only `git pull --ff-only`), merging PRs, force-push,
-`reset --hard`, `clean -f`, `--no-verify`, pushing release tags, moving `stable`.
+`reset --hard`, `clean -f`, `--no-verify`, pushing release tags. Moving `stable` to a
+release tag the owner has pushed is allowed (`Commands` → Release).
 
 Two layers enforce this, and they do not cover the same ground.
 
@@ -111,9 +112,10 @@ for everyone:**
 - `release tags` (`refs/tags/pipeline--v*`): an existing tag cannot be deleted, moved or
   force-updated.
 - `stable` (the release channel): updates, deletion and non-fast-forward pushes are
-  blocked, with the repository Admin role — the owner alone — as the only bypass actor,
-  unlike the two rulesets above, because moving the channel is a direct push, not a pull
-  request.
+  blocked, with the repository Admin role as the only bypass actor — unlike the two
+  rulesets above — because moving the channel is a direct push, not a pull request. The
+  bypass is the owner's account, so it lets through the owner and an agent pushing with
+  the owner's credentials, and keeps everyone else off the channel.
 
 **Only the local layer — the plugin's command guard and the `deny` list in
 `.claude/settings.json` — stops the rest:**
@@ -121,9 +123,6 @@ for everyone:**
 - creating and pushing a *new* release tag: the tag ruleset has no `creation` rule, and the
   `pre-push` hook matches branches only, so GitHub accepts `pipeline--vX.Y.Z` from anyone
   who can push. Tagging stays the owner's move by agreement, not by mechanism.
-- moving `stable` — and not even this layer: the ruleset's bypass is the owner's account,
-  an agent pushes with the owner's credentials, and the guard and `pre-push` defend only
-  `main`/`master`. Moving the channel stays the owner's move by agreement.
 - merging a PR: `required_approving_review_count` is 0, so a squash merge is server-side
   allowed; only the guard and `deny` keep an agent off it.
 
@@ -158,7 +157,7 @@ claude plugin validate --strict plugin/
 claude plugin validate --strict .
 claude --plugin-dir ./plugin          # one-off session with the working-tree plugin
 
-# Release (owner, clean clone on main): tag, then move the release channel to it
+# Release (the owner tags a clean clone on main; the owner or an agent then moves the channel)
 claude plugin tag plugin --push
 git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'   # tags are annotated
 ```

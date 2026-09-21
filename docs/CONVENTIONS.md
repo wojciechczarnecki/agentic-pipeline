@@ -68,7 +68,7 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   behaviour (skills, agents, hooks, guard, templates), not with docs or tests.
 - Every release has a `plugin/CHANGELOG.md` section.
 - The owner tags a clean `main` with `claude plugin tag plugin --push` (`pipeline--vX.Y.Z`).
-- The owner then moves the release channel to the new tag:
+- The owner, or an agent, then moves the release channel to the new tag:
   `git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'`. The `^{commit}` is
   required: release tags are annotated, and a branch cannot point at a tag object — the
   bare tag name is rejected with `failed to update ref`. Consumers follow `stable`, not

@@ -88,7 +88,7 @@ git checkout -- .claude/settings.json   # w KAŻDYM repozytorium z pluginem
 instalacji. **Wszystkie trzy komendy (`remove`, `add`, `install`) kasują `enabledPlugins`
 i `extraKnownMarketplaces` z `.claude/settings.json`** (projektu i
 `~/.claude/settings.json`) i żadna ich nie przywraca — stąd `git checkout` w każdym
-repozytorium, które ma ten blok. Obie awarie są ciche: sesja bez pluginu nie ma strażnika
+repozytorium, które ma ten blok. Oba skutki są ciche: sesja bez pluginu nie ma strażnika
 komend i nic nie zgłasza. Po migracji uruchom nową sesję.
 
 **Wyłączenie w repozytorium, które pluginu nie chce.** Przy instalacji `user` plugin —
@@ -99,7 +99,7 @@ i strażnik by to blokował. Wyłącz go w `.claude/settings.json` takiego repoz
 { "enabledPlugins": { "pipeline@wcz-tools": false } }
 ```
 
-Po instalacji w projekcie uruchom `/pipeline:init`, żeby powstał `.claude/workflow.json`
+W każdym projekcie uruchom raz `/pipeline:init`, żeby powstał `.claude/workflow.json`
 i reszta szkieletu. W sesji nieinteraktywnej (`claude -p`) potrzebny jest
 `--permission-mode bypassPermissions`: pliki w `.claude/` Claude Code traktuje jako
 wrażliwe i pyta o zgodę na ich zapis niezależnie od reguł uprawnień. W słabszym trybie
