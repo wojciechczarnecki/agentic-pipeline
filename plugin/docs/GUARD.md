@@ -32,12 +32,16 @@ Each layer covers ground the one before it cannot, and each has its own way arou
 
 - **Covers:** every Bash tool call of an agent session. Universal rules, with no
   configuration: pushes, commits, merges, rebases and cherry-picks on `main`/`master`
-  (only `git pull --ff-only` passes there); force, mirror and delete pushes; a push
-  refspec built from variables or command substitution that the guard cannot resolve;
-  `--no-verify`; `git reset --hard`; `git clean -f`; `git branch -D main` and friends;
-  `git update-ref`/`git symbolic-ref` on `main`; changing `core.hooksPath` (reading it is
-  fine); git aliases, on the command line (`git -c alias.*`) or written to a
-  configuration file; `gh pr merge`; changes to repository settings, secrets, variables
+  (only `git pull --ff-only` passes there); force, mirror and delete pushes, also when the
+  option comes from a variable; a push refspec built from variables or command
+  substitution that the guard cannot resolve; a push of every branch (`--all`,
+  `--branches`) or of a refspec pattern or brace expansion; push configuration that
+  decides where a push lands (`remote.<name>.push`, `remote.<name>.mirror`,
+  `push.default`, on the command line or written); `--no-verify`; `git reset --hard`;
+  `git clean -f`; `git branch -D main` and friends; `git update-ref`/`git symbolic-ref` on
+  `main`; changing `core.hooksPath` (reading it is fine); defining a git alias, on the
+  command line (`git -c alias.*`) or with `git config`; `git config --edit`, which could
+  write either; `gh pr merge`; changes to repository settings, secrets, variables
   and rulesets; `sudo`; removals outside the project, its worktree directory and the
   session's scratch directory, and of the repository root or `.git`; shell edits of
   guardrail files (`.claude/settings*.json`, `.claude/workflow.json`, the plugin directory
@@ -49,9 +53,14 @@ Each layer covers ground the one before it cannot, and each has its own way arou
   `python3` with no network. It sees through `bash -c`, `eval`, `$(...)`, backticks,
   heredoc bodies that expand, wrappers such as `env`, `command`, `nohup`, `timeout`,
   `uv run` and `xargs`, `docker compose exec`, and variables assigned earlier in the same
-  call or exported in the session. A variable is expanded the way the shell does it: a
-  prefix assignment (`B=x git push origin $B`) does not count for the command's own
-  arguments, and an empty value disappears.
+  call or exported in the session. It follows a variable only where its value is
+  certain: a prefix assignment (`B=x git push origin $B`) does not count for the
+  command's own arguments, an empty value disappears, an assignment inside a subshell,
+  a pipeline or a background command ends with it, and a new shell (`bash -c`) sees only
+  exported names. A value it does not follow — assigned behind `&&`/`||` or inside
+  `if`/`while`/`for`/`case`, by `read`, `declare`, `printf -v`, `unset` and similar
+  builtins, appended (`B+=x`), an array — counts as unknown, and so does every expansion
+  once `IFS` changes; an unknown value in a push refspec is refused.
 - **How the refusal reads:** exit code 2 and a reason naming the rule and the way out. A
   refusal always covers the whole call; in a compound command the reason names the parts
   at fault (a pipeline is one part) and says how many of the others passed, so the agent
@@ -170,6 +179,16 @@ layers behind it do not depend on it.
 - **`gh api -X DELETE` is matched by segment name.** An owner keyword anywhere in the path
   refuses the call, so `repos/o/r/issues/1/labels/releases` is refused as deleting
   releases. It fails safe; positional matching waits in `docs/BACKLOG.md` (Guard, P3).
+- **An alias that already exists runs unchecked.** The guard refuses defining an alias,
+  not using one: with `alias.p=push` already in a configuration file — set by the owner
+  before the session, or written into the file directly — `git p origin main` passes the
+  guard. On `main` the pre-push hook and the rulesets stop that push; the other guarded
+  git actions have nothing local behind them. Keep aliases for guarded git actions out of
+  the configuration of a clone agents work in.
+- **Shell constructs the guard does not model** — a brace group in a pipeline
+  (`{ B=x; } | cat`), `coproc`, arithmetic assignments and anything else it does not
+  parse — may hide an assignment from it. A push refspec built from a variable is then
+  judged by the value the guard last saw; write the branch out when it matters.
 - **Removing an alias is refused too.** `git config --unset alias.p` counts as an alias
   write; the owner removes aliases by hand.
 - **Variables come from the hook's environment.** The guard resolves `$NAME` from the

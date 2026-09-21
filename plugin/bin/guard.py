@@ -27,9 +27,14 @@ NO_CONFIG = (
     "run /pipeline:init to create one"
 )
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+# `B=x`, `B+=x`, `B[0]=x`: only the plain form gives the guard a value it can trust
+ASSIGNMENT_LIKE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)(\[[^\]]*\])?(\+?)=")
+NAME_ARGUMENT = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)(?:\[[^\]]*\])?(?:\+?=|$)")
+ARRAY_START = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\+?=")
 VARIABLE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
 HEREDOC_DELIMITER = re.compile(r"(-?)[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
 PUNCTUATION = ";&|()<>"
+OPERATOR = re.compile(r";;|&&|\|\||\|&|[;&|()]")
 
 NETWORK_PROGRAMS = {
     "curl",
@@ -59,8 +64,26 @@ REMOVAL_PROGRAMS = {"rm", "rmdir", "unlink", "shred"}
 MUTATING_PROGRAMS = {"tee", "mv", "cp", "rm", "chmod", "chown", "truncate", "ln", "install", "dd"}
 WRAPPERS = {"env", "command", "exec", "time", "nice", "nohup", "builtin", "stdbuf"}
 SHELLS = {"bash", "sh", "zsh", "dash"}
-LOOP_KEYWORDS = {"do", "then", "else", "elif", "{"}
-SHELL_SYNTAX = {"for", "while", "until", "if", "case", "select", "done", "fi", "esac", "}"}
+# Control structures: the keywords are stripped so the command behind them is checked, and
+# an assignment inside a block counts as conditional — the block may run never or twice.
+BLOCK_OPENERS = {"if", "while", "until"}
+WORD_LIST_OPENERS = {"for", "select", "case"}
+BLOCK_CLOSERS = {"fi", "done", "esac"}
+BLOCK_KEYWORDS = {"then", "else", "elif", "do", "!", "{", "}"}
+# Builtins that assign the variables they name; the guard does not follow their values.
+ASSIGNING_BUILTINS = {
+    "read",
+    "declare",
+    "typeset",
+    "local",
+    "readonly",
+    "unset",
+    "mapfile",
+    "readarray",
+    "getopts",
+    "let",
+}
+DEFAULT_IFS = " \t\n"
 UV_RUN_OPTIONS = {
     "--project",
     "--directory",
@@ -96,6 +119,25 @@ UNRESOLVED_REFSPEC = (
     "spell the branch out"
 )
 ALIAS = "a git alias cannot be verified by the guard; run the git command itself"
+PUSH_CONFIG = (
+    "push configuration (remote.<name>.push, remote.<name>.mirror, push.default) decides "
+    "which branches a push reaches and cannot be verified by the guard; name the branch "
+    "in the push itself"
+)
+CONFIG_EDIT = (
+    "`git config --edit` could change core.hooksPath or an alias unseen by the guard; "
+    "set the key with `git config <key> <value>`"
+)
+CONFIG_VARIABLE = "cannot verify a git configuration key built from variables: {}; spell it out"
+EVERY_BRANCH = (
+    "a push of every branch (--all, --branches) includes main, and main changes only "
+    "through a PR merged by the owner; push the feature branch by name"
+)
+PUSH_PATTERN = (
+    "cannot verify a push refspec with a pattern or brace expansion: {}; spell the branch out"
+)
+PUSH_VALUE_OPTIONS = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
+PUSH_DESTRUCTIVE = {"--mirror", "--delete", "-d", "--prune"}
 CONFIG_VALUE_OPTIONS = {"-f", "--file", "--blob", "--type", "--default", "--comment", "--value"}
 CONFIG_READ_SUBCOMMANDS = {"get", "list"}
 CONFIG_WRITE_SUBCOMMANDS = {"set", "unset", "rename-section", "remove-section", "edit"}
@@ -293,12 +335,28 @@ def evaluate(
     return None
 
 
+Snapshot = tuple[dict[str, str], set[str], Path]
+# (part number, kind: "run" | "(" | ")", words, behind && or ||, runs in a subshell)
+Item = tuple[int, str, list[str], bool, bool]
+
+
 class Analyzer:
-    def __init__(self, cwd: Path, env: dict[str, str], rules: Rules, in_container: bool = False):
+    def __init__(
+        self,
+        cwd: Path,
+        env: dict[str, str],
+        rules: Rules,
+        in_container: bool = False,
+        exported: set[str] | None = None,
+    ):
         self.cwd = cwd
         self.env = env
         self.rules = rules
         self.in_container = in_container
+        # the process environment is exported; plain assignments in the call are not
+        self.exported = set(env) if exported is None else exported
+        self.blocks = 0
+        self.scopes: list[Snapshot] = []
 
     def run(self, text: str, depth: int = 0) -> None:
         if depth > 5:
@@ -311,7 +369,9 @@ class Analyzer:
             ) from None
         executable = f"{outside_single_quotes(text)}\n{expanded}"
         for dollar, backtick in re.findall(r"\$\(([^()]*)\)|`([^`]*)`", executable):
-            nested = Analyzer(self.cwd, dict(self.env), self.rules, self.in_container)
+            nested = Analyzer(
+                self.cwd, dict(self.env), self.rules, self.in_container, set(self.exported)
+            )
             nested.run(dollar or backtick, depth + 1)
         try:
             tokens = tokenize(text)
@@ -319,62 +379,99 @@ class Analyzer:
             raise GuardError(
                 "the command could not be parsed; split it into simpler ones"
             ) from None
-        # a pipeline is one part: its commands run together, so it is offered back whole
-        parts: list[list[tuple[list[str], bool]]] = [[]]
-        words: list[str] = []
-        conditional = False
-        for token in [*tokens, ";"]:
-            if is_operator(token):
-                if words:
-                    parts[-1].append((words, conditional))
-                if token not in {"|", "|&"} and parts[-1]:
-                    parts.append([])
-                conditional = token in {"&&", "||"}
-                words = []
-            else:
-                words.append(token)
-        parts = [part for part in parts if part]
-        if depth > 0 or len(parts) < 2:
+        parts = split_parts(tokens)
+        commands = [part for part in parts if any(item[1] == "run" for item in part)]
+        if depth > 0 or len(commands) < 2:
             for part in parts:
-                for words, conditional in part:
-                    self.segment(words, depth, conditional)
+                for item in part:
+                    self.step(item, depth)
             return
         # The hook refuses the whole call, so every part is checked and the refusal names
         # the ones at fault — the agent can send the rest again on its own.
         blocked = []
         for part in parts:
-            try:
-                for words, conditional in part:
-                    self.segment(words, depth, conditional)
-            except GuardError as exc:
-                text = " | ".join(" ".join(words) for words, _ in part)
-                blocked.append(f"`{text}`: {exc}")
+            for index, item in enumerate(part):
+                try:
+                    self.step(item, depth)
+                except GuardError as exc:
+                    text = " | ".join(" ".join(words) for _, kind, words, _, _ in part if words)
+                    blocked.append(f"`{text}`: {exc}")
+                    # the rest of the part is refused with it; its scopes still open and close
+                    for _, kind, _, _, _ in part[index + 1 :]:
+                        if kind != "run":
+                            self.step((0, kind, [], False, False), depth)
+                    break
         if blocked:
-            passed = len(parts) - len(blocked)
+            passed = len(commands) - len(blocked)
             rest = (
-                f"; the other {passed} of {len(parts)} parts passed"
+                f"; the other {passed} of {len(commands)} parts passed"
                 " — run them as a separate call"
                 if passed
                 else ""
             )
             raise GuardError(f"the whole call is refused because of {'; '.join(blocked)}{rest}")
 
+    def snapshot(self) -> Snapshot:
+        return dict(self.env), set(self.exported), self.cwd
+
+    def restore(self, saved: Snapshot) -> None:
+        self.env, self.exported, self.cwd = saved[0], saved[1], saved[2]
+
+    # A subshell — `( … )`, `$( … )`, a command in a pipeline or in the background — keeps
+    # its assignments and its `cd` to itself.
+    def step(self, item: Item, depth: int) -> None:
+        _, kind, words, conditional, isolated = item
+        if kind == "(":
+            self.scopes.append(self.snapshot())
+        elif kind == ")":
+            if self.scopes:
+                self.restore(self.scopes.pop())
+        elif isolated:
+            saved = self.snapshot()
+            try:
+                self.segment(words, depth, conditional)
+            finally:
+                self.restore(saved)
+        else:
+            self.segment(words, depth, conditional)
+
+    def forget(self, names: list[str]) -> None:
+        for name in names:
+            self.env[name] = f"${name}"
+
+    def control(self, words: list[str]) -> list[str]:
+        while words:
+            keyword = words[0]
+            if keyword in BLOCK_OPENERS:
+                self.blocks += 1
+            elif keyword in WORD_LIST_OPENERS:
+                self.blocks += 1
+                if keyword != "case" and len(words) > 1 and NAME_ARGUMENT.match(words[1]):
+                    self.forget([words[1]])
+                return []
+            elif keyword in BLOCK_CLOSERS:
+                self.blocks = max(0, self.blocks - 1)
+            elif keyword not in BLOCK_KEYWORDS:
+                return words
+            words = words[1:]
+        return words
+
     def segment(self, tokens: list[str], depth: int, conditional: bool = False) -> None:
         words, redirects = split_redirects(tokens)
+        words = self.control(words)
+        # an assignment behind && or || or inside a block may never run (or run again), so
+        # its value stays unverifiable
+        conditional = conditional or self.blocks > 0
         env = dict(self.env)
-        while words and ASSIGNMENT.match(words[0]):
-            key, value = words.pop(0).split("=", 1)
-            # an assignment behind && or || may never run, so the value stays unverifiable
-            env[key] = f"${key}" if conditional else value
+        prefixed: set[str] = set()
+        while words and ASSIGNMENT_LIKE.match(words[0]):
+            key, value = assignment(words.pop(0), conditional)
+            env[key] = value
+            prefixed.add(key)
         if not words:
             self.env = env
             return
-        keyword = os.path.basename(words[0])
-        if keyword in LOOP_KEYWORDS:
-            words = words[1:]
-        if not words or os.path.basename(words[0]) in SHELL_SYNTAX:
-            return
-        words = unwrap(words, env)
+        words = unwrap(words, env, prefixed)
         if not words:
             return
         program, args = os.path.basename(words[0]), words[1:]
@@ -383,7 +480,15 @@ class Analyzer:
         self.check_guardrail_files(program, args, redirects)
         if program in SHELLS:
             if "-c" in args[:-1]:
-                self.run(args[args.index("-c") + 1], depth + 1)
+                # a new shell process sees only exported variables and its own prefix
+                child = {
+                    key: value
+                    for key, value in env.items()
+                    if key in self.exported or key in prefixed
+                }
+                Analyzer(self.cwd, child, self.rules, self.in_container).run(
+                    args[args.index("-c") + 1], depth + 1
+                )
             return
         if program == "eval":
             self.run(" ".join(args), depth + 1)
@@ -392,11 +497,12 @@ class Analyzer:
             self.change_dir(args)
             return
         if program == "export":
-            for arg in args:
-                if ASSIGNMENT.match(arg):
-                    key, value = arg.split("=", 1)
-                    self.env[key] = value
+            self.export(args, conditional)
             return
+        if program in ASSIGNING_BUILTINS:
+            self.forget([match.group(1) for arg in args if (match := NAME_ARGUMENT.match(arg))])
+        if program == "printf" and "-v" in args[:-1]:
+            self.forget([args[args.index("-v") + 1]])
         if program in NETWORK_PROGRAMS and self.rules.production_host:
             if any(self.rules.production_host.search(arg) for arg in args):
                 raise GuardError("production is off limits to agent sessions; ask the owner")
@@ -415,6 +521,20 @@ class Analyzer:
             program == migration or (program.startswith("python") and args[:2] == ["-m", migration])
         ):
             self.migrate(args, env)
+
+    def export(self, args: list[str], conditional: bool) -> None:
+        names = []
+        for arg in args:
+            if ASSIGNMENT_LIKE.match(arg):
+                key, value = assignment(arg, conditional)
+                self.env[key] = value
+                names.append(key)
+            elif NAME_ARGUMENT.match(arg):
+                names.append(arg)
+        if "-n" in args:
+            self.exported.difference_update(names)
+        else:
+            self.exported.update(names)
 
     def migrate(self, args: list[str], env: dict[str, str]) -> None:
         if not DB_COMMANDS & set(args):
@@ -484,23 +604,20 @@ class Analyzer:
                 value = rest.pop(0)
                 if option == "-C":
                     cwd = resolve(cwd, value)
-                elif option == "-c" and value.lower().startswith("core.hookspath"):
-                    raise GuardError(HOOKS_PATH)
-                elif option == "-c" and value.lower().startswith("alias."):
-                    raise GuardError(ALIAS)
+                elif option == "-c":
+                    key = expand_variables(value, self.env).split("=", 1)[0]
+                    if "$" in key or "`" in key:
+                        raise GuardError(CONFIG_VARIABLE.format(value))
+                    refusal = config_key_refusal(key.lower())
+                    if refusal:
+                        raise GuardError(refusal)
         if not rest:
             return
         sub, sub_args = rest[0], rest[1:]
         if "--no-verify" in sub_args:
             raise GuardError("skipping git hooks with --no-verify is off limits")
         if sub == "config":
-            names, writes = config_access(sub_args)
-            if writes and any(
-                name == "core" or name.startswith("core.hookspath") for name in names
-            ):
-                raise GuardError(HOOKS_PATH)
-            if writes and any(name == "alias" or name.startswith("alias.") for name in names):
-                raise GuardError(ALIAS)
+            self.config(sub_args)
         if sub == "reset" and "--hard" in sub_args:
             raise GuardError("`git reset --hard` discards work irreversibly; ask the owner")
         if sub == "clean" and any(is_force_flag(arg) for arg in sub_args):
@@ -529,28 +646,66 @@ class Analyzer:
         elif on_protected:
             raise GuardError(f"`git {sub}` on {branch}: {MAIN_OWNER_ONLY}")
 
+    def config(self, args: list[str]) -> None:
+        expanded = [expand_variables(arg, self.env) for arg in args]
+        names, writes, sections = config_access(expanded)
+        if not writes:
+            return
+        if not names:
+            # `--edit`, `-e`, `edit`: an editor changes whatever it likes
+            raise GuardError(CONFIG_EDIT)
+        for name in names:
+            if "$" in name or "`" in name:
+                raise GuardError(CONFIG_VARIABLE.format(name))
+            refusal = section_refusal(name) if sections else config_key_refusal(name)
+            if refusal:
+                raise GuardError(refusal)
+
     # A push is judged on what the shell will run: arguments expand with the variables known
-    # before the command (never its own prefix assignments), split on whitespace, and an
-    # empty value disappears. Whatever stays unresolved is refused, like a removal path.
+    # before the command (never its own prefix assignments), an expansion splits on
+    # whitespace, and an empty value disappears. Options are read after expansion too.
+    # Whatever stays unresolved is refused, like a removal path.
     def push(self, args: list[str], on_protected: bool) -> None:
-        for arg in args:
-            destructive = arg in {"--mirror", "--delete", "-d", "--prune"} or arg.startswith(
-                "--force"
-            )
-            if destructive or is_force_flag(arg):
-                raise GuardError("force, mirror and delete pushes are off limits; ask the owner")
-        positionals = [arg for arg in args if not arg.startswith("-")]
-        for raw in positionals:
+        ifs = self.env.get("IFS")
+        words = []
+        for raw in args:
             # the lexer cut a `$(` off here, so the rest of the push landed in other segments
             if raw.endswith("$"):
                 raise GuardError(UNRESOLVED_REFSPEC.format(f"{raw}(...)"))
-        words = [
-            (raw, word) for raw in positionals for word in expand_variables(raw, self.env).split()
-        ]
-        refspecs = words[1:]
+            if "$" not in raw:
+                words.append((raw, raw))
+                continue
+            if ifs is not None and ifs != DEFAULT_IFS:
+                # a changed IFS splits the expansion where the guard would not
+                raise GuardError(UNRESOLVED_REFSPEC.format(raw))
+            words += [(raw, word) for word in expand_variables(raw, self.env).split()]
+        for _, word in words:
+            destructive = word in PUSH_DESTRUCTIVE or word.startswith("--force")
+            if destructive or is_force_flag(word):
+                raise GuardError("force, mirror and delete pushes are off limits; ask the owner")
+            if word == "--no-verify":
+                raise GuardError("skipping git hooks with --no-verify is off limits")
+            if word in {"--all", "--branches"}:
+                raise GuardError(EVERY_BRANCH)
+        positionals, repository_option = [], False
+        index = 0
+        while index < len(words):
+            raw, word = words[index]
+            option = word.split("=", 1)[0]
+            if option == "--repo":
+                repository_option = True
+            if word in PUSH_VALUE_OPTIONS:
+                index += 1
+            elif not word.startswith("-"):
+                positionals.append((raw, word))
+            index += 1
+        # with --repo every positional is a refspec
+        refspecs = positionals if repository_option else positionals[1:]
         for raw, word in refspecs:
             if "$" in word or "`" in word:
                 raise GuardError(UNRESOLVED_REFSPEC.format(raw))
+            if GLOB_CHARACTERS.search(word):
+                raise GuardError(PUSH_PATTERN.format(raw))
         specs = [word for _, word in refspecs]
         if any(spec.startswith(("+", ":")) for spec in specs):
             raise GuardError("force and delete pushes are off limits; ask the owner")
@@ -730,6 +885,54 @@ def tokenize(text: str) -> list[str]:
     return list(lexer)
 
 
+def assignment(word: str, conditional: bool) -> tuple[str, str]:
+    match = ASSIGNMENT_LIKE.match(word)
+    assert match is not None
+    key = match.group(1)
+    # an append or an array element changes a value the guard does not track
+    known = not conditional and not match.group(2) and not match.group(3)
+    return key, word[match.end() :] if known else f"${key}"
+
+
+# Splits tokens into parts: a pipeline is one part (its commands run together, so it is
+# offered back whole in a compound refusal), and every `(` and `)` becomes an item of its
+# own so a subshell's assignments end with it.
+def split_parts(tokens: list[str]) -> list[list[Item]]:
+    items: list[Item] = []
+    part, filled = 0, False
+    words: list[str] = []
+    conditional = after_pipe = False
+    pieces = []
+    for token in [*tokens, ";"]:
+        if is_operator(token):
+            # the lexer glues neighbouring punctuation: `);`, `|(`, `&&(`
+            pieces.extend(OPERATOR.findall(token))
+        else:
+            pieces.append(token)
+    for token in pieces:
+        if not is_operator(token):
+            words.append(token)
+            continue
+        piped = token in {"|", "|&"}
+        if token == "(" and words and ARRAY_START.fullmatch(words[-1]):
+            # `B=(main)` makes an array; its value is not tracked
+            words[-1] = f"{words[-1].removesuffix('=').removesuffix('+')}+="
+        if words:
+            items.append((part, "run", words, conditional, after_pipe or piped or token == "&"))
+            filled = True
+        if not piped and filled:
+            part, filled = part + 1, False
+        if token in {"(", ")"}:
+            items.append((part, token, [], False, False))
+        conditional = token in {"&&", "||"}
+        after_pipe = piped
+        words = []
+    parts: dict[int, list[Item]] = {}
+    for item in items:
+        parts.setdefault(item[0], []).append(item)
+    return list(parts.values())
+
+
 def is_operator(token: str) -> bool:
     return bool(token) and all(char in "&|;()" for char in token)
 
@@ -749,7 +952,7 @@ def split_redirects(tokens: list[str]) -> tuple[list[str], list[str]]:
     return words, targets
 
 
-def unwrap(words: list[str], env: dict[str, str]) -> list[str]:
+def unwrap(words: list[str], env: dict[str, str], prefixed: set[str]) -> list[str]:
     while words:
         name = os.path.basename(words[0])
         if name in WRAPPERS:
@@ -758,6 +961,7 @@ def unwrap(words: list[str], env: dict[str, str]) -> list[str]:
                 if ASSIGNMENT.match(words[0]):
                     key, value = words[0].split("=", 1)
                     env[key] = value
+                    prefixed.add(key)
                 words = words[1:]
         elif name == "timeout":
             words = skip_options(words[1:], {"-s", "--signal", "-k", "--kill-after"})[1:]
@@ -779,7 +983,7 @@ def skip_options(words: list[str], with_value: set[str]) -> list[str]:
 # Tells a read of `git config` from a write, in both the legacy form (`git config key value`,
 # `--unset`) and the subcommand form of git 2.46 (`git config set key value`). A section
 # operation names sections, not keys, so every one of its names is returned.
-def config_access(args: list[str]) -> tuple[list[str], bool]:
+def config_access(args: list[str]) -> tuple[list[str], bool, bool]:
     flags, positionals = set(), []
     rest = list(args)
     while rest:
@@ -801,8 +1005,30 @@ def config_access(args: list[str]) -> tuple[list[str], bool]:
     else:
         writes = len(positionals) > 1
     if action in CONFIG_SECTION_OPERATIONS or flags & CONFIG_SECTION_OPERATIONS:
-        return [name.lower() for name in positionals], writes
-    return [name.lower() for name in positionals[:1]], writes
+        return [name.lower() for name in positionals], writes, True
+    return [name.lower() for name in positionals[:1]], writes, False
+
+
+# Keys that switch off the pre-push hook, run git commands the guard never sees, or decide
+# which branches a push reaches. `key` is lower case.
+def config_key_refusal(key: str) -> str | None:
+    if key == "core.hookspath":
+        return HOOKS_PATH
+    if key.startswith("alias."):
+        return ALIAS
+    if key == "push.default" or re.fullmatch(r"remote\..+\.(push|mirror)", key):
+        return PUSH_CONFIG
+    return None
+
+
+def section_refusal(section: str) -> str | None:
+    if section == "core":
+        return HOOKS_PATH
+    if section == "alias":
+        return ALIAS
+    if section == "push" or section.startswith("remote."):
+        return PUSH_CONFIG
+    return None
 
 
 def check_gh(args: list[str]) -> None:
@@ -878,8 +1104,9 @@ def is_force_flag(arg: str) -> bool:
     return arg == "--force" or (arg.startswith("-") and not arg.startswith("--") and "f" in arg)
 
 
+# git completes `heads/main` to `refs/heads/main`, so both prefixes name a branch
 def ref_name(spec: str) -> str:
-    return spec.lstrip("+").split(":")[-1].removeprefix("refs/heads/")
+    return spec.lstrip("+").split(":")[-1].removeprefix("refs/").removeprefix("heads/")
 
 
 def resolve(base: Path, raw: str) -> Path:

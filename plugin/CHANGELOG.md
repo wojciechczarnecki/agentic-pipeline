@@ -13,7 +13,12 @@ rozwinąć — np. `git push origin HEAD:$(git branch --show-current)`,
 `git push $(git remote) <gałąź>`, `git push origin $NIEZNANA`; prefiksowe przypisanie
 dla refspecu tego samego pusha (`B=feat/x git push origin $B`); `git -c alias.*`;
 zapis aliasu w konfiguracji gita, także `--unset` i `--rename-section … alias`;
-usunięcie albo przemianowanie sekcji `core`. Branch trzeba w takim pushu wypisać wprost.
+usunięcie albo przemianowanie sekcji `core`; `git push --all`/`--branches`, refspec ze
+wzorcem albo rozwinięciem nawiasów (`*`, `?`, `{a,b}`); zapis albo `-c` konfiguracji
+pusha (`remote.<nazwa>.push`, `remote.<nazwa>.mirror`, `push.default`);
+`git config --edit`; klucz konfiguracji gita zbudowany ze zmiennej; push ze zmienną
+przypisaną w bloku `if`/`while`/`for`/`case`, przez `read`/`declare`/`printf -v`/`unset`
+albo przez `B+=`. Branch trzeba w takim pushu wypisać wprost.
 
 ### Naprawione
 
@@ -36,6 +41,28 @@ usunięcie albo przemianowanie sekcji `core`. Branch trzeba w takim pushu wypisa
 - Alias gita jest blokowany: `git -c alias.*=…` (klucz bez rozróżniania wielkości liter)
   i zapis aliasu w konfiguracji w dowolnym zakresie; odczyt aliasu przechodzi. Inne
   klucze `-c` (np. `user.name`) bez zmian.
+- Po końcowym review: strażnik śledzi zmienną tylko tam, gdzie jej wartość jest pewna.
+  Przypisanie w podpowłoce `( … )`, w potoku i w tle kończy się razem z nimi (tak samo
+  `cd`); `bash -c` widzi tylko zmienne eksportowane (`export -n` odbiera eksport);
+  przypisanie warunkowe (także warunkowy `export`), w bloku `if`/`while`/`for`/`case`,
+  przez wbudowane polecenia (`read`, `declare`, `local`, `unset`, `printf -v`, `mapfile`
+  …), dopisanie `B+=`, element i tablica dają wartość nieznaną; po zmianie `IFS` każde
+  rozwinięcie w refspecu jest nieznane. Wcześniej m.in. `(B=feat/x); git push origin $B`
+  i `B=feat/x; bash -c 'git push origin $B'` przechodziły na `main`.
+- Komenda za słowem kluczowym `if`, `while`, `until`, `elif` i `!` jest sprawdzana —
+  wcześniej `if git push origin main; then :; fi` przechodził.
+- Opcje pusha są czytane po rozwinięciu zmiennych: `B=-f; git push origin $B`,
+  `--delete`, `--mirror` i `--no-verify` ze zmiennej są blokowane. Wartość opcji `-o`/
+  `--push-option`/`--repo`/`--receive-pack`/`--exec` nie jest brana za remote (wcześniej
+  `git push -o ci.skip origin` na `main` przechodził); z `--repo` każdy argument jest
+  refspecem.
+- Push, który sięga `main` bez wypisania go, jest blokowany: `--all`, `--branches`,
+  wzorce i nawiasy w refspecu, skrót `heads/main` (git dopełnia go do
+  `refs/heads/main`), konfiguracja pusha przez `-c` i zapis `remote.*.push`,
+  `remote.*.mirror`, `push.default` oraz operacje na sekcjach `push` i `remote.*`.
+- `git config --edit`/`-e`/`edit` jest blokowany (edytor może zmienić `core.hooksPath`
+  albo alias), tak samo klucz `git config` i `git -c` zbudowany ze zmiennej, której
+  strażnik nie zna; znana zmienna jest rozwijana przed sprawdzeniem klucza.
 
 ### Dodane
 

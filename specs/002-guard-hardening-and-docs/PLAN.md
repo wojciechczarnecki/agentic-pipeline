@@ -712,3 +712,24 @@ holes in the claim this spec makes ("a variable is expanded the way the shell do
   quoting); the option-value case is kept in F4.
 - `test_readme.py` `strip_code` ignores `~~~` fences and double-backtick spans — only false
   positives are possible, and neither README nor GUARD.md uses them.
+
+### 2026-09-21 — /pipeline:final-review (apply)
+
+Owner decision (see `## Owner decisions`): F1–F6 accepted, F7–F11 rejected. Every fix
+has tests in `plugin/tests/test_guard.py`; each new case was run against the pre-fix
+guard (77 of them fail there) and passes now. `bash scripts/check.sh`: ALL GREEN
+(818 passed).
+
+| id | change |
+|----|--------|
+| F1 | `guard.py`: `split_parts` turns `(`/`)` into scope items and marks pipeline and background commands as subshells; `Analyzer.step` snapshots and restores variables, exported names and `cwd` around them. `bash -c` gets a new analyzer with only exported names and its own prefix assignments (`export`/`export -n` tracked). Assignments behind `&&`/`||` (also a conditional `export`) or inside `if`/`while`/`until`/`for`/`select`/`case`, names set by `read`/`declare`/`typeset`/`local`/`readonly`/`unset`/`mapfile`/`readarray`/`getopts`/`let`/`printf -v`, `B+=`, `B[i]=` and `B=(…)` become unknown; after an `IFS` change every expansion in a push refspec is refused. Tests: `test_a_push_variable_the_guard_cannot_follow_is_refused` (19 forms × main/feature), `test_a_variable_still_reaches_its_own_subshell`, `test_subshell_changes_stay_in_the_subshell`. While fixing the control blocks, `if`/`while`/`until`/`elif`/`!` turned out to hide the command behind them (`if git push origin main; then :; fi` passed on 0.3.3); the keywords are now stripped like `then`/`do` — `test_a_command_behind_a_control_keyword_is_checked` |
+| F2 | `push` expands every argument first (a literal token is never split), then checks force/mirror/delete/prune and `--no-verify` on the expanded words — `test_a_destructive_push_option_from_a_variable_is_refused`, `test_no_verify_from_a_variable_is_refused` |
+| F3 | `--all`/`--branches` refused (`EVERY_BRANCH`); a refspec with `*`, `?`, `[` or `{` refused (`PUSH_PATTERN`); `ref_name` strips `refs/` and `heads/`; `config_key_refusal`/`section_refusal` refuse `-c` and `git config` writes of `remote.<name>.push`, `remote.<name>.mirror`, `push.default` and section operations on `push`/`remote.*` (`PUSH_CONFIG`); a `-c` or `git config` key built from an unknown variable is refused, a known one expanded first — `test_a_push_of_every_branch_is_refused`, `test_a_push_refspec_pattern_is_refused`, `test_a_push_to_main_in_a_short_ref_form_is_refused`, `test_push_configuration_is_refused`, `test_other_push_settings_pass`, `test_a_configuration_key_from_a_variable_is_checked`. What stays open is in GUARD.md → Known limits |
+| F4 | the values of `-o`/`--push-option`/`--repo`/`--receive-pack`/`--exec` are skipped before the remote is picked; with `--repo` every positional counts as a refspec — `test_a_push_option_value_is_not_the_remote` (on `main` and on a feature branch) |
+| F5 | a `git config` write that names no key (`--edit`, `-e`, `edit`) is refused with `CONFIG_EDIT` — `test_editing_git_configuration_is_refused` |
+| F6 | GUARD.md → Covers says "defining a git alias"; Known limits gains "An alias that already exists runs unchecked" and "Shell constructs the guard does not model"; README guard summary says "defining git aliases (an alias already in the configuration is not checked)"; the `docs/BACKLOG.md` Guard P3 row names both |
+
+Also updated: GUARD.md → Runs (what the guard follows and what counts as unknown),
+`plugin/CHANGELOG.md` 0.3.4 (not tagged yet; consumer impact lists the new refusals),
+`docs/DECISIONS.md` (a row for the final-review rules). Rejected nits F7–F11 are not
+backlogged (owner decision).

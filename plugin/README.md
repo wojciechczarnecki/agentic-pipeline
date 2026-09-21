@@ -192,7 +192,8 @@ the hook never blocks an edit.
 A `PreToolUse: Bash` hook (`bin/guard`, a wrapper around `bin/guard.py`) that refuses a
 command with exit code 2 and a reason. The universal rules work WITHOUT configuration —
 pushes, commits and merges on `main`, force and delete pushes, `--no-verify`,
-`git reset --hard`, `git clean -f`, `core.hooksPath` and git aliases, `gh pr merge` and
+`git reset --hard`, `git clean -f`, `core.hooksPath`, push configuration and defining git
+aliases (an alias already in the configuration is not checked), `gh pr merge` and
 owner-only GitHub changes, `sudo`, removals outside the repository and the scratch
 directory, shell edits of guardrail files; the configuration adds production hosts and
 commands, the worktree directory and the migration module. The migration module recognises
