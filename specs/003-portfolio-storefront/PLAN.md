@@ -381,7 +381,7 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
       Repeat the negative check for one broken anchor (`#known-limit`) with
       `-k relative_links`.
 
-- [ ] 5. **Display name, pointers and the release procedure**: files `docs/PROJECT.md`,
+- [x] 5. **Display name, pointers and the release procedure**: files `docs/PROJECT.md`,
       `CLAUDE.md`, `.claude-plugin/marketplace.json`, `plugin/.claude-plugin/plugin.json`,
       `docs/CONVENTIONS.md`.
       - `docs/PROJECT.md`: title `# Spec-Driven Workflow`. The "Listing in external plugin

@@ -4,9 +4,10 @@ Instructions for agents working in this repository.
 
 ## Project
 
-- **agentic-pipeline** — an agentic feature pipeline plugin for Claude Code: idea → plan →
-  plan review → implementation → final review → pull request, with a command guard,
-  formatting and notification hooks, workflow metrics and a project scaffold skill
+- **Spec-Driven Workflow** (repository `agentic-pipeline`, plugin `pipeline`) — an agentic
+  feature pipeline plugin for Claude Code: idea → plan → plan review → implementation →
+  final review → pull request, with a command guard, formatting and notification hooks,
+  workflow metrics and a project scaffold skill
 - Owner: Wojciech Czarnecki
 - Stack: Python 3.12 standard library only at runtime (hooks and `plugin/bin/`), Markdown
   skills and agents · dev tools through uv (ruff, black, pytest) · GitHub Actions (CI)
@@ -29,7 +30,7 @@ The workflow comes from the `pipeline` plugin **released** from this repository 
 installed from GitHub (marketplace `wcz-tools`) — not from the working tree: a stable
 release guards work on unstable code. `.claude/settings.json` points it at the `stable`
 release channel; the owner installs it once per machine at `--scope user` and handles
-installs, updates and migrations outside agent sessions — `plugin/README.md` → Installation.
+installs, updates and migrations outside agent sessions — `plugin/docs/INSTALL.md`.
 A session without the plugin has no command guard and no `pre-push` rule, and says nothing
 about it; a session keeps the plugin it loaded at startup.
 
@@ -122,9 +123,10 @@ claude plugin validate --strict plugin/
 claude plugin validate --strict .
 claude --plugin-dir ./plugin          # one-off session with the working-tree plugin
 
-# Release — the owner only: tag a clean clone on main, then move the channel
+# Release — the owner only: tag a clean clone on main, move the channel, publish the Release
 claude plugin tag plugin --push
 git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'   # tags are annotated
+awk -v v=X.Y.Z '$0 == "## " v {f=1; next} /^## /{f=0} f' plugin/CHANGELOG.md | gh release create pipeline--vX.Y.Z --verify-tag --title 'pipeline X.Y.Z' --notes-file -
 ```
 
 ## Structure

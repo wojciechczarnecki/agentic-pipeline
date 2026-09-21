@@ -82,6 +82,16 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   the tag, so a release is not out until this push. The channel feeds every project
   with a `--scope user` install and the `stable` ruleset lets the owner's credentials
   push it to any commit, so an agent is kept off it by `deny` rules, like tagging.
+- The owner then publishes the GitHub Release on the tag, with the matching
+  `plugin/CHANGELOG.md` section (its body, without the heading) as the notes:
+
+  ```bash
+  awk -v v=X.Y.Z '$0 == "## " v {f=1; next} /^## /{f=0} f' plugin/CHANGELOG.md \
+    | gh release create pipeline--vX.Y.Z --verify-tag --title 'pipeline X.Y.Z' --notes-file -
+  ```
+
+  `--verify-tag` aborts when the tag is not on the remote, so the command never creates a
+  tag.
 - A **minor or major** tag needs a green eval receipt for the commit being tagged: run
   `bash scripts/eval.sh`, which writes `plugin/evals/last-run.json` and is committed with
   the release. The receipt fingerprints what `plugin/` contains rather than naming a

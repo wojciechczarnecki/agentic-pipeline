@@ -1,4 +1,4 @@
-# agentic-pipeline
+# Spec-Driven Workflow
 
 ## Problem
 
