@@ -95,7 +95,36 @@ UNRESOLVED_REFSPEC = (
     "cannot verify a push refspec built from variables or command substitution: {}; "
     "spell the branch out"
 )
-CONFIG_READS = {"get", "list", "--get", "--get-all", "--get-regexp", "-l", "--list"}
+ALIAS = "a git alias cannot be verified by the guard; run the git command itself"
+CONFIG_VALUE_OPTIONS = {"-f", "--file", "--blob", "--type", "--default", "--comment", "--value"}
+CONFIG_READ_SUBCOMMANDS = {"get", "list"}
+CONFIG_WRITE_SUBCOMMANDS = {"set", "unset", "rename-section", "remove-section", "edit"}
+CONFIG_WRITE_FLAGS = {
+    "--add",
+    "--replace-all",
+    "--unset",
+    "--unset-all",
+    "--rename-section",
+    "--remove-section",
+    "-e",
+    "--edit",
+}
+CONFIG_READ_FLAGS = {
+    "--get",
+    "--get-all",
+    "--get-regexp",
+    "--get-urlmatch",
+    "--get-color",
+    "--get-colorbool",
+    "-l",
+    "--list",
+}
+CONFIG_SECTION_OPERATIONS = {
+    "--rename-section",
+    "--remove-section",
+    "rename-section",
+    "remove-section",
+}
 GUARDRAIL_FILES = (
     "guardrail files (.claude/settings*.json, .claude/workflow.json and the plugin "
     "directory) change only through Edit/Write with the owner's approval"
@@ -457,14 +486,21 @@ class Analyzer:
                     cwd = resolve(cwd, value)
                 elif option == "-c" and value.lower().startswith("core.hookspath"):
                     raise GuardError(HOOKS_PATH)
+                elif option == "-c" and value.lower().startswith("alias."):
+                    raise GuardError(ALIAS)
         if not rest:
             return
         sub, sub_args = rest[0], rest[1:]
         if "--no-verify" in sub_args:
             raise GuardError("skipping git hooks with --no-verify is off limits")
-        if sub == "config" and any(arg.lower().startswith("core.hookspath") for arg in sub_args):
-            if not CONFIG_READS & set(sub_args):
+        if sub == "config":
+            names, writes = config_access(sub_args)
+            if writes and any(
+                name == "core" or name.startswith("core.hookspath") for name in names
+            ):
                 raise GuardError(HOOKS_PATH)
+            if writes and any(name == "alias" or name.startswith("alias.") for name in names):
+                raise GuardError(ALIAS)
         if sub == "reset" and "--hard" in sub_args:
             raise GuardError("`git reset --hard` discards work irreversibly; ask the owner")
         if sub == "clean" and any(is_force_flag(arg) for arg in sub_args):
@@ -738,6 +774,35 @@ def skip_options(words: list[str], with_value: set[str]) -> list[str]:
     while words and words[0].startswith("-"):
         words = words[2:] if words[0] in with_value else words[1:]
     return words
+
+
+# Tells a read of `git config` from a write, in both the legacy form (`git config key value`,
+# `--unset`) and the subcommand form of git 2.46 (`git config set key value`). A section
+# operation names sections, not keys, so every one of its names is returned.
+def config_access(args: list[str]) -> tuple[list[str], bool]:
+    flags, positionals = set(), []
+    rest = list(args)
+    while rest:
+        arg = rest.pop(0)
+        if arg in CONFIG_VALUE_OPTIONS:
+            rest = rest[1:]
+        elif arg.startswith("-"):
+            flags.add(arg)
+        else:
+            positionals.append(arg)
+    action = ""
+    if positionals and positionals[0] in CONFIG_READ_SUBCOMMANDS | CONFIG_WRITE_SUBCOMMANDS:
+        action = positionals.pop(0)
+        writes = action in CONFIG_WRITE_SUBCOMMANDS
+    elif flags & CONFIG_WRITE_FLAGS:
+        writes = True
+    elif flags & CONFIG_READ_FLAGS:
+        writes = False
+    else:
+        writes = len(positionals) > 1
+    if action in CONFIG_SECTION_OPERATIONS or flags & CONFIG_SECTION_OPERATIONS:
+        return [name.lower() for name in positionals], writes
+    return [name.lower() for name in positionals[:1]], writes
 
 
 def check_gh(args: list[str]) -> None:

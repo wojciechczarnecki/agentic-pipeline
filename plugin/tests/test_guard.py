@@ -494,6 +494,89 @@ def test_a_substitution_in_the_remote_position_is_refused(on_feature, command):
     assert "spell the branch out" in reason and "$(...)" in reason, reason
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git config core.hooksPath",
+        "git config --global core.hooksPath",
+        "git config --local core.hooksPath",
+        "git config --show-origin core.hooksPath",
+        "git config --file .git/config core.hooksPath",
+        "git config --get core.hooksPath",
+        "git config get core.hooksPath",
+    ],
+)
+def test_reading_core_hooks_path_is_allowed(on_feature, command):
+    assert evaluate(command, on_feature) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git config core.hooksPath x",
+        'git config core.hooksPath ""',
+        "git config --global core.hooksPath x",
+        "git config --file .git/config core.hooksPath x",
+        "git config set core.hooksPath x",
+        "git config --unset core.hooksPath",
+        "git config --unset-all core.hooksPath",
+        "git config unset core.hooksPath",
+        "git -c core.hooksPath=/dev/null push origin feat/001-x",
+    ],
+)
+def test_writing_core_hooks_path_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "core.hooksPath" in reason, reason
+
+
+def assert_alias_refused(reason: str | None) -> None:
+    assert reason is not None
+    assert "alias cannot be verified" in reason and "run the git command itself" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git -c alias.p=push p origin main",
+        "git -c alias.x='!git push origin main' x",
+        "git -c Alias.P=push P origin feat/x",
+    ],
+)
+def test_a_command_line_alias_is_refused(on_feature, command):
+    assert_alias_refused(evaluate(command, on_feature))
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["git config alias.p push", "git config --global alias.p push", "git config set alias.p push"],
+)
+def test_writing_a_persistent_alias_is_refused(on_feature, command):
+    assert_alias_refused(evaluate(command, on_feature))
+
+
+@pytest.mark.parametrize("command", ["git config alias.p", "git config --get-regexp alias"])
+def test_reading_an_alias_is_allowed(on_feature, command):
+    assert evaluate(command, on_feature) is None
+
+
+def test_other_command_line_config_keys_pass(on_feature):
+    assert evaluate("git -c user.name=x commit -m y", on_feature) is None
+
+
+def test_section_operations_on_core_or_alias_are_refused(on_feature):
+    for command in [
+        "git config --remove-section core",
+        "git config --rename-section core x",
+        "git config remove-section core",
+    ]:
+        reason = evaluate(command, on_feature)
+        assert reason is not None, command
+        assert "core.hooksPath" in reason, reason
+    assert_alias_refused(evaluate("git config --rename-section x alias", on_feature))
+    assert evaluate("git config --remove-section user", on_feature) is None
+
+
 @pytest.mark.parametrize("command, fragment", UNIVERSAL_BLOCKED)
 def test_universal_rules_without_config(bare_repo, command, fragment):
     git(bare_repo, "switch", "-C", "feat/001-x")

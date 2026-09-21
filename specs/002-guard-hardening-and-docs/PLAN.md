@@ -246,7 +246,7 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
       `uv run pytest -q -p no:cacheprovider plugin/tests/test_guard.py -k "push"`
       `uv run ruff check plugin/ && uv run black --check --quiet plugin/`
 
-- [ ] 2. **`git config` reads and writes, aliases** — files: `plugin/bin/guard.py`,
+- [x] 2. **`git config` reads and writes, aliases** — files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard.py`.
       In `guard.py`: add `ALIAS`, the option/flag/subcommand sets and `config_access` from
       Approach; remove `CONFIG_READS`; in `Analyzer.git` replace the `core.hookspath`
