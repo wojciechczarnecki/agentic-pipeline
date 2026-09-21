@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-09-21"
   - "spec-ready — 2026-09-21"
   - "plan-draft — 2026-09-21"
   - "plan-approved — 2026-09-21"
+  - "implemented — 2026-09-21"
 metrics:
   started_at: 2026-09-21T17:56
   escalations: 0
@@ -12,6 +13,9 @@ metrics:
   plan_review_blockers: 0
   plan_review_majors: 2
   plan_changes: 11
+  implement_steps: 8
+  implement_iterations: 0
+  deviations: 1
 ---
 
 # SPEC 002 — A guard worth pointing at: close the known leaks, then document it

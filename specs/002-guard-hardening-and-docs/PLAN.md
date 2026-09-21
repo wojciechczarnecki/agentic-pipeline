@@ -447,7 +447,7 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
       `grep -n "interpreters" docs/BACKLOG.md` → 1 line in the P3 table
       `sed -n '/## Stage 3/,/## Stage 4/p' docs/ROADMAP.md | grep -c "\- \[ \]"` → 0
 
-- [ ] 8. **Full verification and end-to-end** — files: this PLAN (results).
+- [x] 8. **Full verification and end-to-end** — files: this PLAN (results).
       Run the automatic end-to-end section below, record its output under Results; tick the
       Definition of Done; set SPEC status `implemented` (by /pipeline:implement).
       Automatic verification: `bash scripts/check.sh` → `ALL GREEN`.
@@ -561,14 +561,31 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
 scratch script importing `plugin/bin/guard.py`). The last seven candidates were measured
 up front, beside the planned twelve, rather than only after a shortfall — see Deviations.
 
+#### Automatic end-to-end (step 8)
+
+1. Hook on the working tree (`plugin/bin/guard` with payload JSON on stdin, `cwd` and
+   `CLAUDE_PROJECT_DIR` = a scratch repository on `feat/002-x`, no `workflow.json`):
+   `B=main; git push origin $B` → exit 2, "pushing to main"; `git push origin $(echo main)`
+   → exit 2, "spell the branch out" with `$(...)`; `B=feat/x git push origin $B` → exit 2;
+   `E=; git push origin $E` → exit 0; `B=feat/002-x; git push origin HEAD:$B` → exit 0;
+   `git config core.hooksPath` → exit 0; `git config core.hooksPath x` → exit 2;
+   `git -c alias.p=push p origin main` → exit 2, "alias cannot be verified". All 8 as
+   expected. Observation: for `git push origin $(echo main)` the compound refusal adds "the
+   other 1 of 2 parts passed" — the lexer's leftover `echo main )` counts as a part; the
+   refusal itself is right (pre-existing compound-message behaviour, not changed here).
+2. `uv run pytest -q -p no:cacheprovider plugin/tests/test_guard.py -k deny_table` →
+   15 passed (14 table rows + the row count).
+3. `claude plugin validate --strict plugin/` and `.` → passed (in `check.sh` too).
+4. `bash scripts/check.sh` → `ALL GREEN` (727 passed).
+
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) done, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/CONVENTIONS.md`,
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) done, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/CONVENTIONS.md`,
       `docs/BACKLOG.md` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
