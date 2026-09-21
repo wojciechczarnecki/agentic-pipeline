@@ -53,11 +53,25 @@ Documentation only, no behaviour change. The private consumer project stays unna
 - [ ] Root `README.md` rewritten for a reader who has never seen the project: one-line
       pitch, a mermaid diagram of the pipeline and its three gates, *Why not Spec Kit?*
       (it plans, this plugin enforces), quickstart, badges (CI, licence, version), a
-      *What's deliberately not here* section, links to `GUARD.md` and the metrics
+      *What's deliberately not here* section, links to `GUARD.md` and the metrics. The
+      claim is the command guard and the checked metrics, not hook-enforced gates as
+      such — SpecForge and gate-oriented-sdd enforce approval gates with hooks too, but
+      neither guards shell commands (checked 2026-09-21)
+- [ ] *Requirements & opinions* in the root `README.md`: GitHub with `gh`, squash merges,
+      rulesets, `python3` on the machine, Alembic-only migration guarding — who the
+      plugin is for and who it is not for
+- [ ] `docs/INSTALL.md`: installation, the `stable` channel, updates, the one-time
+      migration and the known traps (scope, `enabledPlugins`, commands stripping
+      `.claude/settings.json`) move out of both READMEs, which keep a three-line install
+      and a link
 - [ ] Demo recording: the guard refusing a push to `main` with its reason, and a condensed
       `/pipeline:ship` run
 - [ ] Measured results from the private production consumer, anonymised: specs shipped,
       escalations per spec, share of significant findings caught before code
+- [ ] Evidence from the owner's public demo repository, which uses the plugin: **ask the
+      owner** for links to its specs, review reports and PRs when this stage starts, and
+      link them from the root `README.md` — the only public proof of the pipeline on a
+      product rather than on itself
 - [ ] GitHub Releases for the `pipeline--v*` tags; `CONTRIBUTING.md`, `SECURITY.md`
 
 ## Stage 5 — A release gate to trust, and a guard that guards itself
@@ -67,6 +81,10 @@ before the first minor ships.
 
 - [ ] Evals stable enough to gate on: `runs: 3` with a majority score, or sharper criteria —
       decided by measurement (was `docs/BACKLOG.md` P2; its trigger fires with this stage)
+- [ ] Behavioural evals for the stage skills, which have none today (the three cases cover
+      `init` and the guard): `implement` escalates instead of weakening a failing test,
+      `plan-review` escalates on a dependency the owner did not accept, `final-review`
+      finds a planted defect and rejects a planted false positive
 - [ ] Pre-release canary, measured and documented: how to run an unreleased plugin in a
       consumer project beside the `--scope user` install without moving `stable`
 - [ ] 0.4.0: the guard protects configurable release-channel branches
@@ -75,6 +93,11 @@ before the first minor ships.
 - [ ] 0.4.0: the guard blocks detaching the plugin (`claude plugin disable|uninstall`,
       `claude plugin marketplace remove`) — with a `--scope user` install one command
       removes the guard from every project on the machine
+- [ ] **Ask the owner** whether Stage 8 should move ahead of Stage 6. For: the canary and the
+      eval gate from this stage are what make the translation safe, and Stages 6–7 would
+      otherwise rewrite Polish skills that get translated right after, while the Stage 4
+      storefront points at Polish skills. Against: two more releases before the pipeline
+      improvements. The answer reorders this roadmap
 
 ## Stage 6 — A better pipeline
 
@@ -91,6 +114,8 @@ and 10xWorkflow (tests verified by breaking them).
       four-step fix got a 349-line plan and three reviewers (decision row with the spec:
       no size tiers; small things keep the fast path)
 - [ ] 0.5.0: the final review reports at most five nits and states how many it left out
+- [ ] Eval cases for the new behaviour: a test that was never red is caught, and the
+      converge pass finds an acceptance criterion left unimplemented
 
 ## Stage 7 — A cheaper pipeline, measured
 
@@ -109,6 +134,8 @@ and 10xWorkflow (tests verified by breaking them).
       specs on 0.5.0 with every stage on the session model, then 3–5 specs with the new
       defaults — not the 9 specs before Stage 6, which changes the metrics by itself;
       the result goes into the root `README.md`
+- [ ] Write-up, linked from the root `README.md`: the guard as a shell analyser rather than
+      a regex, the measured LLM-judge noise, the before/after numbers and cost per spec
 
 ## Stage 8 — English everywhere, Polish on request
 
@@ -122,6 +149,9 @@ silently switch a Polish consumer's plans to English, since today only `idea` na
       questions, escalations and PR bodies in `language`; `SPEC`/`PLAN` templates per
       language (`*.en.md`, `*.pl.md`) with a structure-parity test; section anchors and
       finding severities independent of language, with a fallback for older specs;
-      default `language` becomes `en`
+      default `language` becomes `en`; English templates for `/pipeline:init`
+      (`templates/CLAUDE.md`, `templates/docs/*`), which today lands Polish documents
+      even with `"language": "en"` — until then an English consumer translates them after
+      `init` and states the language in its own `CLAUDE.md`
 - [ ] 0.8.0: skills, agents, tests and `plugin/CHANGELOG.md` translated into English, with
       an eval case on `"language": "pl"`; Polish survives only in the `*.pl.md` templates
