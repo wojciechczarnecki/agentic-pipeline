@@ -636,4 +636,76 @@ remains and nothing requires an owner decision.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-21 — /pipeline:final-review (report)
+
+Material: `git diff origin/main...HEAD` (15 files, +1829/−250). Three independent
+perspectives (SPEC/PLAN compliance, quality, tests); every finding below was re-checked
+with `guard.evaluate` on a scratch repository, on `main` and on a feature branch, and — where
+it says "pre-existing" — against the `origin/main` guard (0.3.3). `bash scripts/check.sh`:
+ALL GREEN (727 passed); ruff and black clean.
+
+#### AC → evidence
+
+| AC | Evidence | ok |
+|----|----------|----|
+| AC1 | `test_guard.py::test_a_push_variable_resolving_to_main_is_refused` (all 7 forms), `test_hook_refuses_a_push_variable_resolving_to_main`; `Analyzer.push` | ok |
+| AC2 | `test_an_unresolvable_push_refspec_is_refused` (5 cases, reason names the refspec) | ok |
+| AC3 | `test_a_prefix_assignment_does_not_resolve_its_own_push` (main + feature) | ok |
+| AC4 | `test_an_empty_push_variable_pushes_the_current_branch` | ok |
+| AC5 | `test_a_push_variable_resolving_to_a_feature_branch_is_allowed` | ok |
+| AC6 | `test_a_variable_remote_with_literal_refspecs` | ok |
+| AC7 | only additions in `test_guard.py`; `test_case_count_not_regressed` | ok |
+| AC8 | `test_reading_core_hooks_path_is_allowed` (7); `config_access` | ok |
+| AC9 | `test_writing_core_hooks_path_is_refused` (9) | ok |
+| AC10 | `test_a_command_line_alias_is_refused` (incl. `Alias.P`) | ok |
+| AC11 | `test_writing_a_persistent_alias_is_refused`, `test_reading_an_alias_is_allowed`, `test_section_operations_on_core_or_alias_are_refused` | ok |
+| AC12 | `test_other_command_line_config_keys_pass` | ok |
+| AC13 | `plugin.json` 0.3.4; `CHANGELOG.md` `## 0.3.4` with `wpływ na konsumenta`; `test_changelog_*` | ok |
+| AC14 | `plugin/docs/GUARD.md`; `test_guard_md_has_the_required_sections`, `test_no_polish_outside_code[docs/GUARD.md]` | ok |
+| AC15 | `test_guard_md_names_the_known_limits`; links to BACKLOG / Stage 5 | ok |
+| AC16 | 14 rows; `test_the_deny_table_has_at_least_five_rows`, `test_every_deny_table_command_is_refused` | ok |
+| AC17 | Results → deny measurement (14 `yes` rows = GUARD.md table); `test_guard_md_records_the_deny_measurement` | ok |
+| AC18 | `test_no_domain_references.py` walks `plugin/docs/` | ok |
+| AC19 | `test_no_polish_outside_code[README.md]`; `## Decyzje właściciela` in a code span | ok |
+| AC20 | `test_the_readme_keeps_its_sections`, `test_every_status_is_documented`, `test_the_result_block_matches_the_contract`, key/default/metric tests | ok |
+| AC21 | README guard section (summary + link); `test_the_guard_section_links_guard_md`, `test_the_guard_section_states_the_migration_scope` | ok |
+| AC22 | `test_readme.py` on English anchors; `CLAUDE.md` → Installation; root `README.md` | ok |
+| AC23 | 4 rows in `docs/DECISIONS.md`; `docs/CONVENTIONS.md` → Language | ok |
+| AC24 | `docs/BACKLOG.md` P3 Guard row with a trigger | ok |
+| AC25 | Stage 3 ticked in `docs/ROADMAP.md`; check.sh green | ok |
+
+Plan steps 1–8 ticked with evidence; the single deviation (extra deny candidates measured
+up front) is justified; nothing outside the plan's file list; no new dependency, no
+migration. Owner decisions from the SPEC (AC6, AC11, AC16) are respected.
+
+#### Findings
+
+No blocker: none of the findings is a regression against 0.3.3 (checked on the old
+guard), and on `main` the `pre-push` hook and the rulesets stay behind the guard. They are
+holes in the claim this spec makes ("a variable is expanded the way the shell does it",
+"git aliases are refused"), or cheap leaks next to the code it rewrote.
+
+| id | severity | where | scenario (input → wrong behaviour) | fix |
+|----|----------|-------|-------------------------------------|-----|
+| F1 | worth fixing | `plugin/bin/guard.py` `segment`/`export`/`run` (~:314, :362–398); `plugin/docs/GUARD.md:52`; `plugin/CHANGELOG.md:27` | The guard keeps a "known" value where the shell drops or changes it, so on `main` these pass while the shell pushes `main`: `true \|\| export B=feat/x; git push origin $B` (conditional `export` applied unconditionally), `(B=feat/x); git push origin $B`, `B=feat/x \| true; git push origin $B`, `bash -c 'B=feat/x'; git push origin $B` (nested `run` shares `self.env`), `B=feat/x; bash -c 'git push origin $B'` (non-exported variable handed to the child shell), `B=feat/x; unset B; git push origin $B`; on a feature branch `B=feat/x; for B in main; do git push origin $B; done`, `B=ma; B+=in; …`, `read`/`declare`/`printf -v`, `IFS=…` | conservative: a conditional `export` stores `$KEY`; nested analyzers (`(…)`, pipeline parts, `bash -c`, `$(…)`) work on a copy and a child shell sees only exported names; a name touched by `for`/`read`/`declare`/`local`/`typeset`/`readonly`/`printf -v`/`unset`/`mapfile`/`NAME+=` becomes unresolved; an `IFS` assignment is refused; tests for each on `main`. Or qualify GUARD.md/CHANGELOG and list the rest in Known limits |
+| F2 | worth fixing | `plugin/bin/guard.py:535–541` (`push`) | Destructive-flag checks run on raw arguments, not expanded words: `B=-f; git push origin $B`, `B=--delete; git push origin $B feat/x`, `B=--mirror; …` → allowed (a force/delete push of a feature branch; nothing else stops it). Pre-existing, but the new expansion makes it a one-line fix | run the force/mirror/delete checks over the expanded words too (or refuse an expanded word starting with `-`); tests |
+| F3 | worth fixing | `plugin/bin/guard.py` `push`, `ref_name` (:881); `-c` parsing (:486–490) | Pushes that include `main` without spelling it pass on a feature branch: `git push --all origin`, `--branches`, `git push origin '*:*'` / `'refs/heads/*:refs/heads/*'`, brace expansion `git push origin {feat/x,main}` / `HEAD:ma{in,}`, git DWIM `git push origin HEAD:heads/main` (verified live: lands on `main`), `git -c remote.origin.push=HEAD:main push origin`. Pre-existing; not in Known limits | refuse `--all`/`--branches`, refspecs with `*`/`?`/`{`, strip `heads/` in `ref_name`, refuse `-c remote.*.push` and `-c push.default`; tests. Whatever stays open → GUARD.md Known limits |
+| F4 | worth fixing | `plugin/bin/guard.py:543–549` (`push`) | Value-taking push options shift the remote into the refspec slot: on `main` `git push -o ci.skip origin` / `--push-option ci.skip origin` → allowed (pushes `main`); false refusals `git push -o ci.skip $REMOTE feat/002-x` and `git push origin feat/x -o 'ci.variable=A=$B'` | skip the values of `-o`/`--push-option`/`--repo`/`--receive-pack`/`--exec` (like `CONFIG_VALUE_OPTIONS`) before picking the remote; tests |
+| F5 | worth fixing | `plugin/bin/guard.py:108–110`, `config_access` | `git config --edit`, `-e`, `git config edit` are classified as writes but name no key, so neither check fires → allowed; an editor command (`GIT_EDITOR=…`) can set `core.hooksPath` (verified) or an alias. The set entries imply coverage that is not there | refuse `--edit`/`-e`/`edit` with the `core.hooksPath` reason; test |
+| F6 | worth fixing | `plugin/docs/GUARD.md:39`, `plugin/README.md:195` | Docs say "git aliases" are refused, but an alias already in a config file runs unchecked: `git p origin main` with `alias.p=push` configured → allowed. Known limits does not name it | add the limit to GUARD.md (and "aliases defined on the command line or written" in README); optionally refuse a non-builtin `sub` that `git config --get alias.<sub>` resolves |
+| F7 | nit | `plugin/bin/guard.py:494`, `:537` | Git accepts abbreviated long options: `git push --del origin feat/x`, `--mir`, `--no-verif`, `git commit -n` → allowed. Pre-existing | match unambiguous prefixes; `-n` for `commit`/`merge` as `--no-verify` — or backlog |
+| F8 | nit | `plugin/docs/GUARD.md:157–159` | "guardrail files are protected there by Claude Code's own `ask` rules" — the consumer template (`plugin/templates/settings.json:30–33`) asks only for `.claude/settings*.json` and `scripts/git-hooks/**`, not `.claude/workflow.json` or the plugin directory | name exactly what the template's `ask` rules cover; template change → backlog |
+| F9 | nit | `plugin/bin/guard.py:543–549` | `git push $R` (unresolved remote, no refspec) → allowed; if `$R` holds `origin main` in the Bash tool's shell, it pushes `main`. AC6 covers a variable remote *with* literal refspecs only | refuse an unresolved remote with no refspec, or document it |
+| F10 | nit | `plugin/tests/test_guard.py:891`, `:909–913`, `:433ff` | Test gaps: the deny-table parser skips an indented row (`line.startswith("\|")`); no sanity check that a row's command does not start with its own rule's prefix; no cases for `--unset alias.p`/`--add alias.p` (claimed in GUARD.md:173), resolved `+$B`/`:$B`, `export B=main; …`, a hook-environment variable in a refspec, `Core.HooksPath`, `--type bool core.hooksPath x` | `lstrip()` + row-count assertion; prefix sanity check; add the listed cases |
+| F11 | nit | `plugin/bin/guard.py:545` | `git push origin feat/x$` (literal trailing `$`) → refused as `feat/x$(...)` — misleading reason, fails safe | word the reason neutrally, or check the lexer cut explicitly |
+
+#### Rejected
+
+- GUARD.md row `git -c core.hooksPath=/dev/null …` against `Bash(git config core.hooksPath*)`
+  "shows a poorly chosen rule" — the row is measured and is exactly the point of the table:
+  a string rule matches one spelling of an action.
+- `git push origin 'HEAD:$B'` and `git push -u origin $(git branch --show-current)` refused
+  — the fail-safe cost the SPEC decision table and `docs/DECISIONS.md` accept (shlex drops
+  quoting); the option-value case is kept in F4.
+- `test_readme.py` `strip_code` ignores `~~~` fences and double-backtick spans — only false
+  positives are possible, and neither README nor GUARD.md uses them.

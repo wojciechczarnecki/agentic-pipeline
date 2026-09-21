@@ -16,6 +16,9 @@ metrics:
   implement_steps: 8
   implement_iterations: 0
   deviations: 1
+  final_review_blockers: 0
+  final_review_worth_fixing: 6
+  final_review_nits: 5
 ---
 
 # SPEC 002 — A guard worth pointing at: close the known leaks, then document it
