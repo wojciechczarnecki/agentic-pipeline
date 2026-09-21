@@ -73,6 +73,9 @@ Documentation only, no behaviour change. The private consumer project stays unna
       link them from the root `README.md` — the only public proof of the pipeline on a
       product rather than on itself
 - [ ] GitHub Releases for the `pipeline--v*` tags; `CONTRIBUTING.md`, `SECURITY.md`
+- [ ] Outside the repository, in the owner's GitHub settings: the repository pinned on the
+      owner's profile, a social preview image, and the *About* description and topics
+      checked against the new root `README.md`
 
 ## Stage 5 — A release gate to trust, and a guard that guards itself
 
