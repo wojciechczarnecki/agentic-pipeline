@@ -42,5 +42,5 @@ jobs:
       - name: Check formatting with black
         run: uv run black --check .
 
-      - name: Test the plugin
-        run: uv run pytest -q -p no:cacheprovider plugin/tests
+      - name: Run the tests
+        run: uv run pytest -q -p no:cacheprovider plugin/tests tests

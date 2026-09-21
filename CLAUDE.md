@@ -134,6 +134,7 @@ git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'   # tags are annot
 plugin/          # the plugin: skills, agents, hooks, bin, templates, evals, tests
 docs/            # project documents (map above)
 specs/           # SPEC/PLAN per feature (pipeline)
+tests/           # repository rules and documents (pytest)
 scripts/         # check.sh, git hooks
 .claude/         # settings (plugin from GitHub) and workflow.json
 ```

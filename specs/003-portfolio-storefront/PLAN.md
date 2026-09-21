@@ -222,7 +222,7 @@ of steps 8–9; rejecting it means steps 8–9 are not run, the two Stage 4 item
 unticked, and the apply report says so. In `apply`, steps 8–9 run after the accepted fixes
 and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the PR.
 
-- [ ] 1. **Root document tests wired into verification**: files `tests/test_documents.py`
+- [x] 1. **Root document tests wired into verification**: files `tests/test_documents.py`
       (new), `scripts/check.sh`, `.github/workflows/ci.yml`, `docs/CONVENTIONS.md`
       (Tests), `CLAUDE.md` (Structure).
       - `scripts/check.sh`: the pytest line becomes

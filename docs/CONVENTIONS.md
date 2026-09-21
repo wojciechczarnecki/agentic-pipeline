@@ -33,6 +33,10 @@ and the way out (for the guard: which configuration or approval unlocks the acti
 
 - `plugin/tests` (pytest), run by `uv run pytest`; hooks and scripts are exercised as
   subprocesses on plain `python3` where their contract is the command line.
+- Repository rules and repository documents (root `README.md`, `CONTRIBUTING.md`,
+  `SECURITY.md`, cross-document links) are tested in the root `tests/`; `plugin/tests`
+  holds only what ships with the plugin and runs from a bare `plugin/` checkout.
+  `bash scripts/check.sh` and CI run both.
 - Test mechanisms, not the prose of skills: structure, frontmatter, templates, the guard's
   verdicts, configuration handling.
 - Write tests BEFORE or TOGETHER with the implementation.
