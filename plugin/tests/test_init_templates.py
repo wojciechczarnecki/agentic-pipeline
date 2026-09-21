@@ -42,7 +42,17 @@ def test_settings_template_leaves_hooks_to_the_plugin():
     assert "hooks" not in settings
     assert set(settings["permissions"]) == {"allow", "ask", "deny"}
     assert settings["extraKnownMarketplaces"]
-    assert any(key.startswith("pipeline@") for key in settings["enabledPlugins"])
+
+
+# A session started in a directory whose settings enable the plugin installs it at
+# `--scope project` on its own, beside the user install, and `plugin update --scope user`
+# never lifts that copy (docs/DECISIONS.md, 2026-09-21). The template declares the source
+# only; `false` is the one legitimate value, the opt-out.
+def test_settings_template_does_not_enable_the_plugin():
+    settings = json.loads((TEMPLATES / "settings.json").read_text())
+    assert all(value is False for value in settings.get("enabledPlugins", {}).values())
+    entries = settings["extraKnownMarketplaces"]
+    assert [entry["source"]["ref"] for entry in entries.values()] == ["stable"]
 
 
 def test_settings_template_names_no_marketplace_of_its_own():
@@ -51,7 +61,6 @@ def test_settings_template_names_no_marketplace_of_its_own():
     # A placeholder has to stay visibly a placeholder: a repository that does not exist
     # would leave every initialised project with a marketplace entry that silently fails.
     assert "TODO" in marketplaces
-    assert all("TODO" in key for key in settings["enabledPlugins"])
 
 
 def test_settings_template_protects_the_guardrail_files():

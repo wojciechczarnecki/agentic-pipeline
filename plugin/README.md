@@ -43,11 +43,11 @@ projekcie.
 instalowania go osobno w każdym repozytorium i każdym klonie. Instalacja
 `--scope project` jest przypisana do katalogu (wpis z `projectPath` w
 `~/.claude/plugins/installed_plugins.json`; w innym repozytorium `claude plugin list`
-pokaże plugin jako `enabled`, a komend `/pipeline:*` nie będzie) — wybierz ją tylko
-wtedy, gdy zależy ci na izolacji wersji między projektami.
+pokaże plugin jako `enabled`, a komend `/pipeline:*` nie będzie) i nie podnosi jej
+`claude plugin update --scope user` — nie używaj jej; jedyna instalacja to `user`.
 
-Deklaratywnie w `.claude/settings.json` projektu (kształt jak w `templates/settings.json`)
-— tak świeży klon na innej maszynie dowie się, skąd pochodzi plugin:
+W `.claude/settings.json` projektu (kształt jak w `templates/settings.json`) deklaruj
+tylko źródło — tak świeży klon na innej maszynie dowie się, skąd pochodzi plugin:
 
 ```json
 {
@@ -59,9 +59,23 @@ Deklaratywnie w `.claude/settings.json` projektu (kształt jak w `templates/sett
         "ref": "stable"
       }
     }
-  },
-  "enabledPlugins": { "pipeline@wcz-tools": true }
+  }
 }
+```
+
+**Projekt NIE deklaruje `"enabledPlugins": {"pipeline@<nazwa>": true}`.** Sesja
+startująca w katalogu, który tak włącza plugin, sama zakłada instalację `--scope
+project` — także obok istniejącej instalacji `user` — a `claude plugin update
+--scope user` podnosi tylko wpis `user`, więc duplikat `project` zostaje na starej wersji
+na zawsze (zmierzone 2026-09-21: `claude plugin list` pokazuje plugin dwa razy; bez
+`enabledPlugins`, z samym `extraKnownMarketplaces`, wpis `project` nie powstaje, a plugin
+z instalacji `user` ładuje się normalnie). Istniejący duplikat usuń tak: najpierw
+zacommituj `.claude/settings.json` bez `enabledPlugins` (inaczej `git checkout` przywróci
+deklarację, a następna sesja założy duplikat od nowa), potem w katalogu repozytorium:
+
+```bash
+claude plugin uninstall pipeline@<nazwa> --scope project
+git checkout -- .claude/settings.json   # komenda potrafi wyciąć blok marketplace'u
 ```
 
 **Aktualizacja** do nowego wydania, bez ponownej rejestracji:
@@ -85,14 +99,16 @@ git checkout -- .claude/settings.json   # w KAŻDYM repozytorium z pluginem
 ```
 
 **`remove` odinstalowuje plugin we WSZYSTKICH projektach** — marketplace jest źródłem
-instalacji. **Wszystkie trzy komendy (`remove`, `add`, `install`) kasują `enabledPlugins`
-i `extraKnownMarketplaces` z `.claude/settings.json`** (projektu i
-`~/.claude/settings.json`) i żadna ich nie przywraca — stąd `git checkout` w każdym
-repozytorium, które ma ten blok. Oba skutki są ciche: sesja bez pluginu nie ma strażnika
-komend i nic nie zgłasza. Po migracji uruchom nową sesję.
+instalacji. **Wszystkie trzy komendy (`remove`, `add`, `install`) kasują
+`extraKnownMarketplaces` z `.claude/settings.json`** (projektu i
+`~/.claude/settings.json`) i żadna go nie przywraca — stąd `git checkout` w każdym
+repozytorium, które ma ten blok (bez `enabledPlugins`, patrz wyżej). Oba skutki są
+ciche: sesja bez pluginu nie ma strażnika komend i nic nie zgłasza. Po migracji uruchom
+nową sesję.
 
 **Weryfikacja** po instalacji, aktualizacji albo migracji, w nowej sesji: `claude plugin
-list` pokazuje plugin w wydanej wersji w zakresie `user`, a komenda, którą strażnik
+list` pokazuje plugin w wydanej wersji w zakresie `user` — i tylko tam, bez wpisu
+`project` — a komenda, którą strażnik
 blokuje — np. `sed -i` na `.claude/settings.json` — jest faktycznie odrzucana, z wersją
 w ścieżce, którą zgłasza. Dopiero drugi test dowodzi, że plugin jest wczytany w tym
 repozytorium; pierwszy dowodzi tylko, że instalacja jest poprawna.
@@ -104,6 +120,8 @@ i strażnik by to blokował. Wyłącz go w `.claude/settings.json` takiego repoz
 ```json
 { "enabledPlugins": { "pipeline@wcz-tools": false } }
 ```
+
+To jedyne uprawnione użycie `enabledPlugins` w projekcie — tylko z wartością `false`.
 
 W każdym projekcie uruchom raz `/pipeline:init`, żeby powstał `.claude/workflow.json`
 i reszta szkieletu. W sesji nieinteraktywnej (`claude -p`) potrzebny jest

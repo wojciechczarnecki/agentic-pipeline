@@ -8,9 +8,6 @@
       }
     }
   },
-  "enabledPlugins": {
-    "pipeline@wcz-tools": true
-  },
   "permissions": {
     "allow": [
       "Bash(git *)",

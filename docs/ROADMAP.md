@@ -24,6 +24,9 @@ true, and the roadmap must not lie.
 - [x] 0.3.1: releases reach consumers through the `stable` channel and a single
       `--scope user` install, updated without re-registering the marketplace
       (`docs/DECISIONS.md`, 2026-09-21)
+- [x] 0.3.2: projects declare only the marketplace, not `enabledPlugins: true`, so no
+      session installs a `--scope project` duplicate beside the user install
+      (`docs/DECISIONS.md`, 2026-09-21)
 
 ## Later
 
