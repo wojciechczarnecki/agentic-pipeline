@@ -279,7 +279,7 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
       `uv run pytest -q -p no:cacheprovider plugin/tests/test_guard.py -k "config or alias or hooks"`
       `uv run ruff check plugin/ && uv run black --check --quiet plugin/`
 
-- [ ] 3. **Measure string `deny` rules against guard-refused commands** — files: none in
+- [x] 3. **Measure string `deny` rules against guard-refused commands** — files: none in
       the repository (scratchpad only); results into this PLAN → "End-to-end verification →
       Results → Deny measurement".
       a. Check `~/.claude/settings.json` for `permissions.deny` entries that would match a
@@ -521,8 +521,45 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
 
 ### Results
 
-_(filled in by /pipeline:implement — step 3 deny measurement and the automatic end-to-end
-run)_
+#### Deny measurement (step 3)
+
+- Date 2026-09-21, Claude Code 2.1.272. Mode: `claude -p --safe-mode --output-format
+  stream-json --verbose --allowedTools Bash --max-turns 3 --settings <json>` (`--max-turns`
+  was accepted; `--safe-mode` was enough — the fallback `--setting-sources local` was not
+  needed). Every baseline run of a guard-refused command `ran`, which proves hooks were off.
+- `~/.claude/settings.json` has no `permissions` entries, so no user-level `deny` rule
+  could interfere.
+- Sandbox: a fresh `git init -b main` repository with two commits, `origin` a local bare
+  repository, branch `feat/x`, `GH_REPO` unset — recreated before every run. Harness
+  (scratchpad, not committed): `measure-deny.sh` → `measure.py`.
+- Control `gh pr merge 12 --squash` vs `Bash(gh pr merge*)`: baseline `ran`, with rule
+  `denied` — `--settings` takes effect.
+
+| candidate | rule | baseline | with rule | qualifies |
+|---|---|---|---|---|
+| `gh pr merge 12 --squash` (control) | `Bash(gh pr merge*)` | ran | denied | no (control) |
+| `env gh pr merge 12 --squash` | `Bash(gh pr merge*)` | ran | denied | no |
+| `bash -c 'gh pr merge 12 --squash'` | `Bash(gh pr merge*)` | ran | ran | yes |
+| `echo $(gh pr merge 12)` | `Bash(gh pr merge*)` | ran | denied | no |
+| `B=main; git push origin $B` | `Bash(git push origin main*)` | ran | denied | no |
+| `git push origin HEAD:main` | `Bash(git push origin main*)` | ran | ran | yes |
+| `git push -u origin main` | `Bash(git push origin main*)` | ran | ran | yes |
+| `git -C . push origin main` | `Bash(git push origin main*)` | ran | ran | yes |
+| `git -c alias.p=push p origin main` | `Bash(git push origin main*)` | ran | ran | yes |
+| `eval 'git reset --hard HEAD~1'` | `Bash(git reset --hard*)` | ran | ran | yes |
+| `git clean -xdf` | `Bash(git clean -f*)` | ran | ran | yes |
+| `git -c core.hooksPath=/dev/null push origin feat/x` | `Bash(git config core.hooksPath*)` | ran | ran | yes |
+| `command git push origin main` | `Bash(git push origin main*)` | not measurable (model changed the command twice) | denied | no |
+| `git push origin feat/x:main` | `Bash(git push origin main*)` | ran | ran | yes |
+| `git push origin refs/heads/main` | `Bash(git push origin main*)` | ran | ran | yes |
+| `git push origin feat/x --no-verify` | `Bash(git push --no-verify*)` | ran | ran | yes |
+| `git reset -q --hard HEAD~1` | `Bash(git reset --hard*)` | ran | ran | yes |
+| `git push -f origin feat/x` | `Bash(git push --force*)` | ran | ran | yes |
+| `git push origin +feat/x` | `Bash(git push --force*)` | ran | ran | yes |
+
+14 rows qualify; each is refused by the step-1/2 guard on a feature branch (checked with a
+scratch script importing `plugin/bin/guard.py`). The last seven candidates were measured
+up front, beside the planned twelve, rather than only after a shortfall — see Deviations.
 
 ## Definition of Done
 
@@ -574,7 +611,11 @@ remains and nothing requires an owner decision.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- Step 3: the extra candidates the plan reserves for a shortfall (fewer than 5 qualifying
+  rows) were measured in parallel with the planned twelve, to save a second round of
+  `claude -p` runs; the planned twelve alone gave 8 qualifying rows. More measured rows,
+  same method — no scope change. The harness is a small Python script behind
+  `measure-deny.sh` (stream-json parsing is simpler in Python).
 
 ## Final review
 
