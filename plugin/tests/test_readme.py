@@ -13,6 +13,7 @@ import workflow_metrics  # noqa: E402
 
 README = (PLUGIN / "README.md").read_text()
 CHANGELOG = (PLUGIN / "CHANGELOG.md").read_text()
+INSTALL = (PLUGIN / "docs" / "INSTALL.md").read_text()
 
 
 def flatten(data: dict, prefix: str = "") -> dict[str, object]:
@@ -50,7 +51,7 @@ def test_every_schema_key_reaches_the_table():
 
 
 def test_installation_covers_a_local_path_and_a_repository():
-    section = README.split("## Installation", 1)[1].split("\n## ", 1)[0]
+    section = install_guide()
     assert "--plugin-dir" in section
     assert "claude plugin marketplace add" in section
     assert "/plugin install pipeline@" in section
@@ -69,8 +70,8 @@ def test_metrics_block_lists_every_counter():
         assert f"{counter}:" in section, counter
 
 
-def installation_section() -> str:
-    return README.split("## Installation", 1)[1].split("\n## ", 1)[0]
+def install_guide() -> str:
+    return INSTALL
 
 
 # The marketplace `ref` is global per machine and `install`/`update` take no version, so a
@@ -78,7 +79,7 @@ def installation_section() -> str:
 # (docs/DECISIONS.md, 2026-09-21). The channel, the user scope and the update path are
 # what replaced it.
 def test_installation_follows_the_stable_channel():
-    section = installation_section()
+    section = install_guide()
     assert '"ref": "stable"' in section
     assert "#stable" in section
     assert "main" in section
@@ -86,7 +87,7 @@ def test_installation_follows_the_stable_channel():
 
 
 def test_installation_defaults_to_the_user_scope():
-    section = installation_section()
+    section = install_guide()
     assert "--scope user" in section
     assert "version isolation" not in section, "project scope is not an offered option"
     assert "claude plugin marketplace update" in section
@@ -94,7 +95,7 @@ def test_installation_defaults_to_the_user_scope():
 
 
 def test_installation_explains_the_one_time_migration():
-    section = installation_section()
+    section = install_guide()
     assert "marketplace remove" in section
     assert "marketplace add" in section
     assert "known_marketplaces.json" in section
@@ -102,7 +103,7 @@ def test_installation_explains_the_one_time_migration():
 
 
 def test_installation_explains_opting_a_repository_out():
-    section = installation_section()
+    section = install_guide()
     assert '"pipeline@wcz-tools": false' in section
 
 
@@ -110,10 +111,45 @@ def test_installation_explains_opting_a_repository_out():
 # repository install a `--scope project` duplicate beside the user install, stuck on its
 # old version (docs/DECISIONS.md, 2026-09-21).
 def test_installation_does_not_enable_the_plugin_in_the_project():
-    section = installation_section()
+    section = install_guide()
     assert '"pipeline@wcz-tools": true' not in section
     assert "claude plugin uninstall pipeline@<name> --scope project" in section
     assert "git checkout -- .claude/settings.json" in section
+
+
+def test_install_guide_covers_verification_and_init():
+    guide = install_guide()
+    for token in [
+        "claude plugin list",
+        "/pipeline:init",
+        "--permission-mode bypassPermissions",
+        "extraKnownMarketplaces",
+    ]:
+        assert token in guide, token
+
+
+def command_count(section: str) -> int:
+    count, fenced = 0, False
+    for line in section.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        command = re.sub(r"\s+#.*$", "", line).strip()
+        if fenced and command and not command.startswith("#"):
+            count += 1 + len(re.findall(r"&&|\|\||;", command))
+    return count
+
+
+def test_command_count_counts_joined_commands():
+    block = "```bash\n# a comment\na && b\nc; d || e   # trailing; comment\n\n```\nf && g\n"
+    assert command_count(block) == 5
+
+
+# The README keeps the shortest path in; everything else is behind the link (SPEC 003, AC10).
+def test_the_installation_section_is_short_and_links_the_guide():
+    section = README.split("## Installation", 1)[1].split("\n## ", 1)[0]
+    assert command_count(section) <= 3
+    assert "](docs/INSTALL.md)" in section
 
 
 def test_the_guard_section_states_the_migration_scope():
@@ -149,6 +185,7 @@ def strip_code(text: str) -> str:
     [
         "README.md",
         "docs/GUARD.md",
+        "docs/INSTALL.md",
         "CHANGELOG.md",
     ],
 )

@@ -265,7 +265,7 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
       reports `xfailed`), then `bash scripts/check.sh` → `ALL GREEN`, and
       `grep -n "plugin/tests tests" scripts/check.sh .github/workflows/ci.yml` → 2 hits.
 
-- [ ] 2. **Install guide**: files `plugin/docs/INSTALL.md` (new), `plugin/README.md`,
+- [x] 2. **Install guide**: files `plugin/docs/INSTALL.md` (new), `plugin/README.md`,
       `plugin/tests/test_readme.py`.
       - `plugin/docs/INSTALL.md`: `# Installing the pipeline plugin` plus the content of
         the current `plugin/README.md` lines 13–133 under `##` headings (Approach). Keep
