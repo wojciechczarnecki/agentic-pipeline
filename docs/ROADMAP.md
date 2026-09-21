@@ -71,10 +71,10 @@ Documentation only, no behaviour change. The private consumer project stays unna
       `.claude/settings.json`) moved out of `plugin/README.md`; both READMEs keep a short
       install and a link
 - [x] `CONTRIBUTING.md` and `SECURITY.md` at the repository root
-- [ ] GitHub Releases for the six `pipeline--v*` tags, notes from `plugin/CHANGELOG.md`
+- [x] GitHub Releases for the six `pipeline--v*` tags, notes from `plugin/CHANGELOG.md`
       (the release procedure in `docs/CONVENTIONS.md` and `CLAUDE.md` already includes the
       GitHub Release step)
-- [ ] The GitHub *About* description and topics checked against the root `README.md`
+- [x] The GitHub *About* description and topics checked against the root `README.md`
 - [ ] Owner only, in the GitHub settings: the repository pinned on the owner's profile and
       a social preview image
 

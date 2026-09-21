@@ -464,7 +464,7 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
       (Releases) and 9 (About), see Steps intro", with the ready `gh repo edit` command
       (pitch line pasted in), so the final review can raise the gate 2 entry.
 
-- [ ] 8. **(after gate 2) GitHub Releases for the six tags**: no repository files except the
+- [x] 8. **(after gate 2) GitHub Releases for the six tags**: no repository files except the
       ROADMAP tick. The permission prompt for `gh release create` is expected (it is not
       in `allow`). If it cannot be answered, end with `RESULT: ESCALATE` and hand the
       owner the command list below.
@@ -488,7 +488,7 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
       `git ls-remote --tags origin 'pipeline--v*' | diff "$SCRATCH/tags-before.txt" -` →
       no output (no tag moved).
 
-- [ ] 9. **(after gate 2) About description and topics**: the guard refuses `gh repo edit`
+- [x] 9. **(after gate 2) About description and topics**: the guard refuses `gh repo edit`
       for agents, and it must not be worked around (`gh api -X PATCH` is forbidden). The
       agent hands the owner, in the stage report, the exact command with the README
       pitch line pasted in:
@@ -611,7 +611,7 @@ gh repo edit wojciechczarnecki/agentic-pipeline --description "Spec-Driven Workf
 
 ## Definition of Done
 
-- [x] steps 1–7 ticked (8–9 after gate 2, in `/pipeline:final-review` apply)
+- [x] steps 1–9 ticked (8–9 after gate 2, in `/pipeline:final-review` apply)
 - [x] `bash scripts/check.sh` fully green
 - [x] end-to-end verification (automatic) done, result recorded here
 - [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md`,
@@ -891,3 +891,19 @@ failed); an undated list item added to *Why not Spec Kit?* (1 failed).
 
 The two Stage 4 items (Releases, About) stay unticked, the PR is not opened yet and the
 status stays `implemented` until the resumed apply run verifies both.
+
+### 2026-09-21 — /pipeline:final-review (apply, resumed after the escalation)
+
+Owner decision (escalation): option 1 — the owner ran both commands. The resumed run only
+verified and ticked:
+
+- **Step 8 (F1)** — `gh release list --limit 20` shows six releases `pipeline 0.2.0` …
+  `pipeline 0.3.4`, `pipeline 0.3.4` marked `Latest`. For each version the body `diff`
+  against the `plugin/CHANGELOG.md` section shows only one trailing blank line (allowed by
+  the step). `git ls-remote --tags origin 'pipeline--v*'` is identical to the snapshot taken
+  before the escalation: no tag moved. Stage 4 Releases item ticked.
+- **Step 9 (F1)** — `gh repo view --json description` equals `Spec-Driven Workflow — ` +
+  `README.md` line 5 byte for byte (`diff` empty); both required topics present (2). Stage 4
+  About item ticked.
+- `docs/BACKLOG.md`: no new item and none realised; no existing trigger has occurred.
+  The only Stage 4 item left open is the owner-only profile pin and social preview.
