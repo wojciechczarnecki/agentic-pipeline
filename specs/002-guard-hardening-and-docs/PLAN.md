@@ -421,7 +421,7 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
       `python3 -c "import json;assert json.load(open('plugin/.claude-plugin/plugin.json'))['version']=='0.3.4'"`
       `claude plugin validate --strict plugin/ && claude plugin validate --strict .`
 
-- [ ] 7. **Project documents** — files: `docs/DECISIONS.md`, `docs/CONVENTIONS.md`,
+- [x] 7. **Project documents** — files: `docs/DECISIONS.md`, `docs/CONVENTIONS.md`,
       `docs/BACKLOG.md`, `docs/ROADMAP.md`.
       `DECISIONS.md`: append four rows (date of implementation) — `plugin/README.md` in
       English ahead of the skills, amending 2026-09-17 (skills and agents stay Polish until
