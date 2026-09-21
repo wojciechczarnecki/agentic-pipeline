@@ -591,6 +591,9 @@ up front, beside the planned twelve, rather than only after a shortfall — see 
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-21 · final review gate · Which findings to fix? · Accepted: F1, F2, F3, F4, F5, F6
+  (all "worth fixing"; no blockers were reported). Rejected: F7, F8, F9, F10, F11 (nits).
+
 ## Review log
 
 ### 2026-09-21 — /pipeline:plan-review
