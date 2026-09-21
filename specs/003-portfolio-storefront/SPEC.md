@@ -3,6 +3,9 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-09-21"
   - "spec-ready — 2026-09-21"
+metrics:
+  started_at: 2026-09-21T21:48
+  escalations: 0
 ---
 
 # SPEC 003 — Portfolio storefront
