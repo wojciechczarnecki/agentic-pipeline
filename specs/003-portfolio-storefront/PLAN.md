@@ -626,6 +626,12 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
   Rejected: none. F1 accepted = approval of steps 8 (GitHub Releases) and 9 (About
   description); the owner ran the `gh repo edit --description` command from F1 before
   answering (the description already carries the `Spec-Driven Workflow — ` prefix from F2).
+- 2026-09-21 · final review apply (escalation) · `gh release create` was blocked by the
+  session's permission layer, and F3 changed the README pitch line so the About description
+  no longer matches · **Option 1: the owner runs both commands** (the `gh repo edit
+  --description` with the new pitch line and the loop of six `gh release create
+  --verify-tag`). The resumed apply stage only verifies the result, ticks the Stage 4 items,
+  opens the PR, waits for CI and sets `done`.
 
 ## Review log
 
