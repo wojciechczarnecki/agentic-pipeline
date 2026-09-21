@@ -117,3 +117,12 @@ def test_every_eval_case_has_a_grader():
         assert "schema_version" in manifest.read_text(), f"{case.name}: no schema_version"
         graders = case / "graders"
         assert graders.is_dir() and any(graders.iterdir()), f"{case.name}: no grader"
+
+
+# The stage skills call the metrics checker by name through PATH, which Claude Code extends
+# with the plugin's `bin/`; the call resolves only while the script is executable and
+# carries its own interpreter.
+def test_metrics_checker_runs_from_path():
+    script = PLUGIN / "bin" / "workflow_metrics.py"
+    assert os.access(script, os.X_OK)
+    assert script.read_text().splitlines()[0] == "#!/usr/bin/env python3"

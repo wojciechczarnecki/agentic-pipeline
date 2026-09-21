@@ -56,7 +56,7 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
    `metrics:` SPEC.md: `final_review_blockers`, `final_review_worth_fixing`,
    `final_review_nits`.
    Płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
-   sukcesu `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>`.
+   sukcesu `workflow_metrics.py --check <spec-dir>`.
    Czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
    STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz wartości, której nie zmierzyłeś.
    Zacommituj (`docs: add final review of NNN <slug>`).
@@ -99,9 +99,9 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
    ginie po merge'u.
 5. **Zamknięcie — dopiero przy zielonym CI:** `status: done` + wpis w `stage_history`;
    `metrics.finished_at` (`date +%Y-%m-%dT%H:%M`). Przed `done` uruchom
-   `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>` — dopóki kończy
-   się błędem, `done` nie zapada; czerwień nie do naprawy = `RESULT: ESCALATE`. Licznik zmierzony
-   jako zero zapisujesz jako `0` — to pomiar, nie wymyślona wartość.
+   `workflow_metrics.py --check <spec-dir>` — dopóki kończy się błędem, `done` nie zapada;
+   czerwień nie do naprawy = `RESULT: ESCALATE`. Licznik zmierzony jako zero zapisujesz
+   jako `0` — to pomiar, nie wymyślona wartość.
    Commit (`docs: close SPEC NNN <slug>`), `git push`, ponowne `gh pr checks <nr> --watch`
    — ostatni commit PR też ma mieć zielone CI. Czerwień po samym commicie statusu to
    niestabilność, nie wada: ponów przebieg (`gh run rerun <id> --failed`), statusu nie cofaj.

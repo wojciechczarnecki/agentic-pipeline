@@ -18,6 +18,9 @@ true, and the roadmap must not lie.
       contract in `plugin/agents/*.md`, slimmed configuration and visual-artifact prose, and
       a git + HTTPS marketplace source pinned with `ref`
       (`specs/001-executable-rules-and-release-pinning/SPEC.md`)
+- [x] 0.3.1: the checker runs without a permission prompt — stage skills call it through
+      `PATH` and the allow rule is `Bash(workflow_metrics.py *)`, since permission rules do
+      not substitute `${CLAUDE_PLUGIN_ROOT}` (`docs/DECISIONS.md`, 2026-09-21)
 
 ## Later
 

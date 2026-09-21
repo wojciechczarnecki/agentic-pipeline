@@ -55,7 +55,8 @@ nazwach branchy i worktree.
 
 Każdy spec niesie w frontmatterze SPEC.md płaski blok `metrics:`, wypełniany przez etapy
 pipeline'u. Format kluczy i zestawienie: README pluginu `pipeline`
-(`python3 <plugin>/bin/workflow_metrics.py`).
+(`workflow_metrics.py [katalog-speców]`, `workflow_metrics.py --check <katalog-speca>` —
+przez `PATH`, na który Claude Code dopisuje `bin/` pluginu).
 
 ## Zależności
 

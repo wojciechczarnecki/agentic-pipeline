@@ -66,7 +66,7 @@ właściciel wchodzi tylko wtedy, gdy decyzja nie należy do Ciebie (krok 5).
    `plan_review_majors` (liczone przed poprawkami) i `plan_changes` (liczba zmian
    wprowadzonych w planie).
    Płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
-   sukcesu `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>`.
+   sukcesu `workflow_metrics.py --check <spec-dir>`.
    Czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
    STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz wartości, której nie zmierzyłeś.
    Zacommituj (`docs: review PLAN NNN <slug>`).

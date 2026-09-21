@@ -62,6 +62,17 @@ claude plugin marketplace add '<url>#pipeline--vX.Y.Z'
 git -C ~/.claude/plugins/marketplaces/<nazwa> log --oneline -1   # ma pokazać commit taga
 ```
 
+**`remove` odinstalowuje plugin we WSZYSTKICH projektach**, nie tylko w bieżącym —
+marketplace jest źródłem instalacji. Po `add` zainstaluj plugin ponownie w katalogu
+każdego projektu, który go używa: `claude plugin install pipeline@wcz-tools --scope
+project` (bez `--scope project` instalacja trafia do zakresu `user`). **Wszystkie trzy
+komendy (`remove`, `add`, `install`) kasują `enabledPlugins` i `extraKnownMarketplaces`
+z `.claude/settings.json` projektu** i żadna ich nie przywraca — przywróć blok
+`git checkout -- .claude/settings.json`. Świeży klon na innej maszynie nie ma wpisu
+w `installed_plugins.json`, więc ten blok jest jedynym miejscem, z którego dowie się, skąd
+pochodzi plugin. Obie awarie są ciche: sesja bez pluginu nie ma strażnika komend i nic nie
+zgłasza. Każdy krok wymaga nowej sesji.
+
 **Uwaga — instalacja w zakresie projektu jest przypisana do katalogu.** Sam wpis
 `enabledPlugins` nie wystarcza: Claude Code ładuje plugin tylko wtedy, gdy w
 `~/.claude/plugins/installed_plugins.json` jest instalacja z `projectPath` wskazującym
@@ -74,9 +85,9 @@ katalogu:
 claude plugin install pipeline@wcz-tools --scope project
 ```
 
-Instalator przepisuje `.claude/settings.json` (zmienia kolejność kluczy) — jeśli plik
-już zawiera powyższą konfigurację, zmianę można cofnąć (`git checkout --
-.claude/settings.json`). Potem uruchom nową sesję.
+Instalator przepisuje `.claude/settings.json` — jeśli plik już zawiera powyższą
+konfigurację, przywróć go (`git checkout -- .claude/settings.json`); patrz wyżej. Potem
+uruchom nową sesję.
 
 Aktualizacja: `/plugin update pipeline`. Wydania są znaczone tagami `pipeline--vX.Y.Z`.
 
@@ -238,17 +249,19 @@ Zestawienie wszystkich speców — tabela per spec, sumy, odsetek istotnych znal
 złapanych przed kodem i eskalacje na spec:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" [katalog-speców]
+workflow_metrics.py [katalog-speców]
 ```
 
-Bez argumentu katalog bierze się z `docs.specsDir`. Ścieżka idzie przez
-`${CLAUDE_PLUGIN_ROOT}`, bo katalog pluginu leży poza projektem konsumenta — wywołanie
-względem `PATH` albo `cwd` rozwiąże się tylko w repozytorium samego pluginu.
+Bez argumentu katalog bierze się z `docs.specsDir`. Skrypt wywołuje się po nazwie:
+Claude Code dopisuje `bin/` włączonego pluginu do `PATH` sesji, także u konsumenta. Nie
+przez `${CLAUDE_PLUGIN_ROOT}` — w treści skilla ta zmienna jest podstawiana, ale w regułach
+`permissions` już nie, więc wywołanie ścieżką bezwzględną nie pasuje do żadnej reguły
+`allow` (a w powłoce narzędzia Bash zmiennej nie ma wcale).
 
 ### Kontrola metryk (`--check`)
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <katalog-speca>
+workflow_metrics.py --check <katalog-speca>
 ```
 
 Sprawdza JEDEN spec: komplet kluczy należnych dla osiągniętego statusu, format czasów
@@ -272,9 +285,11 @@ Klucze należne według statusu:
 | `implemented` | powyższe + `implement_steps`, `implement_iterations`, `deviations` |
 | `done` | `started_at`, `finished_at` i wszystkie liczniki z bloku wyżej |
 
-Konsument musi mieć na liście `permissions.allow` regułę
-`Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" *)` — subagent etapu nie
-odpowie na pytanie o zgodę. `templates/settings.json` niesie ją dla nowych projektów.
+Konsument musi mieć na liście `permissions.allow` regułę `Bash(workflow_metrics.py *)` —
+subagent etapu nie odpowie na pytanie o zgodę, więc bez niej każdy `--check` staje, a
+`final-review` w trybie `apply` nigdy nie ustawi `done`. `templates/settings.json` niesie ją
+dla nowych projektów. Reguła zapisana z `${CLAUDE_PLUGIN_ROOT}` nie działa: reguł uprawnień
+Claude Code nie podstawia.
 
 ## CHANGELOG
 
