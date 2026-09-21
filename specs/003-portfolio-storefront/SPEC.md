@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-09-21"
   - "spec-ready — 2026-09-21"
   - "plan-draft — 2026-09-21"
   - "plan-approved — 2026-09-21"
   - "implemented — 2026-09-21"
+  - "done — 2026-09-21"
 metrics:
   started_at: 2026-09-21T21:48
   escalations: 1
@@ -21,6 +22,7 @@ metrics:
   final_review_nits: 5
   findings_accepted: 10
   findings_rejected: 0
+  finished_at: 2026-09-21T23:47
 ---
 
 # SPEC 003 — Portfolio storefront
