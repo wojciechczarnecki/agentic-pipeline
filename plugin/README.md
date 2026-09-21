@@ -91,6 +91,12 @@ i `extraKnownMarketplaces` z `.claude/settings.json`** (projektu i
 repozytorium, które ma ten blok. Oba skutki są ciche: sesja bez pluginu nie ma strażnika
 komend i nic nie zgłasza. Po migracji uruchom nową sesję.
 
+**Weryfikacja** po instalacji, aktualizacji albo migracji, w nowej sesji: `claude plugin
+list` pokazuje plugin w wydanej wersji w zakresie `user`, a komenda, którą strażnik
+blokuje — np. `sed -i` na `.claude/settings.json` — jest faktycznie odrzucana, z wersją
+w ścieżce, którą zgłasza. Dopiero drugi test dowodzi, że plugin jest wczytany w tym
+repozytorium; pierwszy dowodzi tylko, że instalacja jest poprawna.
+
 **Wyłączenie w repozytorium, które pluginu nie chce.** Przy instalacji `user` plugin —
 w tym strażnik komend — działa wszędzie, także tam, gdzie commituje się prosto na `main`
 i strażnik by to blokował. Wyłącz go w `.claude/settings.json` takiego repozytorium:
