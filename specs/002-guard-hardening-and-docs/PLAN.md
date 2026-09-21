@@ -404,7 +404,7 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
       `grep -c "^| \`" plugin/README.md` equals the count before translation (record it
       first with `git show HEAD:plugin/README.md | grep -c "^| \`"`)
 
-- [ ] 6. **Release 0.3.4** — files: `plugin/.claude-plugin/plugin.json`, `plugin/CHANGELOG.md`.
+- [x] 6. **Release 0.3.4** — files: `plugin/.claude-plugin/plugin.json`, `plugin/CHANGELOG.md`.
       Version `0.3.4`. New top section `## 0.3.4` (Polish, like the file) with a one-line
       summary, `**wpływ na konsumenta:**` naming the new refusals (push refspec built from
       variables or command substitution that the guard cannot resolve — e.g.

@@ -2,6 +2,53 @@
 
 Wersjonowanie semantyczne. Wydanie znaczone tagiem przez `claude plugin tag`.
 
+## 0.3.4
+
+Strażnik domyka znane przecieki przy pushu i aliasach gita; dokumentacja strażnika
+(`docs/GUARD.md`) i README pluginu po angielsku.
+
+**wpływ na konsumenta:** brak kroków migracji. Nowe odmowy strażnika: push, którego
+refspec zbudowano ze zmiennych albo z podstawienia komendy, a strażnik nie umie go
+rozwinąć — np. `git push origin HEAD:$(git branch --show-current)`,
+`git push $(git remote) <gałąź>`, `git push origin $NIEZNANA`; prefiksowe przypisanie
+dla refspecu tego samego pusha (`B=feat/x git push origin $B`); `git -c alias.*`;
+zapis aliasu w konfiguracji gita, także `--unset` i `--rename-section … alias`;
+usunięcie albo przemianowanie sekcji `core`. Branch trzeba w takim pushu wypisać wprost.
+
+### Naprawione
+
+- Refspec pusha zbudowany ze zmiennych jest rozwijany tak jak ścieżka dla `rm`: zmienne
+  z sesji, wcześniejszych przypisań i `export`; wynik wskazujący `main`/`master` jest
+  blokowany z uzasadnieniem o pushu na `main` (także `${B}`, `HEAD:$B`, `"$B"`,
+  `refs/heads/$B`). Wcześniej `B=main; git push origin $B` przechodził.
+- Refspec, którego nie da się rozwinąć (nieznana zmienna, `$(...)`, backticki,
+  przypisanie warunkowe za `||`/`&&`), jest blokowany, a uzasadnienie podaje refspec
+  i prosi o wpisanie gałęzi wprost. Podstawienie komendy w miejscu remote'a też.
+- Semantyka powłoki: prefiksowe przypisanie nie rozwija argumentów tej samej komendy,
+  pusta wartość znika (`E=; git push origin $E` pushuje bieżącą gałąź — na `main`
+  blokowane), a wartość ze spacjami dzieli się na słowa (`B="feat/x main"`).
+- Zmienna w miejscu remote'a z dosłownymi refspecami przechodzi
+  (`git push $REMOTE feat/x`); `git push $REMOTE main` dalej jest blokowany.
+- Odczyt `core.hooksPath` bez wartości (`git config core.hooksPath`, z `--global`,
+  `--local`, `--show-origin`, `--file`) przechodzi; zapis, `--unset`, `set`/`unset`
+  i `-c core.hooksPath=…` dalej są blokowane. Jeden parser odróżnia odczyt od zapisu
+  w formie klasycznej i w podkomendach gita 2.46.
+- Alias gita jest blokowany: `git -c alias.*=…` (klucz bez rozróżniania wielkości liter)
+  i zapis aliasu w konfiguracji w dowolnym zakresie; odczyt aliasu przechodzi. Inne
+  klucze `-c` (np. `user.name`) bez zmian.
+
+### Dodane
+
+- `docs/GUARD.md` (po angielsku): model zagrożeń, trzy warstwy (strażnik → `pre-push` →
+  rulesety GitHuba), tabela komend, które omijają regułę `deny` opartą na napisie, a
+  strażnik je zatrzymuje — zmierzona `claude -p --settings` i sprawdzana testem przez
+  strażnika — fail-open i znane ograniczenia.
+
+### Zmienione
+
+- `README.md` pluginu po angielsku; sekcja strażnika to streszczenie z linkiem do
+  `docs/GUARD.md`. Skille i agenci zostają po polsku do etapu 8.
+
 ## 0.3.3
 
 Poprawki po pierwszym pełnym przebiegu 0.3.2 u konsumenta.
