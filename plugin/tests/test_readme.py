@@ -72,18 +72,37 @@ def installation_section() -> str:
     return README.split("## Instalacja", 1)[1].split("\n## ", 1)[0]
 
 
-def test_installation_pins_the_release_tag():
+# The marketplace `ref` is global per machine and `install`/`update` take no version, so a
+# tag pin meant `marketplace remove` and a reinstall in every project on each release
+# (docs/DECISIONS.md, 2026-09-21). The channel, the user scope and the update path are
+# what replaced it.
+def test_installation_follows_the_stable_channel():
     section = installation_section()
-    assert '"ref"' in section
-    assert "pipeline--v" in section
+    assert '"ref": "stable"' in section
+    assert "#stable" in section
     assert "main" in section
+    assert '"ref": "pipeline--v' not in section
 
 
-def test_installation_explains_the_marketplace_registration():
+def test_installation_defaults_to_the_user_scope():
+    section = installation_section()
+    assert "--scope user" in section
+    assert "--scope project" in section
+    assert "claude plugin marketplace update" in section
+    assert "claude plugin update pipeline@" in section
+
+
+def test_installation_explains_the_one_time_migration():
     section = installation_section()
     assert "marketplace remove" in section
     assert "marketplace add" in section
-    assert "~/.claude/plugins/marketplaces" in section
+    assert "known_marketplaces.json" in section
+    assert "git checkout -- .claude/settings.json" in section
+
+
+def test_installation_explains_opting_a_repository_out():
+    section = installation_section()
+    assert '"pipeline@wcz-tools": false' in section
 
 
 def test_the_guard_section_states_the_migration_scope():

@@ -27,46 +27,49 @@ Instructions for agents working in this repository.
 
 The workflow comes from the `pipeline` plugin **released** from this repository and
 installed from GitHub (marketplace `wcz-tools`, git + HTTPS) — not from the working tree:
-a stable release guards work on unstable code. `.claude/settings.json` pins the source to
-the release tag, but the pin only takes effect once the marketplace is registered with that
-`ref`; a marketplace registered earlier without one keeps tracking `main`. Once per machine
-(the owner, outside an agent session):
+a stable release guards work on unstable code. `.claude/settings.json` points the source
+at the `stable` release channel (`"ref": "stable"`), a branch moved to each new release
+tag. The declaration only takes effect once the marketplace is registered with that
+`ref`: the registration is global per machine (`~/.claude/plugins/known_marketplaces.json`)
+and one registered earlier — on a tag or with no `ref` — keeps what it was given. The
+plugin is installed once per machine at `--scope user`, so it runs in every directory.
+
+**Updating to a new release** (the owner, outside an agent session):
+
+```bash
+claude plugin marketplace update wcz-tools && claude plugin update pipeline@wcz-tools --scope user
+```
+
+**One-time migration from a tag registration** — needed while `source.ref` of `wcz-tools`
+in `known_marketplaces.json` is anything other than `"stable"`:
 
 ```bash
 claude plugin marketplace remove wcz-tools
-claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#pipeline--v0.3.0'
-claude plugin install pipeline@wcz-tools --scope project
-git checkout -- .claude/settings.json   # all three commands strip it — see below
+claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#stable'
+claude plugin install pipeline@wcz-tools --scope user
+git checkout -- .claude/settings.json   # in EVERY repository with the plugin — see below
 ```
 
-**The marketplace is only the source: `remove` uninstalls the plugin too, so it has to be
-installed again, at `--scope project`** (both `add` and `install` default to `user`, which
-is not how this repository is set up). Verify with `claude plugin list`, or read
-`~/.claude/plugins/installed_plugins.json`, where a project-scope install is recorded
-under this `projectPath` with its version and `gitCommitSha` — that file, not
-`.claude/settings.json`, is what the CLI acts on.
-
-**All three commands delete `enabledPlugins` and `extraKnownMarketplaces` from
-`.claude/settings.json`** — this project's and `~/.claude/settings.json` alike — **and
-none of them puts the block back.** Restore it with `git checkout`: a fresh clone on
-another machine has no entry in `installed_plugins.json`, so that block is the only place
-it can learn where the plugin comes from.
+**`remove` uninstalls the plugin in every project**, since the marketplace is its source;
+the `--scope user` install replaces all of them at once. **All three commands delete
+`enabledPlugins` and `extraKnownMarketplaces` from `.claude/settings.json`** — every
+project's and `~/.claude/settings.json` alike — **and none of them puts the block back.**
+Restore it with `git checkout`: a fresh clone on another machine has no registration yet,
+so that block is the only place it can learn where the plugin comes from. A repository
+that must not run the plugin — one that commits straight to `main`, which the guard
+blocks — opts out in its own `.claude/settings.json` with
+`"enabledPlugins": {"pipeline@wcz-tools": false}`.
 
 Both failures are silent. A session missing the plugin has no command guard and no
 `pre-push` rule, and says nothing about it. A running session also keeps whatever it
-loaded at startup, so every step above needs a restart to take effect. Measured
-2026-09-20 during the 0.3.0 release.
+loaded at startup, so every step above needs a restart to take effect. The channel was
+measured 2026-09-21 (`docs/DECISIONS.md`).
 
-Two checks afterwards, in a fresh session:
-
-```bash
-git -C ~/.claude/plugins/marketplaces/wcz-tools describe --tags --exact-match HEAD
-```
-
-must name the release tag (an error means the marketplace tracks `main`, so the pin is
-inert), and a command the guard blocks — `sed -i` on `.claude/settings.json`, say — must
-actually be refused, with the version in the path it reports. The second check is the only
-one that proves the plugin is loaded here; the rest prove the source is right.
+Two checks afterwards, in a fresh session: `claude plugin list` shows the plugin at the
+released version in the user scope, and a command the guard blocks — `sed -i` on
+`.claude/settings.json`, say — is actually refused, with the version in the path it
+reports. The second check is the only one that proves the plugin is loaded here; the first
+proves the install is right.
 
 The mechanics (statuses, the `RESULT` contract, escalation triggers, metrics format) are
 described in `plugin/README.md` — the single source of truth. Project configuration for
@@ -96,16 +99,23 @@ on the diff → owner decisions → PR. When in doubt → full pipeline.
 The agent creates its branch, commits, pushes and opens the PR (`gh pr create`). It updates
 the branch with `git merge origin/main` (not rebase). Out of the agent's reach: commit,
 merge and push to `main` (only `git pull --ff-only`), merging PRs, force-push,
-`reset --hard`, `clean -f`, `--no-verify`, pushing release tags.
+`reset --hard`, `clean -f`, `--no-verify`, pushing release tags. Moving `stable` to a
+release tag the owner has pushed is allowed (`Commands` → Release).
 
 Two layers enforce this, and they do not cover the same ground.
 
-**GitHub rulesets — server-side, no bypass actors, they hold for everyone:**
+**GitHub rulesets — server-side; `main` and `release tags` have no bypass actors and hold
+for everyone:**
 
 - `main` (the default branch): a pull request is required, squash is the only merge method,
   the `plugin` check must be green, and deletion and non-fast-forward pushes are blocked.
 - `release tags` (`refs/tags/pipeline--v*`): an existing tag cannot be deleted, moved or
   force-updated.
+- `stable` (the release channel): updates, deletion and non-fast-forward pushes are
+  blocked, with the repository Admin role as the only bypass actor — unlike the two
+  rulesets above — because moving the channel is a direct push, not a pull request. The
+  bypass is the owner's account, so it lets through the owner and an agent pushing with
+  the owner's credentials, and keeps everyone else off the channel.
 
 **Only the local layer — the plugin's command guard and the `deny` list in
 `.claude/settings.json` — stops the rest:**
@@ -147,8 +157,9 @@ claude plugin validate --strict plugin/
 claude plugin validate --strict .
 claude --plugin-dir ./plugin          # one-off session with the working-tree plugin
 
-# Release (owner, clean clone on main)
+# Release (the owner tags a clean clone on main; the owner or an agent then moves the channel)
 claude plugin tag plugin --push
+git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'   # tags are annotated
 ```
 
 ## Structure

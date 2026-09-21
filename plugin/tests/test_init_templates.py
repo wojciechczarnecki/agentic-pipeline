@@ -147,11 +147,11 @@ def test_settings_template_pins_a_git_https_source():
     source = entry["source"]
     assert source["source"] == "git"
     assert source["url"].endswith(".git") and "https://" in source["url"]
-    # Without `ref` the consumer follows `main` — the pin is the point of the entry.
-    assert "ref" in source
+    # Without `ref` the consumer follows `main`; `stable` is the release channel the owner
+    # moves to each new tag, so it is a real value rather than a placeholder.
+    assert source["ref"] == "stable"
     assert "TODO" in name
     assert "TODO" in source["url"]
-    assert "TODO" in source["ref"]
 
 
 def test_settings_template_allows_the_metrics_checker():
