@@ -197,6 +197,15 @@ hooka i nadanie mu bitu wykonywalności jest dozwolone, bo nie wyłącza niczego
 Z konfiguracji dochodzą: hosty i komendy
 produkcji, katalog worktree i moduł migracji.
 
+`gh api -X DELETE` jest blokowane tylko na terenie właściciela — to samo, czego pilnują
+podkomendy `gh`: samo repozytorium i organizacja, refy gałęzi i tagów, merges, ochrona
+gałęzi, rulesety, releases, przebiegi workflow, sekrety, zmienne, środowiska, webhooki,
+klucze, dostęp współpracowników, zespoły i członkowie organizacji, Pages, deployments
+i ustawienia bezpieczeństwa; ścieżka zbudowana ze zmiennych jest blokowana zawsze. Reszta
+(np. artefakty i cache Actions) przechodzi. Odmowa obejmuje zawsze całe wywołanie;
+w poleceniu złożonym uzasadnienie wskazuje zablokowane części (potok to jedna część)
+i mówi, ile pozostałych przeszło — te można puścić osobno.
+
 Moduł migracji rozpoznaje WYŁĄCZNIE czasowniki Alembica (`upgrade`, `downgrade`, `stamp`,
 `revision`, `current`, `check`) i zmienne `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`;
 konfigurowalne są tylko `migrations.command` i `migrations.localHosts`. Projekt na innym

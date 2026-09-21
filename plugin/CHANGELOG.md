@@ -2,6 +2,38 @@
 
 Wersjonowanie semantyczne. Wydanie znaczone tagiem przez `claude plugin tag`.
 
+## 0.3.3
+
+Poprawki po pierwszym pełnym przebiegu 0.3.2 u konsumenta.
+
+**wpływ na konsumenta:** brak kroków migracji; `gh api -X DELETE` poza terenem
+właściciela przestaje być blokowane.
+
+### Naprawione
+
+- Strażnik blokował każde `gh api -X DELETE` z komunikatem o merge'ach i ochronie
+  gałęzi — także usuwanie artefaktów Actions. Teraz DELETE jest blokowane tylko na
+  ścieżkach, które są decyzją właściciela: samo repozytorium i organizacja (także pod
+  prefiksem, np. `api/v3` GitHub Enterprise Server, i jako `repositories/<id>`), refy
+  gałęzi i tagów, merges, protection, rulesets, releases, przebiegi workflow, secrets,
+  variables, environments, hooks, klucze, dostęp współpracowników, zespoły i członkowie
+  organizacji, Pages, deployments i ustawienia bezpieczeństwa; komunikat podaje ścieżkę
+  i regułę, która zadziałała. Ścieżka zbudowana ze zmiennych jest blokowana — nie da się
+  jej sprawdzić.
+- `final-review` (tryb `apply`) brał link do przebiegu z `gh run list --workflow CI` —
+  nazwa workflow z projektu źródłowego, u konsumenta nieistniejąca. Link pochodzi teraz
+  z `gh pr checks <nr> --json name,workflow,link`.
+- Kontrakt agenta etapu mówi, że licznik `escalations` zwiększa wyłącznie orkiestrator —
+  w przebiegu konsumenta podbił go reviewer w trybie `apply`.
+
+### Zmienione
+
+- Odmowa strażnika dla polecenia złożonego wskazuje zablokowane części i mówi, ile
+  pozostałych przeszło, żeby agent mógł je puścić osobnym wywołaniem. Potok (`|`) to
+  jedna część.
+- `ship`: zamiast „agent etapu działa na pierwszym planie" — czekasz na jego wynik, zanim
+  pójdziesz dalej (harness uruchamia agentów w tle; liczy się oczekiwanie, nie tryb).
+
 ## 0.3.2
 
 Projekt przestaje włączać plugin. Sesja startująca w katalogu, którego

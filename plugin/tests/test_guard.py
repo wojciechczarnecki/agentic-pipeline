@@ -101,7 +101,7 @@ BLOCKED_ANYWHERE = [
     ("git config core.hooksPath .git/hooks", "core.hooksPath"),
     ("git config --unset core.hooksPath", "core.hooksPath"),
     ("gh pr merge 12 --squash", "owner's gate"),
-    ("gh api -X DELETE repos/o/r/git/refs/heads/feat", "branch protection"),
+    ("gh api -X DELETE repos/o/r/git/refs/heads/feat", "branch and tag refs"),
     (
         "gh api repos/o/r/branches/main/protection -X PUT -f enforce_admins=false",
         "branch protection",
@@ -223,6 +223,129 @@ UNIVERSAL_BLOCKED = [
     ("rm -rf /home/someone/other", "outside the project and scratch"),
     ("echo {} > .claude/settings.json", "guardrail files"),
 ]
+
+
+# DELETE through `gh api` is blocked only where a gh subcommand is the owner's call too.
+API_DELETE_BLOCKED = [
+    ("repos/o/r", "the repository"),
+    ("/repos/o/r/", "the repository"),
+    ("https://api.github.com/repos/o/r", "the repository"),
+    ("repos/{owner}/{repo}", "the repository"),
+    ("repos/o/r/git/refs/heads/main", "branch and tag refs"),
+    ("repos/o/r/git/refs/tags/pipeline--v1.0.0", "branch and tag refs"),
+    ("repos/o/r/merges", "merges"),
+    ("repos/o/r/branches/main/protection", "branch protection"),
+    ("repos/o/r/branches/main/protection/required_status_checks", "branch protection"),
+    ("repos/o/r/rulesets/42", "rulesets"),
+    ("repos/o/r/releases/42", "releases"),
+    ("repos/o/r/actions/runs/42", "workflow runs"),
+    ("repos/o/r/actions/runs/42/logs", "workflow runs"),
+    ("repos/o/r/actions/secrets/TOKEN", "secrets"),
+    ("repos/o/r/environments/prod/secrets/TOKEN", "environments"),
+    ("repos/o/r/actions/variables/NAME", "variables"),
+    ("repos/o/r/environments/prod", "environments"),
+    ("repos/o/r/hooks/42", "webhooks"),
+    ("repos/o/r/keys/42", "keys"),
+    ("user/keys/42", "keys"),
+    ("user/gpg_keys/42", "keys"),
+    ("repos/o/r/collaborators/someone", "collaborator access"),
+    ("repos/o/r/invitations/42", "collaborator access"),
+    ("https://ghe.example.com/api/v3/repos/o/r", "the repository"),
+    ("repositories/1", "the repository"),
+    ("repositories/1/git/refs/heads/main", "branch and tag refs"),
+    ("https://ghe.example.com/api/v3/repos/o/r/git/refs/heads/main", "branch and tag refs"),
+    ("orgs/o", "the organization"),
+    ("orgs/o/teams/core", "organization teams and members"),
+    ("orgs/o/members/someone", "organization teams and members"),
+    ("orgs/o/memberships/someone", "organization teams and members"),
+    ("orgs/o/outside_collaborators/someone", "collaborator access"),
+    ("repos/o/r/pages", "the Pages site"),
+    ("repos/o/r/deployments/42", "deployments"),
+    ("repos/o/r/vulnerability-alerts", "security settings"),
+    ("repos/o/r/automated-security-fixes", "security settings"),
+    ("repos/o/r/private-vulnerability-reporting", "security settings"),
+]
+
+API_DELETE_ALLOWED = [
+    "repos/o/r/actions/artifacts/42",
+    "repos/o/r/actions/caches/42",
+    "repos/o/r/actions/caches?key=deps",
+    "repos/o/r/issues/comments/42",
+    "repos/o/r/issues/12/labels/bug",
+    "repos/o/r/pulls/comments/42",
+    "notifications/threads/42/subscription",
+]
+
+
+@pytest.mark.parametrize("endpoint, fragment", API_DELETE_BLOCKED)
+@pytest.mark.parametrize("method", ["-X DELETE", "--method DELETE", "--method=delete", "-XDELETE"])
+def test_api_delete_on_owner_ground_is_blocked(on_feature, endpoint, fragment, method):
+    reason = evaluate(f"gh api {method} {endpoint}", on_feature)
+    assert reason is not None
+    assert fragment in reason and "owner's call" in reason, reason
+    assert endpoint in reason, reason
+
+
+@pytest.mark.parametrize("endpoint", API_DELETE_ALLOWED)
+def test_api_delete_elsewhere_is_allowed(on_feature, endpoint):
+    assert evaluate(f"gh api -X DELETE '{endpoint}'", on_feature) is None
+
+
+def test_compound_refusal_names_the_blocked_part(on_feature):
+    reason = evaluate("git status && gh pr merge 12 --squash", on_feature)
+    assert reason is not None
+    assert "`gh pr merge 12 --squash`: merging a PR is the owner's gate" in reason, reason
+    assert "other 1 of 2 parts passed" in reason, reason
+    assert "git status`" not in reason, reason
+
+
+def test_compound_refusal_names_every_blocked_part(on_feature):
+    reason = evaluate("gh pr merge 1; sudo ls; git status", on_feature)
+    assert reason is not None
+    assert "`gh pr merge 1`" in reason and "`sudo ls`" in reason, reason
+    assert "other 1 of 3 parts passed" in reason, reason
+
+
+def test_compound_refusal_without_a_passing_part(on_feature):
+    reason = evaluate("gh pr merge 1 && sudo ls", on_feature)
+    assert reason is not None
+    assert "passed" not in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        'gh api -X DELETE "$EP"',
+        "EP=repos/o/r; gh api -X DELETE $EP",
+        "gh api -X DELETE repos/o/${REPO}",
+        "gh api -X DELETE repos/o/r/git/refs/heads/`git branch --show-current`",
+    ],
+)
+def test_api_delete_on_a_variable_endpoint_is_blocked(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None
+    assert "built from variables" in reason, reason
+
+
+def test_a_pipeline_is_one_part_of_a_compound_refusal(on_feature):
+    reason = evaluate("git status; gh pr merge 1 | cat", on_feature)
+    assert reason is not None
+    assert "`gh pr merge 1 | cat`: merging a PR" in reason, reason
+    assert "other 1 of 2 parts passed" in reason, reason
+
+
+def test_a_lone_pipeline_refusal_stays_plain(on_feature):
+    assert evaluate("gh pr merge 1 | cat", on_feature) == "merging a PR is the owner's gate"
+
+
+# The part around a blocked substitution would run it again, so it is never offered back.
+def test_blocked_substitution_is_not_offered_as_a_passing_part(on_feature):
+    reason = evaluate("git status && echo $(gh pr merge 1)", on_feature)
+    assert reason == "merging a PR is the owner's gate", reason
+
+
+def test_single_command_refusal_stays_plain(on_feature):
+    assert evaluate("gh pr merge 1", on_feature) == "merging a PR is the owner's gate"
 
 
 @pytest.mark.parametrize("command, fragment", BLOCKED_ANYWHERE)

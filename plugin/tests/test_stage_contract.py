@@ -61,6 +61,18 @@ def test_the_contract_states_the_metrics_format():
     assert "README" not in block
 
 
+# A stage agent that bumps `escalations` itself double-counts the orchestrator's escalation.
+def test_the_contract_leaves_escalations_to_the_orchestrator():
+    block = section(SHIP, "## Kontrakt agenta etapu")
+    assert "`escalations` zwiększa wyłącznie orkiestrator" in block
+
+
+# The harness may run agents in the background; what matters is waiting for the result.
+def test_ship_waits_for_the_stage_result_without_naming_a_mode():
+    assert "na pierwszym planie" not in SHIP
+    assert "Na wynik agenta etapu czekasz, zanim pójdziesz dalej." in SHIP
+
+
 @pytest.mark.parametrize("skill", STAGE_SKILLS)
 def test_no_stage_skill_orders_a_read_of_the_ship_skill(skill):
     assert "skill `ship` tego pluginu" not in skill_text(skill)

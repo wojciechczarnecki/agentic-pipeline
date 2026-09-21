@@ -170,3 +170,10 @@ def test_no_stage_skill_sends_metrics_rules_to_the_readme(name):
         assert not sends_to_readme, f"{name}: {line}"
     if name == "ship":
         assert "Metryki workflow" not in skill_text(name)
+
+
+# A workflow name belongs to the project that runs it; the PR checks carry the run links.
+def test_final_review_takes_the_run_link_from_the_pr_checks():
+    text = (PLUGIN / "skills" / "final-review" / "SKILL.md").read_text()
+    assert "--workflow" not in text
+    assert "gh pr checks <nr> --json name,workflow,link" in text

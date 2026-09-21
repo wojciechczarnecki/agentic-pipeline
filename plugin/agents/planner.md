@@ -25,6 +25,7 @@ Obowiązuje każdego agenta uruchomionego przez `/pipeline:ship`:
 - Stan zapisujesz w plikach speca i w commitach, nigdy tylko w odpowiedzi.
 - Metryki etapu wpisujesz sam do płaskiego bloku `metrics:` we frontmatterze SPEC.md:
   liczniki to liczby całkowite, znaczniki czasu `%Y-%m-%dT%H:%M`, `escalations` od startu.
+  Licznik `escalations` zwiększa wyłącznie orkiestrator — agent etapu go nie zmienia.
 - Odpowiedź końcowa zaczyna się od bloku:
 
 ```

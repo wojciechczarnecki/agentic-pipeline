@@ -56,7 +56,7 @@ Prompt zawiera WYŁĄCZNIE: numer i ścieżkę speca, tryb (dla `reviewer`), kat
 oraz przypomnienie o kontrakcie niżej. Nie przekazuj historii tej rozmowy ani własnych
 hipotez — świeży kontekst to element metody.
 
-Agent etapu działa na pierwszym planie (potrzebujesz jego wyniku, zanim pójdziesz dalej).
+Na wynik agenta etapu czekasz, zanim pójdziesz dalej.
 
 ## Kontrakt agenta etapu
 
@@ -70,6 +70,7 @@ Obowiązuje każdego agenta uruchomionego przez `/pipeline:ship`:
 - Stan zapisujesz w plikach speca i w commitach, nigdy tylko w odpowiedzi.
 - Metryki etapu wpisujesz sam do płaskiego bloku `metrics:` we frontmatterze SPEC.md:
   liczniki to liczby całkowite, znaczniki czasu `%Y-%m-%dT%H:%M`, `escalations` od startu.
+  Licznik `escalations` zwiększa wyłącznie orkiestrator — agent etapu go nie zmienia.
 - Odpowiedź końcowa zaczyna się od bloku:
 
 ```

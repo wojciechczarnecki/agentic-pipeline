@@ -106,8 +106,8 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
    — ostatni commit PR też ma mieć zielone CI. Czerwień po samym commicie statusu to
    niestabilność, nie wada: ponów przebieg (`gh run rerun <id> --failed`), statusu nie cofaj.
 6. Podaj link PR, status CI i link do przebiegu z artefaktami wizualnymi
-   (`gh run list --branch <branch> --workflow CI --limit 1 --json url`); gdy edytujesz
-   treść PR, uwzględnij tam to samo. Merge robi właściciel.
+   (`gh pr checks <nr> --json name,workflow,link` — `link` prowadzi do przebiegu); gdy
+   edytujesz treść PR, uwzględnij tam to samo. Merge robi właściciel.
 
 ## Guardraile
 
