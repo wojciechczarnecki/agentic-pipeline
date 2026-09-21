@@ -87,7 +87,7 @@ def test_installation_follows_the_stable_channel():
 def test_installation_defaults_to_the_user_scope():
     section = installation_section()
     assert "--scope user" in section
-    assert "--scope project" in section
+    assert "izolacji wersji" not in section, "project scope is not an offered option"
     assert "claude plugin marketplace update" in section
     assert "claude plugin update pipeline@" in section
 
@@ -103,6 +103,16 @@ def test_installation_explains_the_one_time_migration():
 def test_installation_explains_opting_a_repository_out():
     section = installation_section()
     assert '"pipeline@wcz-tools": false' in section
+
+
+# The declared settings enable nothing: `enabledPlugins: true` made every session in the
+# repository install a `--scope project` duplicate beside the user install, stuck on its
+# old version (docs/DECISIONS.md, 2026-09-21).
+def test_installation_does_not_enable_the_plugin_in_the_project():
+    section = installation_section()
+    assert '"pipeline@wcz-tools": true' not in section
+    assert "claude plugin uninstall pipeline@<nazwa> --scope project" in section
+    assert "git checkout -- .claude/settings.json" in section
 
 
 def test_the_guard_section_states_the_migration_scope():

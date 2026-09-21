@@ -2,6 +2,35 @@
 
 Wersjonowanie semantyczne. Wydanie znaczone tagiem przez `claude plugin tag`.
 
+## 0.3.2
+
+Projekt przestaje włączać plugin. Sesja startująca w katalogu, którego
+`.claude/settings.json` ma `"enabledPlugins": {"pipeline@<marketplace>": true}`, sama
+zakłada instalację `--scope project` — także obok istniejącej instalacji `--scope user` —
+a `claude plugin update --scope user` podnosi tylko wpis `user`, więc duplikat `project`
+zostaje na starej wersji na zawsze (zmierzone 2026-09-21 na izolowanym
+`CLAUDE_CONFIG_DIR` z lokalnym marketplace'em). Z samym `extraKnownMarketplaces` wpis
+`project` nie powstaje, a plugin z instalacji `user` ładuje się normalnie.
+
+**wpływ na konsumenta:** usuń `enabledPlugins` z własnego `.claude/settings.json`
+(zostaw `extraKnownMarketplaces`; opt-out z wartością `false` zostaje) i zacommituj,
+potem w katalogu każdego repozytorium z pluginem odinstaluj duplikat: `claude plugin
+uninstall pipeline@<nazwa> --scope project` i `git checkout -- .claude/settings.json`
+(komenda potrafi wyciąć blok marketplace'u). `claude plugin list` ma pokazać plugin raz,
+w zakresie `user`.
+
+### Naprawione
+
+- `templates/settings.json` nie ma `enabledPlugins`; `/pipeline:init` go nie wpisuje.
+
+### Zmienione
+
+- README, Instalacja: przykład deklaruje tylko `extraKnownMarketplaces`, wyjaśnia, dlaczego
+  projekt nie deklaruje `enabledPlugins: true`, i jak usunąć istniejący duplikat
+  `project`; migracja z rejestracji na tagu nie przywraca `enabledPlugins`, a weryfikacja
+  sprawdza brak wpisu `project`. Instalacja `--scope project` nie jest już opcją dla
+  izolacji wersji — jedyna instalacja to `user`.
+
 ## 0.3.1
 
 Naprawa wywołania kontroli metryk z 0.3.0. Skille etapów uruchamiały

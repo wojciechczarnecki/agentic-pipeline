@@ -63,13 +63,16 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
    do rezygnacji z pliku.
    Lista plików:
    - `.claude/settings.json` — z `templates/settings.json` (permissions allow/ask/deny,
-     `extraKnownMarketplaces`, `enabledPlugins`). **Bez sekcji `hooks`** — hooki
+     `extraKnownMarketplaces`). **Bez sekcji `hooks`** — hooki
      dostarcza plugin; zdublowanie ich tutaj uruchomiłoby strażnika dwa razy.
+     **Bez `enabledPlugins`** — sesja w katalogu, który włącza plugin w
+     `.claude/settings.json`, sama zakłada instalację `--scope project` obok instalacji
+     `user`, a `claude plugin update --scope user` jej nie podnosi.
      Podstaw dwie rzeczy: w regule `ask` ścieżkę katalogu hooków gita na `gitHooksDir`
      tego projektu (reguła z inną ścieżką chroni pustkę) oraz źródło marketplace'u.
      Nazwę marketplace'u odczytaj ze ścieżki `${CLAUDE_PLUGIN_ROOT}`
-     (`…/<marketplace>/<plugin>/<wersja>/`): idzie w klucz `extraKnownMarketplaces`
-     i w `enabledPlugins`. `ref` to zawsze `"stable"` — kanał wydań, gałąź przesuwana
+     (`…/<marketplace>/<plugin>/<wersja>/`): idzie w klucz `extraKnownMarketplaces`.
+     `ref` to zawsze `"stable"` — kanał wydań, gałąź przesuwana
      na każdy nowy tag; nie wyprowadzaj go z wersji w ścieżce, bo pin na tag wymusza
      ponowną rejestrację marketplace'u przy każdym wydaniu. `url` weź z listy
      marketplace'ów sesji. Gdy ścieżka ma inny kształt albo url jest nieznany — zostaw

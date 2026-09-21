@@ -43,8 +43,5 @@
         "ref": "stable"
       }
     }
-  },
-  "enabledPlugins": {
-    "pipeline@TODO-marketplace": true
   }
 }

@@ -114,6 +114,16 @@ def test_the_marketplace_ref_is_the_stable_channel():
     assert fallback, "init step 4 must keep the `TODO:` fallback for an unexpected path shape"
 
 
+# The settings file init writes declares the marketplace but never enables the plugin:
+# `enabledPlugins: true` makes every session there install a `--scope project` duplicate
+# that `plugin update --scope user` leaves behind (docs/DECISIONS.md, 2026-09-21).
+def test_the_settings_file_does_not_enable_the_plugin():
+    block = settings_bullet(step(4))
+    assert "extraKnownMarketplaces" in block
+    assert "**Bez `enabledPlugins`**" in block, "init step 4 must forbid `enabledPlugins`"
+    assert "i w `enabledPlugins`" not in block
+
+
 # A rule the model can reach only after it has already been told to ask is a rule it will
 # weigh rather than follow: measured 2026-09-20, two eval runs of the same commit split,
 # one finishing the skill and one asking four questions in prose and waiting. The guard is
