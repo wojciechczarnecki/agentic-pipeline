@@ -54,32 +54,29 @@ leak, then document it.
 Documentation only, no behaviour change. The private consumer project stays unnamed
 (`docs/DECISIONS.md`, 2026-09-17).
 
-- [ ] Root `README.md` rewritten for a reader who has never seen the project: one-line
-      pitch, a mermaid diagram of the pipeline and its three gates, *Why not Spec Kit?*
-      (it plans, this plugin enforces), quickstart, badges (CI, licence, version), a
-      *What's deliberately not here* section, links to `GUARD.md` and the metrics. The
-      claim is the command guard and the checked metrics, not hook-enforced gates as
-      such — SpecForge and gate-oriented-sdd enforce approval gates with hooks too, but
-      neither guards shell commands (checked 2026-09-21)
-- [ ] *Requirements & opinions* in the root `README.md`: GitHub with `gh`, squash merges,
+- [x] Root `README.md` rewritten for a reader who has never seen the project under the
+      display name *Spec-Driven Workflow*: one-line pitch, a mermaid diagram of the
+      pipeline and its three gates, the guard's refusal as a tested text block, *Why not
+      Spec Kit?* (it plans, this plugin enforces), quickstart, badges (CI, licence,
+      version), a *What's deliberately not here* section, links to `GUARD.md`, the
+      metrics and the install guide. The claim is the command guard and the checked
+      metrics, not hook-enforced gates as such — SpecForge and gate-oriented-sdd enforce
+      approval gates with hooks too, but neither guards shell commands (checked
+      2026-09-21) (`specs/003-portfolio-storefront/SPEC.md`)
+- [x] *Requirements & opinions* in the root `README.md`: GitHub with `gh`, squash merges,
       rulesets, `python3` on the machine, Alembic-only migration guarding — who the
       plugin is for and who it is not for
-- [ ] `docs/INSTALL.md`: installation, the `stable` channel, updates, the one-time
+- [x] `plugin/docs/INSTALL.md`: installation, the `stable` channel, updates, the one-time
       migration and the known traps (scope, `enabledPlugins`, commands stripping
-      `.claude/settings.json`) move out of both READMEs, which keep a three-line install
-      and a link
-- [ ] Demo recording: the guard refusing a push to `main` with its reason, and a condensed
-      `/pipeline:ship` run
-- [ ] Measured results from the private production consumer, anonymised: specs shipped,
-      escalations per spec, share of significant findings caught before code
-- [ ] Evidence from the owner's public demo repository, which uses the plugin: **ask the
-      owner** for links to its specs, review reports and PRs when this stage starts, and
-      link them from the root `README.md` — the only public proof of the pipeline on a
-      product rather than on itself
-- [ ] GitHub Releases for the `pipeline--v*` tags; `CONTRIBUTING.md`, `SECURITY.md`
-- [ ] Outside the repository, in the owner's GitHub settings: the repository pinned on the
-      owner's profile, a social preview image, and the *About* description and topics
-      checked against the new root `README.md`
+      `.claude/settings.json`) moved out of `plugin/README.md`; both READMEs keep a short
+      install and a link
+- [x] `CONTRIBUTING.md` and `SECURITY.md` at the repository root
+- [ ] GitHub Releases for the six `pipeline--v*` tags, notes from `plugin/CHANGELOG.md`
+      (the release procedure in `docs/CONVENTIONS.md` and `CLAUDE.md` already includes the
+      GitHub Release step)
+- [ ] The GitHub *About* description and topics checked against the root `README.md`
+- [ ] Owner only, in the GitHub settings: the repository pinned on the owner's profile and
+      a social preview image
 
 ## Stage 5 — A release gate to trust, and a guard that guards itself
 
@@ -162,3 +159,15 @@ silently switch a Polish consumer's plans to English, since today only `idea` na
       `init` and states the language in its own `CLAUDE.md`
 - [ ] 0.8.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
       is, since 0.3.4), with an eval case on `"language": "pl"`; Polish survives only in the `*.pl.md` templates
+
+## Stage 9 — Evidence
+
+Material from real use, expected in a few weeks; listing in plugin catalogues waits for it
+(`docs/BACKLOG.md`, Reach).
+
+- [ ] Measured results from the private production consumer, anonymised: specs shipped,
+      escalations per spec, share of significant findings caught before code
+- [ ] Evidence from the owner's public demo repository, which uses the plugin: **ask the
+      owner** for links to its specs, review reports and PRs when this stage starts, and
+      link them from the root `README.md` — the only public proof of the pipeline on a
+      product rather than on itself

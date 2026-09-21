@@ -409,7 +409,7 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
       `grep -c "Spec-Driven Workflow" docs/PROJECT.md CLAUDE.md .claude-plugin/marketplace.json plugin/.claude-plugin/plugin.json`
       → each ≥ 1; `uv run pytest -q -p no:cacheprovider plugin/tests/test_readme.py plugin/tests/test_plugin_structure.py`.
 
-- [ ] 6. **Roadmap, backlog, decisions**: files `docs/ROADMAP.md`, `docs/BACKLOG.md`,
+- [x] 6. **Roadmap, backlog, decisions**: files `docs/ROADMAP.md`, `docs/BACKLOG.md`,
       `docs/DECISIONS.md`.
       - ROADMAP Stage 4, rewritten into these items:
         1. the root README (ticked);
