@@ -2,6 +2,35 @@
 
 Wersjonowanie semantyczne. Wydanie znaczone tagiem przez `claude plugin tag`.
 
+## 0.3.1
+
+Naprawa wywołania kontroli metryk z 0.3.0. Skille etapów uruchamiały
+`python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check`, a szablon zezwalał na to
+regułą zapisaną z tą samą zmienną. W treści skilla zmienna jest podstawiana, w regułach
+`permissions` — nie, więc reguła nigdy nie pasowała, każdy `--check` kończył się pytaniem
+o zgodę, na które subagent etapu nie odpowie, a `final-review` w trybie `apply` nie mógł
+ustawić `done`.
+
+**wpływ na konsumenta:** w `permissions.allow` własnego `.claude/settings.json` zamień wpis
+na `"Bash(workflow_metrics.py *)"` (zmiana szablonu dotyczy tylko nowych projektów).
+
+### Naprawione
+
+- Kroki zamykające `plan`, `plan-review`, `implement` i `final-review` (także zamknięcie
+  w trybie `apply`) wywołują `workflow_metrics.py --check <spec-dir>` przez `PATH` —
+  Claude Code dopisuje `bin/` pluginu do `PATH` sesji.
+- `templates/settings.json` zezwala na `Bash(workflow_metrics.py *)`.
+- `templates/docs/CONVENTIONS.md` podaje wywołanie przez `PATH` zamiast
+  `python3 <plugin>/bin/workflow_metrics.py`.
+
+### Zmienione
+
+- README: raport i `--check` w formie `PATH`, z wyjaśnieniem, dlaczego nie
+  `${CLAUDE_PLUGIN_ROOT}`; procedura ponownej rejestracji marketplace'u mówi, że `remove`
+  odinstalowuje plugin we wszystkich projektach, że trzeba go doinstalować
+  `--scope project` w każdym z nich i że `remove`, `add` oraz `install` kasują blok
+  pluginu z `.claude/settings.json` (przywrócić `git checkout`).
+
 ## 0.3.0
 
 Reguły trafiają tam, gdzie agent je wykonuje, i dostają program, który ich pilnuje.

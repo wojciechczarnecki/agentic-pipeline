@@ -63,7 +63,7 @@ eskalacji i przy raporcie z końcowego review, nie zatwierdza całego planu).
    `metrics:` ustaw `started_at` i `escalations: 0` (jeśli brak; `date +%Y-%m-%dT%H:%M`)
    oraz `plan_steps`.
    Płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
-   sukcesu `python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" --check <spec-dir>`.
+   sukcesu `workflow_metrics.py --check <spec-dir>`.
    Czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
    STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz wartości, której nie zmierzyłeś.
    Zacommituj (`docs: add PLAN NNN <slug>`). NIE implementuj niczego.

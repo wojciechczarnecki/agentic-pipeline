@@ -140,8 +140,12 @@ def test_closing_step_states_the_metrics_format(name):
 @pytest.mark.parametrize("name", METRIC_SKILLS)
 def test_closing_step_runs_the_checker(name):
     step = closing_step(name)
-    for token in ["workflow_metrics.py", "--check", "CLAUDE_PLUGIN_ROOT"]:
-        assert token in step, f"{name}: the closing step must run the checker ({token})"
+    # The checker is called through PATH (Claude Code appends the plugin's `bin/` to it).
+    # Skill text gets ${CLAUDE_PLUGIN_ROOT} substituted, but permission rules do not, so an
+    # absolute-path call never matches the allow rule and a stage subagent, which cannot
+    # answer the prompt, stalls. Measured 2026-09-21 on 0.3.0.
+    assert "`workflow_metrics.py --check <spec-dir>`" in step, name
+    assert "CLAUDE_PLUGIN_ROOT" not in step, name
 
 
 @pytest.mark.parametrize("name", METRIC_SKILLS)

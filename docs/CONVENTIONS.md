@@ -87,9 +87,12 @@ worktrees.
 
 Every spec carries a flat `metrics:` block in its SPEC.md frontmatter, filled in by the
 pipeline stages. Keys, the report and the `--check` gate: `plugin/README.md` → metrics
-section. The script is addressed through the plugin root
-(`python3 "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py"`), never relative to `PATH` or
-the working directory — those resolve only inside this repository.
+section. The script is called by name through `PATH` (`workflow_metrics.py --check
+<spec-dir>`): Claude Code appends an enabled plugin's `bin/` to the session's `PATH`, in
+consumers too. Never through `${CLAUDE_PLUGIN_ROOT}` — skill text gets it substituted, but
+permission rules do not, so the absolute path never matches an `allow` rule and a stage
+subagent, which cannot answer the prompt, stalls. The allow rule is
+`Bash(workflow_metrics.py *)`.
 
 ## Dependencies
 
