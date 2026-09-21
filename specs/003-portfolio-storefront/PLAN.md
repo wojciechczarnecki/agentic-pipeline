@@ -15,7 +15,8 @@
   Releases and the *About* description come after gate 2.
 - **Main risks:** the guard refuses `gh repo edit` for agents ("changing repository
   settings is the owner's call"), and AC19 forbids changing the guard. The *About*
-  description is therefore set by **you** with one command from the final report. The
+  description is therefore set by **you** with one command from the final review's gate 2
+  entry "Steps 8–9", which you run before answering the gate. The
   agent does not work around the refusal through `gh api`. The topics already meet AC16
   (checked 2026-09-21). `gh release create` is not in the `allow` list, so it asks for
   permission. Moving the installation text must not lose any assertion the tests make
@@ -24,8 +25,9 @@
   (SPEC → "Owner decisions").
 - **Data migration:** no (SPEC → "Owner decisions").
 - **Manual scenarios for the owner:** 3. Check the rendered README on GitHub (mermaid,
-  badges, links). Run `gh repo edit --description` after gate 2 and look over the Releases
-  page. Do the profile pin and the social preview image.
+  badges, links). At gate 2, run `gh repo edit --description` and accept the "Steps 8–9"
+  entry; afterwards look over the Releases page. Do the profile pin and the social preview
+  image.
 
 ## Approach
 
@@ -50,7 +52,7 @@ release channel, user scope, project settings, the `enabledPlugins` trap, updati
 one-time migration, verification, opting out, setting up a project. The file sits beside
 `GUARD.md` (SPEC decision: `plugin/` reaches the consumer's cache). `plugin/README.md` →
 `## Installation` keeps three commands (marketplace add on `#stable`, install at
-`--scope user`, update) and a link `docs/INSTALL.md`. The existing assertions follow the
+`--scope user`, `/pipeline:init`) and a link `docs/INSTALL.md`, which covers updating. The existing assertions follow the
 text: `installation_section()` becomes `install_guide()`, which returns the whole of
 `plugin/docs/INSTALL.md`. Every current assertion stays as it is, including
 `test_installation_covers_a_local_path_and_a_repository`, which today splits the README
@@ -210,6 +212,16 @@ Steps 1–7 are done by `/pipeline:implement`. Steps 8–9 are done by `/pipelin
 in `apply` mode, **only after** the owner's approval at gate 2 is recorded in
 `## Owner decisions`. `implemented` does not wait for them.
 
+How the gate 2 approval is obtained (review 2026-09-21): the gate 2 question of
+`/pipeline:ship` covers review findings only, so the approval travels as a finding. The
+`/pipeline:final-review` report lists one entry, weight "worth fixing", titled
+"Steps 8–9: GitHub Releases for the six tags; the About description". Its text carries the
+exact `gh repo edit` command of step 9 with the pitch line pasted in, and asks the owner to
+run that command before answering the gate. Accepting that entry at gate 2 is the approval
+of steps 8–9; rejecting it means steps 8–9 are not run, the two Stage 4 items stay
+unticked, and the apply report says so. In `apply`, steps 8–9 run after the accepted fixes
+and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the PR.
+
 - [ ] 1. **Root document tests wired into verification**: files `tests/test_documents.py`
       (new), `scripts/check.sh`, `.github/workflows/ci.yml`, `docs/CONVENTIONS.md`
       (Tests), `CLAUDE.md` (Structure).
@@ -267,11 +279,12 @@ in `apply` mode, **only after** the owner's approval at gate 2 is recorded in
         literal `scripts/check.sh`: `test_no_domain_references` scans all of `plugin/`.
       - `plugin/README.md` → `## Installation`: one ```` ```bash ```` block with three
         commands (marketplace add `'…agentic-pipeline.git#stable'`,
-        `claude plugin install pipeline@wcz-tools --scope user`, the update one-liner
-        `claude plugin marketplace update wcz-tools && claude plugin update
-        pipeline@wcz-tools --scope user`), then one sentence: "`/pipeline:init` once per
-        project, then see the [install guide](docs/INSTALL.md) for the release channel,
-        the one-time migration, verification, the opt-out and the known traps."
+        `claude plugin install pipeline@wcz-tools --scope user`,
+        `/pipeline:init   # once in each project, inside a Claude Code session`), then one
+        sentence: "See the [install guide](docs/INSTALL.md) for updating, the release
+        channel, the one-time migration, verification, the opt-out and the known traps."
+        No `a && b` one-liner: AC10 counts commands, not lines, and the update pair is two
+        (review 2026-09-21).
       - `plugin/tests/test_readme.py`:
         - add `INSTALL = (PLUGIN / "docs" / "INSTALL.md").read_text()` and
           `def install_guide() -> str: return INSTALL`;
@@ -282,8 +295,9 @@ in `apply` mode, **only after** the owner's approval at gate 2 is recorded in
           `claude plugin list`, `/pipeline:init`, `--permission-mode bypassPermissions`,
           `extraKnownMarketplaces`;
         - add `test_the_installation_section_is_short_and_links_the_guide`: the README
-          section (split as today) has ≤ 3 command lines (non-empty, not `#`-comment
-          lines inside fenced blocks) and contains `](docs/INSTALL.md)`;
+          section (split as today) has ≤ 3 commands (non-empty, not `#`-comment lines
+          inside fenced blocks, each `&&`/`||`/`;` join counted as a further command) and
+          contains `](docs/INSTALL.md)`;
         - add `"docs/INSTALL.md"` to the `test_no_polish_outside_code` parameters.
       - Add `plugin/docs/INSTALL.md` to the link test's document list. It is already in
         `LINKED` and is picked up once it exists.
@@ -335,8 +349,13 @@ in `apply` mode, **only after** the owner's approval at gate 2 is recorded in
         - assert `returncode == 2` and `stderr.strip() == "\n".join(block_lines[1:]).strip()`.
       - `test_why_not_spec_kit_states_the_claim_with_dates`: the section exists. It
         contains `command guard`, `metrics`, `SpecForge` and `gate-oriented-sdd`. Every
-        paragraph (split on blank lines) that names `Spec Kit`, `SpecForge` or
-        `gate-oriented-sdd` contains `checked \d{4}-\d{2}-\d{2}`.
+        paragraph of the **whole** README (fenced blocks dropped, split on blank lines,
+        heading lines skipped) that names `Spec Kit`, `SpecForge` or `gate-oriented-sdd`
+        contains `checked \d{4}-\d{2}-\d{2}` — AC5 says "every statement", not only
+        those inside the section.
+      - Every command count in these tests counts `&&`, `||` and `;` joins as separate
+        commands (AC8, AC10 count commands, not lines); the plugin test of step 2 applies
+        the same rule with its own local helper (no cross-directory import).
       - `test_requirements_and_opinions`: tokens `gh`, `squash`, `rulesets`, `python3`,
         `Alembic`, `### Who it is for` and `### Who it is not for`.
       - `test_whats_deliberately_not_here`: tokens `runtime dependencies`,
@@ -408,6 +427,10 @@ in `apply` mode, **only after** the owner's approval at gate 2 is recorded in
         new `## Stage 9 — Evidence` after Stage 8, under a one-line intro (material
         expected in weeks; catalogue listing waits for it).
       - BACKLOG *Reach* row: the trigger becomes `Stage 9 is done`.
+      - BACKLOG, one new *Guard* row (P2): `gh api` write calls on the repository
+        endpoint (`-X PATCH repos/<owner>/<repo>`, topics, settings) pass the guard while
+        `gh repo edit` is refused; trigger: the first session seen changing repository
+        settings through `gh api`, or Stage 5 starting. No guard change here (AC19).
       - DECISIONS, three appended rows dated today:
         1. the install guide at `plugin/docs/INSTALL.md` (rejected: `docs/INSTALL.md`;
            rationale from the SPEC decision table);
@@ -437,6 +460,9 @@ in `apply` mode, **only after** the owner's approval at gate 2 is recorded in
       `git diff origin/main...HEAD -- plugin/.claude-plugin/plugin.json` shows only the
       `description` line;
       `bash scripts/check.sh` → `ALL GREEN`; the automatic end-to-end list below.
+      In End-to-end verification → Results, add the line "Pending after gate 2: steps 8
+      (Releases) and 9 (About), see Steps intro", with the ready `gh repo edit` command
+      (pitch line pasted in), so the final review can raise the gate 2 entry.
 
 - [ ] 8. **(after gate 2) GitHub Releases for the six tags**: no repository files except the
       ROADMAP tick. The permission prompt for `gh release create` is expected (it is not
@@ -468,9 +494,12 @@ in `apply` mode, **only after** the owner's approval at gate 2 is recorded in
       pitch line pasted in:
       `gh repo edit wojciechczarnecki/agentic-pipeline --description "<pitch line from README.md>"`.
       The topics already contain `claude-code-plugin` and `spec-driven-development`
-      (checked 2026-09-21), so no topic change is needed. After the owner confirms, the
-      agent verifies, ticks the Stage 4 About item and commits
-      (`docs: tick the About item`).
+      (checked 2026-09-21), so no topic change is needed. The command reaches the owner
+      in the final review's gate 2 entry (Steps intro); the owner runs it before
+      answering the gate. The apply agent cannot wait for the owner, so it only verifies:
+      when the description matches, it ticks the Stage 4 About item and commits
+      (`docs: tick the About item`); when it does not, it ends with `RESULT: ESCALATE`
+      carrying the command, before opening the PR, and the status stays `implemented`.
       Automated verification:
       `gh repo view --json description -q .description` equals the pitch line of
       `README.md` byte for byte (`diff <(gh repo view --json description -q .description) <(sed -n '<pitch line number>p' README.md)`);
@@ -509,8 +538,15 @@ in `apply` mode, **only after** the owner's approval at gate 2 is recorded in
 - **The private consumer's name.** The root test (step 1) scans every Markdown file
   outside `plugin/`, `specs/` included. If an old spec contained the name it would turn
   red, but the grep on 2026-09-21 found none.
-- **Editing guardrail-adjacent files.** `scripts/check.sh` and the manifests are edited
-  with Edit/Write, never with `sed -i`; the guard refuses shell edits of guardrail files.
+- **Editing guardrail-adjacent files.** `scripts/check.sh`, `.github/workflows/ci.yml` and
+  the manifests are edited with Edit/Write, never with `sed -i`. They are not guardrail
+  files for the guard (those are `.claude/settings*.json`, `.claude/workflow.json` and the
+  installed plugin directory), but Edit keeps the diff reviewable. The guard *does* refuse
+  a shell write of `.claude/workflow.json`, which is why the scratch repo's file is
+  written from Python in the test and with Write in the manual check (verified in review).
+- **`gh api` is in the allow list and the guard does not refuse `gh api -X PATCH
+  repos/<owner>/<repo>`**, while it refuses `gh repo edit`. Using that gap is forbidden
+  (step 9); step 6 records it in `docs/BACKLOG.md`.
 
 ## End-to-end verification
 
@@ -534,8 +570,9 @@ in `apply` mode, **only after** the owner's approval at gate 2 is recorded in
 1. On GitHub, open the root `README.md` on the PR branch. The mermaid diagram renders,
    the three badges show (CI status, MIT, version 0.3.4), and the links to
    INSTALL/GUARD/metrics/CONTRIBUTING/SECURITY/CHANGELOG open the right place.
-2. After gate 2: run the `gh repo edit --description` command from the final report, then
-   look over the Releases page (six releases, 0.3.4 as Latest, notes readable).
+2. At gate 2, before answering: run the `gh repo edit --description` command from the
+   final review's "Steps 8–9" entry and accept that entry. After the apply run, look over
+   the Releases page (six releases, 0.3.4 as Latest, notes readable).
 3. Pin the repository on your profile and upload a social preview image, then confirm, so
    the last Stage 4 item can be ticked.
 
@@ -558,7 +595,80 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-21 — /pipeline:plan-review
+
+Findings (weight, before fixes): 0 blockers, 2 majors, 4 minors.
+
+- **M1 (major) — the gate 2 approval of steps 8–9 had no carrier.** The plan made steps
+  8–9 conditional on "the owner's approval at gate 2 recorded in Owner decisions", but the
+  `/pipeline:ship` gate 2 question covers review findings only, and final-review `apply`
+  reads plan steps only through the decisions. As written, steps 8–9 would be skipped
+  without notice, or the apply agent would guess. Fixed: Steps intro — the final review
+  raises one "worth fixing" entry "Steps 8–9"; accepting it is the approval; rejecting it
+  leaves the two items unticked and reported. Step 7 writes a "Pending after gate 2" line
+  into Results so the final review sees it.
+- **M2 (major) — step 9 waited for the owner inside `apply`.** An apply agent cannot wait
+  for the owner to run `gh repo edit` and confirm, and apply opens the PR and reaches
+  `done` in one run. Also the order of steps 8–9 against the PR was not given, so the
+  ROADMAP ticks could land after the PR or after `done`. Fixed: the owner runs the command
+  at gate 2, before answering (it is in the gate 2 entry). Apply runs steps 8–9 after the
+  accepted fixes and before opening the PR. On a description mismatch it ends with
+  `RESULT: ESCALATE` carrying the command, and the status stays `implemented`. The owner
+  summary and manual scenario 2 now say the same.
+- **m1 (minor) — AC10 counts commands, not lines.** The `plugin/README.md` install block
+  ended with `marketplace update && plugin update`, which is two commands, so the section
+  had four. The line-counting test would have passed anyway. Fixed: the third command is
+  `/pipeline:init` and updating moves behind the link. The command-count helpers in both
+  test files count `&&`/`||`/`;` joins, and the Approach paragraph matches.
+- **m2 (minor) — AC5 says "every statement about another tool".** The test only looked
+  inside *Why not Spec Kit?*. Fixed: it scans every paragraph of the whole README
+  (fences and heading lines skipped).
+- **m3 (minor) — the risk note called `scripts/check.sh` a guardrail file.** It is not
+  one for the guard. Corrected, with the real list. Verified that the guard does refuse a
+  shell write of `.claude/workflow.json`, which confirms the Python/Write approach for
+  the scratch repo.
+- **m4 (minor) — a guard gap met on the way.** `gh api` is allowed, and the guard lets
+  `gh api -X PATCH repos/<owner>/<repo>` through while it refuses `gh repo edit`. The plan
+  already forbade using it. Added a risk entry and a P2 *Guard* row in `docs/BACKLOG.md`
+  (step 6). No guard change (AC19).
+
+Checked and found correct (later stages need not redo this):
+
+- **AC coverage:** every AC from AC1 to AC20 has a step and a proving test or command, and
+  the matrix matches the step list. AC14, AC16 and AC17 ride on steps 8–9 (now with a
+  carrier, M1).
+- **Guard block (AC4):** reproduced on the working tree in a scratch repo on `feat/001-x`
+  with `.claude/workflow.json` = `{}`. Exit code 2, stderr exactly
+  `Blocked by the pipeline guard: pushing to main: main changes only through a PR merged by the owner; work on a feature branch`.
+  `run_hook` in `plugin/tests/test_guard.py` matches the planned invocation.
+- **Guard on `gh`:** `check_gh` refuses `gh repo edit` and lets `gh release create`
+  through; `gh release create` is not in `allow` and not in `deny`.
+- **Repository state:** the six tags `pipeline--v0.2.0` to `pipeline--v0.3.4` exist.
+  `plugin/CHANGELOG.md` has `## X.Y.Z` headings for each, so the awk extraction works
+  (`## 0.1.0` has no tag and is not released). No GitHub Releases exist yet. The topics
+  already include `claude-code-plugin` and `spec-driven-development`.
+- **Tests:** `tests/test_release_gate.py` passes today (11 passed) but is not run by
+  `scripts/check.sh` or CI. `pyproject.toml` `testpaths` already includes `tests`. Adding
+  `tests` to both commands is needed and minimal.
+- **Consumer names:** the patterns from `test_no_domain_references.py` hit nothing in the
+  Markdown outside `plugin/`, `specs/` and `docs/` included.
+- **Existing links:** the relative links in `README.md`, `plugin/README.md` and
+  `plugin/docs/GUARD.md` stay inside their trees. `## Workflow metrics` and
+  `## Known limits` exist, so `#workflow-metrics` and `#known-limits` resolve.
+- **Existing tests:** `test_readme.py` has `installation_section()` and
+  `test_installation_covers_a_local_path_and_a_repository`, as the plan says. The
+  `HEADINGS` test keeps `## Installation`, which the plan keeps.
+- **Conventions and decisions:** no version bump for a docs-only change; English
+  documents; tagging and moving `stable` stay the owner's; the release step is added as an
+  owner step; the extra DECISIONS row for the root `tests/` fits "record decisions in the
+  same PR".
+- **Dependencies and migrations:** none, as the owner decided. The owner summary flags are
+  correct.
+- **Verification:** every step has exact commands. End-to-end is split into automatic and
+  manual, and nothing automatable was left manual. There is no UI scope.
+
+The plan is ready: it has no blockers, the two majors are fixed in the plan itself, there
+is no new dependency or migration, and every AC has an executable proof.
 
 ## Deviations
 
