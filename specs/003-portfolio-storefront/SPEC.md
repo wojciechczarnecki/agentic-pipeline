@@ -16,6 +16,9 @@ metrics:
   implement_steps: 7
   implement_iterations: 2
   deviations: 1
+  final_review_blockers: 0
+  final_review_worth_fixing: 5
+  final_review_nits: 5
 ---
 
 # SPEC 003 — Portfolio storefront

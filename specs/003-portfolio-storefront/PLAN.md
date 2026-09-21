@@ -706,4 +706,116 @@ is no new dependency or migration, and every AC has an executable proof.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-21 — /pipeline:final-review (report)
+
+Three independent perspectives (SPEC/PLAN compliance, quality, tests), merged and each
+finding checked in the code. `uv run pytest -q -p no:cacheprovider plugin/tests tests` →
+879 passed; `cd plugin && python3 -m pytest -q tests/test_readme.py` → 42 passed. The tests
+perspective ran 14 mutations on a scratch copy (undated paragraph, changed refusal line,
+broken and invented `-1` anchors, missing link target, renamed `## Quickstart`, emptied
+*Why not Spec Kit?*, `&&`/`;` joins in both install sections), and every one turned a test
+red. No assertion was lost in the move to `install_guide()`. Nothing outside the scope is
+on the branch. The Deviations entry is justified: the old root README already existed, so
+the strict `xfail` would have reported XPASS in step 3.
+
+#### AC → evidence
+
+| AC | Evidence | Status |
+|----|----------|--------|
+| AC1 | `README.md:1`, pitch `:5`; `test_readme_opens_with_the_display_name_and_the_pitch` | met |
+| AC2 | `README.md:3` (CI, MIT, shields dynamic JSON on `main`); `test_readme_shows_the_three_badges` | met |
+| AC3 | `README.md:13-23`; `test_readme_diagram_names_every_stage_and_gate` (weak, F5) | met |
+| AC4 | `README.md:38-41`; `test_readme_guard_block_matches_the_guard`; negative check in Results | met |
+| AC5 | `README.md:48-60`; `test_why_not_spec_kit_states_the_claim_with_dates` | met |
+| AC6 | `README.md:62-87`; `test_requirements_and_opinions` | met |
+| AC7 | `README.md:89-95`; `test_whats_deliberately_not_here` | met |
+| AC8 | `README.md:7-9, 97-126` (2 + 3 commands); `test_quickstart_reaches_idea_in_five_commands`, `test_readme_explains_the_three_names`, `test_readme_links_the_documentation` | met |
+| AC9 | `plugin/docs/INSTALL.md`, compared with `origin/main:plugin/README.md`, nothing lost; `plugin/tests/test_readme.py` `install_guide()` tests | met |
+| AC10 | `plugin/README.md` Installation (3 commands + link), `README.md:97-105`, `CLAUDE.md:33`; both short-section tests | met (F4) |
+| AC11 | `test_relative_links_resolve`, `test_github_anchor_slugs`, `test_plugin_documents_link_inside_the_plugin` | met |
+| AC12 | `CONTRIBUTING.md`; `test_contributing_covers_the_workflow` | met |
+| AC13 | `SECURITY.md`; `test_security_policy`; private vulnerability reporting enabled | met |
+| AC14 | step 8, carried by F1 | pending gate 2 |
+| AC15 | `docs/CONVENTIONS.md` Releases, `CLAUDE.md` release block | met |
+| AC16 | step 9, carried by F1; topics already set; description text F2 | pending gate 2 |
+| AC17 | ROADMAP Stage 4 reworded, demo item removed, `## Stage 9 — Evidence` after Stage 8; Releases, About and pin/preview items unticked by design | met, parts pending |
+| AC18 | BACKLOG *Reach* "Stage 9 is done"; three DECISIONS rows | met |
+| AC19 | no diff under `plugin/bin`, `hooks`, `skills`, `agents`, `templates`; `plugin.json` description only, 0.3.4 | met |
+| AC20 | `test_no_document_names_the_private_consumer`; `test_no_domain_references` | met |
+
+#### Findings
+
+- **F1 (worth fixing) — Steps 8–9: GitHub Releases for the six tags; the About
+  description.** The gate 2 carrier required by the Steps intro. Accepting it approves
+  steps 8 (six `gh release create --verify-tag` runs, 0.3.4 as latest) and 9. **Before
+  answering the gate, the owner runs** (text with F2 applied; if F2 is rejected, drop the
+  `Spec-Driven Workflow — ` prefix):
+
+  ```bash
+  gh repo edit wojciechczarnecki/agentic-pipeline --description "Spec-Driven Workflow — A Claude Code plugin that takes a feature from an approved spec to a reviewed pull request, with owner gates between the stages and a command guard that stops the agent from pushing to main, merging its own PR or touching production."
+  ```
+
+  If F3 is accepted and changes the README pitch line, the apply agent compares the
+  description with the changed line and escalates with the new command on a mismatch
+  (step 9). Rejecting F1 leaves steps 8–9 unrun and the two Stage 4 items unticked.
+- **F2 (worth fixing) — `PLAN.md` step 9 and Results: the planned About description lacks
+  the display name.** SPEC Scope lists the *About* description among the places that
+  carry *Spec-Driven Workflow*, and so does the new DECISIONS naming row, but step 9 sets
+  it to README line 5, which does not contain it. Fix: the description is
+  `Spec-Driven Workflow — ` + the pitch line; step 9's `diff` compares against that.
+- **F3 (worth fixing) — `README.md:5` and `README.md:57-59` state configuration-dependent
+  rules as unconditional.** "Touching production" and "cannot … touch production hosts or
+  run a migration against a non-local database" hold only when `production.hosts` /
+  `production.commands` and `migrations.command` are set in `.claude/workflow.json`
+  (`plugin/bin/guard.py:216-229, 519-523`; without them the guard itself warns that they
+  "stay unguarded", `guard.py:24-28`). A reader who skips the configuration gets `ssh
+  <prod>` and a remote `alembic upgrade` through. Fix: qualify both, e.g. "production hosts
+  you list in `.claude/workflow.json`" and "an Alembic migration against a non-local
+  database"; keep the pitch line plain text (it becomes the About description, F1).
+- **F4 (worth fixing) — `tests/test_documents.py:352` and
+  `plugin/tests/test_readme.py:149`: nothing checks the install commands on the two front
+  pages.** Before the move, `installation_section()` asserted `#stable` and `--scope user`
+  on the `plugin/README.md` section; those assertions now cover `INSTALL.md` only. Changing
+  `#stable` to `#main` and `--scope user` to `--scope project` in both READMEs keeps all 879
+  tests green (verified on a copy). Fix: both short-section tests assert `#stable` and
+  `--scope user` (and `/pipeline:init` for the plugin README), and that every command line
+  of the section also appears in `plugin/docs/INSTALL.md`.
+- **F5 (worth fixing) — `tests/test_documents.py:275-279`: stage labels are matched as
+  substrings of the whole mermaid body.** `plan` is always found inside `plan review`, so
+  deleting the `plan["plan"]` node keeps the test green. Fix: extract the quoted node labels
+  (`re.findall(r'"([^"]+)"', …)`) and require each stage and gate label as an exact element.
+- **F6 (nit) — `README.md:130-131`: the Development note dropped "on any interpreter that
+  has pytest"**, so `cd plugin && python3 -m pytest tests` reads as needing nothing
+  installed. Fix: restore the clause.
+- **F7 (nit) — `.claude-plugin/marketplace.json:11`: two colons in a row** ("Spec-Driven
+  Workflow: agentic feature pipeline: idea → …"). Fix: "Spec-Driven Workflow — an agentic
+  feature pipeline: idea → …".
+- **F8 (nit) — `SECURITY.md:18-19`: uneven wrap, line 19 has 102 characters** while the
+  other new documents wrap at about 92. Fix: rewrap the paragraph.
+- **F9 (nit) — `tests/test_documents.py:234, 317-329`: the AC5 date check works per
+  blank-line paragraph and on a closed list of three tool names.** A bulleted list with one
+  dated item covers undated items, and a claim about an unlisted tool is not checked. No
+  exposure today (the section is prose). Fix: split list items into their own units, and
+  require a date in every paragraph of *Why not Spec Kit?*.
+- **F10 (nit) — `tests/test_documents.py:202` and `plugin/tests/test_readme.py:131`: two
+  copies of the command counter.** The copy is deliberate (PLAN Approach: no
+  cross-directory import of test modules), but nothing ties the two together. Fix: a
+  one-line comment in each pointing at the other.
+
+#### Rejected
+
+- Import `strip_code`, `POLISH` and `command_count` from `plugin/tests/test_readme.py` —
+  contradicts the PLAN Approach decision (copy, do not import a test module); F10 covers
+  the drift risk.
+- `test_the_link_check_covers_the_six_documents` is redundant — planned in step 1 as the
+  guard against a silently filtered `LINKED`, harmless now; not a defect.
+- `slug()` mishandles links inside headings and closing `##` — no such heading in the six
+  documents, it can only cause a false failure, and the limit is recorded in Risks.
+- The guard test's git setup (bare calls, branch switch) — the feature branch is
+  deliberate (Risks: the refusal must not mention the current branch), and `check=True`
+  already fails loudly.
+- Reference-style links escape the link check — none of the six documents uses them; no
+  exposure.
+
+Recommendation for gate 2: accept F1–F5, reject the nits F6–F10 (or take F6–F8, each a
+one-line change).
