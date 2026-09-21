@@ -33,12 +33,15 @@ true, and the roadmap must not lie.
 The guard is the plugin's strongest part and the least visible one. Fix what is known to
 leak, then document it.
 
-- [ ] 0.3.3 (patch): guard fixes
+- [x] 0.3.3 (patch): findings from the first full consumer run — `gh api -X DELETE`
+      is blocked only on the owner's ground (the rest, e.g. Actions artifacts, passes), a
+      refused compound command names the blocked parts, `final-review` takes the run link
+      from `gh pr checks`, and only the orchestrator bumps `escalations`
+- [ ] 0.3.4 (patch): guard fixes
       - a variable in a push refspec is resolved or blocked, like a path for `rm` —
         `B=main; git push origin $B` (also with `export` and `&&`) passes today; measured
         2026-09-21 on 0.3.2, server-side the `main` ruleset still stops it
       - read-only `git config core.hooksPath` (no value) is allowed
-      - `gh api -X DELETE` on repository settings unrelated to merges or `main` is allowed
 - [ ] `plugin/docs/GUARD.md`: threat model, the three layers (guard → `pre-push` → GitHub
       rulesets) and what each covers, a table of commands a string `deny` rule lets through
       and the guard stops, fail-open by design, and the known limits (Alembic-only

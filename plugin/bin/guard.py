@@ -100,6 +100,31 @@ GIT_HOOKS = (
     "an existing git hook changes only through Edit/Write with the owner's approval; "
     "creating a missing hook (and making it executable) is allowed"
 )
+API_OWNER_DELETIONS = {
+    "merges": "merges",
+    "protection": "branch protection",
+    "rulesets": "rulesets",
+    "releases": "releases",
+    "runs": "workflow runs",
+    "secrets": "secrets",
+    "variables": "variables",
+    "environments": "environments",
+    "hooks": "webhooks",
+    "keys": "keys",
+    "gpg_keys": "keys",
+    "ssh_signing_keys": "keys",
+    "collaborators": "collaborator access",
+    "invitations": "collaborator access",
+    "outside_collaborators": "collaborator access",
+    "teams": "organization teams and members",
+    "members": "organization teams and members",
+    "memberships": "organization teams and members",
+    "pages": "the Pages site",
+    "deployments": "deployments",
+    "vulnerability-alerts": "security settings",
+    "automated-security-fixes": "security settings",
+    "private-vulnerability-reporting": "security settings",
+}
 DEFAULT_WORKTREE_DIR = "../worktrees"
 GLOB_CHARACTERS = re.compile(r"[*?\[{]")
 WORKTREE_ADD_OPTIONS = {"-b", "-B", "--reason"}
@@ -261,16 +286,45 @@ class Analyzer:
             raise GuardError(
                 "the command could not be parsed; split it into simpler ones"
             ) from None
+        # a pipeline is one part: its commands run together, so it is offered back whole
+        parts: list[list[tuple[list[str], bool]]] = [[]]
         words: list[str] = []
         conditional = False
         for token in [*tokens, ";"]:
             if is_operator(token):
                 if words:
-                    self.segment(words, depth, conditional)
+                    parts[-1].append((words, conditional))
+                if token not in {"|", "|&"} and parts[-1]:
+                    parts.append([])
                 conditional = token in {"&&", "||"}
                 words = []
             else:
                 words.append(token)
+        parts = [part for part in parts if part]
+        if depth > 0 or len(parts) < 2:
+            for part in parts:
+                for words, conditional in part:
+                    self.segment(words, depth, conditional)
+            return
+        # The hook refuses the whole call, so every part is checked and the refusal names
+        # the ones at fault — the agent can send the rest again on its own.
+        blocked = []
+        for part in parts:
+            try:
+                for words, conditional in part:
+                    self.segment(words, depth, conditional)
+            except GuardError as exc:
+                text = " | ".join(" ".join(words) for words, _ in part)
+                blocked.append(f"`{text}`: {exc}")
+        if blocked:
+            passed = len(parts) - len(blocked)
+            rest = (
+                f"; the other {passed} of {len(parts)} parts passed"
+                " — run them as a separate call"
+                if passed
+                else ""
+            )
+            raise GuardError(f"the whole call is refused because of {'; '.join(blocked)}{rest}")
 
     def segment(self, tokens: list[str], depth: int, conditional: bool = False) -> None:
         words, redirects = split_redirects(tokens)
@@ -678,14 +732,48 @@ def check_gh(args: list[str]) -> None:
         raise GuardError("deleting releases or workflow runs is the owner's call")
     if args[:1] == ["api"]:
         method = api_method(args[1:])
+        if method == "DELETE":
+            if any("$" in arg or "`" in arg for arg in args[1:]):
+                raise GuardError(
+                    "`gh api -X DELETE` on an endpoint built from variables cannot be "
+                    "verified; spell the endpoint out"
+                )
+            for arg in args[1:]:
+                owned = owner_deletion(arg)
+                if owned:
+                    raise GuardError(f"`gh api -X DELETE {arg}`: deleting {owned}")
+            return
         sensitive = any(
             re.search(r"/merges?\b|/protection|/rulesets|refs/heads/(main|master)\b", arg)
             for arg in args[1:]
         )
-        if method == "DELETE" or (sensitive and method != "GET"):
+        if sensitive and method != "GET":
             raise GuardError(
                 "write calls to merges, branch protection or main are the owner's call"
             )
+
+
+# What an API DELETE may not touch: the same ground the gh subcommands above keep for the
+# owner. Everything else — Actions artifacts and caches, comments, labels — goes through.
+def owner_deletion(arg: str) -> str | None:
+    path = urlparse(arg).path if "://" in arg else arg.split("?", 1)[0]
+    parts = [part for part in path.split("/") if part]
+    for index, part in enumerate(parts):
+        # repos/<owner>/<repo>, repositories/<id>, orgs/<org> — also behind a prefix such as
+        # the api/v3 of GitHub Enterprise Server
+        width = {"repos": 3, "repositories": 2, "orgs": 2}.get(part)
+        if width is None or len(parts) < index + width:
+            continue
+        rest = parts[index + width :]
+        if not rest:
+            return f"the {'organization' if part == 'orgs' else 'repository'} is the owner's call"
+        if rest[:2] == ["git", "refs"]:
+            return "branch and tag refs is the owner's call, like `git push --delete`"
+        break
+    for part in parts:
+        if part in API_OWNER_DELETIONS:
+            return f"{API_OWNER_DELETIONS[part]} is the owner's call"
+    return None
 
 
 def api_method(args: list[str]) -> str:
