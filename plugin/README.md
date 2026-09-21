@@ -1,53 +1,54 @@
 # Plugin `pipeline`
 
-Agentowy pipeline feature'a dla Claude Code: pomysł → plan → recenzja planu → implementacja
-→ końcowe review → PR. Do tego strażnik komend (`main`, produkcja, migracje, kasowanie
-plików), hooki formatowania i powiadomień, zestawienie metryk workflow oraz skill stawiający
-szkielet nowego projektu.
+An agentic feature pipeline for Claude Code: idea → plan → plan review → implementation →
+final review → PR. On top of that: a command guard (`main`, production, migrations, file
+deletion), formatting and notification hooks, a workflow metrics report and a skill that
+scaffolds a new project.
 
-Plugin jest niezależny od stacku i od domeny: wszystko, co dotyczy konkretnego repozytorium,
-żyje w jego `.claude/workflow.json`.
+The plugin is independent of any stack and any domain: everything that concerns a
+particular repository lives in its `.claude/workflow.json`.
 
-## Instalacja
+## Installation
 
-**Ze ścieżki lokalnej** (podgląd, praca nad samym pluginem):
+**From a local path** (preview, work on the plugin itself):
 
 ```bash
-claude --plugin-dir ./plugin          # jednorazowa sesja z pluginem
+claude --plugin-dir ./plugin          # a one-off session with the plugin
 claude plugin validate --strict ./plugin
 ```
 
-**Przez marketplace — katalog lokalny:**
+**Through a marketplace — a local directory:**
 
 ```bash
-claude plugin marketplace add /ścieżka/do/klonu-agentic-pipeline
+claude plugin marketplace add /path/to/agentic-pipeline-clone
 /plugin install pipeline@wcz-tools
 ```
 
-**Przez marketplace — repozytorium na GitHubie** (publiczne, HTTPS, bez klucza SSH),
-kanał wydań `stable`:
+**Through a marketplace — the GitHub repository** (public, HTTPS, no SSH key), release
+channel `stable`:
 
 ```bash
 claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#stable'
 claude plugin install pipeline@wcz-tools --scope user
 ```
 
-`stable` to gałąź, którą właściciel przesuwa na każdy nowy tag wydania
-(`pipeline--vX.Y.Z`). Bez `ref` konsument śledzi `main`, czyli kod niewydany. `ref`
-marketplace'u jest globalny na maszynę (`~/.claude/plugins/known_marketplaces.json`),
-a `install` i `update` nie przyjmują wersji — dlatego kanał, a nie pin na tag: pin
-wymuszałby przy każdym wydaniu `marketplace remove` i ponowną instalację w każdym
-projekcie.
+`stable` is a branch the owner moves to every new release tag (`pipeline--vX.Y.Z`).
+Without a `ref` a consumer tracks `main`, that is unreleased code. A marketplace's `ref` is
+global per machine (`~/.claude/plugins/known_marketplaces.json`), and `install` and
+`update` take no version — hence a channel rather than a pin on a tag: a pin would force
+`marketplace remove` and a reinstall in every project on each release.
 
-**Zakres `user` — jedna instalacja na maszynę.** Plugin działa w każdym katalogu, bez
-instalowania go osobno w każdym repozytorium i każdym klonie. Instalacja
-`--scope project` jest przypisana do katalogu (wpis z `projectPath` w
-`~/.claude/plugins/installed_plugins.json`; w innym repozytorium `claude plugin list`
-pokaże plugin jako `enabled`, a komend `/pipeline:*` nie będzie) i nie podnosi jej
-`claude plugin update --scope user` — nie używaj jej; jedyna instalacja to `user`.
+**The `user` scope — one install per machine.** The plugin works in every directory,
+without installing it separately in each repository and each clone. A `--scope project`
+install is tied to a directory (an entry with `projectPath` in
+`~/.claude/plugins/installed_plugins.json`; in another repository `claude plugin list`
+shows the plugin as `enabled`, yet the `/pipeline:*` commands are missing) and
+`claude plugin update --scope user` does not lift it — do not use it; the only install is
+`user`.
 
-W `.claude/settings.json` projektu (kształt jak w `templates/settings.json`) deklaruj
-tylko źródło — tak świeży klon na innej maszynie dowie się, skąd pochodzi plugin:
+In the project's `.claude/settings.json` (shaped like `templates/settings.json`) declare
+only the source — that way a fresh clone on another machine learns where the plugin comes
+from:
 
 ```json
 {
@@ -63,180 +64,172 @@ tylko źródło — tak świeży klon na innej maszynie dowie się, skąd pochod
 }
 ```
 
-**Projekt NIE deklaruje `"enabledPlugins": {"pipeline@<nazwa>": true}`.** Sesja
-startująca w katalogu, który tak włącza plugin, sama zakłada instalację `--scope
-project` — także obok istniejącej instalacji `user` — a `claude plugin update
---scope user` podnosi tylko wpis `user`, więc duplikat `project` zostaje na starej wersji
-na zawsze (zmierzone 2026-09-21: `claude plugin list` pokazuje plugin dwa razy; bez
-`enabledPlugins`, z samym `extraKnownMarketplaces`, wpis `project` nie powstaje, a plugin
-z instalacji `user` ładuje się normalnie). Istniejący duplikat usuń tak: najpierw
-zacommituj `.claude/settings.json` bez `enabledPlugins` (inaczej `git checkout` przywróci
-deklarację, a następna sesja założy duplikat od nowa), potem w katalogu repozytorium:
+**A project does NOT declare `"enabledPlugins": {"pipeline@<name>": true}`.** A session
+starting in a directory that enables the plugin this way creates a `--scope project`
+install on its own — even beside an existing `user` install — and `claude plugin update
+--scope user` lifts only the `user` entry, so the `project` duplicate stays on its old
+version for good (measured 2026-09-21: `claude plugin list` shows the plugin twice; without
+`enabledPlugins`, with `extraKnownMarketplaces` alone, no `project` entry appears and the
+plugin loads from the `user` install as usual). Remove an existing duplicate like this:
+first commit `.claude/settings.json` without `enabledPlugins` (otherwise `git checkout`
+restores the declaration and the next session creates the duplicate again), then, in the
+repository directory:
 
 ```bash
-claude plugin uninstall pipeline@<nazwa> --scope project
-git checkout -- .claude/settings.json   # komenda potrafi wyciąć blok marketplace'u
+claude plugin uninstall pipeline@<name> --scope project
+git checkout -- .claude/settings.json   # the command can strip the marketplace block
 ```
 
-**Aktualizacja** do nowego wydania, bez ponownej rejestracji:
+**Updating** to a new release, without registering again:
 
 ```bash
 claude plugin marketplace update wcz-tools && claude plugin update pipeline@wcz-tools --scope user
 ```
 
-Potem nowa sesja — działająca trzyma to, co wczytała przy starcie.
+Then start a new session — a running one keeps what it loaded at startup.
 
-**Jednorazowa migracja z rejestracji na tagu** (marketplace dodany wcześniej jako
-`'<url>#pipeline--vX.Y.Z'` albo bez `ref`). Sprawdź wpis marketplace'u w
-`~/.claude/plugins/known_marketplaces.json`: jego `source.ref` ma brzmieć `"stable"`.
-Jeśli nie:
+**One-time migration from a registration on a tag** (a marketplace added earlier as
+`'<url>#pipeline--vX.Y.Z'` or without a `ref`). Check the marketplace entry in
+`~/.claude/plugins/known_marketplaces.json`: its `source.ref` must read `"stable"`. If it
+does not:
 
 ```bash
-claude plugin marketplace remove <nazwa>
+claude plugin marketplace remove <name>
 claude plugin marketplace add '<url>#stable'
-claude plugin install pipeline@<nazwa> --scope user
-git checkout -- .claude/settings.json   # w KAŻDYM repozytorium z pluginem
+claude plugin install pipeline@<name> --scope user
+git checkout -- .claude/settings.json   # in EVERY repository with the plugin
 ```
 
-**`remove` odinstalowuje plugin we WSZYSTKICH projektach** — marketplace jest źródłem
-instalacji. **Wszystkie trzy komendy (`remove`, `add`, `install`) kasują
-`extraKnownMarketplaces` z `.claude/settings.json`** (projektu i
-`~/.claude/settings.json`) i żadna go nie przywraca — stąd `git checkout` w każdym
-repozytorium, które ma ten blok (bez `enabledPlugins`, patrz wyżej). Oba skutki są
-ciche: sesja bez pluginu nie ma strażnika komend i nic nie zgłasza. Po migracji uruchom
-nową sesję.
+**`remove` uninstalls the plugin in ALL projects** — the marketplace is the install's
+source. **All three commands (`remove`, `add`, `install`) delete
+`extraKnownMarketplaces` from `.claude/settings.json`** (the project's and
+`~/.claude/settings.json`) and none of them restores it — hence `git checkout` in every
+repository that has the block (without `enabledPlugins`, see above). Both effects are
+silent: a session without the plugin has no command guard and reports nothing. After the
+migration start a new session.
 
-**Weryfikacja** po instalacji, aktualizacji albo migracji, w nowej sesji: `claude plugin
-list` pokazuje plugin w wydanej wersji w zakresie `user` — i tylko tam, bez wpisu
-`project` — a komenda, którą strażnik
-blokuje — np. `sed -i` na `.claude/settings.json` — jest faktycznie odrzucana, z wersją
-w ścieżce, którą zgłasza. Dopiero drugi test dowodzi, że plugin jest wczytany w tym
-repozytorium; pierwszy dowodzi tylko, że instalacja jest poprawna.
+**Verification** after an install, an update or a migration, in a new session: `claude
+plugin list` shows the plugin at the released version in the `user` scope — and only
+there, with no `project` entry — and a command the guard blocks — e.g. `sed -i` on
+`.claude/settings.json` — is actually refused, with the version in the path it reports.
+Only the second test proves that the plugin is loaded in this repository; the first proves
+only that the install is correct.
 
-**Wyłączenie w repozytorium, które pluginu nie chce.** Przy instalacji `user` plugin —
-w tym strażnik komend — działa wszędzie, także tam, gdzie commituje się prosto na `main`
-i strażnik by to blokował. Wyłącz go w `.claude/settings.json` takiego repozytorium:
+**Switching it off in a repository that does not want the plugin.** With a `user` install
+the plugin — the command guard included — works everywhere, also where commits go straight
+to `main` and the guard would block them. Switch it off in that repository's
+`.claude/settings.json`:
 
 ```json
 { "enabledPlugins": { "pipeline@wcz-tools": false } }
 ```
 
-To jedyne uprawnione użycie `enabledPlugins` w projekcie — tylko z wartością `false`.
+This is the only legitimate project use of `enabledPlugins` — with the value `false` only.
 
-W każdym projekcie uruchom raz `/pipeline:init`, żeby powstał `.claude/workflow.json`
-i reszta szkieletu. W sesji nieinteraktywnej (`claude -p`) potrzebny jest
-`--permission-mode bypassPermissions`: pliki w `.claude/` Claude Code traktuje jako
-wrażliwe i pyta o zgodę na ich zapis niezależnie od reguł uprawnień. W słabszym trybie
-init zapisze wszystko poza `.claude/` i wypisze treść pominiętych plików.
+In every project run `/pipeline:init` once to create `.claude/workflow.json` and the rest
+of the scaffold. A non-interactive session (`claude -p`) needs
+`--permission-mode bypassPermissions`: Claude Code treats files in `.claude/` as sensitive
+and asks before writing them regardless of permission rules. In a weaker mode init writes
+everything outside `.claude/` and prints the content of the files it skipped.
 
-## Komendy i agenci
+## Commands and agents
 
-| Komenda | Etap |
+| Command | Stage |
 |---|---|
-| `/pipeline:init` | szkielet projektu: konfiguracja, uprawnienia, dokumenty, hook gita, CI |
-| `/pipeline:idea` | krytyczny review pomysłu → SPEC.md (jedyny etap w dialogu) |
-| `/pipeline:plan` | SPEC → PLAN.md z krokami i komendami weryfikacyjnymi |
-| `/pipeline:plan-review` | adwersaryjny review planu, poprawki w miejscu, zatwierdzenie |
-| `/pipeline:implement` | realizacja planu krok po kroku w pętli samokorekty |
-| `/pipeline:final-review` | końcowe review z trzech perspektyw, poprawki, PR |
-| `/pipeline:ship` | orkestrator: prowadzi feature od SPEC do otwartego PR |
+| `/pipeline:init` | project scaffold: configuration, permissions, documents, git hook, CI |
+| `/pipeline:idea` | critical review of an idea → SPEC.md (the only stage in a dialogue) |
+| `/pipeline:plan` | SPEC → PLAN.md with steps and verification commands |
+| `/pipeline:plan-review` | adversarial plan review, fixes in place, approval |
+| `/pipeline:implement` | the plan carried out step by step in a self-correction loop |
+| `/pipeline:final-review` | final review from three perspectives, fixes, PR |
+| `/pipeline:ship` | orchestrator: takes a feature from SPEC to an open PR |
 
-Agenci etapów (uruchamiani przez `/pipeline:ship`): `pipeline:planner`,
+Stage agents (launched by `/pipeline:ship`): `pipeline:planner`,
 `pipeline:plan-reviewer`, `pipeline:implementer`, `pipeline:reviewer`.
 
-## Konfiguracja projektu — `.claude/workflow.json`
+## Project configuration — `.claude/workflow.json`
 
-Jedyne miejsce, w którym projekt opisuje sam siebie. Pliku może nie być: wtedy obowiązują
-wartości domyślne, a strażnik raz na sesję wypisuje ostrzeżenie na stderr i **nigdy nie
-blokuje** z tego powodu. Nieznany klucz albo zły typ kończy się czytelnym błędem walidacji
-(`python3 bin/workflow_config.py --check`), też bez blokowania sesji. Walidacja idzie
-sekcjami: wadliwa sekcja wraca do wartości domyślnych z ostrzeżeniem, a pozostałe dalej
-konfigurują reguły — literówka w jednym kluczu nie rozbraja strażnika w całości.
+The one place where a project describes itself. The file may be missing: then the defaults
+apply, and the guard prints a warning on stderr once per session and **never blocks** for
+that reason. An unknown key or a wrong type ends in a readable validation error
+(`python3 bin/workflow_config.py --check`), again without blocking the session. Validation
+goes section by section: a faulty section falls back to the defaults with a warning, and
+the others keep configuring the rules — a typo in one key does not disarm the whole guard.
 
-| klucz | domyślnie | znaczenie |
+| key | default | meaning |
 |---|---|---|
-| `production.hosts` | `[]` | fragmenty hostów/URL-i poza zasięgiem agenta (dopasowanie bez rozróżniania wielkości liter); pusta lista = reguła nieaktywna |
-| `production.commands` | `[]` | programy CLI operujące produkcją — blokowane z odesłaniem do właściciela |
-| `worktree.dir` | `"../worktrees"` | katalog worktree, **ścieżką względną** do korzenia repozytorium — usuwanie w nim jest dozwolone, a `git worktree add` poza nim blokowane; wartość bezwzględna albo obejmująca korzeń repozytorium jest odrzucana z ostrzeżeniem i zastąpiona domyślną |
-| `verify.command` | `"bash scripts/verify.sh"` | pełna weryfikacja stacku; sygnał pętli samokorekty |
-| `verify.scopes` | `[]` | dodatkowe zakresy przekazywane do tej komendy (np. `backend`, `ui`) |
-| `format` | `[]` | lista `{ "match": <glob>, "command": <komenda> }` dla hooka formatowania |
-| `docs.roadmap` | `"docs/ROADMAP.md"` | dokument roadmapy |
-| `docs.backlog` | `"docs/BACKLOG.md"` | backlog z priorytetami i wyzwalaczami |
-| `docs.decisions` | `"docs/DECISIONS.md"` | rejestr decyzji |
-| `docs.conventions` | `"docs/CONVENTIONS.md"` | konwencje kodu i procesu |
-| `docs.project` | `"docs/PROJECT.md"` | wizja i wymagania |
-| `docs.specsDir` | `"specs"` | katalog speców |
-| `migrations` | brak sekcji | `{ "command": <program>, "localHosts": [...] }`; brak sekcji = moduł migracji nieaktywny |
-| `gitHooksDir` | `"scripts/git-hooks"` | katalog hooków gita (istniejący hook chroniony przed edycją z shella, wskazywany w instrukcji) |
-| `language` | `"pl"` | język dokumentów generowanych i pisanych przez skille |
+| `production.hosts` | `[]` | fragments of hosts/URLs out of the agent's reach (case-insensitive match); an empty list = the rule is inactive |
+| `production.commands` | `[]` | CLI programs that operate production — blocked with a referral to the owner |
+| `worktree.dir` | `"../worktrees"` | the worktree directory, **as a path relative** to the repository root — removal inside it is allowed and `git worktree add` outside it is blocked; an absolute value, or one that contains the repository root, is rejected with a warning and replaced by the default |
+| `verify.command` | `"bash scripts/verify.sh"` | full verification of the stack; the signal of the self-correction loop |
+| `verify.scopes` | `[]` | extra scopes passed to that command (e.g. `backend`, `ui`) |
+| `format` | `[]` | a list of `{ "match": <glob>, "command": <command> }` for the formatting hook |
+| `docs.roadmap` | `"docs/ROADMAP.md"` | the roadmap document |
+| `docs.backlog` | `"docs/BACKLOG.md"` | the backlog with priorities and triggers |
+| `docs.decisions` | `"docs/DECISIONS.md"` | the decision register |
+| `docs.conventions` | `"docs/CONVENTIONS.md"` | code and process conventions |
+| `docs.project` | `"docs/PROJECT.md"` | vision and requirements |
+| `docs.specsDir` | `"specs"` | the specs directory |
+| `migrations` | no section | `{ "command": <program>, "localHosts": [...] }`; no section = the migration module is inactive |
+| `gitHooksDir` | `"scripts/git-hooks"` | the git hooks directory (an existing hook is protected from shell edits; named in the enable instruction) |
+| `language` | `"pl"` | the language of the documents the skills generate and write |
 
-Pełny przykład: `templates/workflow.example.json`.
+Full example: `templates/workflow.example.json`.
 
-### Formatowanie (`format[]`)
+### Formatting (`format[]`)
 
-Hook `PostToolUse` pyta `bin/workflow_config.py --format-for <plik>` o komendę dla właśnie
-zmienionego pliku. Glob z `match` dopasowuje się do ścieżki **względem korzenia projektu**
-(`*` obejmuje też ukośniki), komenda uruchamiana jest **z korzenia projektu**, a `{file}`
-podstawiane jest ścieżką względną — zawsze zacytowaną dla powłoki, więc nazwa pliku ze
-spacją czy średnikiem jest argumentem, nie drugą komendą; bez tego placeholdera ścieżka
-trafia na koniec komendy.
-Brak mapy, brak dopasowania, brak `python3` lub błąd konfiguracji = brak formatowania
-i kod wyjścia 0 — hook nigdy nie blokuje edycji.
+The `PostToolUse` hook asks `bin/workflow_config.py --format-for <file>` for the command for
+the file that was just changed. The glob in `match` is matched against the path **relative
+to the project root** (`*` spans slashes too), the command runs **from the project root**,
+and `{file}` is replaced with the relative path — always quoted for the shell, so a file
+name with a space or a semicolon is an argument, not a second command; without that
+placeholder the path goes at the end of the command.
+No map, no match, no `python3` or a configuration error = no formatting and exit code 0 —
+the hook never blocks an edit.
 
-### Strażnik komend
+### Command guard
 
-Hook `PreToolUse: Bash` (`bin/guard`, wrapper na `bin/guard.py`). Blokuje z kodem 2
-i uzasadnieniem. Reguły uniwersalne działają BEZ konfiguracji: push/commit/merge na `main`,
-`--force`, `--no-verify`, `git reset --hard`, `git clean -f`, zmiana `core.hooksPath`,
-`gh pr merge`, zmiany ustawień repozytorium i sekretów, `sudo`, usuwanie plików poza
-repozytorium i katalogiem tymczasowym, edycja plików strażniczych z shella
-(`.claude/settings*.json`, `.claude/workflow.json`, katalog pluginu, gdy leży wewnątrz
-repozytorium, oraz ISTNIEJĄCE hooki w katalogu z `gitHooksDir` — utworzenie brakującego
-hooka i nadanie mu bitu wykonywalności jest dozwolone, bo nie wyłącza niczego, co działa).
-Z konfiguracji dochodzą: hosty i komendy
-produkcji, katalog worktree i moduł migracji.
+A `PreToolUse: Bash` hook (`bin/guard`, a wrapper around `bin/guard.py`) that refuses a
+command with exit code 2 and a reason. The universal rules work WITHOUT configuration —
+pushes, commits and merges on `main`, force and delete pushes, `--no-verify`,
+`git reset --hard`, `git clean -f`, `core.hooksPath` and git aliases, `gh pr merge` and
+owner-only GitHub changes, `sudo`, removals outside the repository and the scratch
+directory, shell edits of guardrail files; the configuration adds production hosts and
+commands, the worktree directory and the migration module. The migration module recognises
+ONLY Alembic's verbs and the variables `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`; only
+`migrations.command` and `migrations.localHosts` are configurable, so a project on another
+migration tool is not protected — the guard's silence is not protection. Fail-open is
+deliberate: a missing `.claude/workflow.json`, a validation error and a missing `python3`
+end with a warning on stderr and exit code 0.
 
-`gh api -X DELETE` jest blokowane tylko na terenie właściciela — to samo, czego pilnują
-podkomendy `gh`: samo repozytorium i organizacja, refy gałęzi i tagów, merges, ochrona
-gałęzi, rulesety, releases, przebiegi workflow, sekrety, zmienne, środowiska, webhooki,
-klucze, dostęp współpracowników, zespoły i członkowie organizacji, Pages, deployments
-i ustawienia bezpieczeństwa; ścieżka zbudowana ze zmiennych jest blokowana zawsze. Reszta
-(np. artefakty i cache Actions) przechodzi. Odmowa obejmuje zawsze całe wywołanie;
-w poleceniu złożonym uzasadnienie wskazuje zablokowane części (potok to jedna część)
-i mówi, ile pozostałych przeszło — te można puścić osobno.
+What the guard defends against, the three layers behind it (guard, `pre-push`, GitHub
+rulesets), the commands it stops that a string `deny` rule lets through, and its known
+limits: [docs/GUARD.md](docs/GUARD.md).
 
-Moduł migracji rozpoznaje WYŁĄCZNIE czasowniki Alembica (`upgrade`, `downgrade`, `stamp`,
-`revision`, `current`, `check`) i zmienne `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`;
-konfigurowalne są tylko `migrations.command` i `migrations.localHosts`. Projekt na innym
-narzędziu migracji nie jest przez strażnika chroniony — jego milczenie nie jest ochroną.
+## Pipeline mechanics
 
-Fail-open jest zamierzony: brak `.claude/workflow.json`, błąd walidacji i brak `python3`
-kończą się ostrzeżeniem na stderr i kodem 0, nigdy odmową startu.
+### Spec statuses
 
-## Mechanika pipeline'u
+The source of truth is `status:` in the `SPEC.md` frontmatter — that is why every stage can
+be resumed after an interruption.
 
-### Statusy speca
-
-Źródłem prawdy jest `status:` we frontmatterze `SPEC.md` — dlatego każdy etap da się
-wznowić po przerwaniu.
-
-| Status | Kto działa | Wynik |
+| Status | Who acts | Result |
 |---|---|---|
-| `spec-draft` | właściciel + `/pipeline:idea` | `spec-ready` (bramka 1) |
+| `spec-draft` | owner + `/pipeline:idea` | `spec-ready` (gate 1) |
 | `spec-ready` | `planner` | `plan-draft` |
-| `plan-draft` | `plan-reviewer` | `plan-approved` (sam, gdy brak eskalacji) |
+| `plan-draft` | `plan-reviewer` | `plan-approved` (by itself when nothing escalates) |
 | `plan-approved` | `implementer` | `implemented` |
-| `implemented` | `reviewer` (`report`) | raport znalezisk → bramka 2 |
-| `implemented` + decyzje | `reviewer` (`apply`) | PR z zielonym CI → `done` |
-| `done` | właściciel | merge PR (bramka 3) |
+| `implemented` | `reviewer` (`report`) | findings report → gate 2 |
+| `implemented` + decisions | `reviewer` (`apply`) | PR with green CI → `done` |
+| `done` | owner | PR merge (gate 3) |
 
-`plan-approved` jest zgodą na wszystkie edycje w zakresie planu — dlatego recenzent planu
-nie zatwierdza planu z niezaakceptowaną zależnością ani migracją.
+`plan-approved` is approval of every edit within the plan's scope — that is why the plan
+reviewer does not approve a plan with a dependency or a migration nobody accepted.
 
-### Kontrakt `RESULT`
+### The `RESULT` contract
 
-Każdy agent etapu uruchomiony przez `/pipeline:ship` kończy odpowiedź blokiem:
+Every stage agent launched by `/pipeline:ship` ends its reply with this block (the skills
+are still in Polish, so the block is quoted as the agents emit it):
 
 ```
 RESULT: DONE | ESCALATE
@@ -246,92 +239,97 @@ ESCALATION: <tylko przy ESCALATE — problem; opcje (≤ 4); rekomendacja; dlacz
 SUMMARY: <≤ 10 linii; dla reviewer/report — tabela znalezisk: id | waga | jedno zdanie>
 ```
 
-Agent etapu nie może pytać właściciela: wszędzie, gdzie skill każe zapytać albo zrobić
-STOP, kończy blokiem `RESULT: ESCALATE`. Orkestrator zamienia to na pytanie do właściciela
-i zapisuje decyzję w PLAN.md → `## Decyzje właściciela`.
+`STATUS` is the spec status after the stage; `METRICS` its `key=value` pairs; `ESCALATION`
+appears only with `ESCALATE` — the problem, up to four options, a recommendation and why;
+`SUMMARY` is at most ten lines, and for the reviewer in `report` mode a findings table
+(id, severity, one sentence).
 
-### Wyzwalacze eskalacji
+A stage agent cannot ask the owner: wherever a skill says to ask or to STOP, it ends with a
+`RESULT: ESCALATE` block. The orchestrator turns that into a question for the owner and
+records the decision in PLAN.md → `## Decyzje właściciela`.
 
-- nowa zależność albo podbicie wersji major istniejącej,
-- migracja danych,
-- luka lub sprzeczność w SPEC,
-- blocker z recenzji planu, którego recenzent nie umie naprawić w samym planie,
-- odstępstwo od planu zmieniające zakres, architekturę albo schemat danych,
-- pętla samokorekty wyczerpana (4. iteracja na tym samym błędzie),
-- test wykrywa wadę produktu, której naprawa wykracza poza zakres planu lub decyzje
-  właściciela — zamiast obchodzić ją zmianą testu albo danych testowych,
-- konflikt przy `git merge origin/main`.
+### Escalation triggers
 
-## Metryki workflow
+- a new dependency, or a major version bump of an existing one,
+- a data migration,
+- a gap or a contradiction in the SPEC,
+- a blocker from the plan review that the reviewer cannot fix in the plan itself,
+- a deviation from the plan that changes scope, architecture or the data schema,
+- an exhausted self-correction loop (the 4th iteration on the same error),
+- a test finds a product defect whose fix goes beyond the plan's scope or the owner's
+  decisions — instead of working around it by changing the test or the test data,
+- a conflict on `git merge origin/main`.
 
-Każdy spec niesie we frontmatterze `SPEC.md` płaski blok `metrics:`; każdy etap wpisuje
-swoje klucze sam.
+## Workflow metrics
+
+Every spec carries a flat `metrics:` block in its `SPEC.md` frontmatter; every stage writes
+its own keys.
 
 ```yaml
 metrics:
-  started_at: "2026-09-15T09:00"      # /pipeline:ship lub /pipeline:plan
+  started_at: "2026-09-15T09:00"      # /pipeline:ship or /pipeline:plan
   plan_steps: 8                        # /pipeline:plan
-  plan_review_blockers: 1              # /pipeline:plan-review — liczone przed poprawkami
+  plan_review_blockers: 1              # /pipeline:plan-review — counted before the fixes
   plan_review_majors: 2
   plan_changes: 5
   implement_steps: 8                   # /pipeline:implement
-  implement_iterations: 3              # iteracje pętli samokorekty ponad pierwszą próbę
+  implement_iterations: 3              # self-correction iterations beyond the first attempt
   deviations: 1
-  escalations: 1                       # /pipeline:ship — pytania do właściciela
+  escalations: 1                       # /pipeline:ship — questions to the owner
   final_review_blockers: 0             # /pipeline:final-review report
   final_review_worth_fixing: 3
   final_review_nits: 2
   findings_accepted: 3                 # /pipeline:final-review apply
   findings_rejected: 2
-  finished_at: "2026-09-15T14:30"      # /pipeline:final-review apply (zielone CI na PR)
+  finished_at: "2026-09-15T14:30"      # /pipeline:final-review apply (green CI on the PR)
 ```
 
-Zestawienie wszystkich speców — tabela per spec, sumy, odsetek istotnych znalezisk
-złapanych przed kodem i eskalacje na spec:
+A report over all specs — a table per spec, totals, the share of significant findings
+caught before code, and escalations per spec:
 
 ```bash
-workflow_metrics.py [katalog-speców]
+workflow_metrics.py [specs-directory]
 ```
 
-Bez argumentu katalog bierze się z `docs.specsDir`. Skrypt wywołuje się po nazwie:
-Claude Code dopisuje `bin/` włączonego pluginu do `PATH` sesji, także u konsumenta. Nie
-przez `${CLAUDE_PLUGIN_ROOT}` — w treści skilla ta zmienna jest podstawiana, ale w regułach
-`permissions` już nie, więc wywołanie ścieżką bezwzględną nie pasuje do żadnej reguły
-`allow` (a w powłoce narzędzia Bash zmiennej nie ma wcale).
+Without an argument the directory comes from `docs.specsDir`. The script is called by name:
+Claude Code appends an enabled plugin's `bin/` to the session's `PATH`, in consumers too.
+Not through `${CLAUDE_PLUGIN_ROOT}` — skill text gets that variable substituted, but
+`permissions` rules do not, so a call by absolute path matches no `allow` rule (and the
+Bash tool's shell does not have the variable at all).
 
-### Kontrola metryk (`--check`)
+### Checking metrics (`--check`)
 
 ```bash
-workflow_metrics.py --check <katalog-speca>
+workflow_metrics.py --check <spec-directory>
 ```
 
-Sprawdza JEDEN spec: komplet kluczy należnych dla osiągniętego statusu, format czasów
-(`%Y-%m-%dT%H:%M`), liczniki jako nieujemne liczby całkowite, brak kluczy spoza listy
-metryk (literówka gubiłaby wartość po cichu) oraz bilans
+Checks ONE spec: every key due for the status reached, the timestamp format
+(`%Y-%m-%dT%H:%M`), counters as non-negative integers, no keys outside the metrics list (a
+typo would lose a value silently) and the balance
 `findings_accepted + findings_rejected == final_review_blockers +
-final_review_worth_fixing + final_review_nits` (liczony dopiero, gdy jest wszystkie pięć).
-Kod wyjścia: `0` i cisza, gdy wszystko gra; `1` z opisem KAŻDEGO problemu na stderr (nigdy
-traceback); `2`, gdy argumenty są błędne. Krok zamykający każdego etapu uruchamia `--check`
-przed zgłoszeniem sukcesu, a `final-review` w trybie `apply` nie ustawi `done` przy
-czerwieni. Czerwieni, której etap nie naprawi z własnych artefaktów, nie wolno zasypać
-wymyśloną wartością — to eskalacja do właściciela.
+final_review_worth_fixing + final_review_nits` (computed only once all five are present).
+Exit code: `0` and silence when everything holds; `1` with a description of EVERY problem on
+stderr (never a traceback); `2` when the arguments are wrong. The closing step of every
+stage runs `--check` before reporting success, and `final-review` in `apply` mode will not
+set `done` on red. Red that a stage cannot fix from its own artifacts must not be papered
+over with an invented value — it is an escalation to the owner.
 
-Klucze należne według statusu:
+Keys due by status:
 
-| status | wymagane klucze |
+| status | required keys |
 |---|---|
-| `spec-draft`, `spec-ready` | żadne |
+| `spec-draft`, `spec-ready` | none |
 | `plan-draft` | `started_at`, `escalations`, `plan_steps` |
-| `plan-approved` | powyższe + `plan_review_blockers`, `plan_review_majors`, `plan_changes` |
-| `implemented` | powyższe + `implement_steps`, `implement_iterations`, `deviations` |
-| `done` | `started_at`, `finished_at` i wszystkie liczniki z bloku wyżej |
+| `plan-approved` | the above + `plan_review_blockers`, `plan_review_majors`, `plan_changes` |
+| `implemented` | the above + `implement_steps`, `implement_iterations`, `deviations` |
+| `done` | `started_at`, `finished_at` and every counter from the block above |
 
-Konsument musi mieć na liście `permissions.allow` regułę `Bash(workflow_metrics.py *)` —
-subagent etapu nie odpowie na pytanie o zgodę, więc bez niej każdy `--check` staje, a
-`final-review` w trybie `apply` nigdy nie ustawi `done`. `templates/settings.json` niesie ją
-dla nowych projektów. Reguła zapisana z `${CLAUDE_PLUGIN_ROOT}` nie działa: reguł uprawnień
-Claude Code nie podstawia.
+A consumer must have the rule `Bash(workflow_metrics.py *)` in `permissions.allow` — a stage
+subagent cannot answer a permission prompt, so without it every `--check` stalls and
+`final-review` in `apply` mode never sets `done`. `templates/settings.json` carries it for
+new projects. A rule written with `${CLAUDE_PLUGIN_ROOT}` does not work: Claude Code does
+not substitute permission rules.
 
 ## CHANGELOG
 
-Pełna historia wersji: [CHANGELOG.md](CHANGELOG.md).
+Full version history: [CHANGELOG.md](CHANGELOG.md).

@@ -376,7 +376,7 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
       Negative check (then revert): add a table row with `git status` → the table test goes
       red; remove it.
 
-- [ ] 5. **`plugin/README.md` in English; references to it** — files: `plugin/README.md`,
+- [x] 5. **`plugin/README.md` in English; references to it** — files: `plugin/README.md`,
       `plugin/tests/test_readme.py`, `CLAUDE.md`, `README.md`.
       Translate per Approach → README; keep every configuration key, default, status name,
       `RESULT` field, metric key and command literal byte-identical; keep the `RESULT` block

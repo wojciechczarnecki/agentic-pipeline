@@ -39,7 +39,7 @@ def test_every_config_key_is_documented_with_its_default(key, value):
 def test_the_optional_migrations_section_is_documented():
     rows = [line for line in README.splitlines() if line.startswith("| `migrations`")]
     assert len(rows) == 1
-    assert "brak sekcji" in rows[0]
+    assert "no section" in rows[0]
     assert "localHosts" in rows[0]
 
 
@@ -50,7 +50,7 @@ def test_every_schema_key_reaches_the_table():
 
 
 def test_installation_covers_a_local_path_and_a_repository():
-    section = README.split("## Instalacja", 1)[1].split("\n## ", 1)[0]
+    section = README.split("## Installation", 1)[1].split("\n## ", 1)[0]
     assert "--plugin-dir" in section
     assert "claude plugin marketplace add" in section
     assert "/plugin install pipeline@" in section
@@ -64,13 +64,13 @@ def test_changelog_starts_at_the_manifest_version():
 # The key list is not copied here: a third copy beside workflow_metrics.COUNTERS and the
 # check test's COMPLETE would be one more place to drift.
 def test_metrics_block_lists_every_counter():
-    section = README.split("## Metryki workflow", 1)[1]
+    section = README.split("## Workflow metrics", 1)[1]
     for counter in [*workflow_metrics.TIMESTAMPS, *workflow_metrics.COUNTERS]:
         assert f"{counter}:" in section, counter
 
 
 def installation_section() -> str:
-    return README.split("## Instalacja", 1)[1].split("\n## ", 1)[0]
+    return README.split("## Installation", 1)[1].split("\n## ", 1)[0]
 
 
 # The marketplace `ref` is global per machine and `install`/`update` take no version, so a
@@ -88,7 +88,7 @@ def test_installation_follows_the_stable_channel():
 def test_installation_defaults_to_the_user_scope():
     section = installation_section()
     assert "--scope user" in section
-    assert "izolacji wersji" not in section, "project scope is not an offered option"
+    assert "version isolation" not in section, "project scope is not an offered option"
     assert "claude plugin marketplace update" in section
     assert "claude plugin update pipeline@" in section
 
@@ -112,12 +112,12 @@ def test_installation_explains_opting_a_repository_out():
 def test_installation_does_not_enable_the_plugin_in_the_project():
     section = installation_section()
     assert '"pipeline@wcz-tools": true' not in section
-    assert "claude plugin uninstall pipeline@<nazwa> --scope project" in section
+    assert "claude plugin uninstall pipeline@<name> --scope project" in section
     assert "git checkout -- .claude/settings.json" in section
 
 
 def test_the_guard_section_states_the_migration_scope():
-    section = README.split("### Strażnik komend", 1)[1].split("\n## ", 1)[0]
+    section = README.split("### Command guard", 1)[1].split("\n## ", 1)[0]
     for token in ["Alembic", "migrations.command", "migrations.localHosts"]:
         assert token in section, token
 
@@ -147,7 +147,7 @@ def strip_code(text: str) -> str:
 @pytest.mark.parametrize(
     "document",
     [
-        pytest.param("README.md", marks=pytest.mark.xfail(strict=True)),
+        "README.md",
         "docs/GUARD.md",
     ],
 )
@@ -155,3 +155,51 @@ def test_no_polish_outside_code(document):
     text = strip_code((PLUGIN / document).read_text())
     found = sorted(POLISH & set(text))
     assert not found, (document, found)
+
+
+HEADINGS = [
+    "## Installation",
+    "## Commands and agents",
+    "## Project configuration — `.claude/workflow.json`",
+    "### Formatting (`format[]`)",
+    "### Command guard",
+    "## Pipeline mechanics",
+    "### Spec statuses",
+    "### The `RESULT` contract",
+    "### Escalation triggers",
+    "## Workflow metrics",
+    "### Checking metrics (`--check`)",
+    "## CHANGELOG",
+]
+
+
+def test_the_readme_keeps_its_sections():
+    lines = README.splitlines()
+    positions = [lines.index(heading) for heading in HEADINGS if heading in lines]
+    assert len(positions) == len(HEADINGS), [h for h in HEADINGS if h not in lines]
+    assert positions == sorted(positions)
+
+
+@pytest.mark.parametrize(
+    "status", ["spec-draft", "spec-ready", "plan-draft", "plan-approved", "implemented", "done"]
+)
+def test_every_status_is_documented(status):
+    section = README.split("### Spec statuses", 1)[1].split("\n### ", 1)[0]
+    assert any(line.startswith(f"| `{status}`") for line in section.splitlines()), status
+
+
+def result_block(text: str) -> str:
+    return text.split("```\nRESULT: DONE | ESCALATE", 1)[1].split("```", 1)[0]
+
+
+# The agents emit the block exactly as the ship skill defines it, so the README quotes it
+# byte for byte rather than translating it.
+def test_the_result_block_matches_the_contract():
+    ship = (PLUGIN / "skills" / "ship" / "SKILL.md").read_text()
+    assert result_block(README) == result_block(ship)
+
+
+def test_the_guard_section_links_guard_md():
+    section = README.split("### Command guard", 1)[1].split("\n## ", 1)[0]
+    assert "](docs/GUARD.md)" in section
+    assert (PLUGIN / "docs" / "GUARD.md").is_file()
