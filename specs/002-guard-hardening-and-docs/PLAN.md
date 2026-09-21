@@ -205,7 +205,7 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
 
 ## Steps
 
-- [ ] 1. **Push refspecs resolved or refused** — files: `plugin/bin/guard.py`,
+- [x] 1. **Push refspecs resolved or refused** — files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard.py`.
       In `guard.py`: add `UNRESOLVED_REFSPEC`; move `check_push` to use `self.env` (make it
       an `Analyzer` method, or pass `self.env` from `Analyzer.git`) and implement the four

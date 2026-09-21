@@ -397,6 +397,103 @@ def test_syncing_and_branching_off_main_is_allowed(on_main, command):
     assert evaluate(command, on_main) is None
 
 
+PUSH_TO_MAIN_BY_VARIABLE = [
+    "B=main; git push origin $B",
+    "B=main && git push origin $B",
+    "export B=main && git push origin $B",
+    "B=main; git push origin ${B}",
+    "B=main; git push origin HEAD:$B",
+    'B=main; git push origin "$B"',
+    "B=main; git push origin refs/heads/$B",
+]
+
+
+@pytest.mark.parametrize("command", PUSH_TO_MAIN_BY_VARIABLE)
+def test_a_push_variable_resolving_to_main_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "pushing to main" in reason, reason
+
+
+def test_hook_refuses_a_push_variable_resolving_to_main(on_feature):
+    payload = json.dumps(
+        {"tool_input": {"command": "B=main; git push origin $B"}, "cwd": str(on_feature)}
+    )
+    result = run_hook(payload, on_feature)
+    assert result.returncode == 2
+    assert "pushing to main" in result.stderr
+
+
+PUSH_UNRESOLVED = [
+    ("git push origin $UNKNOWN", "$UNKNOWN"),
+    ("git push origin HEAD:$UNKNOWN", "HEAD:$UNKNOWN"),
+    ("git push origin $(echo main)", "$(...)"),
+    ("git push origin `echo main`", "`echo"),
+    ("false || B=feat/x; git push origin $B", "$B"),
+]
+
+
+@pytest.mark.parametrize("command, shown", PUSH_UNRESOLVED)
+def test_an_unresolvable_push_refspec_is_refused(on_feature, command, shown):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "spell the branch out" in reason and shown in reason, reason
+
+
+@pytest.mark.parametrize("branch", ["on_main", "on_feature"])
+def test_a_prefix_assignment_does_not_resolve_its_own_push(request, branch):
+    repo = request.getfixturevalue(branch)
+    reason = evaluate("B=feat/x git push origin $B", repo)
+    assert reason is not None
+    assert "spell the branch out" in reason, reason
+
+
+def test_an_empty_push_variable_pushes_the_current_branch(repo):
+    git(repo, "switch", "-C", "feat/001-x")
+    assert evaluate("E=; git push origin $E", repo) is None
+    git(repo, "switch", "main")
+    reason = evaluate("E=; git push origin $E", repo)
+    assert reason is not None
+    assert "pushing to main" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "B=feat/002-x; git push origin $B",
+        "export B=feat/002-x && git push -u origin $B",
+        "B=feat/002-x; git push origin HEAD:$B",
+    ],
+)
+def test_a_push_variable_resolving_to_a_feature_branch_is_allowed(on_feature, command):
+    assert evaluate(command, on_feature) is None
+
+
+def test_a_variable_remote_with_literal_refspecs(on_feature):
+    assert evaluate("git push $REMOTE feat/002-x", on_feature) is None
+    assert evaluate("R=origin; git push $R feat/002-x", on_feature) is None
+    reason = evaluate("git push $REMOTE main", on_feature)
+    assert reason is not None
+    assert "pushing to main" in reason, reason
+
+
+def test_a_split_push_variable_is_checked_word_by_word(on_feature):
+    for command in ['B="origin main"; git push $B', 'B="feat/x main"; git push origin $B']:
+        reason = evaluate(command, on_feature)
+        assert reason is not None, command
+        assert "pushing to main" in reason, reason
+    assert evaluate('B="feat/x feat/y"; git push origin $B', on_feature) is None
+
+
+@pytest.mark.parametrize(
+    "command", ["git push $(git remote) main", "git push $(git remote) feat/002-x"]
+)
+def test_a_substitution_in_the_remote_position_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "spell the branch out" in reason and "$(...)" in reason, reason
+
+
 @pytest.mark.parametrize("command, fragment", UNIVERSAL_BLOCKED)
 def test_universal_rules_without_config(bare_repo, command, fragment):
     git(bare_repo, "switch", "-C", "feat/001-x")

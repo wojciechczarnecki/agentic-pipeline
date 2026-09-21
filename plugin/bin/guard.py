@@ -91,6 +91,10 @@ DOCKER_OPTIONS = {
 BRANCH_REWRITE = {"-d", "-D", "--delete", "-m", "-M", "--move", "-f", "--force"}
 MAIN_OWNER_ONLY = "main changes only through a PR merged by the owner; work on a feature branch"
 HOOKS_PATH = "changing core.hooksPath would switch off the pre-push guard"
+UNRESOLVED_REFSPEC = (
+    "cannot verify a push refspec built from variables or command substitution: {}; "
+    "spell the branch out"
+)
 CONFIG_READS = {"get", "list", "--get", "--get-all", "--get-regexp", "-l", "--list"}
 GUARDRAIL_FILES = (
     "guardrail files (.claude/settings*.json, .claude/workflow.json and the plugin "
@@ -482,12 +486,42 @@ class Analyzer:
         branch = git_output(cwd, "branch", "--show-current")
         on_protected = branch in PROTECTED_BRANCHES
         if sub == "push":
-            check_push(sub_args, on_protected)
+            self.push(sub_args, on_protected)
         elif on_protected and sub == "pull":
             if "--ff-only" not in sub_args:
                 raise GuardError("on main only `git pull --ff-only` is allowed")
         elif on_protected:
             raise GuardError(f"`git {sub}` on {branch}: {MAIN_OWNER_ONLY}")
+
+    # A push is judged on what the shell will run: arguments expand with the variables known
+    # before the command (never its own prefix assignments), split on whitespace, and an
+    # empty value disappears. Whatever stays unresolved is refused, like a removal path.
+    def push(self, args: list[str], on_protected: bool) -> None:
+        for arg in args:
+            destructive = arg in {"--mirror", "--delete", "-d", "--prune"} or arg.startswith(
+                "--force"
+            )
+            if destructive or is_force_flag(arg):
+                raise GuardError("force, mirror and delete pushes are off limits; ask the owner")
+        positionals = [arg for arg in args if not arg.startswith("-")]
+        for raw in positionals:
+            # the lexer cut a `$(` off here, so the rest of the push landed in other segments
+            if raw.endswith("$"):
+                raise GuardError(UNRESOLVED_REFSPEC.format(f"{raw}(...)"))
+        words = [
+            (raw, word) for raw in positionals for word in expand_variables(raw, self.env).split()
+        ]
+        refspecs = words[1:]
+        for raw, word in refspecs:
+            if "$" in word or "`" in word:
+                raise GuardError(UNRESOLVED_REFSPEC.format(raw))
+        specs = [word for _, word in refspecs]
+        if any(spec.startswith(("+", ":")) for spec in specs):
+            raise GuardError("force and delete pushes are off limits; ask the owner")
+        targets = {ref_name(spec) for spec in specs}
+        pushes_current = not specs or bool(targets & {"HEAD", "@"})
+        if targets & PROTECTED_BRANCHES or (on_protected and pushes_current):
+            raise GuardError(f"pushing to main: {MAIN_OWNER_ONLY}")
 
     def worktree_add(self, args: list[str]) -> None:
         rest = skip_options(args, WORKTREE_ADD_OPTIONS)
@@ -704,20 +738,6 @@ def skip_options(words: list[str], with_value: set[str]) -> list[str]:
     while words and words[0].startswith("-"):
         words = words[2:] if words[0] in with_value else words[1:]
     return words
-
-
-def check_push(args: list[str], on_protected: bool) -> None:
-    for arg in args:
-        destructive = arg in {"--mirror", "--delete", "-d", "--prune"} or arg.startswith("--force")
-        if destructive or is_force_flag(arg):
-            raise GuardError("force, mirror and delete pushes are off limits; ask the owner")
-    refspecs = [arg for arg in args if not arg.startswith("-")][1:]
-    if any(spec.startswith(("+", ":")) for spec in refspecs):
-        raise GuardError("force and delete pushes are off limits; ask the owner")
-    targets = {ref_name(spec) for spec in refspecs}
-    pushes_current = not refspecs or bool(targets & {"HEAD", "@"})
-    if targets & PROTECTED_BRANCHES or (on_protected and pushes_current):
-        raise GuardError(f"pushing to main: {MAIN_OWNER_ONLY}")
 
 
 def check_gh(args: list[str]) -> None:
