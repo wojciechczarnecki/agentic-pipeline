@@ -21,6 +21,9 @@ true, and the roadmap must not lie.
 - [x] 0.3.1: the checker runs without a permission prompt — stage skills call it through
       `PATH` and the allow rule is `Bash(workflow_metrics.py *)`, since permission rules do
       not substitute `${CLAUDE_PLUGIN_ROOT}` (`docs/DECISIONS.md`, 2026-09-21)
+- [x] 0.3.1: releases reach consumers through the `stable` channel and a single
+      `--scope user` install, updated without re-registering the marketplace
+      (`docs/DECISIONS.md`, 2026-09-21)
 
 ## Later
 

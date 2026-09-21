@@ -13,6 +13,13 @@ ustawić `done`.
 
 **wpływ na konsumenta:** w `permissions.allow` własnego `.claude/settings.json` zamień wpis
 na `"Bash(workflow_metrics.py *)"` (zmiana szablonu dotyczy tylko nowych projektów).
+W `extraKnownMarketplaces` ustaw `"ref": "stable"` zamiast tagu wydania i raz na maszynę
+przejdź na kanał `stable` z instalacją `--scope user`: `claude plugin marketplace remove
+<nazwa>`, `claude plugin marketplace add '<url>#stable'`, `claude plugin install
+pipeline@<nazwa> --scope user`, a potem `git checkout -- .claude/settings.json` w każdym
+repozytorium z pluginem (te komendy kasują blok pluginu z `settings.json`). Kolejne
+wydania: `claude plugin marketplace update <nazwa> && claude plugin update
+pipeline@<nazwa> --scope user`, bez `remove`.
 
 ### Naprawione
 
@@ -30,6 +37,16 @@ na `"Bash(workflow_metrics.py *)"` (zmiana szablonu dotyczy tylko nowych projekt
   odinstalowuje plugin we wszystkich projektach, że trzeba go doinstalować
   `--scope project` w każdym z nich i że `remove`, `add` oraz `install` kasują blok
   pluginu z `.claude/settings.json` (przywrócić `git checkout`).
+- Kanał wydań `stable` zamiast pinu na tag: `templates/settings.json` ma `"ref": "stable"`
+  (zamiast `TODO:` z tagiem), a `/pipeline:init` wpisuje `stable` zamiast wyprowadzać tag
+  z wersji w `${CLAUDE_PLUGIN_ROOT}`. `ref` marketplace'u jest globalny na maszynę, więc
+  pin na tag wymuszał przy każdym wydaniu `remove`, które odinstalowuje plugin we
+  wszystkich projektach.
+- README, Instalacja: domyślnie `--scope user` (jedna instalacja na maszynę; `--scope
+  project` jako opcja dla izolacji), aktualizacja przez `marketplace update` + `plugin
+  update`, jednorazowa migracja z rejestracji na tagu i wyłączenie pluginu w repozytorium
+  przez `"enabledPlugins": {"pipeline@<marketplace>": false}`. Zastępuje procedurę
+  ponownej rejestracji opisaną wyżej.
 
 ## 0.3.0
 

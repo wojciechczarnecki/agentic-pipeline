@@ -94,21 +94,18 @@ def test_the_dependabot_template_covers_github_actions():
     assert "github-actions" in ecosystems
 
 
-# AC27/AC28: the derivation itself is pinned, not the tokens around it — one sentence has
-# to tie ${CLAUDE_PLUGIN_ROOT} to `ref` and to the `<plugin>--v<version>` tag convention,
-# so deleting the paragraph fails here instead of passing on incidental mentions.
-def test_the_marketplace_ref_is_derived_from_the_plugin_root():
+# AC27/AC28: the marketplace name is still derived from ${CLAUDE_PLUGIN_ROOT}, but `ref`
+# is the `stable` channel, not a tag built from the version in that path — a tag pin
+# forces the marketplace to be re-registered, and the plugin reinstalled in every
+# project, on each release (docs/DECISIONS.md, 2026-09-21).
+def test_the_marketplace_ref_is_the_stable_channel():
     block = " ".join(settings_bullet(step(4)).split())
     sentences = block.split(". ")
-    derivation = [
-        sentence
-        for sentence in sentences
-        if "CLAUDE_PLUGIN_ROOT" in sentence and "`ref`" in sentence and "--v" in sentence
-    ]
-    assert derivation, (
-        "init step 4 must derive `ref` from ${CLAUDE_PLUGIN_ROOT} in one sentence, naming "
-        "the `<plugin>--v<version>` tag convention"
-    )
+    derivation = [sentence for sentence in sentences if "CLAUDE_PLUGIN_ROOT" in sentence]
+    assert derivation, "init step 4 must derive the marketplace name from ${CLAUDE_PLUGIN_ROOT}"
+    channel = [sentence for sentence in sentences if '`ref` to zawsze `"stable"`' in sentence]
+    assert channel, 'init step 4 must set `ref` to `"stable"`'
+    assert "<plugin>--v<wersja>" not in block, "init step 4 must not build a tag pin"
     fallback = [sentence for sentence in sentences if "TODO:" in sentence and "kszta" in sentence]
     assert fallback, "init step 4 must keep the `TODO:` fallback for an unexpected path shape"
 

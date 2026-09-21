@@ -24,15 +24,30 @@ claude plugin marketplace add /ścieżka/do/klonu-agentic-pipeline
 /plugin install pipeline@wcz-tools
 ```
 
-**Przez marketplace — repozytorium na GitHubie** (publiczne, HTTPS, bez klucza SSH):
+**Przez marketplace — repozytorium na GitHubie** (publiczne, HTTPS, bez klucza SSH),
+kanał wydań `stable`:
 
 ```bash
-claude plugin marketplace add https://github.com/wojciechczarnecki/agentic-pipeline.git
-/plugin install pipeline@wcz-tools
+claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#stable'
+claude plugin install pipeline@wcz-tools --scope user
 ```
 
-Albo deklaratywnie w `.claude/settings.json` projektu (kształt jak w
-`templates/settings.json`):
+`stable` to gałąź, którą właściciel przesuwa na każdy nowy tag wydania
+(`pipeline--vX.Y.Z`). Bez `ref` konsument śledzi `main`, czyli kod niewydany. `ref`
+marketplace'u jest globalny na maszynę (`~/.claude/plugins/known_marketplaces.json`),
+a `install` i `update` nie przyjmują wersji — dlatego kanał, a nie pin na tag: pin
+wymuszałby przy każdym wydaniu `marketplace remove` i ponowną instalację w każdym
+projekcie.
+
+**Zakres `user` — jedna instalacja na maszynę.** Plugin działa w każdym katalogu, bez
+instalowania go osobno w każdym repozytorium i każdym klonie. Instalacja
+`--scope project` jest przypisana do katalogu (wpis z `projectPath` w
+`~/.claude/plugins/installed_plugins.json`; w innym repozytorium `claude plugin list`
+pokaże plugin jako `enabled`, a komend `/pipeline:*` nie będzie) — wybierz ją tylko
+wtedy, gdy zależy ci na izolacji wersji między projektami.
+
+Deklaratywnie w `.claude/settings.json` projektu (kształt jak w `templates/settings.json`)
+— tak świeży klon na innej maszynie dowie się, skąd pochodzi plugin:
 
 ```json
 {
@@ -41,7 +56,7 @@ Albo deklaratywnie w `.claude/settings.json` projektu (kształt jak w
       "source": {
         "source": "git",
         "url": "https://github.com/wojciechczarnecki/agentic-pipeline.git",
-        "ref": "pipeline--vX.Y.Z"
+        "ref": "stable"
       }
     }
   },
@@ -49,47 +64,40 @@ Albo deklaratywnie w `.claude/settings.json` projektu (kształt jak w
 }
 ```
 
-Bez `ref` konsument śledzi `main`, czyli kod niewydany — pin na tag wydania jest tym,
-co odróżnia stabilną wersję od bieżącej gałęzi.
+**Aktualizacja** do nowego wydania, bez ponownej rejestracji:
 
-**Pin działa dopiero po rejestracji marketplace'u z tym `ref`.** Marketplace zarejestrowany
-wcześniej bez `ref` dalej śledzi `main`, niezależnie od tego, co mówi `.claude/settings.json`.
-Raz na maszynę:
+```bash
+claude plugin marketplace update wcz-tools && claude plugin update pipeline@wcz-tools --scope user
+```
+
+Potem nowa sesja — działająca trzyma to, co wczytała przy starcie.
+
+**Jednorazowa migracja z rejestracji na tagu** (marketplace dodany wcześniej jako
+`'<url>#pipeline--vX.Y.Z'` albo bez `ref`). Sprawdź wpis marketplace'u w
+`~/.claude/plugins/known_marketplaces.json`: jego `source.ref` ma brzmieć `"stable"`.
+Jeśli nie:
 
 ```bash
 claude plugin marketplace remove <nazwa>
-claude plugin marketplace add '<url>#pipeline--vX.Y.Z'
-git -C ~/.claude/plugins/marketplaces/<nazwa> log --oneline -1   # ma pokazać commit taga
+claude plugin marketplace add '<url>#stable'
+claude plugin install pipeline@<nazwa> --scope user
+git checkout -- .claude/settings.json   # w KAŻDYM repozytorium z pluginem
 ```
 
-**`remove` odinstalowuje plugin we WSZYSTKICH projektach**, nie tylko w bieżącym —
-marketplace jest źródłem instalacji. Po `add` zainstaluj plugin ponownie w katalogu
-każdego projektu, który go używa: `claude plugin install pipeline@wcz-tools --scope
-project` (bez `--scope project` instalacja trafia do zakresu `user`). **Wszystkie trzy
-komendy (`remove`, `add`, `install`) kasują `enabledPlugins` i `extraKnownMarketplaces`
-z `.claude/settings.json` projektu** i żadna ich nie przywraca — przywróć blok
-`git checkout -- .claude/settings.json`. Świeży klon na innej maszynie nie ma wpisu
-w `installed_plugins.json`, więc ten blok jest jedynym miejscem, z którego dowie się, skąd
-pochodzi plugin. Obie awarie są ciche: sesja bez pluginu nie ma strażnika komend i nic nie
-zgłasza. Każdy krok wymaga nowej sesji.
+**`remove` odinstalowuje plugin we WSZYSTKICH projektach** — marketplace jest źródłem
+instalacji. **Wszystkie trzy komendy (`remove`, `add`, `install`) kasują `enabledPlugins`
+i `extraKnownMarketplaces` z `.claude/settings.json`** (projektu i
+`~/.claude/settings.json`) i żadna ich nie przywraca — stąd `git checkout` w każdym
+repozytorium, które ma ten blok. Obie awarie są ciche: sesja bez pluginu nie ma strażnika
+komend i nic nie zgłasza. Po migracji uruchom nową sesję.
 
-**Uwaga — instalacja w zakresie projektu jest przypisana do katalogu.** Sam wpis
-`enabledPlugins` nie wystarcza: Claude Code ładuje plugin tylko wtedy, gdy w
-`~/.claude/plugins/installed_plugins.json` jest instalacja z `projectPath` wskazującym
-bieżący katalog. Instalacja wykonana w innym repozytorium się nie liczy — `claude plugin
-list` pokaże plugin jako `enabled`, a komend `/pipeline:*` w sesji nie będzie, także po
-restarcie. W każdym nowym repozytorium (i w każdym nowym klonie) uruchom raz w jego
-katalogu:
+**Wyłączenie w repozytorium, które pluginu nie chce.** Przy instalacji `user` plugin —
+w tym strażnik komend — działa wszędzie, także tam, gdzie commituje się prosto na `main`
+i strażnik by to blokował. Wyłącz go w `.claude/settings.json` takiego repozytorium:
 
-```bash
-claude plugin install pipeline@wcz-tools --scope project
+```json
+{ "enabledPlugins": { "pipeline@wcz-tools": false } }
 ```
-
-Instalator przepisuje `.claude/settings.json` — jeśli plik już zawiera powyższą
-konfigurację, przywróć go (`git checkout -- .claude/settings.json`); patrz wyżej. Potem
-uruchom nową sesję.
-
-Aktualizacja: `/plugin update pipeline`. Wydania są znaczone tagami `pipeline--vX.Y.Z`.
 
 Po instalacji w projekcie uruchom `/pipeline:init`, żeby powstał `.claude/workflow.json`
 i reszta szkieletu. W sesji nieinteraktywnej (`claude -p`) potrzebny jest

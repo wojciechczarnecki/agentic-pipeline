@@ -40,7 +40,7 @@
       "source": {
         "source": "git",
         "url": "TODO: https://github.com/<owner>/<repo>.git",
-        "ref": "TODO: pipeline--vX.Y.Z"
+        "ref": "stable"
       }
     }
   },

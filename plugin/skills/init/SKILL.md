@@ -67,12 +67,13 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
      dostarcza plugin; zdublowanie ich tutaj uruchomiłoby strażnika dwa razy.
      Podstaw dwie rzeczy: w regule `ask` ścieżkę katalogu hooków gita na `gitHooksDir`
      tego projektu (reguła z inną ścieżką chroni pustkę) oraz źródło marketplace'u.
-     Nazwę marketplace'u i wersję odczytaj ze ścieżki `${CLAUDE_PLUGIN_ROOT}`
-     (`…/<marketplace>/<plugin>/<wersja>/`): nazwa idzie w klucz `extraKnownMarketplaces`
-     i w `enabledPlugins`, a `ref` przyjmuje postać `"<plugin>--v<wersja>"` (konwencja
-     tagów wydań). `url` weź z listy marketplace'ów sesji. Gdy ścieżka ma inny kształt
-     albo url jest nieznany — zostaw `TODO:` przy tej wartości i wymień ją na liście
-     do uzupełnienia z kroku 7.
+     Nazwę marketplace'u odczytaj ze ścieżki `${CLAUDE_PLUGIN_ROOT}`
+     (`…/<marketplace>/<plugin>/<wersja>/`): idzie w klucz `extraKnownMarketplaces`
+     i w `enabledPlugins`. `ref` to zawsze `"stable"` — kanał wydań, gałąź przesuwana
+     na każdy nowy tag; nie wyprowadzaj go z wersji w ścieżce, bo pin na tag wymusza
+     ponowną rejestrację marketplace'u przy każdym wydaniu. `url` weź z listy
+     marketplace'ów sesji. Gdy ścieżka ma inny kształt albo url jest nieznany — zostaw
+     `TODO:` przy tej wartości i wymień ją na liście do uzupełnienia z kroku 7.
      To jedyny generowany plik, którego zapis wymaga zgody właściciela; gdy sesja
      nieinteraktywna go nie dostanie, wypisz plik na liście do dopisania ręcznie
      (wraz z jego treścią) i kończ sukcesem — reszta szkieletu i tak stoi;
