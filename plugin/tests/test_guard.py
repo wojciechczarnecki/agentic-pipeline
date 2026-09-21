@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import uuid
@@ -397,6 +398,405 @@ def test_syncing_and_branching_off_main_is_allowed(on_main, command):
     assert evaluate(command, on_main) is None
 
 
+PUSH_TO_MAIN_BY_VARIABLE = [
+    "B=main; git push origin $B",
+    "B=main && git push origin $B",
+    "export B=main && git push origin $B",
+    "B=main; git push origin ${B}",
+    "B=main; git push origin HEAD:$B",
+    'B=main; git push origin "$B"',
+    "B=main; git push origin refs/heads/$B",
+]
+
+
+@pytest.mark.parametrize("command", PUSH_TO_MAIN_BY_VARIABLE)
+def test_a_push_variable_resolving_to_main_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "pushing to main" in reason, reason
+
+
+def test_hook_refuses_a_push_variable_resolving_to_main(on_feature):
+    payload = json.dumps(
+        {"tool_input": {"command": "B=main; git push origin $B"}, "cwd": str(on_feature)}
+    )
+    result = run_hook(payload, on_feature)
+    assert result.returncode == 2
+    assert "pushing to main" in result.stderr
+
+
+PUSH_UNRESOLVED = [
+    ("git push origin $UNKNOWN", "$UNKNOWN"),
+    ("git push origin HEAD:$UNKNOWN", "HEAD:$UNKNOWN"),
+    ("git push origin $(echo main)", "$(...)"),
+    ("git push origin `echo main`", "`echo"),
+    ("false || B=feat/x; git push origin $B", "$B"),
+]
+
+
+@pytest.mark.parametrize("command, shown", PUSH_UNRESOLVED)
+def test_an_unresolvable_push_refspec_is_refused(on_feature, command, shown):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "spell the branch out" in reason and shown in reason, reason
+
+
+@pytest.mark.parametrize("branch", ["on_main", "on_feature"])
+def test_a_prefix_assignment_does_not_resolve_its_own_push(request, branch):
+    repo = request.getfixturevalue(branch)
+    reason = evaluate("B=feat/x git push origin $B", repo)
+    assert reason is not None
+    assert "spell the branch out" in reason, reason
+
+
+def test_an_empty_push_variable_pushes_the_current_branch(repo):
+    git(repo, "switch", "-C", "feat/001-x")
+    assert evaluate("E=; git push origin $E", repo) is None
+    git(repo, "switch", "main")
+    reason = evaluate("E=; git push origin $E", repo)
+    assert reason is not None
+    assert "pushing to main" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "B=feat/002-x; git push origin $B",
+        "export B=feat/002-x && git push -u origin $B",
+        "B=feat/002-x; git push origin HEAD:$B",
+    ],
+)
+def test_a_push_variable_resolving_to_a_feature_branch_is_allowed(on_feature, command):
+    assert evaluate(command, on_feature) is None
+
+
+def test_a_variable_remote_with_literal_refspecs(on_feature):
+    assert evaluate("git push $REMOTE feat/002-x", on_feature) is None
+    assert evaluate("R=origin; git push $R feat/002-x", on_feature) is None
+    reason = evaluate("git push $REMOTE main", on_feature)
+    assert reason is not None
+    assert "pushing to main" in reason, reason
+
+
+def test_a_split_push_variable_is_checked_word_by_word(on_feature):
+    for command in ['B="origin main"; git push $B', 'B="feat/x main"; git push origin $B']:
+        reason = evaluate(command, on_feature)
+        assert reason is not None, command
+        assert "pushing to main" in reason, reason
+    assert evaluate('B="feat/x feat/y"; git push origin $B', on_feature) is None
+
+
+@pytest.mark.parametrize(
+    "command", ["git push $(git remote) main", "git push $(git remote) feat/002-x"]
+)
+def test_a_substitution_in_the_remote_position_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "spell the branch out" in reason and "$(...)" in reason, reason
+
+
+# Final review F1: a value the shell drops, changes or never assigns must not stay "known".
+# On main each of these pushes main in a real shell while the guard used to read feat/x.
+PUSH_VARIABLE_NOT_FOLLOWED = [
+    "true || export B=feat/x; git push origin $B",
+    "(B=feat/x); git push origin $B",
+    "B=feat/x | true; git push origin $B",
+    "B=feat/x & git push origin $B",
+    "bash -c 'B=feat/x'; git push origin $B",
+    "B=feat/x; bash -c 'git push origin $B'",
+    "export B=feat/x; export -n B; bash -c 'git push origin $B'",
+    "B=feat/x; unset B; git push origin $B",
+    "B=feat/x; if false; then B=main; fi; git push origin $B",
+    "if false; then B=feat/x; fi; git push origin $B",
+    "B=feat/x; for B in main; do git push origin $B; done",
+    "B=ma; B+=in; git push origin $B",
+    "B=feat/x; B[0]=main; git push origin $B",
+    "B=(main); git push origin $B",
+    "B=feat/x; read B; git push origin $B",
+    "B=feat/x; declare B=main; git push origin $B",
+    "B=feat/x; printf -v B main; git push origin $B",
+    "B=feat/x; mapfile B < f; git push origin $B",
+    "IFS=:; B=feat/x:main; git push origin $B",
+]
+
+
+@pytest.mark.parametrize("branch", ["on_main", "on_feature"])
+@pytest.mark.parametrize("command", PUSH_VARIABLE_NOT_FOLLOWED)
+def test_a_push_variable_the_guard_cannot_follow_is_refused(request, branch, command):
+    reason = evaluate(command, request.getfixturevalue(branch))
+    assert reason is not None, command
+    assert "spell the branch out" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "(B=main; git push origin $B)",
+        "B=main; (git push origin $B)",
+        "B=main; echo x | git push origin $B",
+        "export B=main; bash -c 'git push origin $B'",
+        "B=main bash -c 'git push origin $B'",
+    ],
+)
+def test_a_variable_still_reaches_its_own_subshell(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "pushing to main" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "B=feat/x; (B=main); git push origin $B",
+        "export B=feat/002-x; bash -c 'git push origin $B'",
+        "while IFS= read -r line; do echo $line; done < f",
+        "(cd /etc) && rm -rf build",
+    ],
+)
+def test_subshell_changes_stay_in_the_subshell(on_feature, command):
+    assert evaluate(command, on_feature) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "if git push origin main; then :; fi",
+        "while git push origin main; do :; done",
+        "until git push origin main; do :; done",
+        "! git push origin main",
+        "if true; then :; elif git push origin main; then :; fi",
+    ],
+)
+def test_a_command_behind_a_control_keyword_is_checked(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "pushing to main" in reason, reason
+
+
+# Final review F2: destructive options are read after expansion.
+@pytest.mark.parametrize(
+    "command",
+    [
+        "B=-f; git push origin $B",
+        "B=--force; git push origin feat/x $B",
+        "B=--delete; git push origin $B feat/x",
+        "B=--mirror; git push $B origin",
+        "B='--force-with-lease'; git push origin $B",
+    ],
+)
+def test_a_destructive_push_option_from_a_variable_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "force, mirror and delete pushes" in reason, reason
+
+
+def test_no_verify_from_a_variable_is_refused(on_feature):
+    reason = evaluate("B=--no-verify; git push origin feat/x $B", on_feature)
+    assert reason is not None
+    assert "--no-verify" in reason, reason
+
+
+# Final review F3: pushes that reach main without spelling it.
+@pytest.mark.parametrize("command", ["git push --all origin", "git push --branches origin"])
+def test_a_push_of_every_branch_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "every branch" in reason and "push the feature branch by name" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command, shown",
+    [
+        ("git push origin '*:*'", "*:*"),
+        ("git push origin 'refs/heads/*:refs/heads/*'", "refs/heads/*:refs/heads/*"),
+        ("git push origin {feat/x,main}", "{feat/x,main}"),
+        ("git push origin HEAD:ma{in,}", "HEAD:ma{in,}"),
+        ("git push origin feat/?", "feat/?"),
+    ],
+)
+def test_a_push_refspec_pattern_is_refused(on_feature, command, shown):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "pattern or brace expansion" in reason and shown in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git push origin HEAD:heads/main",
+        "git push origin heads/main",
+        "git push origin feat/x:heads/master",
+        "git push --repo=origin main",
+    ],
+)
+def test_a_push_to_main_in_a_short_ref_form_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "pushing to main" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git -c remote.origin.push=HEAD:main push origin",
+        "git -c Remote.Origin.Push=HEAD:main push origin",
+        "git -c remote.origin.mirror=true push origin",
+        "git -c push.default=matching push origin",
+        "git config remote.origin.push HEAD:main",
+        "git config --global push.default matching",
+        "git config set remote.upstream.mirror true",
+        "git config --rename-section x remote.origin",
+    ],
+)
+def test_push_configuration_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "push configuration" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git config remote.origin.push",
+        "git config --get push.default",
+        "git config remote.origin.url https://example.org/r.git",
+        "git -c push.autoSetupRemote=true push origin feat/x",
+        "git push --tags origin feat/x",
+    ],
+)
+def test_other_push_settings_pass(on_feature, command):
+    assert evaluate(command, on_feature) is None
+
+
+# Final review F4: the value of a push option is not the remote.
+def test_a_push_option_value_is_not_the_remote(repo):
+    git(repo, "switch", "main")
+    for command in [
+        "git push -o ci.skip origin",
+        "git push --push-option ci.skip origin",
+        "git push --receive-pack git-receive-pack origin",
+    ]:
+        reason = evaluate(command, repo)
+        assert reason is not None, command
+        assert "pushing to main" in reason, reason
+    git(repo, "switch", "-C", "feat/001-x")
+    for command in [
+        "git push -o ci.skip $REMOTE feat/002-x",
+        "git push origin feat/x -o 'ci.variable=A=$B'",
+        "git push --push-option=ci.skip origin feat/x",
+        "git push -o 'a b' origin feat/x",
+    ]:
+        assert evaluate(command, repo) is None, command
+
+
+# Final review F5: an editor can write any key.
+@pytest.mark.parametrize(
+    "command", ["git config --edit", "git config -e", "git config edit", "git config --global -e"]
+)
+def test_editing_git_configuration_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "--edit" in reason and "core.hooksPath" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command, fragment",
+    [
+        ("K=core.hooksPath; git config $K /dev/null", "core.hooksPath"),
+        ("git config $KEY /dev/null", "built from variables"),
+        ("git -c $KV push origin feat/x", "built from variables"),
+        ("K=alias.p; git config $K push", "alias cannot be verified"),
+    ],
+)
+def test_a_configuration_key_from_a_variable_is_checked(on_feature, command, fragment):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert fragment in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git config core.hooksPath",
+        "git config --global core.hooksPath",
+        "git config --local core.hooksPath",
+        "git config --show-origin core.hooksPath",
+        "git config --file .git/config core.hooksPath",
+        "git config --get core.hooksPath",
+        "git config get core.hooksPath",
+    ],
+)
+def test_reading_core_hooks_path_is_allowed(on_feature, command):
+    assert evaluate(command, on_feature) is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git config core.hooksPath x",
+        'git config core.hooksPath ""',
+        "git config --global core.hooksPath x",
+        "git config --file .git/config core.hooksPath x",
+        "git config set core.hooksPath x",
+        "git config --unset core.hooksPath",
+        "git config --unset-all core.hooksPath",
+        "git config unset core.hooksPath",
+        "git -c core.hooksPath=/dev/null push origin feat/001-x",
+    ],
+)
+def test_writing_core_hooks_path_is_refused(on_feature, command):
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert "core.hooksPath" in reason, reason
+
+
+def assert_alias_refused(reason: str | None) -> None:
+    assert reason is not None
+    assert "alias cannot be verified" in reason and "run the git command itself" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git -c alias.p=push p origin main",
+        "git -c alias.x='!git push origin main' x",
+        "git -c Alias.P=push P origin feat/x",
+    ],
+)
+def test_a_command_line_alias_is_refused(on_feature, command):
+    assert_alias_refused(evaluate(command, on_feature))
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["git config alias.p push", "git config --global alias.p push", "git config set alias.p push"],
+)
+def test_writing_a_persistent_alias_is_refused(on_feature, command):
+    assert_alias_refused(evaluate(command, on_feature))
+
+
+@pytest.mark.parametrize("command", ["git config alias.p", "git config --get-regexp alias"])
+def test_reading_an_alias_is_allowed(on_feature, command):
+    assert evaluate(command, on_feature) is None
+
+
+def test_other_command_line_config_keys_pass(on_feature):
+    assert evaluate("git -c user.name=x commit -m y", on_feature) is None
+
+
+def test_section_operations_on_core_or_alias_are_refused(on_feature):
+    for command in [
+        "git config --remove-section core",
+        "git config --rename-section core x",
+        "git config remove-section core",
+    ]:
+        reason = evaluate(command, on_feature)
+        assert reason is not None, command
+        assert "core.hooksPath" in reason, reason
+    assert_alias_refused(evaluate("git config --rename-section x alias", on_feature))
+    assert evaluate("git config --remove-section user", on_feature) is None
+
+
 @pytest.mark.parametrize("command, fragment", UNIVERSAL_BLOCKED)
 def test_universal_rules_without_config(bare_repo, command, fragment):
     git(bare_repo, "switch", "-C", "feat/001-x")
@@ -673,3 +1073,97 @@ def test_hook_lets_safe_commands_through(on_feature):
 
 def test_hook_ignores_malformed_input(on_feature):
     assert run_hook("not json", on_feature).returncode == 0
+
+
+GUARD_DOC = BIN.parent / "docs" / "GUARD.md"
+
+
+def guard_doc_section(heading: str) -> str:
+    text = GUARD_DOC.read_text()
+    return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
+
+
+def split_cells(line: str) -> list[str]:
+    cells, current, index = [], "", 0
+    body = line.strip().strip("|")
+    while index < len(body):
+        if body.startswith("\\|", index):
+            current += "|"
+            index += 2
+            continue
+        if body[index] == "|":
+            cells.append(current.strip())
+            current = ""
+        else:
+            current += body[index]
+        index += 1
+    cells.append(current.strip())
+    return cells
+
+
+# The table is the document's claim that the guard stops what a string deny rule lets
+# through; parsing it here keeps the claim and the guard from drifting apart.
+def deny_table_rows() -> list[tuple[str, str, str]]:
+    lines = [
+        line
+        for line in guard_doc_section("## Deny rules versus the guard").splitlines()
+        if line.startswith("|")
+    ]
+    rows = []
+    for line in lines[2:]:
+        spans = []
+        for cell in split_cells(line):
+            assert cell.startswith("`") and cell.endswith("`") and cell.count("`") == 2, line
+            spans.append(cell[1:-1])
+        assert len(spans) == 3, line
+        rows.append((spans[0], spans[1], spans[2]))
+    return rows
+
+
+def test_the_deny_table_has_at_least_five_rows():
+    assert len(deny_table_rows()) >= 5
+
+
+@pytest.mark.parametrize("command, rule, fragment", deny_table_rows())
+def test_every_deny_table_command_is_refused(on_feature, command, rule, fragment):
+    assert rule.startswith("Bash("), rule
+    reason = evaluate(command, on_feature)
+    assert reason is not None, command
+    assert fragment in reason, reason
+
+
+def test_guard_md_records_the_deny_measurement():
+    section = guard_doc_section("## Deny rules versus the guard")
+    assert re.search(r"Measured on \d{4}-\d{2}-\d{2} with Claude Code \d+\.\d+\.\d+", section)
+
+
+def test_guard_md_has_the_required_sections():
+    lines = GUARD_DOC.read_text().splitlines()
+    for heading in [
+        "# The pipeline guard",
+        "## Threat model",
+        "## Three layers",
+        "### The command guard",
+        "### The pre-push hook",
+        "### GitHub rulesets",
+        "## Deny rules versus the guard",
+        "## Fail-open by design",
+        "## Known limits",
+    ]:
+        assert heading in lines, heading
+
+
+def test_guard_md_names_the_known_limits():
+    section = guard_doc_section("## Known limits")
+    for token in [
+        "Alembic",
+        "stable",
+        "Edit",
+        "Write",
+        "script",
+        "interpreter",
+        "function",
+        "gh api -X DELETE",
+        "docs/BACKLOG.md",
+    ]:
+        assert token in section, token

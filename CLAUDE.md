@@ -29,7 +29,7 @@ The workflow comes from the `pipeline` plugin **released** from this repository 
 installed from GitHub (marketplace `wcz-tools`) — not from the working tree: a stable
 release guards work on unstable code. `.claude/settings.json` points it at the `stable`
 release channel; the owner installs it once per machine at `--scope user` and handles
-installs, updates and migrations outside agent sessions — `plugin/README.md` → Instalacja.
+installs, updates and migrations outside agent sessions — `plugin/README.md` → Installation.
 A session without the plugin has no command guard and no `pre-push` rule, and says nothing
 about it; a session keeps the plugin it loaded at startup.
 

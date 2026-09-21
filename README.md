@@ -23,7 +23,7 @@ which is unreleased code. Update to a new release:
 claude plugin marketplace update wcz-tools && claude plugin update pipeline@wcz-tools --scope user
 ```
 
-Documentation (currently in Polish): [plugin/README.md](plugin/README.md).
+Documentation: [plugin/README.md](plugin/README.md); the command guard, its layers and its limits: [plugin/docs/GUARD.md](plugin/docs/GUARD.md).
 Releases are tagged `pipeline--vX.Y.Z`; see [plugin/CHANGELOG.md](plugin/CHANGELOG.md).
 
 ## Development

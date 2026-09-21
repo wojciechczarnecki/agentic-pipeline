@@ -37,16 +37,17 @@ leak, then document it.
       is blocked only on the owner's ground (the rest, e.g. Actions artifacts, passes), a
       refused compound command names the blocked parts, `final-review` takes the run link
       from `gh pr checks`, and only the orchestrator bumps `escalations`
-- [ ] 0.3.4 (patch): guard fixes
+- [x] 0.3.4 (patch): guard fixes (`specs/002-guard-hardening-and-docs/SPEC.md`)
       - a variable in a push refspec is resolved or blocked, like a path for `rm` —
         `B=main; git push origin $B` (also with `export` and `&&`) passes today; measured
         2026-09-21 on 0.3.2, server-side the `main` ruleset still stops it
       - read-only `git config core.hooksPath` (no value) is allowed
-- [ ] `plugin/docs/GUARD.md`: threat model, the three layers (guard → `pre-push` → GitHub
+      - git aliases are refused: `git -c alias.*` and persistent alias writes
+- [x] `plugin/docs/GUARD.md`: threat model, the three layers (guard → `pre-push` → GitHub
       rulesets) and what each covers, a table of commands a string `deny` rule lets through
       and the guard stops, fail-open by design, and the known limits (Alembic-only
-      migrations, best effort rather than a sandbox)
-- [ ] `plugin/README.md` in English (documentation only; skills stay Polish until Stage 8)
+      migrations, best effort rather than a sandbox) (`specs/002-guard-hardening-and-docs/SPEC.md`)
+- [x] `plugin/README.md` in English (documentation only; skills stay Polish until Stage 8) (`specs/002-guard-hardening-and-docs/SPEC.md`)
 
 ## Stage 4 — Portfolio storefront
 
@@ -159,5 +160,5 @@ silently switch a Polish consumer's plans to English, since today only `idea` na
       (`templates/CLAUDE.md`, `templates/docs/*`), which today lands Polish documents
       even with `"language": "en"` — until then an English consumer translates them after
       `init` and states the language in its own `CLAUDE.md`
-- [ ] 0.8.0: skills, agents, tests and `plugin/CHANGELOG.md` translated into English, with
-      an eval case on `"language": "pl"`; Polish survives only in the `*.pl.md` templates
+- [ ] 0.8.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
+      is, since 0.3.4), with an eval case on `"language": "pl"`; Polish survives only in the `*.pl.md` templates
