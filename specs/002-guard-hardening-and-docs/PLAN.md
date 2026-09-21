@@ -12,7 +12,8 @@
   by a test. Finally `plugin/README.md` in English with its guard section cut to a summary
   and a link, release 0.3.4 and the project-document follow-ups.
 - **Main risks:** new refusals for consumers (`git push origin HEAD:$(git branch
-  --show-current)` and every other unresolvable refspec) — named in the CHANGELOG; the `deny`
+  --show-current)`, `git push $(git remote) <branch>` and every other unresolvable
+  refspec) — named in the CHANGELOG; the `deny`
   measurement depends on Claude Code behaviour and must run hooks-off in a sandbox so the
   0.3.3 guard does not mask the result; the README translation must not drift a key, default
   or status name (the existing tests pin them).
@@ -32,15 +33,24 @@ command's own arguments before the prefix assignments take effect, so the push c
 self.env)`, then `"$" in expanded` → refuse). `check_push` becomes a method (or takes
 `self.env` as a parameter) and works on expanded positionals:
 
+0. if any non-option arg — the remote included — ends in `$`, refuse with the new reason
+   (below) before anything else: the lexer cut a `$(` off there, so everything after the
+   substitution landed in other segments and the push segment is truncated
+   (`git push $(git remote) main` tokenizes to the push segment `git push $` and a separate
+   "command" `main` — measured; without this point it passes on a feature branch while the
+   shell pushes `main`);
 1. positionals = non-option args in order, each paired with its raw spelling and expanded
    with `expand_variables(raw, self.env)`;
-2. a positional that expands to `""` is dropped (unquoted empty expansion disappears in the
-   shell; `shlex` has already removed the quotes, so a quoted `""` is treated the same — it
-   only makes git fail, and the guard errs on the protected side);
-3. the first remaining positional is the remote and is **not** checked (AC6);
-4. every remaining refspec whose expansion still contains `$` or `` ` `` is refused with a
-   new reason (below); otherwise the existing `+`/`:` and protected-branch checks run on the
-   expanded values, unchanged (AC7).
+2. each expansion is split on whitespace (`expanded.split()`), like the shell's field
+   splitting of an unquoted expansion: `B="origin main"; git push $B` is
+   `git push origin main` and `B="feat/x main"; git push origin $B` pushes `main` in a real
+   shell (the assignment token is `B=origin main` — measured). A value that splits into
+   nothing (`E=`, a quoted `""`) disappears — `shlex` has already removed the quotes, so a
+   quoted value is split too; that errs on the protected side only;
+3. the first remaining word is the remote and is **not** checked (AC6);
+4. every remaining refspec word that still contains `$` or `` ` `` is refused with the new
+   reason; otherwise the existing `+`/`:` and protected-branch checks run on the expanded
+   words, unchanged (AC7).
 
 Command substitution never reaches `check_push` whole: the tokenizer splits `$(echo main)`
 into `$`, `(`, `echo`, `main`, `)` (measured), so the push segment's refspec is the token `$`
@@ -81,11 +91,18 @@ def config_access(args: list[str]) -> tuple[str, bool]:
   `--list` → read;
 - otherwise the legacy form: a key plus at least one more positional (including the empty
   token `""`) → write, a key alone → read;
-- the key is the first positional after the subcommand, lower-cased.
+- the key is the first positional after the subcommand, lower-cased;
+- a section operation (`--rename-section`, `--remove-section`, `rename-section`,
+  `remove-section`) names sections, not keys: the parser returns every positional, and a
+  section `core` counts as a `core.hooksPath` write, a section `alias` as an alias write —
+  `git config --remove-section core` drops `core.hooksPath`, and
+  `git config --rename-section x alias` writes persistent aliases. So the signature is
+  `config_access(args) -> tuple[list[str], bool]` (lower-cased names, writes), and the
+  checks below run over every name (`name == "core" or name.startswith("core.hookspath")`;
+  `name == "alias" or name.startswith("alias.")`).
 
-`Analyzer.git`: `if sub == "config"` → `key, writes = config_access(sub_args)`; `writes` and
-`key.startswith("core.hookspath")` → `HOOKS_PATH`; `writes` and `key.startswith("alias.")` →
-`ALIAS`. Unsetting an alias is a write too and is refused — the rule stays one line and an
+`Analyzer.git`: `if sub == "config"` → `names, writes = config_access(sub_args)`; `writes`
+and a `core.hooksPath` name → `HOOKS_PATH`; `writes` and an alias name → `ALIAS`. Unsetting an alias is a write too and is refused — the rule stays one line and an
 alias removal is rare; noted in Risks.
 
 **`git -c alias.*` (AC10, AC12).** In the global-option loop of `Analyzer.git`, beside the
@@ -126,7 +143,8 @@ test anchors on them:
 - `## Fail-open by design`
 - `## Known limits` — at least the AC15 list, each with its `docs/BACKLOG.md` entry or
   roadmap stage; also git configuration channels the guard does not parse
-  (`--config-env`, `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`, `--remove-section core`)
+  (`--config-env`, `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`/`GIT_CONFIG_PARAMETERS`,
+  `GIT_CONFIG_GLOBAL`, an `include.path`/`includeIf` entry pointing at another file)
 
 The table test lives in `plugin/tests/test_guard.py` to reuse the `on_feature` fixture and the
 case count: it parses the table, requires ≥ 5 rows, runs each command through
@@ -140,11 +158,12 @@ emit (it is a literal inside a fence). Quoted Polish literals (`## Decyzje wła�
 stay in code spans. The guard section shrinks to a few sentences: what the guard is,
 universal vs configured rules, fail-open, the Alembic-only migration scope with
 `migrations.command` and `migrations.localHosts`, and a link `[docs/GUARD.md](docs/GUARD.md)`.
-English headings (test anchors): `## Installation`, `## Commands and agents`,
-`## Project configuration — .claude/workflow.json`, `### Formatting (format[])`,
-`### Command guard`, `## Pipeline mechanics`, `### Spec statuses`, `### The RESULT contract`,
-`### Escalation triggers`, `## Workflow metrics`, `### Checking metrics (--check)`,
-`## CHANGELOG`. The configuration table header becomes `| key | default | meaning |`; the
+English headings (test anchors) — exact lines, code spans kept as in the Polish headings:
+`## Installation`, `## Commands and agents`,
+``## Project configuration — `.claude/workflow.json` ``, ``### Formatting (`format[]`)``,
+`### Command guard`, `## Pipeline mechanics`, `### Spec statuses`,
+``### The `RESULT` contract``, `### Escalation triggers`, `## Workflow metrics`,
+``### Checking metrics (`--check`)``, `## CHANGELOG`. The configuration table header becomes `| key | default | meaning |`; the
 `migrations` default cell becomes `no section`.
 
 Patterns reused: `expand_variables` and the `"$" in expanded` refusal of `check_path`
@@ -163,11 +182,12 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
 | AC4 | 1 | `test_guard.py::test_an_empty_push_variable_pushes_the_current_branch` |
 | AC5 | 1 | `test_guard.py::test_a_push_variable_resolving_to_a_feature_branch_is_allowed` |
 | AC6 | 1 | `test_guard.py::test_a_variable_remote_with_literal_refspecs` |
+| AC1/AC2 (review) | 1 | `test_guard.py::test_a_split_push_variable_is_checked_word_by_word`, `test_a_substitution_in_the_remote_position_is_refused` |
 | AC7 | 1 | the existing push cases in `BLOCKED_ANYWHERE`, `UNIVERSAL_BLOCKED`, `test_feature_branch_work_is_allowed`, `test_changing_main_is_blocked` — unchanged and green |
 | AC8 | 2 | `test_guard.py::test_reading_core_hooks_path_is_allowed` |
 | AC9 | 2 | `test_guard.py::test_writing_core_hooks_path_is_refused` |
 | AC10 | 2 | `test_guard.py::test_a_command_line_alias_is_refused` |
-| AC11 | 2 | `test_guard.py::test_writing_a_persistent_alias_is_refused`, `test_reading_an_alias_is_allowed` |
+| AC11 | 2 | `test_guard.py::test_writing_a_persistent_alias_is_refused`, `test_reading_an_alias_is_allowed`, `test_section_operations_on_core_or_alias_are_refused` |
 | AC12 | 2 | `test_guard.py::test_other_command_line_config_keys_pass` |
 | AC13 | 6 | `test_readme.py::test_changelog_starts_at_the_manifest_version`, `test_the_changelog_names_the_consumer_impact`; step 6 grep for `0.3.4` |
 | AC14 | 4 | `test_guard.py::test_guard_md_has_the_required_sections`; `test_readme.py::test_no_polish_outside_code[docs/GUARD.md]` |
@@ -214,7 +234,13 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
         → `None`;
       - `test_a_variable_remote_with_literal_refspecs`: `git push $REMOTE feat/002-x` and
         `R=origin; git push $R feat/002-x` → `None`; `git push $REMOTE main` → reason
-        contains `"pushing to main"`.
+        contains `"pushing to main"`;
+      - `test_a_split_push_variable_is_checked_word_by_word` (review, point 2):
+        `B="origin main"; git push $B` and `B="feat/x main"; git push origin $B` → reason
+        contains `"pushing to main"`; `B="feat/x feat/y"; git push origin $B` → `None`;
+      - `test_a_substitution_in_the_remote_position_is_refused` (review, point 0):
+        `git push $(git remote) main` and `git push $(git remote) feat/002-x` → reason
+        contains `"spell the branch out"` and `$(...)`.
       Automatic verification:
       `uv run pytest -q -p no:cacheprovider plugin/tests/test_guard.py`
       `uv run pytest -q -p no:cacheprovider plugin/tests/test_guard.py -k "push"`
@@ -240,6 +266,11 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
         `git config --get-regexp alias` → `None`;
       - `test_other_command_line_config_keys_pass` — `git -c user.name=x commit -m y` on
         `on_feature` → `None`;
+      - `test_section_operations_on_core_or_alias_are_refused` (review) —
+        `git config --remove-section core`, `git config --rename-section core x`,
+        `git config remove-section core` → `"core.hooksPath"`;
+        `git config --rename-section x alias` → `"alias cannot be verified"`;
+        `git config --remove-section user` → `None`;
       - raise `BASELINE` to the new lengths of `BLOCKED_ANYWHERE`/`ALLOWED_ANYWHERE` and the
         new collected-case count only if those lists grew (a new list does not change
         them); leave the comment's history intact and add one line for 0.3.4.
@@ -259,7 +290,12 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
          shows only the local path; run with `GH_REPO` unset.
       c. Write `measure-deny.sh` in the scratchpad. For each candidate `(command, rule)`:
          run `claude -p --safe-mode --output-format stream-json --verbose --allowedTools
-         Bash --max-turns 3 --settings <json>` from the sandbox with the prompt "Run exactly
+         Bash --max-turns 3 --settings <json>` from the sandbox (`--max-turns` is not listed
+         in `claude --help` of 2.1.272; if the CLI rejects it, drop it — the prompt already
+         says stop; if the control row is not `denied` under `--safe-mode`, retry the
+         harness with `--setting-sources local` instead of `--safe-mode` — that skips the
+         user settings which enable the `--scope user` plugin — and record which mode was
+         used; a baseline `ran` on a guard-refused command is the proof hooks were off) with the prompt "Run exactly
          this one Bash command once, verbatim, as a single Bash tool call, then stop. Do not
          retry or change it: <command>", read the prompt from a file; once with
          `{"permissions":{"deny":[]}}` (baseline) and once with `{"permissions":{"deny":
@@ -327,7 +363,8 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
       `Measured on \d{4}-\d{2}-\d{2} with Claude Code \d+\.\d+\.\d+` in that section);
       `test_guard_md_has_the_required_sections` (the seven headings);
       `test_guard_md_names_the_known_limits` (in `## Known limits`: `Alembic`, `stable`,
-      `Edit`, `Write`, `interpreter`, `function`, `gh api -X DELETE`, `docs/BACKLOG.md`).
+      `Edit`, `Write`, `script`, `interpreter`, `function`, `gh api -X DELETE`,
+      `docs/BACKLOG.md`).
       In `test_readme.py` add `strip_code(text)` (drops fenced blocks and inline code spans)
       and `test_no_polish_outside_code` parametrized over `README.md` and `docs/GUARD.md`
       (no character of `ąćęłńóśźżĄĆĘŁŃÓŚŹŻ` left) — mark the `README.md` case
@@ -371,8 +408,10 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
       Version `0.3.4`. New top section `## 0.3.4` (Polish, like the file) with a one-line
       summary, `**wpływ na konsumenta:**` naming the new refusals (push refspec built from
       variables or command substitution that the guard cannot resolve — e.g.
-      `git push origin HEAD:$(git branch --show-current)`; a prefix assignment for the
-      push's own refspec; `git -c alias.*`; persistent alias writes including `--unset`) and
+      `git push origin HEAD:$(git branch --show-current)` and `git push $(git remote)
+      <branch>`; a prefix assignment for the push's own refspec; `git -c alias.*`;
+      persistent alias writes including `--unset` and `--rename-section … alias`; removing
+      or renaming the `core` section) and
       that no migration step is needed; `### Naprawione` listing AC1–AC12 (refspecs resolved
       or refused, empty value = current branch, prefix assignments, variable remote,
       `core.hooksPath` reads allowed, alias refusals); `### Zmienione`/`### Dodane` for
@@ -396,7 +435,7 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
       `plugin/README.md` and `plugin/docs/` English.
       `BACKLOG.md` → P3: a `Guard` row — scripts written to files, interpreters (`python3
       -c`, `node -e`), shell functions from earlier calls, and git configuration channels
-      the guard does not parse (`--config-env`, `GIT_CONFIG_*`, `--remove-section`);
+      the guard does not parse (`--config-env`, `GIT_CONFIG_*`, `include.path`/`includeIf`);
       trigger: the first session seen reaching a guarded action through one of them;
       context: GUARD.md known limits, `pre-push` and rulesets behind it on `main`.
       `ROADMAP.md` → Stage 3: tick the three open items (they already link the spec); extend
@@ -457,7 +496,9 @@ measurement recorded in `docs/DECISIONS.md` (2026-09-21, `stable` deny rules).
 ### Automatic (performed by /pipeline:implement)
 
 1. The hook itself on the working tree, in a scratch repo on a feature branch (payload files
-   written with Write, `CLAUDE_PROJECT_DIR` set to the scratch repo):
+   written with Write, each with `"cwd"` set to the scratch repo — the guard reads the
+   branch from the payload's `cwd`, not from `CLAUDE_PROJECT_DIR` — and `CLAUDE_PROJECT_DIR`
+   set to the scratch repo too):
    `plugin/bin/guard < payload.json; echo $?` for:
    - `B=main; git push origin $B` → exit 2, stderr names pushing to main;
    - `git push origin $(echo main)` → exit 2, stderr contains `spell the branch out`;
@@ -498,7 +539,38 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-21 — /pipeline:plan-review
+
+Findings (severity counted before the fixes; blockers 0, majors 2, minors 5):
+
+| id | severity | finding | change |
+|----|----------|---------|--------|
+| R1 | major | Push expansion ignored field splitting: `B="origin main"; git push $B` and `B="feat/x main"; git push origin $B` would pass on a feature branch while the shell pushes `main` (tokenizer measured: the assignment token is `B=origin main`). Contrary to AC1's intent | Approach → Push refspecs point 2 now splits each expansion on whitespace (which also subsumes the empty-value rule of AC4); step 1 gets `test_a_split_push_variable_is_checked_word_by_word` |
+| R2 | major | A command substitution in the remote position truncates the push segment: `git push $(git remote) main` tokenizes to `git push $` plus a separate "command" `main` (measured), so the plan's "remote is not checked" lets it through while the shell pushes `main` | new point 0: any push positional ending in `$` is refused with `UNRESOLVED_REFSPEC`; step 1 test `test_a_substitution_in_the_remote_position_is_refused`; CHANGELOG consumer impact and owner summary name the new refusal |
+| R3 | minor | `config_access` read only the first positional, so `--remove-section core` (drops `core.hooksPath`) and `--rename-section x alias` (writes persistent aliases) passed and were only documented | section operations return every positional; `core`/`alias` sections refused; step 2 test added; the limit dropped from GUARD.md/BACKLOG lists, `include.path`/`includeIf`, `GIT_CONFIG_GLOBAL`, `GIT_CONFIG_PARAMETERS` added instead |
+| R4 | minor | English README headings listed without the code spans the Polish headings carry — test anchors and README could disagree | exact heading lines given |
+| R5 | minor | AC15 names "scripts written to files", the known-limits test did not assert it | `script` added to the asserted tokens |
+| R6 | minor | `--max-turns` is not in `claude --help` of 2.1.272; no fallback if `--safe-mode` also drops `--settings` | step 3c: drop `--max-turns` if rejected; fallback `--setting-sources local`; the mode used is recorded |
+| R7 | minor | E2E hook runs: the guard reads the branch from the payload's `cwd`, not `CLAUDE_PROJECT_DIR` | payloads carry `"cwd"` |
+
+Checked and found correct (no need to redo): AC→steps matrix covers AC1–AC25 with named
+tests or greps; `self.env` vs segment-local `env` is the right split (prefix/wrapper
+assignments live only in the local map; conditional assignments become `$NAME` in
+`self.env`, so `false || B=feat/x; …` stays unresolved); `$(…)` and backtick tokenization as
+described (measured); `git config core.hooksPath ""` yields an empty token, so the legacy
+two-positional write rule holds; `git -c alias.x='!…'` arrives as one token; `HOOKS_PATH`
+contains `core.hooksPath` (AC9 fragment); the compound refusal keeps the inner reason, so
+fragment assertions hold for `B=main; …` forms; `--safe-mode` exists in Claude Code 2.1.272
+and keeps permissions; no user-level `deny` rules in `~/.claude/settings.json` today;
+`README.md` and `skills/ship/SKILL.md` `RESULT` blocks are byte-identical now; the version
+is pinned only in `plugin/.claude-plugin/plugin.json`; `test_no_domain_references` walks
+`plugin/docs/` automatically; skills push only literal branches
+(`git push -u origin feat/NNN-<slug>`), so no skill is broken by the new refusals; no new
+dependency and no migration (SPEC → Owner decisions).
+
+Verdict: the plan is ready — both majors were fixable inside the plan's own approach (same
+step, same files, no scope change beyond what AC1/AC2/AC11 already demand), no blocker
+remains and nothing requires an owner decision.
 
 ## Deviations
 
