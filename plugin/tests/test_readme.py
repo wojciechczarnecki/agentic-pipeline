@@ -128,6 +128,8 @@ def test_install_guide_covers_verification_and_init():
         assert token in guide, token
 
 
+# A deliberate copy of `command_lines` in tests/test_documents.py (no cross-directory import
+# of test modules, PLAN 003 Approach): a change to how commands are counted goes into both.
 def command_count(section: str) -> int:
     count, fenced = 0, False
     for line in section.splitlines():
@@ -150,6 +152,24 @@ def test_the_installation_section_is_short_and_links_the_guide():
     section = README.split("## Installation", 1)[1].split("\n## ", 1)[0]
     assert command_count(section) <= 3
     assert "](docs/INSTALL.md)" in section
+    commands = fenced_commands(section)
+    for token in ["#stable", "--scope user", "/pipeline:init"]:
+        assert any(token in command for command in commands), (token, commands)
+    # every command of the short section is the guide's own, so the two cannot drift apart
+    missing = [command for command in commands if command not in INSTALL]
+    assert not missing, missing
+
+
+def fenced_commands(section: str) -> list[str]:
+    commands, fenced = [], False
+    for line in section.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        command = re.sub(r"\s+#.*$", "", line).strip()
+        if fenced and command and not command.startswith("#"):
+            commands.append(command)
+    return commands
 
 
 def test_the_guard_section_states_the_migration_scope():

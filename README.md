@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/wojciechczarnecki/agentic-pipeline/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/wojciechczarnecki/agentic-pipeline/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwojciechczarnecki%2Fagentic-pipeline%2Fmain%2Fplugin%2F.claude-plugin%2Fplugin.json&query=%24.version&label=version)](plugin/CHANGELOG.md)
 
-A Claude Code plugin that takes a feature from an approved spec to a reviewed pull request, with owner gates between the stages and a command guard that stops the agent from pushing to main, merging its own PR or touching production.
+A Claude Code plugin that takes a feature from an approved spec to a reviewed pull request, with owner gates between the stages and a command guard that stops the agent from pushing to main, merging its own PR or touching the production hosts you configure.
 
 Three names, one thing: *Spec-Driven Workflow* is the project, `agentic-pipeline` is the
 repository and `pipeline` is the plugin (the `/pipeline:*` commands, installed as
@@ -55,9 +55,10 @@ README describes no mechanism that refuses a shell command such as a push to `ma
 The claim here is narrower than "gates": it is the command guard and the checked metrics.
 Approval gates enforced with hooks are not unique — SpecForge and gate-oriented-sdd enforce
 them too, but neither guards shell commands (checked 2026-09-21). What this plugin adds is
-an agent that cannot push to `main`, merge its own pull request, touch production hosts or
-run a migration against a non-local database, and a `metrics:` block per spec that a script
-refuses to accept when a stage left it incomplete.
+an agent that cannot push to `main` or merge its own pull request, and — once you list them
+in `.claude/workflow.json` — cannot touch your production hosts or run an Alembic migration
+against a non-local database; plus a `metrics:` block per spec that a script refuses to
+accept when a stage left it incomplete.
 
 ## Requirements & opinions
 
@@ -128,7 +129,8 @@ After the SPEC is approved, `/pipeline:ship NNN` takes it to a pull request.
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). The plugin's tests are plain pytest on the standard
-library, so they also run outside this project's dev environment:
+library, so they also run outside this project's dev environment, on any interpreter that
+has pytest:
 
 ```bash
 cd plugin && python3 -m pytest tests

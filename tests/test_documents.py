@@ -199,6 +199,8 @@ def section(text: str, heading: str) -> str:
     return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
 
 
+# A deliberate copy of `command_count` in plugin/tests/test_readme.py (no cross-directory import
+# of test modules, PLAN 003 Approach): a change to how commands are counted goes into both.
 def command_lines(text: str) -> list[str]:
     commands, fenced = [], False
     for line in text.splitlines():
@@ -231,11 +233,28 @@ def fenced_blocks(text: str) -> list[tuple[str, list[str]]]:
     return blocks
 
 
+LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
+
+
 def paragraphs(text: str) -> list[str]:
-    return [
-        "\n".join(line for line in chunk.splitlines() if not line.startswith("#"))
-        for chunk in strip_fences(text).split("\n\n")
-    ]
+    """Blank-line paragraphs with heading lines dropped; every list item is a unit of its own."""
+    units = []
+    for chunk in strip_fences(text).split("\n\n"):
+        current: list[str] = []
+        for line in chunk.splitlines():
+            if line.startswith("#"):
+                continue
+            if LIST_ITEM.match(line) and current:
+                units.append("\n".join(current))
+                current = []
+            current.append(line)
+        units.append("\n".join(current))
+    return units
+
+
+def test_paragraphs_split_list_items():
+    text = "# Title\nIntro line\n- one\n  more\n- two\n\nNext paragraph\n"
+    assert paragraphs(text) == ["Intro line", "- one\n  more", "- two", "Next paragraph"]
 
 
 def test_readme_opens_with_the_display_name_and_the_pitch():
@@ -275,8 +294,10 @@ GATES = [
 def test_readme_diagram_names_every_stage_and_gate():
     diagrams = ["\n".join(body) for info, body in fenced_blocks(README) if info == "mermaid"]
     assert len(diagrams) == 1
+    # exact node labels: a substring match finds "plan" inside "plan review"
+    labels = set(re.findall(r'"([^"]+)"', diagrams[0]))
     for label in ["idea", "plan", "plan review", "implement", "final review", "PR", *GATES]:
-        assert label in diagrams[0], label
+        assert label in labels, label
 
 
 def test_readme_guard_block_matches_the_guard(tmp_path):
@@ -321,11 +342,15 @@ def test_why_not_spec_kit_states_the_claim_with_dates():
     claim = section(README, "## Why not Spec Kit?")
     for token in ["command guard", "metrics", "SpecForge", "gate-oriented-sdd"]:
         assert token in claim, token
+    dated = re.compile(r"checked \d{4}-\d{2}-\d{2}")
     undated = [
         paragraph
         for paragraph in paragraphs(README)
-        if OTHER_TOOLS.search(paragraph) and not re.search(r"checked \d{4}-\d{2}-\d{2}", paragraph)
+        if OTHER_TOOLS.search(paragraph) and not dated.search(paragraph)
     ]
+    # every paragraph of the section compares with other tools, named in OTHER_TOOLS or not
+    undated += [paragraph for paragraph in paragraphs(claim) if paragraph.strip()]
+    undated = [paragraph for paragraph in undated if not dated.search(paragraph)]
     assert not undated, undated
 
 
@@ -349,10 +374,19 @@ def test_whats_deliberately_not_here():
         assert token in text, token
 
 
+INSTALL_GUIDE = read("plugin/docs/INSTALL.md")
+
+
 def test_readme_install_is_short_and_links_the_guide():
     text = section(README, "## Install")
-    assert len(command_lines(text)) <= 3
+    commands = command_lines(text)
+    assert len(commands) <= 3
     assert "](plugin/docs/INSTALL.md)" in text
+    # the short section is the guide's own path, on the release channel and the user scope
+    assert any("#stable" in command for command in commands), commands
+    assert any("--scope user" in command for command in commands), commands
+    missing = [command for command in commands if command not in INSTALL_GUIDE]
+    assert not missing, missing
 
 
 def test_quickstart_reaches_idea_in_five_commands():

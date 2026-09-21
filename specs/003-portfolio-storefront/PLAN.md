@@ -492,7 +492,8 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
       for agents, and it must not be worked around (`gh api -X PATCH` is forbidden). The
       agent hands the owner, in the stage report, the exact command with the README
       pitch line pasted in:
-      `gh repo edit wojciechczarnecki/agentic-pipeline --description "<pitch line from README.md>"`.
+      `gh repo edit wojciechczarnecki/agentic-pipeline --description "Spec-Driven Workflow — <pitch line from README.md>"`
+      (the display name prefix: final review F2).
       The topics already contain `claude-code-plugin` and `spec-driven-development`
       (checked 2026-09-21), so no topic change is needed. The command reaches the owner
       in the final review's gate 2 entry (Steps intro); the owner runs it before
@@ -501,8 +502,9 @@ and **before** the PR is opened (apply step 3), so the ROADMAP ticks ride in the
       (`docs: tick the About item`); when it does not, it ends with `RESULT: ESCALATE`
       carrying the command, before opening the PR, and the status stays `implemented`.
       Automated verification:
-      `gh repo view --json description -q .description` equals the pitch line of
-      `README.md` byte for byte (`diff <(gh repo view --json description -q .description) <(sed -n '<pitch line number>p' README.md)`);
+      `gh repo view --json description -q .description` equals `Spec-Driven Workflow — `
+      followed by the pitch line of `README.md`, byte for byte
+      (`diff <(gh repo view --json description -q .description) <(sed -n '<pitch line number>s/^/Spec-Driven Workflow — /p' README.md)`);
       `gh repo view --json repositoryTopics -q '.repositoryTopics[].name' | grep -xE 'claude-code-plugin|spec-driven-development' | wc -l`
       → 2.
 
@@ -600,10 +602,11 @@ Negative checks from step 4: one changed word in the README refusal line turned
 `test_relative_links_resolve[README.md]` red. Both restored with Edit.
 
 **Pending after gate 2: steps 8 (Releases) and 9 (About), see Steps intro.** The command
-for the owner (step 9), with the README pitch line (`README.md` line 5) pasted in:
+for the owner (step 9), with the display name prefix (F2) and the README pitch line
+(`README.md` line 5, as changed by F3) pasted in:
 
 ```bash
-gh repo edit wojciechczarnecki/agentic-pipeline --description "A Claude Code plugin that takes a feature from an approved spec to a reviewed pull request, with owner gates between the stages and a command guard that stops the agent from pushing to main, merging its own PR or touching production."
+gh repo edit wojciechczarnecki/agentic-pipeline --description "Spec-Driven Workflow — A Claude Code plugin that takes a feature from an approved spec to a reviewed pull request, with owner gates between the stages and a command guard that stops the agent from pushing to main, merging its own PR or touching the production hosts you configure."
 ```
 
 ## Definition of Done
@@ -824,3 +827,61 @@ the strict `xfail` would have reported XPASS in step 3.
 
 Recommendation for gate 2: accept F1–F5, reject the nits F6–F10 (or take F6–F8, each a
 one-line change).
+
+### 2026-09-21 — /pipeline:final-review (apply)
+
+Owner decision: accept F1–F10, reject none. Applied:
+
+- **F2** — step 9 and Results: the About description is `Spec-Driven Workflow — ` + the
+  pitch line, and step 9's `diff` compares against that.
+- **F3** — `README.md:5`: "touching production" → "touching the production hosts you
+  configure" (plain text, so it can stay the About description). `README.md:55-61`: pushing
+  to `main` and merging stay unconditional; production hosts and "an Alembic migration
+  against a non-local database" are qualified with "once you list them in
+  `.claude/workflow.json`".
+- **F4** — `tests/test_documents.py::test_readme_install_is_short_and_links_the_guide` and
+  `plugin/tests/test_readme.py::test_the_installation_section_is_short_and_links_the_guide`
+  assert `#stable` and `--scope user` (plus `/pipeline:init` in the plugin README), and that
+  every command of the short section also appears in `plugin/docs/INSTALL.md`
+  (new helper `fenced_commands` in the plugin test).
+- **F5** — the diagram test compares the quoted mermaid node labels exactly.
+- **F6** — `README.md` Development: "on any interpreter that has pytest" restored.
+- **F7** — `.claude-plugin/marketplace.json`: "Spec-Driven Workflow — an agentic feature
+  pipeline: idea → …".
+- **F8** — `SECURITY.md` *The command guard* paragraph rewrapped (≤ 91 characters; "guard
+  bypass" kept on one line for `test_security_policy`).
+- **F9** — `paragraphs()` makes every list item a unit of its own (new
+  `test_paragraphs_split_list_items`), and every paragraph of *Why not Spec Kit?* must
+  carry a `checked YYYY-MM-DD` date.
+- **F10** — a comment above `command_lines` and `command_count` names the other copy.
+
+Verification: `bash scripts/check.sh` → ALL GREEN, 880 passed. Mutations on a scratch copy,
+each red: `#stable` → `#main` in both READMEs (2 failed); `--scope user` →
+`--scope project` in the root README (1 failed); the `plan["plan"]` node removed (1
+failed); an undated list item added to *Why not Spec Kit?* (1 failed).
+
+**F1 (steps 8–9) — not completed, escalated.**
+
+- Step 8: `gh release create` was refused by the session's permission layer (auto mode,
+  "Create Public Surface"); no release was created, no tag touched
+  (`git ls-remote --tags origin 'pipeline--v*'` recorded before). The owner runs:
+
+  ```bash
+  for v in 0.2.0 0.3.0 0.3.1 0.3.2 0.3.3; do
+    awk -v v=$v '$0 == "## " v {f=1; next} /^## /{f=0} f' plugin/CHANGELOG.md \
+      | gh release create "pipeline--v$v" --verify-tag --title "pipeline $v" --notes-file - --latest=false
+  done
+  awk -v v=0.3.4 '$0 == "## " v {f=1; next} /^## /{f=0} f' plugin/CHANGELOG.md \
+    | gh release create pipeline--v0.3.4 --verify-tag --title "pipeline 0.3.4" --notes-file - --latest
+  ```
+
+  or allows `gh release create` for the resumed apply run.
+- Step 9: F3 changed the pitch line, so the description the owner set at gate 2 no longer
+  matches (as F1 foresaw). The owner runs:
+
+  ```bash
+  gh repo edit wojciechczarnecki/agentic-pipeline --description "Spec-Driven Workflow — A Claude Code plugin that takes a feature from an approved spec to a reviewed pull request, with owner gates between the stages and a command guard that stops the agent from pushing to main, merging its own PR or touching the production hosts you configure."
+  ```
+
+The two Stage 4 items (Releases, About) stay unticked, the PR is not opened yet and the
+status stays `implemented` until the resumed apply run verifies both.

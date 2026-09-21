@@ -8,7 +8,7 @@
     {
       "name": "pipeline",
       "source": "./plugin",
-      "description": "Spec-Driven Workflow: agentic feature pipeline: idea → plan → plan review → implementation → final review → PR."
+      "description": "Spec-Driven Workflow — an agentic feature pipeline: idea → plan → plan review → implementation → final review → PR."
     }
   ]
 }
