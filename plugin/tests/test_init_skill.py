@@ -97,14 +97,18 @@ def test_the_dependabot_template_covers_github_actions():
 # AC27/AC28: the marketplace name is still derived from ${CLAUDE_PLUGIN_ROOT}, but `ref`
 # is the `stable` channel, not a tag built from the version in that path — a tag pin
 # forces the marketplace to be re-registered, and the plugin reinstalled in every
-# project, on each release (docs/DECISIONS.md, 2026-09-21).
+# project, on each release (docs/DECISIONS.md, 2026-09-21). The skill's wording is not
+# pinned, only the literal: step 4 substitutes the source itself, so the template test
+# (test_init_templates.py) cannot tell which `ref` init writes.
 def test_the_marketplace_ref_is_the_stable_channel():
     block = " ".join(settings_bullet(step(4)).split())
     sentences = block.split(". ")
     derivation = [sentence for sentence in sentences if "CLAUDE_PLUGIN_ROOT" in sentence]
     assert derivation, "init step 4 must derive the marketplace name from ${CLAUDE_PLUGIN_ROOT}"
-    channel = [sentence for sentence in sentences if '`ref` to zawsze `"stable"`' in sentence]
-    assert channel, 'init step 4 must set `ref` to `"stable"`'
+    channel = [
+        sentence for sentence in sentences if "`ref`" in sentence and '`"stable"`' in sentence
+    ]
+    assert channel, 'init step 4 must set `ref` to the literal `"stable"`'
     assert "<plugin>--v<wersja>" not in block, "init step 4 must not build a tag pin"
     fallback = [sentence for sentence in sentences if "TODO:" in sentence and "kszta" in sentence]
     assert fallback, "init step 4 must keep the `TODO:` fallback for an unexpected path shape"

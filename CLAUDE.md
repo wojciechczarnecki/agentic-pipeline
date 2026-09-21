@@ -26,50 +26,12 @@ Instructions for agents working in this repository.
 ## Agentic workflow
 
 The workflow comes from the `pipeline` plugin **released** from this repository and
-installed from GitHub (marketplace `wcz-tools`, git + HTTPS) — not from the working tree:
-a stable release guards work on unstable code. `.claude/settings.json` points the source
-at the `stable` release channel (`"ref": "stable"`), a branch moved to each new release
-tag. The declaration only takes effect once the marketplace is registered with that
-`ref`: the registration is global per machine (`~/.claude/plugins/known_marketplaces.json`)
-and one registered earlier — on a tag or with no `ref` — keeps what it was given. The
-plugin is installed once per machine at `--scope user`, so it runs in every directory.
-
-**Updating to a new release** (the owner, outside an agent session):
-
-```bash
-claude plugin marketplace update wcz-tools && claude plugin update pipeline@wcz-tools --scope user
-```
-
-**One-time migration from a tag registration** — needed while `source.ref` of `wcz-tools`
-in `known_marketplaces.json` is anything other than `"stable"`:
-
-```bash
-claude plugin marketplace remove wcz-tools
-claude plugin marketplace add 'https://github.com/wojciechczarnecki/agentic-pipeline.git#stable'
-claude plugin install pipeline@wcz-tools --scope user
-git checkout -- .claude/settings.json   # in EVERY repository with the plugin — see below
-```
-
-**`remove` uninstalls the plugin in every project**, since the marketplace is its source;
-the `--scope user` install replaces all of them at once. **All three commands delete
-`enabledPlugins` and `extraKnownMarketplaces` from `.claude/settings.json`** — every
-project's and `~/.claude/settings.json` alike — **and none of them puts the block back.**
-Restore it with `git checkout`: a fresh clone on another machine has no registration yet,
-so that block is the only place it can learn where the plugin comes from. A repository
-that must not run the plugin — one that commits straight to `main`, which the guard
-blocks — opts out in its own `.claude/settings.json` with
-`"enabledPlugins": {"pipeline@wcz-tools": false}`.
-
-Both failures are silent. A session missing the plugin has no command guard and no
-`pre-push` rule, and says nothing about it. A running session also keeps whatever it
-loaded at startup, so every step above needs a restart to take effect. The channel was
-measured 2026-09-21 (`docs/DECISIONS.md`).
-
-Two checks afterwards, in a fresh session: `claude plugin list` shows the plugin at the
-released version in the user scope, and a command the guard blocks — `sed -i` on
-`.claude/settings.json`, say — is actually refused, with the version in the path it
-reports. The second check is the only one that proves the plugin is loaded here; the first
-proves the install is right.
+installed from GitHub (marketplace `wcz-tools`) — not from the working tree: a stable
+release guards work on unstable code. `.claude/settings.json` points it at the `stable`
+release channel; the owner installs it once per machine at `--scope user` and handles
+installs, updates and migrations outside agent sessions — `plugin/README.md` → Instalacja.
+A session without the plugin has no command guard and no `pre-push` rule, and says nothing
+about it; a session keeps the plugin it loaded at startup.
 
 The mechanics (statuses, the `RESULT` contract, escalation triggers, metrics format) are
 described in `plugin/README.md` — the single source of truth. Project configuration for
@@ -99,8 +61,8 @@ on the diff → owner decisions → PR. When in doubt → full pipeline.
 The agent creates its branch, commits, pushes and opens the PR (`gh pr create`). It updates
 the branch with `git merge origin/main` (not rebase). Out of the agent's reach: commit,
 merge and push to `main` (only `git pull --ff-only`), merging PRs, force-push,
-`reset --hard`, `clean -f`, `--no-verify`, pushing release tags. Moving `stable` to a
-release tag the owner has pushed is allowed (`Commands` → Release).
+`reset --hard`, `clean -f`, `--no-verify`, pushing release tags, and pushing to the
+`stable` release channel.
 
 Two layers enforce this, and they do not cover the same ground.
 
@@ -114,8 +76,8 @@ for everyone:**
 - `stable` (the release channel): updates, deletion and non-fast-forward pushes are
   blocked, with the repository Admin role as the only bypass actor — unlike the two
   rulesets above — because moving the channel is a direct push, not a pull request. The
-  bypass is the owner's account, so it lets through the owner and an agent pushing with
-  the owner's credentials, and keeps everyone else off the channel.
+  bypass is the owner's account, so it keeps everyone else off the channel but lets
+  through an agent pushing with the owner's credentials — to any commit, not only a tag.
 
 **Only the local layer — the plugin's command guard and the `deny` list in
 `.claude/settings.json` — stops the rest:**
@@ -123,6 +85,9 @@ for everyone:**
 - creating and pushing a *new* release tag: the tag ruleset has no `creation` rule, and the
   `pre-push` hook matches branches only, so GitHub accepts `pipeline--vX.Y.Z` from anyone
   who can push. Tagging stays the owner's move by agreement, not by mechanism.
+- moving `stable`: with a `--scope user` install the channel feeds every project on the
+  machine, and the guard protects `main`/`master` only; `deny` rules on `git push` to
+  `stable` keep an agent off it. Moving the channel is the owner's move, like tagging.
 - merging a PR: `required_approving_review_count` is 0, so a squash merge is server-side
   allowed; only the guard and `deny` keep an agent off it.
 
@@ -157,7 +122,7 @@ claude plugin validate --strict plugin/
 claude plugin validate --strict .
 claude --plugin-dir ./plugin          # one-off session with the working-tree plugin
 
-# Release (the owner tags a clean clone on main; the owner or an agent then moves the channel)
+# Release — the owner only: tag a clean clone on main, then move the channel
 claude plugin tag plugin --push
 git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'   # tags are annotated
 ```
