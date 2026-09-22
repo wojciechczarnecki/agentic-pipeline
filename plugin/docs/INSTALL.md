@@ -4,6 +4,11 @@ The short version is in the [plugin README](../README.md#installation). This gui
 the release channel, the install scope, the project settings, updating, the one-time
 migration, verification, opting a repository out and the known traps.
 
+From 0.4.0 the command guard refuses `claude plugin uninstall`, `disable` and
+`marketplace remove` aimed at this plugin or its marketplace inside an agent session, and
+shell edits of the plugin's files and install state: the owner runs those commands from
+this guide in a terminal, outside an agent session.
+
 ## From a local path
 
 For a preview, or for work on the plugin itself:
@@ -36,7 +41,10 @@ claude plugin install pipeline@wcz-tools --scope user
 Without a `ref` a consumer tracks `main`, that is unreleased code. A marketplace's `ref` is
 global per machine (`~/.claude/plugins/known_marketplaces.json`), and `install` and
 `update` take no version — hence a channel rather than a pin on a tag: a pin would force
-`marketplace remove` and a reinstall in every project on each release.
+`marketplace remove` and a reinstall in every project on each release. Moving `stable` is
+the owner's move; in the plugin's own repository the guard keeps agent sessions off it
+through `"protectedBranches": ["stable"]` in `.claude/workflow.json`, not through `deny`
+rules.
 
 ## The `user` scope — one install per machine
 
@@ -85,6 +93,8 @@ claude plugin uninstall pipeline@<name> --scope project
 git checkout -- .claude/settings.json   # the command can strip the marketplace block
 ```
 
+Run it in a terminal: inside an agent session the guard refuses the `uninstall`.
+
 ## Updating
 
 To a new release, without registering again:
@@ -113,8 +123,9 @@ source. **All three commands (`remove`, `add`, `install`) delete
 `extraKnownMarketplaces` from `.claude/settings.json`** (the project's and
 `~/.claude/settings.json`) and none of them restores it — hence `git checkout` in every
 repository that has the block (without `enabledPlugins`, see above). Both effects are
-silent: a session without the plugin has no command guard and reports nothing. After the
-migration start a new session.
+silent: a session without the plugin has no command guard and reports nothing. The guard
+refuses `marketplace remove` of this plugin's marketplace in an agent session, so the
+migration is run in a terminal. After the migration start a new session.
 
 ## Verification
 

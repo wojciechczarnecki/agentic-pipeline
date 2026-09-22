@@ -20,5 +20,6 @@
     "specsDir": "specs"
   },
   "gitHooksDir": "scripts/git-hooks",
+  "protectedBranches": ["stable"],
   "language": "en"
 }

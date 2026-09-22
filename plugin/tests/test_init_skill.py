@@ -146,3 +146,10 @@ def test_the_non_interactive_mode_forbids_asking_in_prose(number):
         f"init step {number} must close the prose loophole: without AskUserQuestion the "
         "skill may not ask in plain text either"
     )
+
+
+# workflow.example.json shows `protectedBranches`, and init builds workflow.json from it;
+# the release channel is the owner's to configure, so step 4 has to name the key it leaves
+# out (SPEC 005, AC7).
+def test_init_does_not_write_protected_branches():
+    assert "protectedBranches" in step(4)

@@ -13,13 +13,14 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import NamedTuple
 from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import workflow_config  # noqa: E402
 
-PROTECTED_BRANCHES = {"main", "master"}
+DEFAULT_PROTECTED = {"main", "master"}
 DB_COMMANDS = {"upgrade", "downgrade", "stamp", "revision", "current", "check"}
 NO_CONFIG = (
     "pipeline guard: no .claude/workflow.json found, so only the universal rules apply "
@@ -113,6 +114,10 @@ DOCKER_OPTIONS = {
 }
 BRANCH_REWRITE = {"-d", "-D", "--delete", "-m", "-M", "--move", "-f", "--force"}
 MAIN_OWNER_ONLY = "main changes only through a PR merged by the owner; work on a feature branch"
+CHANNEL_OWNER_ONLY = (
+    "{branch} is listed in protectedBranches (.claude/workflow.json) and only the owner "
+    "changes it; work on a feature branch"
+)
 HOOKS_PATH = "changing core.hooksPath would switch off the pre-push guard"
 UNRESOLVED_REFSPEC = (
     "cannot verify a push refspec built from variables or command substitution: {}; "
@@ -168,9 +173,16 @@ CONFIG_SECTION_OPERATIONS = {
     "remove-section",
 }
 GUARDRAIL_FILES = (
-    "guardrail files (.claude/settings*.json, .claude/workflow.json and the plugin "
-    "directory) change only through Edit/Write with the owner's approval"
+    "guardrail files (.claude/settings*.json, .claude/workflow.json, this plugin's directory "
+    "and its install state) change only through Edit/Write with the owner's approval"
 )
+# cp, install and ln write only their destination; their sources are reads
+DESTINATION_PROGRAMS = {"cp", "install", "ln"}
+# short options that take a value, and long ones that may take it as the next word
+COPY_VALUE_OPTIONS = {"cp": "S", "ln": "S", "install": "gmoS"}
+COPY_LONG_VALUE_OPTIONS = {"suffix", "mode", "owner", "group", "strip-program"}
+INSTALL_STATE_FILES = ("installed_plugins.json", "known_marketplaces.json")
+KEY_VALUE = re.compile(r"^-{0,2}[A-Za-z][A-Za-z0-9_-]*=")
 GIT_HOOKS = (
     "an existing git hook changes only through Edit/Write with the owner's approval; "
     "creating a missing hook (and making it executable) is allowed"
@@ -200,6 +212,52 @@ API_OWNER_DELETIONS = {
     "automated-security-fixes": "security settings",
     "private-vulnerability-reporting": "security settings",
 }
+PLUGIN_INSTALL = (
+    "the {name} plugin's install is the owner's to change — disabling or uninstalling it, "
+    "or removing its marketplace, switches the guard off; the owner runs that in a terminal"
+)
+PLUGIN_VARIABLE = (
+    "cannot verify a plugin or marketplace name built from variables: {}; spell it out"
+)
+PLUGIN_STATE_UNREADABLE = (
+    "cannot read the plugin install state to tell whether {} is this plugin's marketplace; "
+    "the owner runs that in a terminal"
+)
+CLAUDE_VALUE_OPTIONS = {"-s", "--scope"}
+DEFAULT_PLUGIN_NAME = "pipeline"
+# Writes on the owner's ground: the DELETE ground without what agents legitimately write
+# (re-running CI, releases, deployments), plus settings only a write can change.
+API_OWNER_WRITES = {
+    **{
+        key: label
+        for key, label in API_OWNER_DELETIONS.items()
+        if key not in {"releases", "runs", "deployments"}
+    },
+    "topics": "repository topics",
+    "transfer": "the repository's ownership",
+    "permissions": "Actions permissions",
+}
+API_WRITE_METHODS = {"POST", "PUT", "PATCH"}
+API_FIELD_OPTIONS = {"-f", "-F", "--field", "--raw-field", "--input"}
+API_VALUE_OPTIONS = {
+    "-X",
+    "--method",
+    "-H",
+    "--header",
+    "-f",
+    "-F",
+    "--field",
+    "--raw-field",
+    "--input",
+    "-q",
+    "--jq",
+    "-t",
+    "--template",
+    "--hostname",
+    "-p",
+    "--preview",
+    "--cache",
+}
 DEFAULT_WORKTREE_DIR = "../worktrees"
 GLOB_CHARACTERS = re.compile(r"[*?\[{]")
 WORKTREE_ADD_OPTIONS = {"-b", "-B", "--reason"}
@@ -208,6 +266,19 @@ warned_worktree_dirs: set[str] = set()
 
 class GuardError(Exception):
     pass
+
+
+class CopyOperands(NamedTuple):
+    destination: list[str]
+    sources: list[str]
+    into_directory: bool
+    recursive: bool
+
+
+class ApiOptions(NamedTuple):
+    method: str
+    fields: list[str]
+    endpoint: str | None
 
 
 class Rules:
@@ -223,21 +294,57 @@ class Rules:
                 f"`{program}` operates production; ask the owner to run it"
             )
         self.worktree_dir = config.get("worktree.dir") or DEFAULT_WORKTREE_DIR
+        # `git branch --show-current` prints "" on a detached HEAD, so an empty name would
+        # protect every detached checkout
+        configured = config.get("protectedBranches") or []
+        self.protected_branches = DEFAULT_PROTECTED | {name for name in configured if name}
+        channels = sorted(self.protected_branches - DEFAULT_PROTECTED)
+        self.channel_ref = (
+            re.compile(
+                r"refs/heads/(" + "|".join(re.escape(name) for name in channels) + r")(?=$|[/?#])"
+            )
+            if channels
+            else None
+        )
         self.protected_file = protected_file_pattern(config, env, cwd)
+        self.settings_file = re.compile("|".join(SETTINGS_FILES))
+        self.guarded_roots, self.guarded_files = guarded_paths(env)
         self.git_hooks = git_hooks_pattern(config)
         migrations = config.get("migrations") or {}
         self.migration_command = migrations.get("command", "")
         self.local_hosts = {host.lower() for host in migrations.get("localHosts") or []} | {""}
 
 
+SETTINGS_FILES = [r"\.claude/settings[^/\s]*\.json", r"\.claude/workflow\.json"]
+
+
 def protected_file_pattern(
     config: workflow_config.Config, env: dict[str, str], cwd: Path
 ) -> re.Pattern[str]:
-    parts = [r"\.claude/settings[^/\s]*\.json", r"\.claude/workflow\.json"]
+    parts = list(SETTINGS_FILES)
     inside = plugin_dir_inside_project(config, env, cwd)
     if inside:
         parts.append(rf"(?:^|/|\s){re.escape(inside)}(?:/|$)")
     return re.compile("|".join(parts))
+
+
+# The running guard's own directory, wherever it lies, and the install state that decides
+# whether the plugin loads at all: a shell edit of either detaches the guard.
+def guarded_paths(env: dict[str, str]) -> tuple[list[Path], list[Path]]:
+    roots = plugin_roots(env)
+    config_dir = Path(env.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    state_dirs = [config_dir / "plugins"]
+    for root in roots:
+        parents = root.parents
+        if len(parents) > 3 and parents[2].name == "cache" and parents[3].name == "plugins":
+            state_dirs.append(parents[3])
+    files = []
+    for directory in state_dirs:
+        for name in INSTALL_STATE_FILES:
+            path = Path(os.path.realpath(directory / name))
+            if path not in files:
+                files.append(path)
+    return roots, files
 
 
 def git_hooks_pattern(config: workflow_config.Config) -> re.Pattern[str] | None:
@@ -458,6 +565,8 @@ class Analyzer:
 
     def segment(self, tokens: list[str], depth: int, conditional: bool = False) -> None:
         words, redirects = split_redirects(tokens)
+        written, io_numbers = redirect_writes(tokens)
+        total = len(words)
         words = self.control(words)
         # an assignment behind && or || or inside a block may never run (or run again), so
         # its value stays unverifiable
@@ -477,7 +586,12 @@ class Analyzer:
         program, args = os.path.basename(words[0]), words[1:]
         if program in self.rules.blocked_programs:
             raise GuardError(self.rules.blocked_programs[program])
+        # every step above only drops leading words, so positions map onto args
+        offset = total - len(words) + 1
+        plain = [arg for index, arg in enumerate(args) if index + offset not in io_numbers]
         self.check_guardrail_files(program, args, redirects)
+        if program not in REMOVAL_PROGRAMS:
+            self.check_own_files(program, plain, written)
         if program in SHELLS:
             if "-c" in args[:-1]:
                 # a new shell process sees only exported variables and its own prefix
@@ -509,9 +623,13 @@ class Analyzer:
         if program == "git":
             self.git(args)
         elif program == "gh":
-            check_gh(args)
+            check_gh(args, self.rules)
+        elif program == "claude":
+            check_claude(args, self.env, env)
         elif program in REMOVAL_PROGRAMS:
+            # the removal rule speaks first, so its 0.3.4 reasons stay
             self.removal(args)
+            self.check_own_files(program, plain, written)
         elif program == "find":
             self.find(args)
         elif program == "docker":
@@ -554,20 +672,93 @@ class Analyzer:
             )
 
     def check_guardrail_files(self, program: str, args: list[str], redirects: list[str]) -> None:
-        in_place = program in {"sed", "perl"} and any(re.match(r"^-\w*i", arg) for arg in args)
+        in_place = edits_in_place(program, args)
         touched = [*redirects, *args] if program in MUTATING_PROGRAMS or in_place else redirects
         creates_hook = program == "chmod" and adds_execute_bit(args)
-        self.reject_guardrail_targets(touched, check_hooks=not creates_hook)
+        # a cp/install/ln source inside the plugin directory is a read (/pipeline:init copies
+        # templates out of it); the settings files stay guarded in every position
+        reads = []
+        if program in DESTINATION_PROGRAMS:
+            written = destination(program, args)
+            reads = [arg for arg in args if arg not in written]
+        self.reject_guardrail_targets(touched, check_hooks=not creates_hook, reads=reads)
 
-    def reject_guardrail_targets(self, touched: list[str], check_hooks: bool) -> None:
-        if any(self.rules.protected_file.search(target) for target in touched):
-            raise GuardError(GUARDRAIL_FILES)
+    def reject_guardrail_targets(
+        self, touched: list[str], check_hooks: bool, reads: list[str] | None = None
+    ) -> None:
+        reads = reads or []
+        for target in touched:
+            pattern = self.rules.settings_file if target in reads else self.rules.protected_file
+            if pattern.search(target):
+                raise GuardError(GUARDRAIL_FILES)
         hooks = self.rules.git_hooks
         if hooks is None or not check_hooks:
             return
         for target in touched:
             if hooks.search(target) and self.hook_target_exists(target):
                 raise GuardError(GIT_HOOKS)
+
+    def check_own_files(self, program: str, args: list[str], redirects: list[str]) -> None:
+        targets = list(redirects)
+        if program in DESTINATION_PROGRAMS:
+            operands = copy_operands(program, args)
+            targets += operands.destination
+            # a copy into a directory lands at dest/<source name>; a recursive one merges a
+            # whole tree there, so a tree holding the plugin counts too
+            landed = self.landing_paths(operands)
+            self.reject_own_files(landed, self.cwd, operands.recursive)
+        elif (
+            program in MUTATING_PROGRAMS
+            or program in REMOVAL_PROGRAMS
+            or edits_in_place(program, args)
+        ):
+            targets += args
+        contains = program == "mv" or program in REMOVAL_PROGRAMS
+        self.reject_own_files(targets, self.cwd, contains)
+
+    def landing_paths(self, operands: CopyOperands) -> list[str]:
+        if not operands.destination or not operands.sources:
+            return []
+        directory = operands.destination[0]
+        expanded = expand_variables(directory, self.env)
+        if "$" in expanded or not expanded:
+            return []
+        if not (operands.into_directory or real_path(self.cwd, expanded).is_dir()):
+            return []
+        names = [os.path.basename(source.rstrip("/")) for source in operands.sources]
+        return [f"{directory.rstrip('/')}/{name}" for name in names if name]
+
+    # A path-based check beside the pattern above: it resolves each written path, so a
+    # relative path, `cd`, `..`, a known variable or a symlink cannot slip past it. With
+    # `contains`, a directory holding the plugin counts too (moving or removing it).
+    def reject_own_files(self, targets: list[str], cwd: Path, contains: bool) -> None:
+        roots, files = self.rules.guarded_roots, self.rules.guarded_files
+        for raw in targets:
+            if raw.startswith("-") and "=" not in raw:
+                continue
+            match = KEY_VALUE.match(raw)
+            value = raw[match.end() :] if match else raw
+            expanded = expand_variables(value, self.env)
+            if "$" in expanded or not expanded:
+                continue
+            candidates = [expanded]
+            if GLOB_CHARACTERS.search(expanded):
+                try:
+                    if "{" in expanded:
+                        raise OSError("brace expansion")
+                    candidates += globbing.glob(os.path.expanduser(expanded), root_dir=cwd)
+                except OSError:
+                    prefix = real_path(cwd, re.split(r"[*?\[{]", expanded, maxsplit=1)[0] or ".")
+                    if any(is_within(prefix, root) or is_within(root, prefix) for root in roots):
+                        raise GuardError(GUARDRAIL_FILES) from None
+                    if any(is_within(path, prefix) for path in files):
+                        raise GuardError(GUARDRAIL_FILES) from None
+            for candidate in candidates:
+                path = real_path(cwd, candidate)
+                if path in files or any(is_within(path, root) for root in roots):
+                    raise GuardError(GUARDRAIL_FILES)
+                if contains and any(is_within(guarded, path) for guarded in [*roots, *files]):
+                    raise GuardError(GUARDRAIL_FILES)
 
     # Only an existing hook is protected, and "existing" has to survive shell patterns:
     # `scripts/git-hooks/pre-*` names no file, yet the shell hands it to the very hook the
@@ -623,28 +814,30 @@ class Analyzer:
         if sub == "clean" and any(is_force_flag(arg) for arg in sub_args):
             raise GuardError("`git clean -f` deletes untracked files irreversibly; ask the owner")
         if sub == "branch" and BRANCH_REWRITE & set(sub_args):
-            if PROTECTED_BRANCHES & set(sub_args):
-                raise GuardError("deleting, renaming or resetting main is off limits")
+            hit = self.rules.protected_branches & set(sub_args)
+            if hit:
+                raise GuardError(f"deleting, renaming or resetting {shown(hit)} is off limits")
         if sub in {"checkout", "restore"}:
-            self.reject_guardrail_targets(
-                [arg for arg in sub_args if not arg.startswith("-")], check_hooks=True
-            )
+            targets = [arg for arg in sub_args if not arg.startswith("-")]
+            self.reject_guardrail_targets(targets, check_hooks=True)
+            self.reject_own_files(targets, cwd, contains=False)
         if sub == "worktree" and sub_args[:1] == ["add"]:
             self.worktree_add(sub_args[1:])
         if sub in {"update-ref", "symbolic-ref"}:
-            if any(ref_name(arg) in PROTECTED_BRANCHES for arg in sub_args):
-                raise GuardError(MAIN_OWNER_ONLY)
+            hit = {ref_name(arg) for arg in sub_args} & self.rules.protected_branches
+            if hit:
+                raise GuardError(owner_only(shown(hit)))
         if sub not in {"push", "commit", "merge", "rebase", "cherry-pick", "revert", "am", "pull"}:
             return
         branch = git_output(cwd, "branch", "--show-current")
-        on_protected = branch in PROTECTED_BRANCHES
+        on_protected = branch in self.rules.protected_branches
         if sub == "push":
-            self.push(sub_args, on_protected)
+            self.push(sub_args, branch)
         elif on_protected and sub == "pull":
             if "--ff-only" not in sub_args:
-                raise GuardError("on main only `git pull --ff-only` is allowed")
+                raise GuardError(f"on {shown({branch})} only `git pull --ff-only` is allowed")
         elif on_protected:
-            raise GuardError(f"`git {sub}` on {branch}: {MAIN_OWNER_ONLY}")
+            raise GuardError(f"`git {sub}` on {branch}: {owner_only(branch)}")
 
     def config(self, args: list[str]) -> None:
         expanded = [expand_variables(arg, self.env) for arg in args]
@@ -665,7 +858,7 @@ class Analyzer:
     # before the command (never its own prefix assignments), an expansion splits on
     # whitespace, and an empty value disappears. Options are read after expansion too.
     # Whatever stays unresolved is refused, like a removal path.
-    def push(self, args: list[str], on_protected: bool) -> None:
+    def push(self, args: list[str], current: str) -> None:
         ifs = self.env.get("IFS")
         words = []
         for raw in args:
@@ -711,8 +904,12 @@ class Analyzer:
             raise GuardError("force and delete pushes are off limits; ask the owner")
         targets = {ref_name(spec) for spec in specs}
         pushes_current = not specs or bool(targets & {"HEAD", "@"})
-        if targets & PROTECTED_BRANCHES or (on_protected and pushes_current):
-            raise GuardError(f"pushing to main: {MAIN_OWNER_ONLY}")
+        hit = targets & self.rules.protected_branches
+        if pushes_current and current in self.rules.protected_branches:
+            hit.add(current)
+        if hit:
+            name = shown(hit)
+            raise GuardError(f"pushing to {name}: {owner_only(name)}")
 
     def worktree_add(self, args: list[str]) -> None:
         rest = skip_options(args, WORKTREE_ADD_OPTIONS)
@@ -952,6 +1149,90 @@ def split_redirects(tokens: list[str]) -> tuple[list[str], list[str]]:
     return words, targets
 
 
+# Output redirect targets that are files (not `2>&1`, `>&2`, `>&-`), and the positions of
+# the io numbers among the words (the `2` of `2>&1`), which are not arguments.
+def redirect_writes(tokens: list[str]) -> tuple[list[str], set[int]]:
+    files: list[str] = []
+    io_numbers: set[int] = set()
+    count, last_was_word = 0, False
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token and all(char in PUNCTUATION for char in token) and ("<" in token or ">" in token):
+            if last_was_word and tokens[index - 1].isdigit():
+                io_numbers.add(count - 1)
+            if ">" in token and index + 1 < len(tokens):
+                target = tokens[index + 1]
+                if not (token.endswith("&") and re.fullmatch(r"\d+|-", target)):
+                    files.append(target)
+            index += 2
+            last_was_word = False
+        else:
+            count += 1
+            index += 1
+            last_was_word = True
+    return files, io_numbers
+
+
+def destination(program: str, args: list[str]) -> list[str]:
+    return copy_operands(program, args).destination
+
+
+# cp, install and ln read like getopt: `-t` may close a cluster (`-rt DIR`, `-vtDIR`), a
+# long option may be any unambiguous prefix (`--target=DIR`), and an option value
+# (`install -m 755`) is not an operand.
+def copy_operands(program: str, args: list[str]) -> CopyOperands:
+    value_letters = COPY_VALUE_OPTIONS.get(program, "")
+    target, operands, recursive = None, [], False
+    index, options = 0, True
+    while index < len(args):
+        arg = args[index]
+        following = args[index + 1 : index + 2]
+        if not options or arg == "-" or not arg.startswith("-"):
+            operands.append(arg)
+        elif arg == "--":
+            options = False
+        elif arg.startswith("--"):
+            name, equals, value = arg[2:].partition("=")
+            if len(name) > 0 and "target-directory".startswith(name):
+                target = [value] if equals else following
+                index += 0 if equals else 1
+            elif name in COPY_LONG_VALUE_OPTIONS and not equals:
+                index += 1
+            recursive = recursive or (program == "cp" and name in {"recursive", "archive"})
+        else:
+            for position, char in enumerate(arg[1:], start=1):
+                if program == "cp" and char in "rRa":
+                    recursive = True
+                if char == "t" or char in value_letters:
+                    attached = arg[position + 1 :]
+                    if char == "t":
+                        target = [attached] if attached else following
+                    if not attached:
+                        index += 1
+                    break
+        index += 1
+    if target is not None:
+        return CopyOperands(target, operands, True, recursive)
+    return CopyOperands(operands[-1:], operands[:-1], False, recursive)
+
+
+def edits_in_place(program: str, args: list[str]) -> bool:
+    if program not in {"sed", "perl"}:
+        return False
+    for arg in args:
+        if re.match(r"^-\w*i", arg):
+            return True
+        name = arg.split("=", 1)[0]
+        if program == "sed" and len(name) > 2 and "--in-place".startswith(name):
+            return True
+    return False
+
+
+def real_path(base: Path, raw: str) -> Path:
+    return Path(os.path.realpath(resolve(base, raw)))
+
+
 def unwrap(words: list[str], env: dict[str, str], prefixed: set[str]) -> list[str]:
     while words:
         name = os.path.basename(words[0])
@@ -1031,7 +1312,7 @@ def section_refusal(section: str) -> str | None:
     return None
 
 
-def check_gh(args: list[str]) -> None:
+def check_gh(args: list[str], rules: Rules) -> None:
     if args[:2] == ["pr", "merge"]:
         raise GuardError("merging a PR is the owner's gate")
     if args[:1] == ["repo"] and set(args[1:2]) & {"delete", "archive", "rename", "edit"}:
@@ -1042,7 +1323,17 @@ def check_gh(args: list[str]) -> None:
     if args[:2] in (["release", "delete"], ["run", "delete"]):
         raise GuardError("deleting releases or workflow runs is the owner's call")
     if args[:1] == ["api"]:
-        method = api_method(args[1:])
+        options = api_options(args[1:])
+        method = options.method
+        if "$" in method or "`" in method:
+            raise GuardError(
+                f"`gh api -X {method}`: a method built from variables cannot be verified; "
+                "spell the method out"
+            )
+        if method in API_WRITE_METHODS:
+            check_api_write(method, options.endpoint)
+        if method != "GET":
+            check_channel_write(options, args[1:], rules)
         if method == "DELETE":
             if any("$" in arg or "`" in arg for arg in args[1:]):
                 raise GuardError(
@@ -1062,6 +1353,183 @@ def check_gh(args: list[str]) -> None:
             raise GuardError(
                 "write calls to merges, branch protection or main are the owner's call"
             )
+
+
+# A configured channel has no no-bypass ruleset behind it the way main has (the owner's
+# credentials pass), so the guard is its only layer: besides its ref, a write under
+# `branches/<channel>` (rename, protection) and a write whose `branch` field names it
+# (a contents commit, merge-upstream) are refused too.
+def check_channel_write(options: ApiOptions, args: list[str], rules: Rules) -> None:
+    channels = rules.protected_branches - DEFAULT_PROTECTED
+    if not channels:
+        return
+    hit = None
+    for arg in args:
+        match = rules.channel_ref.search(arg) if rules.channel_ref else None
+        if match:
+            hit = match.group(1)
+    path = (options.endpoint or "").split("?", 1)[0]
+    parts = [part for part in path.split("/") if part]
+    for index, part in enumerate(parts[:-1]):
+        if part == "branches" and parts[index + 1] in channels:
+            hit = parts[index + 1]
+    for field in options.fields:
+        key, _, value = field.partition("=")
+        if key == "branch" and value in channels:
+            hit = value
+    if hit:
+        raise GuardError(f"write calls to {hit}: {owner_only(hit)}")
+
+
+# Detaching is judged by target: this plugin (under any marketplace, or no plugin named at
+# all, or --all) and the marketplaces it comes from. Managing other plugins, and `update`,
+# `install`, `enable`, stay open. A target the guard cannot resolve is refused.
+def check_claude(args: list[str], env: dict[str, str], segment_env: dict[str, str]) -> None:
+    start = next((index for index, arg in enumerate(args) if arg in {"plugin", "plugins"}), None)
+    if start is None:
+        return
+    rest = args[start + 1 :]
+    if any(arg in {"-h", "--help"} for arg in rest):
+        return
+    positionals, every = [], False
+    index = 0
+    while index < len(rest):
+        arg = rest[index]
+        if arg in CLAUDE_VALUE_OPTIONS:
+            index += 1
+        elif arg == "--all" or (arg.startswith("-") and not arg.startswith("--") and "a" in arg):
+            every = True
+        elif not arg.startswith("-"):
+            positionals.append(arg)
+        index += 1
+    if not positionals:
+        return
+    sub, targets = positionals[0], positionals[1:]
+    plugin = PluginIdentity(segment_env)
+    if sub == "disable" and (every or not targets):
+        raise GuardError(PLUGIN_INSTALL.format(name=plugin.name))
+    if sub in {"disable", "uninstall", "remove"}:
+        for target in targets:
+            if resolved_name(target, env).split("@", 1)[0] == plugin.name:
+                raise GuardError(PLUGIN_INSTALL.format(name=plugin.name))
+    if sub == "marketplace" and targets[:1] in (["remove"], ["rm"]):
+        for target in targets[1:]:
+            plugin.check_marketplace(resolved_name(target, env))
+
+
+def resolved_name(raw: str, env: dict[str, str]) -> str:
+    expanded = expand_variables(raw, env)
+    if "$" in expanded or "`" in expanded:
+        raise GuardError(PLUGIN_VARIABLE.format(raw))
+    return expanded
+
+
+class PluginIdentity:
+    def __init__(self, env: dict[str, str]):
+        self.roots = plugin_roots(env)
+        self.name = plugin_name(self.roots)
+        self.config_dir = Path(env.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+
+    # The plugin's own layout answers first, so the install state is read only when needed.
+    def check_marketplace(self, marketplace: str) -> None:
+        if marketplace in self.layout_marketplaces():
+            raise GuardError(PLUGIN_INSTALL.format(name=self.name))
+        installed = self.installed_marketplaces()
+        if installed is None:
+            raise GuardError(PLUGIN_STATE_UNREADABLE.format(marketplace))
+        if marketplace in installed:
+            raise GuardError(PLUGIN_INSTALL.format(name=self.name))
+
+    def layout_marketplaces(self) -> set[str]:
+        found = set()
+        for root in self.roots:
+            # …/plugins/cache/<marketplace>/<plugin>/<version>
+            parents = root.parents
+            if len(parents) > 3 and parents[2].name == "cache" and parents[3].name == "plugins":
+                found.add(parents[1].name)
+            manifest = read_json(root.parent / ".claude-plugin" / "marketplace.json")
+            if isinstance(manifest, dict) and isinstance(manifest.get("name"), str):
+                entries = manifest.get("plugins")
+                if isinstance(entries, list) and any(
+                    isinstance(entry, dict) and entry.get("name") == self.name for entry in entries
+                ):
+                    found.add(manifest["name"])
+        return found
+
+    def installed_marketplaces(self) -> set[str] | None:
+        path = self.config_dir / "plugins" / "installed_plugins.json"
+        if not path.exists():
+            return set()
+        data = read_json(path)
+        if not isinstance(data, dict) or not isinstance(data.get("plugins"), dict):
+            return None
+        return {
+            key.split("@", 1)[1]
+            for key in data["plugins"]
+            if isinstance(key, str) and key.split("@", 1)[0] == self.name and "@" in key
+        }
+
+
+def plugin_roots(env: dict[str, str]) -> list[Path]:
+    roots = [Path(os.path.realpath(Path(__file__).resolve().parents[1]))]
+    raw = env.get("CLAUDE_PLUGIN_ROOT")
+    if raw:
+        root = Path(os.path.realpath(os.path.expanduser(raw)))
+        if root not in roots:
+            roots.append(root)
+    return roots
+
+
+def plugin_name(roots: list[Path]) -> str:
+    for root in roots:
+        manifest = read_json(root / ".claude-plugin" / "plugin.json")
+        if isinstance(manifest, dict) and isinstance(manifest.get("name"), str):
+            return manifest["name"]
+    return DEFAULT_PLUGIN_NAME
+
+
+def read_json(path: Path) -> object:
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+# Only the endpoint is judged: field values (`-f body=…`) are data, so a comment that
+# mentions secrets is not a write to them.
+def check_api_write(method: str, endpoint: str | None) -> None:
+    if endpoint is None:
+        return
+    if "$" in endpoint or "`" in endpoint:
+        raise GuardError(
+            f"`gh api -X {method} {endpoint}`: a write on an endpoint built from variables "
+            "cannot be verified; spell the endpoint out"
+        )
+    owned = owner_write(endpoint)
+    if owned:
+        raise GuardError(f"`gh api -X {method} {endpoint}`: changing {owned} is the owner's call")
+
+
+def api_endpoint(args: list[str]) -> str | None:
+    return api_options(args).endpoint
+
+
+# Unlike owner_deletion, the owner, repository and ref names are never scanned: a repository
+# named `pages`, or a branch `fix/hooks`, is not the ground it happens to spell.
+def owner_write(endpoint: str) -> str | None:
+    path = urlparse(endpoint).path if "://" in endpoint else endpoint.split("?", 1)[0]
+    parts = [part for part in path.split("/") if part]
+    for index, part in enumerate(parts):
+        width = {"repos": 3, "repositories": 2, "orgs": 2}.get(part)
+        if width is None or len(parts) < index + width:
+            continue
+        rest = parts[index + width :]
+        if not rest:
+            return f"the {'organization' if part == 'orgs' else 'repository'}'s settings"
+        if rest[:2] == ["git", "refs"]:
+            return None
+        return next((API_OWNER_WRITES[item] for item in rest if item in API_OWNER_WRITES), None)
+    return next((API_OWNER_WRITES[item] for item in parts if item in API_OWNER_WRITES), None)
 
 
 # What an API DELETE may not touch: the same ground the gh subcommands above keep for the
@@ -1088,16 +1556,58 @@ def owner_deletion(arg: str) -> str | None:
 
 
 def api_method(args: list[str]) -> str:
-    for index, arg in enumerate(args):
-        if arg in {"-X", "--method"} and index + 1 < len(args):
-            return args[index + 1].upper()
-        if arg.startswith("--method="):
-            return arg.split("=", 1)[1].upper()
-        if arg.startswith("-X") and len(arg) > 2:
-            return arg[2:].upper()
-    field_options = ("-f", "-F", "--field", "--raw-field", "--input")
-    has_fields = any(arg.split("=", 1)[0] in field_options for arg in args)
-    return "POST" if has_fields else "GET"
+    return api_options(args).method
+
+
+# gh parses its flags with pflag, so a value may be attached (`-XPATCH`, `-fkey=v`,
+# `-X=PATCH`, `--method=PATCH`) and a short flag may close a cluster (`-iXDELETE`); read
+# the way gh reads them, a method or a field cannot hide behind the spelling.
+def api_options(args: list[str]) -> ApiOptions:
+    method, fields, endpoint = None, [], None
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        following = args[index + 1] if index + 1 < len(args) else None
+        name = value = None
+        if arg == "--":
+            if endpoint is None and following is not None:
+                endpoint = following
+            break
+        if arg.startswith("--"):
+            name, equals, attached = arg.partition("=")
+            if equals:
+                value = attached
+            elif name in API_VALUE_OPTIONS:
+                value, index = following, index + 1
+        elif arg.startswith("-") and len(arg) > 1:
+            for position, char in enumerate(arg[1:], start=1):
+                if f"-{char}" in API_VALUE_OPTIONS:
+                    name, attached = f"-{char}", arg[position + 1 :]
+                    if attached:
+                        value = attached[1:] if attached.startswith("=") else attached
+                    else:
+                        value, index = following, index + 1
+                    break
+        elif endpoint is None:
+            endpoint = arg
+        if name in {"-X", "--method"} and value is not None:
+            method = value.upper()
+        elif name in API_FIELD_OPTIONS:
+            fields.append(value or "")
+        index += 1
+    return ApiOptions(method or ("POST" if fields else "GET"), fields, endpoint)
+
+
+# main and master keep the 0.3.4 wording (a push to master names main); a configured
+# branch is named itself, the first in sorted order when several are hit
+def shown(branches: set[str]) -> str:
+    return "main" if branches & DEFAULT_PROTECTED else sorted(branches)[0]
+
+
+def owner_only(branch: str) -> str:
+    return (
+        MAIN_OWNER_ONLY if branch in DEFAULT_PROTECTED else CHANNEL_OWNER_ONLY.format(branch=branch)
+    )
 
 
 def is_force_flag(arg: str) -> bool:

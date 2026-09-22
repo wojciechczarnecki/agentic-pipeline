@@ -2,6 +2,49 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.4.0
+
+The guard guards itself and the release channel: it protects configurable release-channel
+branches like `main`, refuses detaching or tampering with the plugin, and refuses `gh api`
+writes on the owner's ground. The first minor release, gated on the eval receipt and the
+canary.
+
+**consumer impact:** agent sessions can no longer disable, uninstall or remove the
+plugin's marketplace (`claude plugin|plugins disable`, `uninstall|remove`,
+`marketplace remove|rm` aimed at this plugin — the owner runs those in a terminal), edit
+the plugin's files or its install state (`installed_plugins.json`,
+`known_marketplaces.json`) from the shell, or write repository settings through `gh api`
+(`POST`/`PUT`/`PATCH` on the repository or organisation itself, topics, transfer,
+secrets, variables, environments, webhooks, keys, collaborators and invitations, teams and
+members, Pages, security settings, Actions permissions, rulesets, branch protection; CI
+re-runs, releases, deployments, comments, labels, issues and pulls stay open). A consumer
+adds `"protectedBranches": ["<branch>"]` to `.claude/workflow.json` to protect a release
+channel; without the key every decision is what 0.3.4 made. An older plugin reading a
+configuration with the key only warns about an unknown key and keeps the other sections.
+
+### Added
+
+- `protectedBranches` in `.claude/workflow.json`: extra branch names (exact) the guard
+  treats exactly like `main`/`master` — pushes, commits, merges, rebases, non-`--ff-only`
+  pulls, `git branch -D`, `update-ref`, `gh api` ref writes — naming the branch in the
+  refusal. `main` and `master` stay protected whatever the list says. The `pre-push` hook
+  and `/pipeline:init` do not read or write it.
+- Detaching the plugin is refused by target: `disable`/`uninstall`/`remove` of this plugin
+  under any marketplace, `disable` with no plugin or `--all`, `marketplace remove|rm` of a
+  marketplace it is installed or loaded from; a name built from variables or an unreadable
+  install state is refused. Other plugins, `update`, `install`, `enable` and `--help` pass.
+- The running guard's own directory, wherever it lies, and the plugin install state are
+  guardrail files, judged by the real path a shell write reaches; `cp`, `install` and `ln`
+  count only their destination (`-t` at the end of a cluster, `--target…` prefixes) and
+  the path a copy into a directory lands on, so copying templates out of the plugin
+  passes; `sed --in-place` counts as `sed -i`, also for the settings files.
+- `gh api` writes on the owner's ground, judged by the endpoint after `repos/<o>/<r>`,
+  `repositories/<id>` or `orgs/<o>`; a write endpoint built from variables is refused.
+  Flags are read the way `gh` reads them, so `-X=DELETE`, `-iXPATCH` and an attached
+  `-fkey=value` no longer read as `GET` — the 0.3.4 `DELETE` rule gains this too. On a
+  configured channel a write under `branches/<branch>` or with a `branch=<branch>` field
+  is refused as well.
+
 ## 0.3.4
 
 The guard closes the known leaks around pushes and git aliases; the guard documentation

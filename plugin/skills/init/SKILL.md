@@ -83,7 +83,8 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
    - `.claude/workflow.json` — z `templates/workflow.example.json`, przycięty do tego
      projektu: sekcja `migrations` zostaje tylko wtedy, gdy projekt ma narzędzie migracji;
      `production`, `verify`, `format`, `docs`, `gitHooksDir`, `language` wypełnione
-     odpowiedziami albo `TODO:`;
+     odpowiedziami albo `TODO:`; klucza `protectedBranches` nie zapisujesz (kanał wydań
+     chroni właściciel ręcznie, po `/pipeline:init`);
    - `CLAUDE.md` — z `templates/CLAUDE.md`, z mapą dokumentów przepisaną na ścieżki
      z `docs.*` (inaczej instrukcja dla agentów wskazuje inne pliki niż konfiguracja);
    - `docs/PROJECT.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/DECISIONS.md`,

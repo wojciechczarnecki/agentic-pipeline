@@ -455,3 +455,25 @@ def test_roadmap_release_versions_ascend():
         for match in re.findall(r"^\s*- \[[ x]\] (\d+\.\d+\.\d+)", ROADMAP, re.M)
     ]
     assert versions and versions == sorted(versions)
+
+
+# SPEC 005, AC20: `stable` is kept off by the guard's protectedBranches, not by deny rules.
+@pytest.mark.parametrize("doc", ["CLAUDE.md", "docs/CONVENTIONS.md"])
+def test_claude_md_and_conventions_name_protected_branches(doc):
+    text = " ".join(read(doc).split())
+    assert "protectedBranches" in text
+    for stale in [
+        "kept off it by `deny` rules",
+        "`deny` rules on `git push` to",
+        "the guard protects `main`/`master` only",
+    ]:
+        assert stale not in text, stale
+
+
+# SPEC 005, AC19: the guard (0.4.0) keeps agents off `stable` and off detaching the plugin,
+# so only the rules it does not cover stay in `deny`.
+def test_repository_settings_leave_stable_and_detaching_to_the_guard():
+    settings = json.loads(read(".claude/settings.json"))
+    assert settings["permissions"]["deny"] == ["Bash(gh pr merge*)", "Bash(claude plugin enable*)"]
+    workflow = json.loads(read(".claude/workflow.json"))
+    assert workflow["protectedBranches"] == ["stable"]
