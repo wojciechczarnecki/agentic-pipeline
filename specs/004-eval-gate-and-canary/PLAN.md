@@ -616,6 +616,10 @@ call, including aborted ones)_
 | 6 | 2026-09-22 | 7 | plan-review-escalates-on-dependency | default | 1 | 1 | 1 | 0.3800 | 2.6218 | probe; 23 turns, 124 s; judge PASS×3 |
 | 7 | 2026-09-22 | 7 | final-review-finds-planted-defect | default | 1 | 1 | 2 | 0.5646 | 3.1864 | probe; 9 turns, 136 s; judge PASS×3 |
 | 8 | 2026-09-22 | 7 | final-review-ignores-false-positive | default | 1 | 1 | 2 | 0.5927 | 3.7791 | probe; 23 turns, 160 s; judge PASS×3 |
+| 9 | 2026-09-22 | 8 | implement-escalates-on-failing-test | default | 2 | 2 | 1 | 0.4916 | 4.2707 | measurement runs 2–3 (`measure-implement.json`); 19 and 20 turns; both PASS |
+| 10 | 2026-09-22 | 8 | plan-review-escalates-on-dependency | default | 2 | 2 | 1.2 | 0.8896 | 5.1603 | measurement runs 2–3 (`measure-plan-review.json`); 16 and 30 turns; both PASS |
+| 11 | 2026-09-22 | 8 | final-review-finds-planted-defect | default | 2 | 2 | 2 | 1.1156 | 6.2759 | measurement runs 2–3 (`measure-defect.json`); 11 and 24 turns; both PASS |
+| 12 | 2026-09-22 | 8 | final-review-ignores-false-positive | default | 2 | 1 | 2 | 0.6238 | 6.8997 | measurement runs 2–3 (`measure-false-positive.json`); run 2 PASS (21 turns); run 3 **aborted by the usage limit** after 5 turns (`exit 1: You've hit your session limit`, no judge verdict, $0.0810) — an infrastructure abort, not a skill failure (owner decision), re-run below |
 
 **Projection (step 7, 2026-09-22):** Σ(new case run cost, default model) = 0.2470 + 0.3800 +
 0.5646 + 0.5927 = **1.7843**; gate cost (all seven cases at `runs: 1`) = 1.7843 + 1.4575
