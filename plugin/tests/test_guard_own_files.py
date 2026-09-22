@@ -171,3 +171,23 @@ def test_guard_md_covers_the_0_4_0_rules():
     for token in ["protectedBranches", "installed_plugins.json", "gh api graphql", "nested"]:
         assert token in text, token
     assert "Only `main` and `master`" not in text
+
+
+# End-to-end check 6 of PLAN 005: in a --plugin-dir session with the clone inside the
+# project, copying a template out of the plugin is a read for the 0.3.4 pattern too.
+def test_copying_out_of_a_plugin_dir_clone_inside_the_project_passes(tmp_path):
+    project = make_repo(tmp_path / "clone-copy", WORKFLOW)
+    git(project, "switch", "-C", "feat/001-x")
+    (project / "plugin" / "templates").mkdir(parents=True)
+    (project / "plugin" / "templates" / "pre-push").write_text("#!/bin/sh\n")
+    env = {"CLAUDE_PLUGIN_ROOT": str(project / "plugin"), "CLAUDE_CONFIG_DIR": str(tmp_path)}
+    assert evaluate("cp plugin/templates/pre-push /tmp/pre-push-copy", project, **env) is None
+    assert evaluate("cp -r plugin/templates docs/x", project, **env) is None
+    for command in [
+        "cp /dev/null plugin/templates/pre-push",
+        "cp -t plugin/templates x",
+        "cp .claude/settings.json /tmp/x",
+    ]:
+        reason = evaluate(command, project, **env)
+        assert reason is not None, command
+        assert GUARDRAIL in reason, reason

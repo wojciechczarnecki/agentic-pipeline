@@ -289,6 +289,7 @@ class Rules:
             else None
         )
         self.protected_file = protected_file_pattern(config, env, cwd)
+        self.settings_file = re.compile("|".join(SETTINGS_FILES))
         self.guarded_roots, self.guarded_files = guarded_paths(env)
         self.git_hooks = git_hooks_pattern(config)
         migrations = config.get("migrations") or {}
@@ -296,10 +297,13 @@ class Rules:
         self.local_hosts = {host.lower() for host in migrations.get("localHosts") or []} | {""}
 
 
+SETTINGS_FILES = [r"\.claude/settings[^/\s]*\.json", r"\.claude/workflow\.json"]
+
+
 def protected_file_pattern(
     config: workflow_config.Config, env: dict[str, str], cwd: Path
 ) -> re.Pattern[str]:
-    parts = [r"\.claude/settings[^/\s]*\.json", r"\.claude/workflow\.json"]
+    parts = list(SETTINGS_FILES)
     inside = plugin_dir_inside_project(config, env, cwd)
     if inside:
         parts.append(rf"(?:^|/|\s){re.escape(inside)}(?:/|$)")
@@ -653,11 +657,22 @@ class Analyzer:
         in_place = program in {"sed", "perl"} and any(re.match(r"^-\w*i", arg) for arg in args)
         touched = [*redirects, *args] if program in MUTATING_PROGRAMS or in_place else redirects
         creates_hook = program == "chmod" and adds_execute_bit(args)
-        self.reject_guardrail_targets(touched, check_hooks=not creates_hook)
+        # a cp/install/ln source inside the plugin directory is a read (/pipeline:init copies
+        # templates out of it); the settings files stay guarded in every position
+        reads = []
+        if program in DESTINATION_PROGRAMS:
+            written = destination(args)
+            reads = [arg for arg in args if arg not in written]
+        self.reject_guardrail_targets(touched, check_hooks=not creates_hook, reads=reads)
 
-    def reject_guardrail_targets(self, touched: list[str], check_hooks: bool) -> None:
-        if any(self.rules.protected_file.search(target) for target in touched):
-            raise GuardError(GUARDRAIL_FILES)
+    def reject_guardrail_targets(
+        self, touched: list[str], check_hooks: bool, reads: list[str] | None = None
+    ) -> None:
+        reads = reads or []
+        for target in touched:
+            pattern = self.rules.settings_file if target in reads else self.rules.protected_file
+            if pattern.search(target):
+                raise GuardError(GUARDRAIL_FILES)
         hooks = self.rules.git_hooks
         if hooks is None or not check_hooks:
             return
