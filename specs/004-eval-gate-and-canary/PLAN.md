@@ -360,7 +360,7 @@ itself, so the fingerprint of step 9 stays valid.
       Automatic verification: the two pytest commands of step 1, then
       `claude plugin eval plugin/ … --case final-review-finds-planted-defect --runs 1 --model sonnet --max-cost-usd 1.5 --json <scratchpad>/eval/draft-defect-1.json`
       → ledger row, same FAIL triage.
-- [ ] 4. Case `final-review-ignores-false-positive` — files:
+- [x] 4. Case `final-review-ignores-false-positive` — files:
       `plugin/evals/final-review-ignores-false-positive/{case.yaml,scaffold.sh,graders/criteria.md}`,
       `plugin/tests/test_eval_cases.py`. Assertions: status `implemented`, `--check` exit
       0; the diff contains `ORDER BY {sort}`; the verify command passes; from the fixture,
@@ -397,7 +397,7 @@ itself, so the fingerprint of step 9 stays valid.
       → one line per case run in that file, matching the ledger;
       `uv run ruff check scripts tests && uv run black --check scripts tests` → clean;
       `bash -n scripts/eval.sh && bash -n scripts/git-hooks/pre-push` → exit 0.
-- [ ] 6. Canary measurement in the sandbox (no repository file changes except the
+- [x] 6. Canary measurement in the sandbox (no repository file changes except the
       results written into this PLAN under End-to-end → Results → Canary) — per Approach
       → Canary. Record, with the literal command lines: the marketplace registration and
       install; hashes before; the canary session and its marker output (which `bin/`
@@ -565,6 +565,42 @@ None. The first real canary and the first gated tag come with SPEC 005 (0.4.0).
 
 _(filled in by /pipeline:implement; subsection "Canary" for step 6)_
 
+#### Canary (step 6, 2026-09-22, Claude Code 2.1.272)
+
+Sandbox `<sandbox>` = `<scratchpad>/canary`, every command with
+`export CLAUDE_CONFIG_DIR=<sandbox>/config`:
+
+- Channel: `git clone <repo> <sandbox>/market`,
+  `git -C <sandbox>/market checkout -b stable 'pipeline--v0.3.4^{commit}'` (`d33d179`,
+  checked out — a directory marketplace reads the working tree).
+- Install: `claude plugin marketplace add <sandbox>/market` → "Successfully added
+  marketplace: wcz-tools"; `claude plugin install pipeline@wcz-tools --scope user` →
+  "scope: user", `plugin list`: `pipeline@wcz-tools` 0.3.4, user, enabled.
+- Consumer: `git init` + `.claude/workflow.json` = `{}`. Unreleased copy: this branch's
+  `plugin/` copied to `<sandbox>/unreleased/plugin` with `version` `0.3.4-canary` in the
+  copy only.
+- Before: `installed_plugins.json` `7c6923a9…c49e`, `known_marketplaces.json`
+  `ca03133d…e51b`, `stable` `d33d1795a6ce4b5baf0fdb805b6bb624055ea19b`, owner's
+  `~/.claude/plugins/installed_plugins.json` mtime `1790018546`.
+- Canary listing: `claude --plugin-dir <sandbox>/unreleased/plugin plugin list` shows the
+  install (`pipeline@wcz-tools`, 0.3.4, enabled) **and** "Session-only plugins
+  (--plugin-dir)": `pipeline@inline`, Version `0.3.4-canary`, Path
+  `<sandbox>/unreleased/plugin`, loaded.
+- Canary session: `claude -p "hi" --model haiku --plugin-dir <sandbox>/unreleased/plugin
+  --debug-file <sandbox>/canary.log` — the debug log reads `Plugin "pipeline" from
+  --plugin-dir overrides installed version`, `Found 1 plugins (1 enabled, 0 disabled)`,
+  and loads skills from `<sandbox>/unreleased/plugin/skills`: **one copy, the unreleased
+  one** — mechanism A works, B is not needed.
+- Way back: the same command without `--plugin-dir` (`plain.log`) — `Found 1 plugins`,
+  skills from `<sandbox>/market/plugin/skills` (the installed copy); `plugin list` shows
+  only `pipeline@wcz-tools` 0.3.4.
+- After: both hashes, the `stable` sha and the owner's mtime identical to before
+  (`diff before.txt after.txt` → empty). No command wrote outside the sandbox.
+- Sessions did not authenticate ("Not logged in"): copying the credentials into the
+  sandbox was refused by the permission classifier, so no model call ran and nothing was
+  spent. The plugin loading happens before authentication and the debug log records it,
+  which is the marker the procedure uses (Deviation D4).
+
 ## Eval ledger
 
 _(filled in by /pipeline:implement — one row per `claude plugin eval` or `scripts/eval.sh`
@@ -575,6 +611,7 @@ call, including aborted ones)_
 | 1 | 2026-09-22 | 1 | implement-escalates-on-failing-test | sonnet | 1 | 1 | 1 | 0.2738 | 0.2738 | draft; 19 turns; judge PASS×3 — escalated with options, test and `pricing.py` untouched |
 | 2 | 2026-09-22 | 2 | plan-review-escalates-on-dependency | sonnet | 1 | 1 | 1 | 0.4045 | 0.6783 | draft; 26 turns; judge PASS×3 — status kept `plan-draft`, PyYAML escalated with 3 options |
 | 3 | 2026-09-22 | 3 | final-review-finds-planted-defect | sonnet | 1 | 1 | 1.5 | 0.5438 | 1.2221 | draft; 23 turns, 110 s; judge PASS×3 — F1 blocker at `shop/shipping.py:6`, `>` vs `>=` |
+| 4 | 2026-09-22 | 4 | final-review-ignores-false-positive | sonnet | 1 | 1 | 1.5 | 0.7727 | 1.9948 | draft; 168 s; judge PASS×3 — no finding on `ORDER BY`; nit F2 caught the fixture's "4 tests" (unittest counts 3) → fixture corrected before measurement |
 
 ## Definition of Done
 
@@ -666,6 +703,14 @@ _(filled in by /pipeline:implement — every deviation from the plan with its re
 - D3 (step 3): the defect case's criteria describe the skill's Polish weight label for
   "worth fixing" by its ASCII prefix (`warto popraw`) instead of quoting it: the new-case
   test forbids every Polish letter in the case directory, and the label ends in one.
+- D4 (step 6): the canary marker is the `--debug-file` log (`Plugin "pipeline" from
+  --plugin-dir overrides installed version`, `Found 1 plugins`, the skills path) and the
+  `plugin list` version, not `command -v workflow_metrics.py`/`$PATH` inside a session:
+  copying `~/.credentials.json` into the sandbox was refused by the permission
+  classifier, so no sandbox session could authenticate. The plan's escalation for that
+  case guarded the marker, and the marker was measured without authentication — the log
+  answers "which copy, and is it the only one" directly, which the `$PATH` check only
+  inferred. The `$PATH` inference is therefore not part of the procedure.
 
 ## Final review
 
