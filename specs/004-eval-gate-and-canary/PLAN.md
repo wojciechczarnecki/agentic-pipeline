@@ -470,7 +470,7 @@ itself, so the fingerprint of step 9 stays valid.
       Automatic verification:
       `uv run pytest -q -p no:cacheprovider tests/test_documents.py` → green; each new
       test turned red once by removing its token by hand, then restored.
-- [ ] 11. Roadmap and decisions — files: `docs/ROADMAP.md` (tick the eval-stability,
+- [x] 11. Roadmap and decisions — files: `docs/ROADMAP.md` (tick the eval-stability,
       stage-skill-evals and canary items and the Stage 8 question, each with
       `(specs/004-eval-gate-and-canary/SPEC.md)`, the question reworded to its answer;
       the two 0.4.0 items unticked; the `## Stage 8` section moved between Stage 5 and
