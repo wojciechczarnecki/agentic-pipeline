@@ -82,7 +82,7 @@ def resolve(document: Path, target: str) -> tuple[Path, str]:
 def test_github_anchor_slugs():
     assert slug("Known limits") == "known-limits"
     assert slug("Requirements & opinions") == "requirements--opinions"
-    assert slug("Why not Spec Kit?") == "why-not-spec-kit"
+    assert slug("What sets it apart") == "what-sets-it-apart"
     assert (
         slug("Project configuration — `.claude/workflow.json`")
         == "project-configuration--claudeworkflowjson"
@@ -338,20 +338,11 @@ def test_readme_guard_block_matches_the_guard(tmp_path):
 OTHER_TOOLS = re.compile(r"Spec Kit|SpecForge|gate-oriented-sdd")
 
 
-def test_why_not_spec_kit_states_the_claim_with_dates():
-    claim = section(README, "## Why not Spec Kit?")
-    for token in ["command guard", "metrics", "SpecForge", "gate-oriented-sdd"]:
+def test_what_sets_it_apart_names_no_other_tool():
+    claim = section(README, "## What sets it apart")
+    for token in ["command guard", "metrics:"]:
         assert token in claim, token
-    dated = re.compile(r"checked \d{4}-\d{2}-\d{2}")
-    undated = [
-        paragraph
-        for paragraph in paragraphs(README)
-        if OTHER_TOOLS.search(paragraph) and not dated.search(paragraph)
-    ]
-    # every paragraph of the section compares with other tools, named in OTHER_TOOLS or not
-    undated += [paragraph for paragraph in paragraphs(claim) if paragraph.strip()]
-    undated = [paragraph for paragraph in undated if not dated.search(paragraph)]
-    assert not undated, undated
+    assert not OTHER_TOOLS.search(README), OTHER_TOOLS.search(README)
 
 
 def test_requirements_and_opinions():

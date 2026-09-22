@@ -215,6 +215,11 @@ def test_no_polish_outside_code(document):
     assert not found, (document, found)
 
 
+def test_readme_has_no_polish_even_in_code():
+    found = sorted(POLISH & set((PLUGIN / "README.md").read_text()))
+    assert not found, found
+
+
 HEADINGS = [
     "## Installation",
     "## Commands and agents",
@@ -250,11 +255,16 @@ def result_block(text: str) -> str:
     return text.split("```\nRESULT: DONE | ESCALATE", 1)[1].split("```", 1)[0]
 
 
-# The agents emit the block exactly as the ship skill defines it, so the README quotes it
-# byte for byte rather than translating it.
+def result_fields(block: str) -> list[str]:
+    return [line.split(":", 1)[0] for line in block.splitlines() if line.strip()]
+
+
+# The field names are the contract the orchestrator parses; the placeholders after them only
+# describe the values, so the README gives them in English while the ship skill is Polish.
 def test_the_result_block_matches_the_contract():
     ship = (PLUGIN / "skills" / "ship" / "SKILL.md").read_text()
-    assert result_block(README) == result_block(ship)
+    assert result_fields(result_block(README)) == result_fields(result_block(ship))
+    assert result_fields(result_block(README)) == ["STATUS", "METRICS", "ESCALATION", "SUMMARY"]
 
 
 def test_the_guard_section_links_guard_md():

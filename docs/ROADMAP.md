@@ -56,8 +56,8 @@ Documentation only, no behaviour change. The private consumer project stays unna
 
 - [x] Root `README.md` rewritten for a reader who has never seen the project under the
       display name *Spec-Driven Workflow*: one-line pitch, a mermaid diagram of the
-      pipeline and its three gates, the guard's refusal as a tested text block, *Why not
-      Spec Kit?* (it plans, this plugin enforces), quickstart, badges (CI, licence,
+      pipeline and its three gates, the guard's refusal as a tested text block, *What sets
+      it apart* (other tools plan, this plugin enforces; no competitor named), quickstart, badges (CI, licence,
       version), a *What's deliberately not here* section, links to `GUARD.md`, the
       metrics and the install guide. The claim is the command guard and the checked
       metrics, not hook-enforced gates as such — SpecForge and gate-oriented-sdd enforce

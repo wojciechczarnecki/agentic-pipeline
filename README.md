@@ -45,20 +45,15 @@ and a `pre-push` hook stand behind it. Its three layers, the commands it stops t
 string `deny` rule lets through, and its known limits are in
 [plugin/docs/GUARD.md](plugin/docs/GUARD.md).
 
-## Why not Spec Kit?
+## What sets it apart
 
-Spec Kit plans and this plugin enforces. Spec Kit takes a feature through slash commands
-from a constitution and a specification to a plan, tasks and the implementation, and its
-README describes no mechanism that refuses a shell command such as a push to `main`
-(checked 2026-09-21).
-
-The claim here is narrower than "gates": it is the command guard and the checked metrics.
-Approval gates enforced with hooks are not unique — SpecForge and gate-oriented-sdd enforce
-them too, but neither guards shell commands (checked 2026-09-21). What this plugin adds is
-an agent that cannot push to `main` or merge its own pull request, and — once you list them
-in `.claude/workflow.json` — cannot touch your production hosts or run an Alembic migration
-against a non-local database; plus a `metrics:` block per spec that a script refuses to
-accept when a stage left it incomplete.
+Most spec-driven tools plan: they turn an idea into a specification, a plan and tasks, and
+trust the agent from there. Some add approval gates. This plugin enforces: a command guard
+refuses the shell commands an agent should never run on its own — a push to `main`,
+merging its own pull request and, once you list them in `.claude/workflow.json`, touching
+your production hosts or running an Alembic migration against a non-local database — and
+every spec carries a `metrics:` block that a script rejects when a stage left it
+incomplete.
 
 ## Requirements & opinions
 

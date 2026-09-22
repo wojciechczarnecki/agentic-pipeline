@@ -116,15 +116,14 @@ reviewer does not approve a plan with a dependency or a migration nobody accepte
 
 ### The `RESULT` contract
 
-Every stage agent launched by `/pipeline:ship` ends its reply with this block (the skills
-are still in Polish, so the block is quoted as the agents emit it):
+Every stage agent launched by `/pipeline:ship` ends its reply with this block:
 
 ```
 RESULT: DONE | ESCALATE
-STATUS: <status speca po etapie>
-METRICS: <klucz=wartość; …>
-ESCALATION: <tylko przy ESCALATE — problem; opcje (≤ 4); rekomendacja; dlaczego>
-SUMMARY: <≤ 10 linii; dla reviewer/report — tabela znalezisk: id | waga | jedno zdanie>
+STATUS: <spec status after the stage>
+METRICS: <key=value; …>
+ESCALATION: <only with ESCALATE — problem; options (≤ 4); recommendation; why>
+SUMMARY: <≤ 10 lines; for reviewer/report — findings table: id | severity | one sentence>
 ```
 
 `STATUS` is the spec status after the stage; `METRICS` its `key=value` pairs; `ESCALATION`
@@ -134,7 +133,7 @@ appears only with `ESCALATE` — the problem, up to four options, a recommendati
 
 A stage agent cannot ask the owner: wherever a skill says to ask or to STOP, it ends with a
 `RESULT: ESCALATE` block. The orchestrator turns that into a question for the owner and
-records the decision in PLAN.md → `## Decyzje właściciela`.
+records the decision in the owner decisions section of PLAN.md.
 
 ### Escalation triggers
 
