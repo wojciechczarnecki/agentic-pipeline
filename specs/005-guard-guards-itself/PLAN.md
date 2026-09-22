@@ -642,6 +642,13 @@ Afterwards the real `claude plugin list` still showed `pipeline@wcz-tools`, 0.3.
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-22, final review (gate 2), findings: accepted F1, F2, F3, F4, F5, F6, F7, F12;
+  rejected F8, F9, F10, F11, F13, F14.
+- 2026-09-22, final review (gate 2), the `stable` and plugin-detach `deny` rules removed
+  from `.claude/settings.json` in step 11 — this repo's session runs the released 0.3.4
+  guard until 0.4.0 is installed, so between merge and install nothing local blocks them:
+  remove them now as planned; the short gap is accepted.
+
 ## Review log
 
 ### 2026-09-22 — /pipeline:plan-review (inside /pipeline:ship)
