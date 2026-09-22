@@ -110,21 +110,26 @@ before the first minor ships.
 ## Stage 8 — English everywhere, Polish on request
 
 The repository becomes English end to end; a consumer with `"language": "pl"` keeps Polish
-specs, plans, reports and questions. Two releases, in this order — translating first would
-silently switch a Polish consumer's plans to English, since today only `idea` names
-`language`. Each one goes through the pre-release canary on a Polish consumer before
-`stable` moves.
+specs, plans, reports and project documents. `language` governs what the pipeline writes
+into the repository — specs, plans, project documents, PR descriptions; commit messages,
+PR titles and branch names are English regardless; the conversation in the terminal
+(questions, escalations, summaries) follows the Claude Code session language, not
+`language`. Two releases, in this order — translating first would silently switch a
+Polish consumer's plans to English, since today only `idea` names `language`. Each one
+goes through the pre-release canary on a Polish consumer before `stable` moves.
 
-- [ ] 0.5.0: language made explicit, skills still Polish — every stage writes artefacts,
-      questions, escalations and PR bodies in `language`; `SPEC`/`PLAN` templates per
-      language (`*.en.md`, `*.pl.md`) with a structure-parity test; section anchors and
-      finding severities independent of language, with a fallback for older specs;
-      default `language` becomes `en`; English templates for `/pipeline:init`
-      (`templates/CLAUDE.md`, `templates/docs/*`), which today lands Polish documents
-      even with `"language": "en"` — until then an English consumer translates them after
-      `init` and states the language in its own `CLAUDE.md`
+- [ ] 0.5.0: language made explicit, skills still Polish — every stage writes its
+      artefacts and PR bodies in `language`, commits and PR titles in English, and talks
+      to the owner in the session language; spec and plan always in the current
+      `language`; `SPEC`/`PLAN` templates per language (`*.en.md`, `*.pl.md`) with a
+      structure-parity test; section headings mapped across languages and finding
+      severities as fixed English tokens, so older specs keep working; `language`
+      limited to `en`/`pl`, default `en`; `/pipeline:init` asks for the language first
+      and generates `CLAUDE.md` and `docs/*` in it from per-language templates
+      (`specs/006-language-made-explicit/SPEC.md`)
 - [ ] 0.6.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
-      is, since 0.3.4), with an eval case on `"language": "pl"`; Polish survives only in the `*.pl.md` templates
+      is, since 0.3.4), with an eval case on `"language": "pl"`; Polish survives only in the
+      `*.pl.md` templates — SPEC, PLAN and the `init` documents
 
 ## Stage 6 — A better pipeline
 
