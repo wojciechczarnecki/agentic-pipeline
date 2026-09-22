@@ -637,6 +637,12 @@ Drafting spent 1.9948 of its ≤ $4 share.
 
 _(added by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-22 · implement (step 7 budget checkpoint) · The projection with the one-run margin
+  is $17.99, above the $15 ceiling (spent $3.78; Σ per full case run $1.78). How to proceed?
+  · **Decision: the two gate runs count toward the 5-run measurement** — the probe + 2 more
+  runs per case + gate run 1 + gate run 2 give 5 runs on unchanged files (projection $14.42
+  with the margin). If any run fails, stop and escalate again (fallback: raise the ceiling).
+
 ## Review log
 
 ### 2026-09-22 — /pipeline:plan-review (inside /pipeline:ship)
