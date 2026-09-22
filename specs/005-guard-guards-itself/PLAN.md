@@ -613,13 +613,29 @@ stub `measure/stub/claude` = `CLAUDE_CONFIG_DIR=<S>/config exec
 Afterwards the real `claude plugin list` still showed `pipeline@wcz-tools`, 0.3.4, scope
 `user`, enabled. No model rewrote a command. Both candidates added to the table.
 
+#### End-to-end (2026-09-22, after step 11, hook fed JSON on stdin from the repository root)
+
+| # | command | env | exit | reason |
+|---|---|---|---|---|
+| 1 | `git push origin HEAD:stable` | — | 2 | `pushing to stable: stable is listed in protectedBranches …` |
+| 2 | `git push origin feat/005-guard-guards-itself` | — | 0 | — |
+| 3 | `claude plugins uninstall pipeline@wcz-tools` | — | 2 | `the pipeline plugin's install is the owner's to change …` |
+| 4 | `claude plugin marketplace rm wcz-tools` | — | 2 | same |
+| 5 | `claude plugin update pipeline@wcz-tools --scope user` | — | 0 | — |
+| 6 | `sed -i s/a/b/ plugin/bin/guard.py` | `CLAUDE_PLUGIN_ROOT=$PWD/plugin` | 2 | `guardrail files (… this plugin's directory and its install state) …` |
+| 6b | `cp plugin/templates/pre-push /tmp/pre-push-copy` | `CLAUDE_PLUGIN_ROOT=$PWD/plugin` | 0 | — (first run: exit 2 — fixed, deviation D4) |
+| 7 | `gh api -X PATCH repos/o/r -f default_branch=x` | — | 2 | `changing the repository's settings is the owner's call` |
+| 7b | `gh api -X POST repos/o/r/issues/1/comments -f body=x` | — | 0 | — |
+| 8 | `python3 plugin/bin/workflow_config.py --check` | — | 0 | `workflow.json: …/.claude/workflow.json` |
+| 9 | `bash scripts/check.sh` | — | 0 | validate plugin + marketplace passed, ruff, black, 1430 passed — ALL GREEN |
+
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) done, results recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md` updated
-- [ ] spec status: `implemented`
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) done, results recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md` updated
+- [x] spec status: `implemented`
 - [ ] after gate 2: green eval receipt as the PR's last commit; canary checklist in the PR
 
 ## Owner decisions
@@ -690,7 +706,28 @@ migration escalation.
 
 ## Deviations
 
-_(filled by /pipeline:implement — every deviation from the plan with its rationale)_
+- **D1 (step 2)** — a `gh api` write on a configured channel ref is refused by its own
+  check (`Rules.channel_ref`, exact names) with a message naming the branch, instead of
+  widening the 0.3.4 `sensitive` regex, whose text says "main". Why: AC5 — a refusal on a
+  configured branch names that branch.
+- **D2 (step 4)** — `redirect_writes` also returns the positions of io numbers (the `2`
+  of `2>/dev/null`), which the lexer leaves among the words; the path rule drops them.
+  Why: otherwise `cp x <root>/bin/guard.py 2>/dev/null` reads `2` as the destination and
+  passes.
+- **D3 (step 4)** — for `rm`, `rmdir`, `unlink`, `shred` the own-files check runs after
+  the removal rule. Why: `test_guard.py` (frozen) expects `rm -rf ~` to be refused with
+  the 0.3.4 reason "outside the project and scratch"; the path check would have answered
+  first with "guardrail files" (it contains `~/.claude/plugins/…`).
+- **D4 (end-to-end 6b)** — the 0.3.4 pattern's plugin-directory part now applies only to
+  the destination of `cp`/`install`/`ln`; the settings files stay guarded in every
+  argument position. Why: E2E check 6b (`cp plugin/templates/pre-push /tmp/…` in a
+  `--plugin-dir` clone inside the project, expected exit 0 per B1) was refused by the
+  unchanged pattern, which counted the `cp` source. The path rule already covers every
+  write into that directory; new test
+  `test_copying_out_of_a_plugin_dir_clone_inside_the_project_passes`.
+- **D5 (step 5)** — `gh api` with a method built from variables (`-X $M`) is refused with
+  its own message ("a method built from variables cannot be verified") rather than being
+  judged as both a write and a `DELETE`; the outcome — refused — is the same.
 
 ## Final review
 
