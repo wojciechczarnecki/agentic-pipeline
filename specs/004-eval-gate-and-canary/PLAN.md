@@ -646,6 +646,13 @@ _(added by /pipeline:ship or a stage on escalation: date, stage, question, decis
   · **Decision: the two gate runs count toward the 5-run measurement** — the probe + 2 more
   runs per case + gate run 1 + gate run 2 give 5 runs on unchanged files (projection $14.42
   with the margin). If any run fails, stop and escalate again (fallback: raise the ceiling).
+- 2026-09-22 · implement (step 8 measurement) · Of the 8 step-8 runs, 7 passed; run 2 of
+  `final-review-ignores-false-positive` ended after 8 s with `exit 1: You've hit your session
+  limit` for both the run and the judge ($0.0810, no verdict). Does it count as a failure?
+  · **Decision: an infrastructure abort, not a skill failure** — record it in the ledger as
+  aborted by the usage limit, re-run that one run (~$0.6) and continue; it does not trigger
+  `runs: 3`. The step-8 results were left in the orchestrator session's scratchpad
+  (`.../scratchpad/eval/measure-*.json`) before the stage agent was cut off by the same limit.
 
 ## Review log
 

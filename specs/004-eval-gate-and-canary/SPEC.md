@@ -7,7 +7,7 @@ stage_history:
   - "plan-approved — 2026-09-22"
 metrics:
   started_at: 2026-09-22T11:21
-  escalations: 1
+  escalations: 2
   plan_steps: 12
   plan_review_blockers: 0
   plan_review_majors: 2
