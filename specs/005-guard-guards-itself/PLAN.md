@@ -497,7 +497,7 @@ way.)
       with the key only warns. Then `### Added` bullets per rule.
       Verification: `uv run pytest -q plugin/tests/test_readme.py && bash scripts/check.sh`
 
-- [ ] 11. **This repository's configuration — last implementation step** — files:
+- [x] 11. **This repository's configuration — last implementation step** — files:
       `.claude/workflow.json`, `.claude/settings.json`, `tests/test_documents.py`.
       With the Edit tool (both are on the `ask` list; if the permission prompt cannot be
       answered in this session, escalate with the exact diff — do not work around it):

@@ -468,3 +468,12 @@ def test_claude_md_and_conventions_name_protected_branches(doc):
         "the guard protects `main`/`master` only",
     ]:
         assert stale not in text, stale
+
+
+# SPEC 005, AC19: the guard (0.4.0) keeps agents off `stable` and off detaching the plugin,
+# so only the rules it does not cover stay in `deny`.
+def test_repository_settings_leave_stable_and_detaching_to_the_guard():
+    settings = json.loads(read(".claude/settings.json"))
+    assert settings["permissions"]["deny"] == ["Bash(gh pr merge*)", "Bash(claude plugin enable*)"]
+    workflow = json.loads(read(".claude/workflow.json"))
+    assert workflow["protectedBranches"] == ["stable"]

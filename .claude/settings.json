@@ -46,17 +46,7 @@
     ],
     "deny": [
       "Bash(gh pr merge*)",
-      "Bash(git push *:stable*)",
-      "Bash(git push */heads/stable*)",
-      "Bash(git push * stable)",
-      "Bash(git push * stable *)",
-      "Bash(git push * 'stable'*)",
-      "Bash(git push * \"stable\"*)",
-      "Bash(claude plugin disable*)",
-      "Bash(claude plugin enable*)",
-      "Bash(claude plugin uninstall*)",
-      "Bash(claude plugin remove*)",
-      "Bash(claude plugin marketplace remove*)"
+      "Bash(claude plugin enable*)"
     ]
   }
 }
