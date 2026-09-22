@@ -347,7 +347,7 @@ itself, so the fingerprint of step 9 stays valid.
       Automatic verification: the two pytest commands of step 1, then
       `claude plugin eval plugin/ … --case plan-review-escalates-on-dependency --runs 1 --model sonnet --max-cost-usd 1 --json <scratchpad>/eval/draft-plan-review-1.json`
       (flags as in step 1) → ledger row, same FAIL triage.
-- [ ] 3. Case `final-review-finds-planted-defect` — files:
+- [x] 3. Case `final-review-finds-planted-defect` — files:
       `plugin/evals/final-review-finds-planted-defect/{case.yaml,scaffold.sh,graders/criteria.md}`,
       `plugin/tests/test_eval_cases.py`. Assertions: status `implemented`, `--check` exit
       0, every PLAN checkbox ticked; `git fetch origin` succeeds in the fixture and
@@ -574,6 +574,7 @@ call, including aborted ones)_
 |---|------|------|---------|-------|------|--------|------------------|----------|-----------|------|
 | 1 | 2026-09-22 | 1 | implement-escalates-on-failing-test | sonnet | 1 | 1 | 1 | 0.2738 | 0.2738 | draft; 19 turns; judge PASS×3 — escalated with options, test and `pricing.py` untouched |
 | 2 | 2026-09-22 | 2 | plan-review-escalates-on-dependency | sonnet | 1 | 1 | 1 | 0.4045 | 0.6783 | draft; 26 turns; judge PASS×3 — status kept `plan-draft`, PyYAML escalated with 3 options |
+| 3 | 2026-09-22 | 3 | final-review-finds-planted-defect | sonnet | 1 | 1 | 1.5 | 0.5438 | 1.2221 | draft; 23 turns, 110 s; judge PASS×3 — F1 blocker at `shop/shipping.py:6`, `>` vs `>=` |
 
 ## Definition of Done
 
@@ -662,6 +663,9 @@ _(filled in by /pipeline:implement — every deviation from the plan with its re
   `skippedPaidGraders`, `turns`; `suite.modelOverride` names a `--model` override. The
   LLM grader judges the **last message** (`graders[].config.focus: last_message`, three
   judge votes), so the criteria ask for what a final message shows.
+- D3 (step 3): the defect case's criteria describe the skill's Polish weight label for
+  "worth fixing" by its ASCII prefix (`warto popraw`) instead of quoting it: the new-case
+  test forbids every Polish letter in the case directory, and the label ends in one.
 
 ## Final review
 
