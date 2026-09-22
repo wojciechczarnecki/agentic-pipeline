@@ -1,6 +1,6 @@
 {
   "name": "wcz-tools",
-  "description": "Agent tooling marketplace — the pipeline plugin with a full feature workflow.",
+  "description": "Spec-Driven Workflow: agent tooling marketplace — the pipeline plugin with a full feature workflow.",
   "owner": {
     "name": "Wojciech Czarnecki"
   },
@@ -8,7 +8,7 @@
     {
       "name": "pipeline",
       "source": "./plugin",
-      "description": "Agentic feature pipeline: idea → plan → plan review → implementation → final review → PR."
+      "description": "Spec-Driven Workflow — an agentic feature pipeline: idea → plan → plan review → implementation → final review → PR."
     }
   ]
 }

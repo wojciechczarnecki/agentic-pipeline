@@ -13,6 +13,7 @@ import workflow_metrics  # noqa: E402
 
 README = (PLUGIN / "README.md").read_text()
 CHANGELOG = (PLUGIN / "CHANGELOG.md").read_text()
+INSTALL = (PLUGIN / "docs" / "INSTALL.md").read_text()
 
 
 def flatten(data: dict, prefix: str = "") -> dict[str, object]:
@@ -50,7 +51,7 @@ def test_every_schema_key_reaches_the_table():
 
 
 def test_installation_covers_a_local_path_and_a_repository():
-    section = README.split("## Installation", 1)[1].split("\n## ", 1)[0]
+    section = install_guide()
     assert "--plugin-dir" in section
     assert "claude plugin marketplace add" in section
     assert "/plugin install pipeline@" in section
@@ -69,8 +70,8 @@ def test_metrics_block_lists_every_counter():
         assert f"{counter}:" in section, counter
 
 
-def installation_section() -> str:
-    return README.split("## Installation", 1)[1].split("\n## ", 1)[0]
+def install_guide() -> str:
+    return INSTALL
 
 
 # The marketplace `ref` is global per machine and `install`/`update` take no version, so a
@@ -78,7 +79,7 @@ def installation_section() -> str:
 # (docs/DECISIONS.md, 2026-09-21). The channel, the user scope and the update path are
 # what replaced it.
 def test_installation_follows_the_stable_channel():
-    section = installation_section()
+    section = install_guide()
     assert '"ref": "stable"' in section
     assert "#stable" in section
     assert "main" in section
@@ -86,7 +87,7 @@ def test_installation_follows_the_stable_channel():
 
 
 def test_installation_defaults_to_the_user_scope():
-    section = installation_section()
+    section = install_guide()
     assert "--scope user" in section
     assert "version isolation" not in section, "project scope is not an offered option"
     assert "claude plugin marketplace update" in section
@@ -94,7 +95,7 @@ def test_installation_defaults_to_the_user_scope():
 
 
 def test_installation_explains_the_one_time_migration():
-    section = installation_section()
+    section = install_guide()
     assert "marketplace remove" in section
     assert "marketplace add" in section
     assert "known_marketplaces.json" in section
@@ -102,7 +103,7 @@ def test_installation_explains_the_one_time_migration():
 
 
 def test_installation_explains_opting_a_repository_out():
-    section = installation_section()
+    section = install_guide()
     assert '"pipeline@wcz-tools": false' in section
 
 
@@ -110,10 +111,65 @@ def test_installation_explains_opting_a_repository_out():
 # repository install a `--scope project` duplicate beside the user install, stuck on its
 # old version (docs/DECISIONS.md, 2026-09-21).
 def test_installation_does_not_enable_the_plugin_in_the_project():
-    section = installation_section()
+    section = install_guide()
     assert '"pipeline@wcz-tools": true' not in section
     assert "claude plugin uninstall pipeline@<name> --scope project" in section
     assert "git checkout -- .claude/settings.json" in section
+
+
+def test_install_guide_covers_verification_and_init():
+    guide = install_guide()
+    for token in [
+        "claude plugin list",
+        "/pipeline:init",
+        "--permission-mode bypassPermissions",
+        "extraKnownMarketplaces",
+    ]:
+        assert token in guide, token
+
+
+# A deliberate copy of `command_lines` in tests/test_documents.py (no cross-directory import
+# of test modules, PLAN 003 Approach): a change to how commands are counted goes into both.
+def command_count(section: str) -> int:
+    count, fenced = 0, False
+    for line in section.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        command = re.sub(r"\s+#.*$", "", line).strip()
+        if fenced and command and not command.startswith("#"):
+            count += 1 + len(re.findall(r"&&|\|\||;", command))
+    return count
+
+
+def test_command_count_counts_joined_commands():
+    block = "```bash\n# a comment\na && b\nc; d || e   # trailing; comment\n\n```\nf && g\n"
+    assert command_count(block) == 5
+
+
+# The README keeps the shortest path in; everything else is behind the link (SPEC 003, AC10).
+def test_the_installation_section_is_short_and_links_the_guide():
+    section = README.split("## Installation", 1)[1].split("\n## ", 1)[0]
+    assert command_count(section) <= 3
+    assert "](docs/INSTALL.md)" in section
+    commands = fenced_commands(section)
+    for token in ["#stable", "--scope user", "/pipeline:init"]:
+        assert any(token in command for command in commands), (token, commands)
+    # every command of the short section is the guide's own, so the two cannot drift apart
+    missing = [command for command in commands if command not in INSTALL]
+    assert not missing, missing
+
+
+def fenced_commands(section: str) -> list[str]:
+    commands, fenced = [], False
+    for line in section.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        command = re.sub(r"\s+#.*$", "", line).strip()
+        if fenced and command and not command.startswith("#"):
+            commands.append(command)
+    return commands
 
 
 def test_the_guard_section_states_the_migration_scope():
@@ -149,6 +205,7 @@ def strip_code(text: str) -> str:
     [
         "README.md",
         "docs/GUARD.md",
+        "docs/INSTALL.md",
         "CHANGELOG.md",
     ],
 )
@@ -156,6 +213,11 @@ def test_no_polish_outside_code(document):
     text = strip_code((PLUGIN / document).read_text())
     found = sorted(POLISH & set(text))
     assert not found, (document, found)
+
+
+def test_readme_has_no_polish_even_in_code():
+    found = sorted(POLISH & set((PLUGIN / "README.md").read_text()))
+    assert not found, found
 
 
 HEADINGS = [
@@ -193,11 +255,16 @@ def result_block(text: str) -> str:
     return text.split("```\nRESULT: DONE | ESCALATE", 1)[1].split("```", 1)[0]
 
 
-# The agents emit the block exactly as the ship skill defines it, so the README quotes it
-# byte for byte rather than translating it.
+def result_fields(block: str) -> list[str]:
+    return [line.split(":", 1)[0] for line in block.splitlines() if line.strip()]
+
+
+# The field names are the contract the orchestrator parses; the placeholders after them only
+# describe the values, so the README gives them in English while the ship skill is Polish.
 def test_the_result_block_matches_the_contract():
     ship = (PLUGIN / "skills" / "ship" / "SKILL.md").read_text()
-    assert result_block(README) == result_block(ship)
+    assert result_fields(result_block(README)) == result_fields(result_block(ship))
+    assert result_fields(result_block(README)) == ["STATUS", "METRICS", "ESCALATION", "SUMMARY"]
 
 
 def test_the_guard_section_links_guard_md():

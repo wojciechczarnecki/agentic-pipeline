@@ -27,7 +27,7 @@ fi
 
 run "ruff" uv run ruff check .
 run "black" uv run black --check --quiet .
-run "pytest" uv run pytest -q -p no:cacheprovider plugin/tests
+run "pytest" uv run pytest -q -p no:cacheprovider plugin/tests tests
 
 echo
 if [ "${#failed[@]}" -gt 0 ]; then
