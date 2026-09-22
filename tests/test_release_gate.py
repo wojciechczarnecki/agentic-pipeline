@@ -278,7 +278,7 @@ def test_a_model_override_named_in_the_result_counts_too(tmp_path):
     assert json.loads(out.read_text())["model"] == "haiku"
 
 
-def commit_with_runs(runs: int) -> str:
+def commit_with_runs(runs: int, tmp_path: Path) -> str:
     """A throwaway commit of HEAD whose first case asks for `runs` — no ref, no checkout."""
     case = sorted((ROOT / "plugin" / "evals").glob("*/case.yaml"))[0]
     text = case.read_text().replace("runs: 1", f"runs: {runs}")
@@ -289,21 +289,25 @@ def commit_with_runs(runs: int) -> str:
         ).stdout.strip()
 
     blob = git("hash-object", "-w", "--stdin", input=text)
-    index = ROOT / ".git" / "test-release-gate.index"
-    env = {**os.environ, "GIT_INDEX_FILE": str(index)}
-    try:
-        git("read-tree", "HEAD", env=env)
-        path = case.relative_to(ROOT).as_posix()
-        git("update-index", "--cacheinfo", f"100644,{blob},{path}", env=env)
-        tree = git("write-tree", env=env)
-    finally:
-        index.unlink(missing_ok=True)
-    return git("commit-tree", tree, "-p", "HEAD", "-m", "runs override test")
+    # CI has no git identity, and commit-tree needs one.
+    env = {
+        **os.environ,
+        "GIT_INDEX_FILE": str(tmp_path / "index"),
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+    git("read-tree", "HEAD", env=env)
+    path = case.relative_to(ROOT).as_posix()
+    git("update-index", "--cacheinfo", f"100644,{blob},{path}", env=env)
+    tree = git("write-tree", env=env)
+    return git("commit-tree", tree, "-p", "HEAD", "-m", "runs override test", env=env)
 
 
 # `eval.sh --runs 1` would measure a `runs: 3` case once — the bypass `--model` is refused for.
-def test_a_receipt_with_fewer_runs_than_case_yaml_is_rejected(receipt):
-    tagged = commit_with_runs(3)
+def test_a_receipt_with_fewer_runs_than_case_yaml_is_rejected(receipt, tmp_path):
+    tagged = commit_with_runs(3, tmp_path)
     receipt(fingerprint(tagged), green=True, runs=1)
     result = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
     assert result.returncode == 1
@@ -311,8 +315,8 @@ def test_a_receipt_with_fewer_runs_than_case_yaml_is_rejected(receipt):
     assert "fewer runs than case.yaml" in result.stderr
 
 
-def test_a_receipt_with_the_runs_case_yaml_asks_passes(receipt):
-    tagged = commit_with_runs(3)
+def test_a_receipt_with_the_runs_case_yaml_asks_passes(receipt, tmp_path):
+    tagged = commit_with_runs(3, tmp_path)
     receipt(fingerprint(tagged), green=True, runs=3)
     assert push("refs/tags/pipeline--v0.3.0", local_ref=tagged).returncode == 0
 
