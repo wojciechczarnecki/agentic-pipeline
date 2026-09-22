@@ -75,7 +75,7 @@ Documentation only, no behaviour change. The private consumer project stays unna
       (the release procedure in `docs/CONVENTIONS.md` and `CLAUDE.md` already includes the
       GitHub Release step)
 - [x] The GitHub *About* description and topics checked against the root `README.md`
-- [ ] Owner only, in the GitHub settings: the repository pinned on the owner's profile and
+- [x] Owner only, in the GitHub settings: the repository pinned on the owner's profile and
       a social preview image
 
 ## Stage 5 — A release gate to trust, and a guard that guards itself
