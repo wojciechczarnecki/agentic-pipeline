@@ -221,6 +221,38 @@ PLUGIN_STATE_UNREADABLE = (
 )
 CLAUDE_VALUE_OPTIONS = {"-s", "--scope"}
 DEFAULT_PLUGIN_NAME = "pipeline"
+# Writes on the owner's ground: the DELETE ground without what agents legitimately write
+# (re-running CI, releases, deployments), plus settings only a write can change.
+API_OWNER_WRITES = {
+    **{
+        key: label
+        for key, label in API_OWNER_DELETIONS.items()
+        if key not in {"releases", "runs", "deployments"}
+    },
+    "topics": "repository topics",
+    "transfer": "the repository's ownership",
+    "permissions": "Actions permissions",
+}
+API_WRITE_METHODS = {"POST", "PUT", "PATCH"}
+API_VALUE_OPTIONS = {
+    "-X",
+    "--method",
+    "-H",
+    "--header",
+    "-f",
+    "-F",
+    "--field",
+    "--raw-field",
+    "--input",
+    "-q",
+    "--jq",
+    "-t",
+    "--template",
+    "--hostname",
+    "-p",
+    "--preview",
+    "--cache",
+}
 DEFAULT_WORKTREE_DIR = "../worktrees"
 GLOB_CHARACTERS = re.compile(r"[*?\[{]")
 WORKTREE_ADD_OPTIONS = {"-b", "-B", "--reason"}
@@ -1196,6 +1228,13 @@ def check_gh(args: list[str], rules: Rules) -> None:
         raise GuardError("deleting releases or workflow runs is the owner's call")
     if args[:1] == ["api"]:
         method = api_method(args[1:])
+        if "$" in method or "`" in method:
+            raise GuardError(
+                f"`gh api -X {method}`: a method built from variables cannot be verified; "
+                "spell the method out"
+            )
+        if method in API_WRITE_METHODS:
+            check_api_write(method, api_endpoint(args[1:]))
         if method == "DELETE":
             if any("$" in arg or "`" in arg for arg in args[1:]):
                 raise GuardError(
@@ -1335,6 +1374,52 @@ def read_json(path: Path) -> object:
         return json.loads(path.read_text())
     except (OSError, ValueError):
         return None
+
+
+# Only the endpoint is judged: field values (`-f body=…`) are data, so a comment that
+# mentions secrets is not a write to them.
+def check_api_write(method: str, endpoint: str | None) -> None:
+    if endpoint is None:
+        return
+    if "$" in endpoint or "`" in endpoint:
+        raise GuardError(
+            f"`gh api -X {method} {endpoint}`: a write on an endpoint built from variables "
+            "cannot be verified; spell the endpoint out"
+        )
+    owned = owner_write(endpoint)
+    if owned:
+        raise GuardError(f"`gh api -X {method} {endpoint}`: changing {owned} is the owner's call")
+
+
+def api_endpoint(args: list[str]) -> str | None:
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg in API_VALUE_OPTIONS:
+            index += 2
+            continue
+        if not arg.startswith("-"):
+            return arg
+        index += 1
+    return None
+
+
+# Unlike owner_deletion, the owner, repository and ref names are never scanned: a repository
+# named `pages`, or a branch `fix/hooks`, is not the ground it happens to spell.
+def owner_write(endpoint: str) -> str | None:
+    path = urlparse(endpoint).path if "://" in endpoint else endpoint.split("?", 1)[0]
+    parts = [part for part in path.split("/") if part]
+    for index, part in enumerate(parts):
+        width = {"repos": 3, "repositories": 2, "orgs": 2}.get(part)
+        if width is None or len(parts) < index + width:
+            continue
+        rest = parts[index + width :]
+        if not rest:
+            return f"the {'organization' if part == 'orgs' else 'repository'}'s settings"
+        if rest[:2] == ["git", "refs"]:
+            return None
+        return next((API_OWNER_WRITES[item] for item in rest if item in API_OWNER_WRITES), None)
+    return next((API_OWNER_WRITES[item] for item in parts if item in API_OWNER_WRITES), None)
 
 
 # What an API DELETE may not touch: the same ground the gh subcommands above keep for the

@@ -357,7 +357,7 @@ way.)
         on them.
       Verification: `uv run pytest -q plugin/tests/test_guard_own_files.py plugin/tests/test_guard.py`
 
-- [ ] 5. **Guard: `gh api` writes on the owner's ground** — files: `plugin/bin/guard.py`,
+- [x] 5. **Guard: `gh api` writes on the owner's ground** — files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard_api_writes.py` (new).
       Implement per Approach → `gh api` writes. Tests:
       - `test_a_write_on_the_owners_ground_is_refused` — every AC13 example verbatim, and
