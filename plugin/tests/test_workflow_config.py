@@ -168,3 +168,42 @@ def test_format_for_prints_nothing_without_a_config(repo):
 def test_format_for_ignores_paths_outside_the_project(repo):
     write_config(repo, {"format": [{"match": "*.py", "command": "black {file}"}]})
     assert run_cli(repo, "--format-for", "/etc/hosts").stdout.strip() == ""
+
+
+@pytest.mark.parametrize("value", [["stable"], []])
+def test_protected_branches_is_accepted(repo, value):
+    write_config(repo, {"protectedBranches": value})
+    result = run_cli(repo, "--check")
+    assert result.returncode == 0, result.stderr
+    assert workflow_config.load(repo).get("protectedBranches") == value
+
+
+def test_protected_branches_is_absent_unless_configured(repo):
+    assert "protectedBranches" not in workflow_config.defaults()
+    assert workflow_config.load(repo).get("protectedBranches") is None
+
+
+@pytest.mark.parametrize(
+    "value, fragment",
+    [
+        ("stable", "`protectedBranches` has to be list"),
+        (["stable", 1], "`protectedBranches[1]` has to be str"),
+    ],
+)
+def test_protected_branches_must_be_a_list_of_strings(repo, value, fragment):
+    write_config(repo, {"protectedBranches": value})
+    result = run_cli(repo, "--check")
+    assert result.returncode == 1
+    assert fragment in result.stderr
+
+
+def test_load_sections_drops_only_a_bad_protected_branches(repo):
+    write_config(
+        repo,
+        {"protectedBranches": "stable", "language": "en", "production": {"hosts": ["x.test"]}},
+    )
+    config, problems = workflow_config.load_sections(repo)
+    assert problems == ["`protectedBranches` has to be list"]
+    assert config.get("protectedBranches") is None
+    assert config.get("language") == "en"
+    assert config.get("production.hosts") == ["x.test"]

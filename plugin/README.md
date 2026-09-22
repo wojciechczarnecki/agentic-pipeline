@@ -59,6 +59,7 @@ the others keep configuring the rules — a typo in one key does not disarm the 
 | `docs.specsDir` | `"specs"` | the specs directory |
 | `migrations` | no section | `{ "command": <program>, "localHosts": [...] }`; no section = the migration module is inactive |
 | `gitHooksDir` | `"scripts/git-hooks"` | the git hooks directory (an existing hook is protected from shell edits; named in the enable instruction) |
+| `protectedBranches` | absent | extra branch names the guard treats exactly like `main`/`master` (which stay protected whatever the list says); exact names, no patterns; binds agent sessions only — the `pre-push` hook and `/pipeline:init` do not read or write it |
 | `language` | `"pl"` | the language of the documents the skills generate and write |
 
 Full example: `templates/workflow.example.json`.

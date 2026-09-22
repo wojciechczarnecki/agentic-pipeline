@@ -243,7 +243,7 @@ way.)
 
 ## Steps
 
-- [ ] 1. **`protectedBranches` in the schema, the README table and the example** — files:
+- [x] 1. **`protectedBranches` in the schema, the README table and the example** — files:
       `plugin/bin/workflow_config.py`, `plugin/tests/test_workflow_config.py`,
       `plugin/README.md` (configuration table only), `plugin/templates/workflow.example.json`.
       `SCHEMA["protectedBranches"] = list`; not in `defaults()`. The README row and the

@@ -25,6 +25,7 @@ SCHEMA: dict[str, object] = {
     },
     "migrations": {"command": str, "localHosts": list},
     "gitHooksDir": str,
+    "protectedBranches": list,
     "language": str,
 }
 
