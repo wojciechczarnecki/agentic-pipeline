@@ -261,7 +261,7 @@ way.)
       kept, one problem reported).
       Verification: `uv run pytest -q plugin/tests/test_workflow_config.py plugin/tests/test_readme.py plugin/tests/test_init_templates.py`
 
-- [ ] 2. **Guard: configured protected branches** — files: `plugin/bin/guard.py`,
+- [x] 2. **Guard: configured protected branches** — files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard_protected_branches.py` (new).
       Implement per Approach → Protected branches. New tests (fixture: `make_repo` with
       `{**WORKFLOW, "protectedBranches": ["stable"]}`, a `stable` branch created, switched

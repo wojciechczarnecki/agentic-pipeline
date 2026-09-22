@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import workflow_config  # noqa: E402
 
-PROTECTED_BRANCHES = {"main", "master"}
+DEFAULT_PROTECTED = {"main", "master"}
 DB_COMMANDS = {"upgrade", "downgrade", "stamp", "revision", "current", "check"}
 NO_CONFIG = (
     "pipeline guard: no .claude/workflow.json found, so only the universal rules apply "
@@ -113,6 +113,10 @@ DOCKER_OPTIONS = {
 }
 BRANCH_REWRITE = {"-d", "-D", "--delete", "-m", "-M", "--move", "-f", "--force"}
 MAIN_OWNER_ONLY = "main changes only through a PR merged by the owner; work on a feature branch"
+CHANNEL_OWNER_ONLY = (
+    "{branch} is listed in protectedBranches (.claude/workflow.json) and only the owner "
+    "changes it; work on a feature branch"
+)
 HOOKS_PATH = "changing core.hooksPath would switch off the pre-push guard"
 UNRESOLVED_REFSPEC = (
     "cannot verify a push refspec built from variables or command substitution: {}; "
@@ -223,6 +227,18 @@ class Rules:
                 f"`{program}` operates production; ask the owner to run it"
             )
         self.worktree_dir = config.get("worktree.dir") or DEFAULT_WORKTREE_DIR
+        # `git branch --show-current` prints "" on a detached HEAD, so an empty name would
+        # protect every detached checkout
+        configured = config.get("protectedBranches") or []
+        self.protected_branches = DEFAULT_PROTECTED | {name for name in configured if name}
+        channels = sorted(self.protected_branches - DEFAULT_PROTECTED)
+        self.channel_ref = (
+            re.compile(
+                r"refs/heads/(" + "|".join(re.escape(name) for name in channels) + r")(?=$|[/?#])"
+            )
+            if channels
+            else None
+        )
         self.protected_file = protected_file_pattern(config, env, cwd)
         self.git_hooks = git_hooks_pattern(config)
         migrations = config.get("migrations") or {}
@@ -509,7 +525,7 @@ class Analyzer:
         if program == "git":
             self.git(args)
         elif program == "gh":
-            check_gh(args)
+            check_gh(args, self.rules)
         elif program in REMOVAL_PROGRAMS:
             self.removal(args)
         elif program == "find":
@@ -623,8 +639,9 @@ class Analyzer:
         if sub == "clean" and any(is_force_flag(arg) for arg in sub_args):
             raise GuardError("`git clean -f` deletes untracked files irreversibly; ask the owner")
         if sub == "branch" and BRANCH_REWRITE & set(sub_args):
-            if PROTECTED_BRANCHES & set(sub_args):
-                raise GuardError("deleting, renaming or resetting main is off limits")
+            hit = self.rules.protected_branches & set(sub_args)
+            if hit:
+                raise GuardError(f"deleting, renaming or resetting {shown(hit)} is off limits")
         if sub in {"checkout", "restore"}:
             self.reject_guardrail_targets(
                 [arg for arg in sub_args if not arg.startswith("-")], check_hooks=True
@@ -632,19 +649,20 @@ class Analyzer:
         if sub == "worktree" and sub_args[:1] == ["add"]:
             self.worktree_add(sub_args[1:])
         if sub in {"update-ref", "symbolic-ref"}:
-            if any(ref_name(arg) in PROTECTED_BRANCHES for arg in sub_args):
-                raise GuardError(MAIN_OWNER_ONLY)
+            hit = {ref_name(arg) for arg in sub_args} & self.rules.protected_branches
+            if hit:
+                raise GuardError(owner_only(shown(hit)))
         if sub not in {"push", "commit", "merge", "rebase", "cherry-pick", "revert", "am", "pull"}:
             return
         branch = git_output(cwd, "branch", "--show-current")
-        on_protected = branch in PROTECTED_BRANCHES
+        on_protected = branch in self.rules.protected_branches
         if sub == "push":
-            self.push(sub_args, on_protected)
+            self.push(sub_args, branch)
         elif on_protected and sub == "pull":
             if "--ff-only" not in sub_args:
-                raise GuardError("on main only `git pull --ff-only` is allowed")
+                raise GuardError(f"on {shown({branch})} only `git pull --ff-only` is allowed")
         elif on_protected:
-            raise GuardError(f"`git {sub}` on {branch}: {MAIN_OWNER_ONLY}")
+            raise GuardError(f"`git {sub}` on {branch}: {owner_only(branch)}")
 
     def config(self, args: list[str]) -> None:
         expanded = [expand_variables(arg, self.env) for arg in args]
@@ -665,7 +683,7 @@ class Analyzer:
     # before the command (never its own prefix assignments), an expansion splits on
     # whitespace, and an empty value disappears. Options are read after expansion too.
     # Whatever stays unresolved is refused, like a removal path.
-    def push(self, args: list[str], on_protected: bool) -> None:
+    def push(self, args: list[str], current: str) -> None:
         ifs = self.env.get("IFS")
         words = []
         for raw in args:
@@ -711,8 +729,12 @@ class Analyzer:
             raise GuardError("force and delete pushes are off limits; ask the owner")
         targets = {ref_name(spec) for spec in specs}
         pushes_current = not specs or bool(targets & {"HEAD", "@"})
-        if targets & PROTECTED_BRANCHES or (on_protected and pushes_current):
-            raise GuardError(f"pushing to main: {MAIN_OWNER_ONLY}")
+        hit = targets & self.rules.protected_branches
+        if pushes_current and current in self.rules.protected_branches:
+            hit.add(current)
+        if hit:
+            name = shown(hit)
+            raise GuardError(f"pushing to {name}: {owner_only(name)}")
 
     def worktree_add(self, args: list[str]) -> None:
         rest = skip_options(args, WORKTREE_ADD_OPTIONS)
@@ -1031,7 +1053,7 @@ def section_refusal(section: str) -> str | None:
     return None
 
 
-def check_gh(args: list[str]) -> None:
+def check_gh(args: list[str], rules: Rules) -> None:
     if args[:2] == ["pr", "merge"]:
         raise GuardError("merging a PR is the owner's gate")
     if args[:1] == ["repo"] and set(args[1:2]) & {"delete", "archive", "rename", "edit"}:
@@ -1062,6 +1084,12 @@ def check_gh(args: list[str]) -> None:
             raise GuardError(
                 "write calls to merges, branch protection or main are the owner's call"
             )
+        if rules.channel_ref and method != "GET":
+            for arg in args[1:]:
+                match = rules.channel_ref.search(arg)
+                if match:
+                    name = match.group(1)
+                    raise GuardError(f"write calls to {name}: {owner_only(name)}")
 
 
 # What an API DELETE may not touch: the same ground the gh subcommands above keep for the
@@ -1098,6 +1126,18 @@ def api_method(args: list[str]) -> str:
     field_options = ("-f", "-F", "--field", "--raw-field", "--input")
     has_fields = any(arg.split("=", 1)[0] in field_options for arg in args)
     return "POST" if has_fields else "GET"
+
+
+# main and master keep the 0.3.4 wording (a push to master names main); a configured
+# branch is named itself, the first in sorted order when several are hit
+def shown(branches: set[str]) -> str:
+    return "main" if branches & DEFAULT_PROTECTED else sorted(branches)[0]
+
+
+def owner_only(branch: str) -> str:
+    return (
+        MAIN_OWNER_ONLY if branch in DEFAULT_PROTECTED else CHANNEL_OWNER_ONLY.format(branch=branch)
+    )
 
 
 def is_force_flag(arg: str) -> bool:
