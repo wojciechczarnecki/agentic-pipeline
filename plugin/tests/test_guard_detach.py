@@ -106,6 +106,7 @@ def test_removing_this_plugins_marketplace_is_refused(repo, config_dir, tmp_path
 def test_an_unresolved_marketplace_is_refused(repo, config_dir, command):
     reason = check(command, repo, config_dir)
     assert reason is not None, command
+    assert "built from variables" in reason, reason
 
 
 def test_a_marketplace_with_an_unreadable_install_state_is_refused(repo, config_dir):
@@ -114,7 +115,9 @@ def test_a_marketplace_with_an_unreadable_install_state_is_refused(repo, config_
     assert reason is not None
     assert "cannot read the plugin install state" in reason, reason
     write_install_state(config_dir, json.dumps({"plugins": []}))
-    assert check("claude plugin marketplace rm other-m", repo, config_dir) is not None
+    reason = check("claude plugin marketplace rm other-m", repo, config_dir)
+    assert reason is not None
+    assert "cannot read the plugin install state" in reason, reason
 
 
 @pytest.mark.parametrize(

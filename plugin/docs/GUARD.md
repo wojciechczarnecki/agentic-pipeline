@@ -60,8 +60,11 @@ Each layer covers ground the one before it cannot, and each has its own way arou
   these with `--help`, pass. A shell write (`sed -i`, `tee`, `mv`, `cp`, `truncate`,
   `chmod`, `ln`, `dd`, a redirect, `git checkout`/`restore`) is judged by the real path it
   writes, so `cd`, `..`, known variables and symlinks do not hide the plugin directory;
-  `cp`, `install` and `ln` write only their destination, so copying templates *out* of
-  the plugin passes, and reading passes.
+  `cp`, `install` and `ln` write only their destination (`-t` also at the end of a
+  cluster such as `-rt`, and any prefix of `--target-directory`), so copying templates
+  *out* of the plugin passes, and reading passes; a copy into a directory is judged at
+  the path it lands on, and a recursive `cp` of a tree that would merge over the plugin
+  is refused. `sed --in-place` counts as `sed -i`.
 - **Runs:** before every Bash tool call, in the session that loaded the plugin, on plain
   `python3` with no network. It sees through `bash -c`, `eval`, `$(...)`, backticks,
   heredoc bodies that expand, wrappers such as `env`, `command`, `nohup`, `timeout`,
@@ -93,7 +96,12 @@ Each layer covers ground the one before it cannot, and each has its own way arou
   part after `repos/<o>/<r>`, `repositories/<id>` or `orgs/<o>` — field values are data,
   and a repository named `pages` is not the Pages site; `git/refs` is left to the protected
   branch rule. Workflow runs (re-running CI), releases, deployments, comments, labels,
-  issues and pulls stay open. A write endpoint built from variables is refused.
+  issues and pulls stay open. A write endpoint built from variables is refused. Flags are
+  read the way `gh` reads them, so an attached value (`-XPATCH`, `-X=PATCH`,
+  `-fkey=value`) or a flag at the end of a cluster (`-iXDELETE`) does not hide the method.
+  A branch in `protectedBranches` besides `main`/`master` has no no-bypass ruleset behind
+  it, so for it a write is refused also under `branches/<branch>` (rename, protection)
+  and when a `branch` field names it (a `contents` commit, `merge-upstream`).
 - **Bypassed by:** a session without the plugin (nothing reports its absence), the Edit
   and Write tools, a person at the terminal, and everything in [Known
   limits](#known-limits).

@@ -124,7 +124,8 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   the tag, so a release is not out until this push. The channel feeds every project
   with a `--scope user` install and the `stable` ruleset lets the owner's credentials
   push it to any commit, so an agent is kept off it by the guard (`protectedBranches` in
-  `.claude/workflow.json`), like tagging by agreement.
+  `.claude/workflow.json`), like tagging by agreement; the same guard keeps agents from
+  detaching the plugin (`claude plugin disable|uninstall` or removing its marketplace).
 - The owner then publishes the GitHub Release on the tag, with the matching
   `plugin/CHANGELOG.md` section (its body, without the heading) as the notes:
 

@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import NamedTuple
 from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -177,6 +178,9 @@ GUARDRAIL_FILES = (
 )
 # cp, install and ln write only their destination; their sources are reads
 DESTINATION_PROGRAMS = {"cp", "install", "ln"}
+# short options that take a value, and long ones that may take it as the next word
+COPY_VALUE_OPTIONS = {"cp": "S", "ln": "S", "install": "gmoS"}
+COPY_LONG_VALUE_OPTIONS = {"suffix", "mode", "owner", "group", "strip-program"}
 INSTALL_STATE_FILES = ("installed_plugins.json", "known_marketplaces.json")
 KEY_VALUE = re.compile(r"^-{0,2}[A-Za-z][A-Za-z0-9_-]*=")
 GIT_HOOKS = (
@@ -234,6 +238,7 @@ API_OWNER_WRITES = {
     "permissions": "Actions permissions",
 }
 API_WRITE_METHODS = {"POST", "PUT", "PATCH"}
+API_FIELD_OPTIONS = {"-f", "-F", "--field", "--raw-field", "--input"}
 API_VALUE_OPTIONS = {
     "-X",
     "--method",
@@ -261,6 +266,19 @@ warned_worktree_dirs: set[str] = set()
 
 class GuardError(Exception):
     pass
+
+
+class CopyOperands(NamedTuple):
+    destination: list[str]
+    sources: list[str]
+    into_directory: bool
+    recursive: bool
+
+
+class ApiOptions(NamedTuple):
+    method: str
+    fields: list[str]
+    endpoint: str | None
 
 
 class Rules:
@@ -654,14 +672,14 @@ class Analyzer:
             )
 
     def check_guardrail_files(self, program: str, args: list[str], redirects: list[str]) -> None:
-        in_place = program in {"sed", "perl"} and any(re.match(r"^-\w*i", arg) for arg in args)
+        in_place = edits_in_place(program, args)
         touched = [*redirects, *args] if program in MUTATING_PROGRAMS or in_place else redirects
         creates_hook = program == "chmod" and adds_execute_bit(args)
         # a cp/install/ln source inside the plugin directory is a read (/pipeline:init copies
         # templates out of it); the settings files stay guarded in every position
         reads = []
         if program in DESTINATION_PROGRAMS:
-            written = destination(args)
+            written = destination(program, args)
             reads = [arg for arg in args if arg not in written]
         self.reject_guardrail_targets(touched, check_hooks=not creates_hook, reads=reads)
 
@@ -681,14 +699,34 @@ class Analyzer:
                 raise GuardError(GIT_HOOKS)
 
     def check_own_files(self, program: str, args: list[str], redirects: list[str]) -> None:
-        in_place = program in {"sed", "perl"} and any(re.match(r"^-\w*i", arg) for arg in args)
         targets = list(redirects)
         if program in DESTINATION_PROGRAMS:
-            targets += destination(args)
-        elif program in MUTATING_PROGRAMS or program in REMOVAL_PROGRAMS or in_place:
+            operands = copy_operands(program, args)
+            targets += operands.destination
+            # a copy into a directory lands at dest/<source name>; a recursive one merges a
+            # whole tree there, so a tree holding the plugin counts too
+            landed = self.landing_paths(operands)
+            self.reject_own_files(landed, self.cwd, operands.recursive)
+        elif (
+            program in MUTATING_PROGRAMS
+            or program in REMOVAL_PROGRAMS
+            or edits_in_place(program, args)
+        ):
             targets += args
         contains = program == "mv" or program in REMOVAL_PROGRAMS
         self.reject_own_files(targets, self.cwd, contains)
+
+    def landing_paths(self, operands: CopyOperands) -> list[str]:
+        if not operands.destination or not operands.sources:
+            return []
+        directory = operands.destination[0]
+        expanded = expand_variables(directory, self.env)
+        if "$" in expanded or not expanded:
+            return []
+        if not (operands.into_directory or real_path(self.cwd, expanded).is_dir()):
+            return []
+        names = [os.path.basename(source.rstrip("/")) for source in operands.sources]
+        return [f"{directory.rstrip('/')}/{name}" for name in names if name]
 
     # A path-based check beside the pattern above: it resolves each written path, so a
     # relative path, `cd`, `..`, a known variable or a symlink cannot slip past it. With
@@ -1136,16 +1174,59 @@ def redirect_writes(tokens: list[str]) -> tuple[list[str], set[int]]:
     return files, io_numbers
 
 
-def destination(args: list[str]) -> list[str]:
-    for index, arg in enumerate(args):
-        if arg in {"-t", "--target-directory"} and index + 1 < len(args):
-            return [args[index + 1]]
-        if arg.startswith("--target-directory="):
-            return [arg.split("=", 1)[1]]
-        if arg.startswith("-t") and len(arg) > 2 and not arg.startswith("--"):
-            return [arg[2:]]
-    positionals = [arg for arg in args if not arg.startswith("-")]
-    return positionals[-1:]
+def destination(program: str, args: list[str]) -> list[str]:
+    return copy_operands(program, args).destination
+
+
+# cp, install and ln read like getopt: `-t` may close a cluster (`-rt DIR`, `-vtDIR`), a
+# long option may be any unambiguous prefix (`--target=DIR`), and an option value
+# (`install -m 755`) is not an operand.
+def copy_operands(program: str, args: list[str]) -> CopyOperands:
+    value_letters = COPY_VALUE_OPTIONS.get(program, "")
+    target, operands, recursive = None, [], False
+    index, options = 0, True
+    while index < len(args):
+        arg = args[index]
+        following = args[index + 1 : index + 2]
+        if not options or arg == "-" or not arg.startswith("-"):
+            operands.append(arg)
+        elif arg == "--":
+            options = False
+        elif arg.startswith("--"):
+            name, equals, value = arg[2:].partition("=")
+            if len(name) > 0 and "target-directory".startswith(name):
+                target = [value] if equals else following
+                index += 0 if equals else 1
+            elif name in COPY_LONG_VALUE_OPTIONS and not equals:
+                index += 1
+            recursive = recursive or (program == "cp" and name in {"recursive", "archive"})
+        else:
+            for position, char in enumerate(arg[1:], start=1):
+                if program == "cp" and char in "rRa":
+                    recursive = True
+                if char == "t" or char in value_letters:
+                    attached = arg[position + 1 :]
+                    if char == "t":
+                        target = [attached] if attached else following
+                    if not attached:
+                        index += 1
+                    break
+        index += 1
+    if target is not None:
+        return CopyOperands(target, operands, True, recursive)
+    return CopyOperands(operands[-1:], operands[:-1], False, recursive)
+
+
+def edits_in_place(program: str, args: list[str]) -> bool:
+    if program not in {"sed", "perl"}:
+        return False
+    for arg in args:
+        if re.match(r"^-\w*i", arg):
+            return True
+        name = arg.split("=", 1)[0]
+        if program == "sed" and len(name) > 2 and "--in-place".startswith(name):
+            return True
+    return False
 
 
 def real_path(base: Path, raw: str) -> Path:
@@ -1242,14 +1323,17 @@ def check_gh(args: list[str], rules: Rules) -> None:
     if args[:2] in (["release", "delete"], ["run", "delete"]):
         raise GuardError("deleting releases or workflow runs is the owner's call")
     if args[:1] == ["api"]:
-        method = api_method(args[1:])
+        options = api_options(args[1:])
+        method = options.method
         if "$" in method or "`" in method:
             raise GuardError(
                 f"`gh api -X {method}`: a method built from variables cannot be verified; "
                 "spell the method out"
             )
         if method in API_WRITE_METHODS:
-            check_api_write(method, api_endpoint(args[1:]))
+            check_api_write(method, options.endpoint)
+        if method != "GET":
+            check_channel_write(options, args[1:], rules)
         if method == "DELETE":
             if any("$" in arg or "`" in arg for arg in args[1:]):
                 raise GuardError(
@@ -1269,12 +1353,32 @@ def check_gh(args: list[str], rules: Rules) -> None:
             raise GuardError(
                 "write calls to merges, branch protection or main are the owner's call"
             )
-        if rules.channel_ref and method != "GET":
-            for arg in args[1:]:
-                match = rules.channel_ref.search(arg)
-                if match:
-                    name = match.group(1)
-                    raise GuardError(f"write calls to {name}: {owner_only(name)}")
+
+
+# A configured channel has no no-bypass ruleset behind it the way main has (the owner's
+# credentials pass), so the guard is its only layer: besides its ref, a write under
+# `branches/<channel>` (rename, protection) and a write whose `branch` field names it
+# (a contents commit, merge-upstream) are refused too.
+def check_channel_write(options: ApiOptions, args: list[str], rules: Rules) -> None:
+    channels = rules.protected_branches - DEFAULT_PROTECTED
+    if not channels:
+        return
+    hit = None
+    for arg in args:
+        match = rules.channel_ref.search(arg) if rules.channel_ref else None
+        if match:
+            hit = match.group(1)
+    path = (options.endpoint or "").split("?", 1)[0]
+    parts = [part for part in path.split("/") if part]
+    for index, part in enumerate(parts[:-1]):
+        if part == "branches" and parts[index + 1] in channels:
+            hit = parts[index + 1]
+    for field in options.fields:
+        key, _, value = field.partition("=")
+        if key == "branch" and value in channels:
+            hit = value
+    if hit:
+        raise GuardError(f"write calls to {hit}: {owner_only(hit)}")
 
 
 # Detaching is judged by target: this plugin (under any marketplace, or no plugin named at
@@ -1407,16 +1511,7 @@ def check_api_write(method: str, endpoint: str | None) -> None:
 
 
 def api_endpoint(args: list[str]) -> str | None:
-    index = 0
-    while index < len(args):
-        arg = args[index]
-        if arg in API_VALUE_OPTIONS:
-            index += 2
-            continue
-        if not arg.startswith("-"):
-            return arg
-        index += 1
-    return None
+    return api_options(args).endpoint
 
 
 # Unlike owner_deletion, the owner, repository and ref names are never scanned: a repository
@@ -1461,16 +1556,46 @@ def owner_deletion(arg: str) -> str | None:
 
 
 def api_method(args: list[str]) -> str:
-    for index, arg in enumerate(args):
-        if arg in {"-X", "--method"} and index + 1 < len(args):
-            return args[index + 1].upper()
-        if arg.startswith("--method="):
-            return arg.split("=", 1)[1].upper()
-        if arg.startswith("-X") and len(arg) > 2:
-            return arg[2:].upper()
-    field_options = ("-f", "-F", "--field", "--raw-field", "--input")
-    has_fields = any(arg.split("=", 1)[0] in field_options for arg in args)
-    return "POST" if has_fields else "GET"
+    return api_options(args).method
+
+
+# gh parses its flags with pflag, so a value may be attached (`-XPATCH`, `-fkey=v`,
+# `-X=PATCH`, `--method=PATCH`) and a short flag may close a cluster (`-iXDELETE`); read
+# the way gh reads them, a method or a field cannot hide behind the spelling.
+def api_options(args: list[str]) -> ApiOptions:
+    method, fields, endpoint = None, [], None
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        following = args[index + 1] if index + 1 < len(args) else None
+        name = value = None
+        if arg == "--":
+            if endpoint is None and following is not None:
+                endpoint = following
+            break
+        if arg.startswith("--"):
+            name, equals, attached = arg.partition("=")
+            if equals:
+                value = attached
+            elif name in API_VALUE_OPTIONS:
+                value, index = following, index + 1
+        elif arg.startswith("-") and len(arg) > 1:
+            for position, char in enumerate(arg[1:], start=1):
+                if f"-{char}" in API_VALUE_OPTIONS:
+                    name, attached = f"-{char}", arg[position + 1 :]
+                    if attached:
+                        value = attached[1:] if attached.startswith("=") else attached
+                    else:
+                        value, index = following, index + 1
+                    break
+        elif endpoint is None:
+            endpoint = arg
+        if name in {"-X", "--method"} and value is not None:
+            method = value.upper()
+        elif name in API_FIELD_OPTIONS:
+            fields.append(value or "")
+        index += 1
+    return ApiOptions(method or ("POST" if fields else "GET"), fields, endpoint)
 
 
 # main and master keep the 0.3.4 wording (a push to master names main); a configured

@@ -191,3 +191,175 @@ def test_copying_out_of_a_plugin_dir_clone_inside_the_project_passes(tmp_path):
         reason = evaluate(command, project, **env)
         assert reason is not None, command
         assert GUARDRAIL in reason, reason
+
+
+# getopt spellings of the destination: `-t` closing a cluster, a long-option prefix
+@pytest.mark.parametrize(
+    "shape",
+    [
+        "cp -rt {root}/bin {tmp}/x",
+        "cp -vt {root}/bin {tmp}/x",
+        "cp -vt{root}/bin {tmp}/x",
+        "ln -st {root}/bin {tmp}/x",
+        "cp --target={root}/bin {tmp}/x",
+        "cp --target-dir {root}/bin {tmp}/x",
+        "cp --target-directory={root}/bin {tmp}/x",
+        "install -m 755 -t {root}/bin {tmp}/x",
+        "cp -S .bak {tmp}/x {root}/bin/guard.py",
+    ],
+)
+def test_a_spelled_out_destination_in_the_plugin_is_refused(repo, plugin, shape):
+    command = shape.format(root=plugin, tmp=plugin.parents[1])
+    reason = evaluate(command, repo, **env_for(plugin))
+    assert reason is not None, command
+    assert GUARDRAIL in reason, reason
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        "cp -rt {tmp}/out {root}/templates",
+        "cp -t {tmp}/out {root}/templates/x",
+        "cp --target={tmp}/out {root}/templates/x",
+        "install -m 644 {root}/templates/x {tmp}/y",
+    ],
+)
+def test_a_spelled_out_destination_outside_the_plugin_passes(repo, plugin, shape):
+    command = shape.format(root=plugin, tmp=plugin.parents[1])
+    assert evaluate(command, repo, **env_for(plugin)) is None
+
+
+# A copy into a directory lands at dir/<source name>; a recursive copy merges a tree there.
+@pytest.mark.parametrize(
+    "shape",
+    [
+        "cp {tmp}/installed_plugins.json {config}/",
+        "cp {tmp}/installed_plugins.json {config}",
+        "install {tmp}/known_marketplaces.json {config}/",
+        "ln -sf {tmp}/installed_plugins.json {config}/",
+        "cp -t {config} {tmp}/installed_plugins.json",
+        "cp {tmp}/guard.py {root}/bin",
+        "cp -r {tmp}/pipeline {cache}",
+        "cp -a {tmp}/pipeline/ {cache}/",
+    ],
+)
+def test_a_copy_into_a_directory_holding_a_guarded_file_is_refused(repo, plugin, shape):
+    command = shape.format(
+        root=plugin,
+        tmp=plugin.parents[1],
+        config=plugin.parents[1] / "config" / "plugins",
+        cache=plugin.parent,
+    )
+    reason = evaluate(command, repo, **env_for(plugin))
+    assert reason is not None, command
+    assert GUARDRAIL in reason, reason
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        "cp {tmp}/x {config}/",
+        "cp {tmp}/x {cache}/",
+        "cp -r {tmp}/other {cache}",
+        "cp {tmp}/installed_plugins.json {tmp}/y",
+    ],
+)
+def test_a_copy_into_a_directory_beside_guarded_files_passes(repo, plugin, shape):
+    command = shape.format(
+        tmp=plugin.parents[1],
+        config=plugin.parents[1] / "config" / "plugins",
+        cache=plugin.parent,
+    )
+    assert evaluate(command, repo, **env_for(plugin)) is None
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        "sed --in-place s/a/b/ {}",
+        "sed --in-place=.bak s/a/b/ {}",
+        "sed --in-pl s/a/b/ {}",
+        "sed -E --in-place s/a/b/ {}",
+    ],
+)
+@pytest.mark.parametrize("relative", ["bin/guard.py", "hooks/hooks.json"])
+def test_sed_in_place_long_option_is_refused(repo, plugin, shape, relative):
+    reason = evaluate(shape.format(plugin / relative), repo, **env_for(plugin))
+    assert reason is not None, shape
+    assert GUARDRAIL in reason, reason
+
+
+@pytest.mark.parametrize("shape", ["sed --in-place s/a/b/ {}", "sed --in-place=.bak s/a/b/ {}"])
+def test_sed_in_place_long_option_on_settings_is_refused(repo, shape):
+    reason = evaluate(shape.format(".claude/settings.json"), repo)
+    assert reason is not None, shape
+    assert GUARDRAIL in reason, reason
+
+
+def test_sed_without_in_place_on_settings_passes(repo):
+    assert evaluate("sed -n --debug 1p .claude/settings.json", repo) is None
+
+
+@pytest.fixture
+def clone(tmp_path):
+    project = make_repo(tmp_path / "clone-rm", WORKFLOW)
+    git(project, "switch", "-C", "feat/001-x")
+    (project / "plugin" / "bin").mkdir(parents=True)
+    (project / "plugin" / "bin" / "guard.py").write_text("# guard\n")
+    (project / "backend").mkdir(exist_ok=True)
+    (project / "backend" / "app.py").write_text("x\n")
+    env = {"CLAUDE_PLUGIN_ROOT": str(project / "plugin"), "CLAUDE_CONFIG_DIR": str(tmp_path)}
+    return project, env
+
+
+# Inside the project the removal rule lets these through; the own-files check is the only
+# refusal.
+@pytest.mark.parametrize(
+    "command",
+    [
+        "rm -rf plugin",
+        "rm plugin/bin/guard.py",
+        "rm -r plugin/bin",
+        "rmdir plugin/bin",
+        "unlink plugin/bin/guard.py",
+        "shred -u plugin/bin/guard.py",
+        "cd plugin && rm bin/guard.py",
+    ],
+)
+def test_removing_a_plugin_dir_clone_inside_the_project_is_refused(clone, command):
+    project, env = clone
+    reason = evaluate(command, project, **env)
+    assert reason is not None, command
+    assert GUARDRAIL in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command", ["rm -rf backend", "rm backend/app.py", "unlink backend/app.py"]
+)
+def test_removing_other_project_files_beside_the_clone_passes(clone, command):
+    project, env = clone
+    assert evaluate(command, project, **env) is None
+
+
+# The install cache's real layout: the install state is derived from the plugin root
+# (…/plugins/cache/<marketplace>/<plugin>/<version>), not from CLAUDE_CONFIG_DIR.
+def test_the_install_state_beside_a_real_cache_layout_is_guarded(repo, tmp_path):
+    plugins = tmp_path / "home" / ".claude" / "plugins"
+    root = plugins / "cache" / "wcz-tools" / "pipeline" / "0.4.0"
+    (root / "bin").mkdir(parents=True)
+    (root / "bin" / "guard.py").write_text("# guard\n")
+    (plugins / "installed_plugins.json").write_text('{"plugins": {}}')
+    other_config = tmp_path / "elsewhere"
+    other_config.mkdir()
+    env = {"CLAUDE_PLUGIN_ROOT": str(root), "CLAUDE_CONFIG_DIR": str(other_config)}
+    for command in [
+        f"echo x > {plugins}/installed_plugins.json",
+        f"sed -i s/a/b/ {plugins}/known_marketplaces.json",
+        f"cp /dev/null {root}/bin/guard.py",
+        f"echo x > {other_config}/plugins/installed_plugins.json",
+    ]:
+        reason = evaluate(command, repo, **env)
+        assert reason is not None, command
+        assert GUARDRAIL in reason, reason
+    assert evaluate(f"cat {plugins}/installed_plugins.json", repo, **env) is None
+    assert evaluate(f"echo x > {plugins}/other.json", repo, **env) is None

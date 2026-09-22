@@ -863,3 +863,20 @@ not change scope. Nothing outside the scope entered the branch.
   row on commands the guard cannot see covers them.
 - AC19 "settings edit as the last step": commit `2b2f829` (D4 fix) came after `4bfaee9` —
   no practical effect before merge.
+
+### 2026-09-22 — /pipeline:final-review apply (inside /pipeline:ship)
+
+Owner decisions: accepted F1–F7 and F12, rejected F8–F11, F13, F14 (none moved to the
+backlog). `bash scripts/check.sh`: ALL GREEN (1594 passed). Every new test was
+run against the pre-fix `guard.py`: 79 cases fail there.
+
+| id | change |
+|----|--------|
+| F1 | `api_options` replaces `api_method`/`api_endpoint`: pflag reading — attached values (`-XPATCH`, `-X=PATCH`, `-fkey=v`, `--raw-field=…`), a value flag closing a short cluster (`-iXDELETE`, `-iFk=v`), `--`. The method, the fields and the endpoint come from one pass. Tests: `METHODS` gains `-X=PATCH`, `-iXPATCH`, `-iX PUT`, `-iX=POST`; `test_an_attached_field_is_an_implicit_post`, `test_an_attached_delete_is_a_delete`, `test_attached_reads_and_ordinary_writes_pass` |
+| F2 | `copy_operands` parses `cp`/`install`/`ln` like getopt: `-t` at the end of a cluster (`-rt`, `-vtDIR`, `-st`), any prefix of `--target-directory` with or without `=`, option values (`-S`, `install -m/-o/-g`, long `--mode` …) not taken as operands, `--`. `cp -rt /tmp/out <plugin>/templates` now passes as a read. Tests: `test_a_spelled_out_destination_in_the_plugin_is_refused`, `…_outside_the_plugin_passes` |
+| F3 | `landing_paths`: with `-t` or an existing destination directory, each source also lands at `dest/<basename>`; a recursive `cp` (`-r`/`-R`/`-a`, `--recursive`/`--archive`) checks those paths with `contains`. Tests: `test_a_copy_into_a_directory_holding_a_guarded_file_is_refused` (8 shapes), `test_a_copy_into_a_directory_beside_guarded_files_passes` |
+| F4 | `edits_in_place` (one helper for both checks): `sed --in-place`, `--in-place=…` and any unambiguous prefix (`--in-pl`). Tests: `test_sed_in_place_long_option_is_refused` (plugin files), `…_on_settings_is_refused`, `test_sed_without_in_place_on_settings_passes` |
+| F5 | `check_channel_write` for configured channels (not `main`/`master`, whose rulesets have no bypass): besides `refs/heads/<channel>` in any argument, a write under `branches/<channel>/…` and a write with a `branch=<channel>` field (a `contents` PUT/DELETE, `merge-upstream`) are refused; it runs before the `DELETE` rule, so a `contents` DELETE on the channel is caught too. `GUARD.md` and the 0.4.0 CHANGELOG entry say so. Tests: five shapes added to `REFUSED_ON_A_FEATURE_BRANCH`; GET and look-alike names added to `test_names_match_exactly` |
+| F6 | `test_removing_a_plugin_dir_clone_inside_the_project_is_refused` (`rm -rf`, `rm`, `rm -r`, `rmdir`, `unlink`, `shred -u`, `cd … && rm`), `test_removing_other_project_files_beside_the_clone_passes` (`rm -rf backend` …), `test_the_install_state_beside_a_real_cache_layout_is_guarded` (real `…/plugins/cache/<m>/<p>/<v>` root with a separate `CLAUDE_CONFIG_DIR`) |
+| F7 | `test_an_unresolved_marketplace_is_refused` asserts "built from variables"; the unreadable-state test asserts "cannot read the plugin install state" for `{"plugins": []}` too; the protected-branches tests gain the implicit-POST `-f sha=x` refusal and the allowed GETs of `refs/heads/stable` and `branches/stable` |
+| F12 | `docs/CONVENTIONS.md` release bullet: the same guard keeps agents from detaching the plugin |

@@ -42,6 +42,13 @@ REFUSED_ON_A_FEATURE_BRANCH = [
     "git branch -D stable",
     "git update-ref refs/heads/stable HEAD",
     "gh api -X PATCH repos/o/r/git/refs/heads/stable -f sha=x",
+    "gh api repos/o/r/git/refs/heads/stable -f sha=x",
+    "gh api -X POST repos/o/r/git/refs -f ref=refs/heads/stable -f sha=x",
+    "gh api -X POST repos/o/r/branches/stable/rename -f new_name=x",
+    "gh api -X PUT repos/o/r/branches/stable/protection",
+    "gh api -X PUT repos/o/r/contents/x -f branch=stable -f message=m -f content=Yg==",
+    "gh api -X DELETE repos/o/r/contents/x -f branch=stable -f message=m -f sha=x",
+    "gh api repos/o/r/merge-upstream -fbranch=stable",
 ]
 
 REFUSED_ON_STABLE = [
@@ -115,6 +122,12 @@ def test_the_refusal_names_the_configured_branch(channel_repo):
         "git push origin feat/stable",
         "git branch -D stable-next",
         "gh api -X PATCH repos/o/r/git/refs/heads/stable-next -f sha=x",
+        "gh api -X POST repos/o/r/branches/stable-next/rename -f new_name=x",
+        "gh api -X PUT repos/o/r/contents/x -f branch=stable-next -f message=m",
+        "gh api -X PUT repos/o/r/contents/stable -f branch=feat/x -f message=m",
+        "gh api repos/o/r/git/refs/heads/stable",
+        "gh api repos/o/r/branches/stable",
+        "gh api -X GET repos/o/r/contents/x -f ref=stable",
     ],
 )
 def test_names_match_exactly(on_feature, command):

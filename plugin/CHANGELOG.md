@@ -35,9 +35,15 @@ configuration with the key only warns about an unknown key and keeps the other s
   install state is refused. Other plugins, `update`, `install`, `enable` and `--help` pass.
 - The running guard's own directory, wherever it lies, and the plugin install state are
   guardrail files, judged by the real path a shell write reaches; `cp`, `install` and `ln`
-  count only their destination, so copying templates out of the plugin passes.
+  count only their destination (`-t` at the end of a cluster, `--target…` prefixes) and
+  the path a copy into a directory lands on, so copying templates out of the plugin
+  passes; `sed --in-place` counts as `sed -i`, also for the settings files.
 - `gh api` writes on the owner's ground, judged by the endpoint after `repos/<o>/<r>`,
   `repositories/<id>` or `orgs/<o>`; a write endpoint built from variables is refused.
+  Flags are read the way `gh` reads them, so `-X=DELETE`, `-iXPATCH` and an attached
+  `-fkey=value` no longer read as `GET` — the 0.3.4 `DELETE` rule gains this too. On a
+  configured channel a write under `branches/<branch>` or with a `branch=<branch>` field
+  is refused as well.
 
 ## 0.3.4
 

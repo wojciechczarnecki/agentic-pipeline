@@ -43,7 +43,16 @@ OWNER_GROUND = [
     "repositories/1/actions/secrets/T",
 ]
 
-METHODS = ["-X POST", "--method PUT", "-XPATCH", "--method=patch"]
+METHODS = [
+    "-X POST",
+    "--method PUT",
+    "-XPATCH",
+    "--method=patch",
+    "-X=PATCH",
+    "-iXPATCH",
+    "-iX PUT",
+    "-iX=POST",
+]
 
 
 @pytest.mark.parametrize("command, endpoint", VERBATIM)
@@ -103,3 +112,47 @@ def test_a_write_on_a_variable_endpoint_is_refused(repo, command):
     reason = evaluate(command, repo)
     assert reason is not None, command
     assert "built from variables" in reason, reason
+
+
+# gh reads its flags with pflag: an attached field value is a field, so the call is a POST
+@pytest.mark.parametrize(
+    "command",
+    [
+        "gh api repos/o/r/transfer -fnew_owner=x",
+        "gh api repos/o/r/keys -fkey=x",
+        "gh api repos/o/r/hooks -Fconfig[url]=x",
+        "gh api repos/o/r/hooks -iFconfig[url]=x",
+        "gh api repos/o/r -f=visibility=public",
+        "gh api repos/o/r --raw-field=visibility=public",
+    ],
+)
+def test_an_attached_field_is_an_implicit_post(repo, command):
+    reason = evaluate(command, repo)
+    assert reason is not None, command
+    assert "owner's call" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["gh api -X=DELETE repos/o/r", "gh api -iXDELETE repos/o/r", "gh api -XDELETE repos/o/r"],
+)
+def test_an_attached_delete_is_a_delete(repo, command):
+    reason = evaluate(command, repo)
+    assert reason is not None, command
+    assert "deleting the repository" in reason, reason
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "gh api -i repos/o/r",
+        "gh api -iXGET repos/o/r",
+        "gh api -X=GET repos/o/r/hooks",
+        "gh api --paginate repos/o/r/keys",
+        "gh api -q .name repos/o/r",
+        "gh api -iq.name repos/o/r",
+        "gh api -fbody=x repos/o/r/issues/1/comments",
+    ],
+)
+def test_attached_reads_and_ordinary_writes_pass(repo, command):
+    assert evaluate(command, repo) is None
