@@ -425,7 +425,7 @@ itself, so the fingerprint of step 9 stays valid.
       projection line; `projected ≤ 15` to continue, otherwise STOP → escalation with
       the numbers and options (raise the ceiling; measure with fewer runs; drop or merge
       a case — each a SPEC change for the owner).
-- [ ] 8. Stability measurement and `runs` — for each new case, `--runs 4` on the files
+- [x] 8. Stability measurement and `runs` — for each new case, `--runs 4` on the files
       the probe ran (five in total) or `--runs 5` after a change; sharpen criteria or
       rewrite the fixture for a case below 4/5 and measure it again (5 fresh runs); still
       below 4/5 → escalate. Then set `runs:` in each new `case.yaml`: 5/5 → `runs: 1`,
@@ -620,6 +620,7 @@ call, including aborted ones)_
 | 10 | 2026-09-22 | 8 | plan-review-escalates-on-dependency | default | 2 | 2 | 1.2 | 0.8896 | 5.1603 | measurement runs 2–3 (`measure-plan-review.json`); 16 and 30 turns; both PASS |
 | 11 | 2026-09-22 | 8 | final-review-finds-planted-defect | default | 2 | 2 | 2 | 1.1156 | 6.2759 | measurement runs 2–3 (`measure-defect.json`); 11 and 24 turns; both PASS |
 | 12 | 2026-09-22 | 8 | final-review-ignores-false-positive | default | 2 | 1 | 2 | 0.6238 | 6.8997 | measurement runs 2–3 (`measure-false-positive.json`); run 2 PASS (21 turns); run 3 **aborted by the usage limit** after 5 turns (`exit 1: You've hit your session limit`, no judge verdict, $0.0810) — an infrastructure abort, not a skill failure (owner decision), re-run below |
+| 13 | 2026-09-22 | 8 | final-review-ignores-false-positive | default | 1 | 1 | 1 | 0.6963 | 7.5960 | re-run of the aborted run 3 after the limit reset (owner decision); 8 turns; PASS |
 
 **Status 2026-09-22 12:44:** the re-run of the aborted run and the two gate runs (step 9) are pending:
 child sessions return `429 You've hit your session limit · resets 2:30pm (Europe/Warsaw)` (checked with a
@@ -636,6 +637,8 @@ Drafting spent 1.9948 of its ≤ $4 share.
 **Projection after the owner decision (2026-09-22):** the two gate runs count toward each new
 case's five runs, so step 8 adds `--runs 2` per new case: `projected = 3.7791 + 2 × 1.7843 +
 2 × 3.2418 = 13.83`, plus the one-run margin 0.5927 = **14.42 ≤ 15** → continue.
+
+**Projection before step 9 (2026-09-22):** after step 8 every new case has 3 default-model runs, all passed (the aborted run excluded, re-run). Mean cost per run: implement 0.246, plan-review 0.423, defect 0.560, false-positive 0.611 → Σ = **1.840**; gate cost at `runs: 1` for all seven cases = 1.840 + 1.4575 = **3.298**. `projected = 7.5960 + 2 × 3.298 = 14.19`, plus the one-run margin 0.70 = **14.89 ≤ 15** → continue. `runs:` stays 1 in every `case.yaml`; runs 4–5 of each new case are the two gate runs (owner decision).
 
 ## Definition of Done
 
