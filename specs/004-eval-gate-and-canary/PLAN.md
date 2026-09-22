@@ -493,7 +493,7 @@ itself, so the fingerprint of step 9 stays valid.
       `grep -c "^- \[ \] 0.4.0" docs/ROADMAP.md` → 2;
       `tail -3 docs/DECISIONS.md` shows the three rows, the stability row naming the
       Claude Code version and the dollar total from the ledger.
-- [ ] 12. Definition of Done checks — no file changes beyond ticking this plan and the
+- [x] 12. Definition of Done checks — no file changes beyond ticking this plan and the
       SPEC status/metrics.
       Automatic verification: `bash scripts/check.sh` → `ALL GREEN`;
       `git diff origin/main...HEAD -- plugin/.claude-plugin/plugin.json plugin/CHANGELOG.md`
@@ -553,6 +553,8 @@ itself, so the fingerprint of step 9 stays valid.
 4. `## Eval ledger`: every row has `--max-cost-usd`, the total ≤ $15, and per new case ≥ 5
    default-model runs with ≥ 4 passed.
 5. Canary results recorded (step 6) with the hashes equal before and after.
+Metrics: `implement_steps` 12; `implement_iterations` 2 (step 4: the fixture's test count corrected after the draft run; step 10: document tests reformatted after `black --check`); `deviations` 6 (D1–D6).
+
 6. `git diff --stat pipeline--v0.3.4 -- plugin/skills plugin/agents plugin/hooks plugin/bin plugin/templates`
    → empty; `git diff origin/main...HEAD -- plugin/.claude-plugin/plugin.json plugin/CHANGELOG.md`
    → empty.
@@ -564,6 +566,15 @@ None. The first real canary and the first gated tag come with SPEC 005 (0.4.0).
 ### Results
 
 _(filled in by /pipeline:implement; subsection "Canary" for step 6)_
+
+#### Automatic end-to-end (2026-09-22)
+
+1. `bash scripts/check.sh` → `ALL GREEN` (942 passed).
+2. `cd plugin && python3 -m pytest -q -p no:cacheprovider tests/test_eval_cases.py` → 30 passed.
+3. Committed `plugin/evals/last-run.json`: `green: true`, `model: "default"`, `cases_total: 7`, every case 1/1, `plugin_fingerprint` `b2e7b357…c5dc86` = `git ls-tree` of `plugin/` at HEAD; the `pre-push` hook run directly on a `refs/tags/pipeline--v0.4.0` line → exit 0.
+4. Eval ledger: 15 rows, each with `--max-cost-usd`; total **$14.1419** ≤ $15 (ceiling raised to $16 by owner decision, not needed in the end); each new case 5 default-model runs, 5 passed (probe, 2 measurement runs, 2 gate runs), plus one run aborted by the usage limit and re-run.
+5. Canary results above; hashes and the `stable` sha equal before and after.
+6. `git diff --stat pipeline--v0.3.4 -- plugin/skills plugin/agents plugin/hooks plugin/bin plugin/templates` → empty; `git diff origin/main...HEAD -- plugin/.claude-plugin/plugin.json plugin/CHANGELOG.md` → empty.
 
 #### Canary (step 6, 2026-09-22, Claude Code 2.1.272)
 
@@ -646,12 +657,12 @@ case's five runs, so step 8 adds `--runs 2` per new case: `projected = 3.7791 + 
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) done, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/CONVENTIONS.md`, `CLAUDE.md`
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) done, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/CONVENTIONS.md`, `CLAUDE.md`
       updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
