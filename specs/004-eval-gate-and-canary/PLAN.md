@@ -372,7 +372,7 @@ itself, so the fingerprint of step 9 stays valid.
       Automatic verification: the two pytest commands of step 1, then
       `claude plugin eval plugin/ … --case final-review-ignores-false-positive --runs 1 --model sonnet --max-cost-usd 1.5 --json <scratchpad>/eval/draft-false-positive-1.json`
       → ledger row, same FAIL triage.
-- [ ] 5. Receipt by majority, with the model — files: `scripts/eval_receipt.py` (new,
+- [x] 5. Receipt by majority, with the model — files: `scripts/eval_receipt.py` (new,
       executable, `#!/usr/bin/env python3`), `scripts/eval.sh` (the heredoc replaced by
       `python3 scripts/eval_receipt.py write "$raw" "$receipt" --commit … --version …
       --fingerprint … -- "$@"`), `scripts/git-hooks/pre-push` (model check),
@@ -711,6 +711,10 @@ _(filled in by /pipeline:implement — every deviation from the plan with its re
   case guarded the marker, and the marker was measured without authentication — the log
   answers "which copy, and is it the only one" directly, which the `$PATH` check only
   inferred. The `$PATH` inference is therefore not part of the procedure.
+- D5 (step 5): besides `--model` and `ANTHROPIC_MODEL`, the receipt also takes the model
+  from the result's own `suite.modelOverride` (tested) — a receipt must not say `default`
+  for a run the CLI itself reports as overridden. `summary` prints the cost with the
+  judge's share, matching the ledger (D2).
 
 ## Final review
 

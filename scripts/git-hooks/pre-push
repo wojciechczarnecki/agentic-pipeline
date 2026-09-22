@@ -64,6 +64,22 @@ while read -r local_ref _local_sha remote_ref _remote_sha; do
       echo "pre-push: the last eval run was not green; ${remote_ref#refs/tags/} is blocked." >&2
       exit 1
     fi
+
+    # Consumers work on the session's default model, so that is the model a release is
+    # measured on; a cheaper --model is for drafting cases, not for the gate.
+    model=$(python3 -c 'import json;print(json.load(open("'"$receipt"'")).get("model", ""))')
+
+    if [[ -z "$model" ]]; then
+      echo "pre-push: the receipt does not record the model it ran on; re-run:" >&2
+      echo "pre-push: bash scripts/eval.sh" >&2
+      exit 1
+    fi
+
+    if [[ "$model" != "default" ]]; then
+      echo "pre-push: the receipt was produced with --model $model; a release receipt runs" >&2
+      echo "pre-push: on the default model. Re-run: bash scripts/eval.sh" >&2
+      exit 1
+    fi
   fi
 done
 

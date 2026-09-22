@@ -47,29 +47,7 @@ commit="$(git rev-parse HEAD)"
 fingerprint="$(plugin_fingerprint HEAD)"
 version="$(python3 -c 'import json;print(json.load(open("plugin/.claude-plugin/plugin.json"))["version"])')"
 
-python3 - "$raw" "$receipt" "$commit" "$version" "$fingerprint" <<'PY'
-import json, sys, datetime
-
-raw, receipt, commit, version, fingerprint = sys.argv[1:6]
-result = json.load(open(raw))
-agg = result["aggregates"]
-passed = agg["casesPassed"] == agg["casesTotal"] and agg["casesTotal"] > 0
-
-json.dump(
-    {
-        "commit": commit,
-        "plugin_fingerprint": fingerprint,
-        "plugin_version": version,
-        "ran_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M"),
-        "cases_total": agg["casesTotal"],
-        "cases_passed": agg["casesPassed"],
-        "green": passed,
-        "cost_usd": round(result["costUsd"], 4),
-    },
-    open(receipt, "w"),
-    indent=2,
-)
-open(receipt, "a").write("\n")
-print(f"\neval.sh: receipt written to {receipt} ({'green' if passed else 'NOT green'})")
-sys.exit(0 if passed else 1)
-PY
+# A case with several runs counts by majority, and the receipt records the model it ran on;
+# both live in a script so they are testable without a model.
+python3 scripts/eval_receipt.py write "$raw" "$receipt" \
+  --commit "$commit" --version "$version" --fingerprint "$fingerprint" -- "$@"

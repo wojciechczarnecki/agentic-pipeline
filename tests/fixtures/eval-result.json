@@ -1,0 +1,248 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.272",
+  "costUsd": 2.1,
+  "partial": false,
+  "suite": {
+    "ablation": "none",
+    "modelOverride": null,
+    "caseFilter": null,
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "pipeline",
+        "version": "0.0.0"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "two-of-three",
+      "dir": "evals/two-of-three",
+      "runsPerCase": 3,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 12,
+            "costUsd": 0.3,
+            "judgeCostUsd": 0.004,
+            "durationSeconds": 60,
+            "error": null,
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 12,
+            "costUsd": 0.3,
+            "judgeCostUsd": 0.004,
+            "durationSeconds": 60,
+            "error": null,
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": false,
+                "weight": 1,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ]
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 12,
+            "costUsd": 0.3,
+            "judgeCostUsd": 0.004,
+            "durationSeconds": 60,
+            "error": null,
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.6666666666666666,
+        "passRate": 0.6666666666666666
+      }
+    },
+    {
+      "name": "one-of-three",
+      "dir": "evals/one-of-three",
+      "runsPerCase": 3,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 12,
+            "costUsd": 0.3,
+            "judgeCostUsd": 0.004,
+            "durationSeconds": 60,
+            "error": null,
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": false,
+                "weight": 1,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ]
+              }
+            ]
+          },
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 12,
+            "costUsd": 0.3,
+            "judgeCostUsd": 0.004,
+            "durationSeconds": 60,
+            "error": null,
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ]
+          },
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 12,
+            "costUsd": 0.3,
+            "judgeCostUsd": 0.004,
+            "durationSeconds": 60,
+            "error": null,
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": false,
+                "weight": 1,
+                "scored": true,
+                "judgeVotes": [
+                  false,
+                  false,
+                  false
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 0.3333333333333333,
+        "passRate": 0.3333333333333333
+      }
+    },
+    {
+      "name": "one-of-one",
+      "dir": "evals/one-of-one",
+      "runsPerCase": 1,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 12,
+            "costUsd": 0.3,
+            "judgeCostUsd": 0.004,
+            "durationSeconds": 60,
+            "error": null,
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1.0,
+        "passRate": 1.0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 3,
+    "casesPassed": 1,
+    "overallScore": 0.555,
+    "overallPassRate": 0.333
+  }
+}
