@@ -3,6 +3,9 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-09-22"
   - "spec-ready — 2026-09-22"
+metrics:
+  started_at: 2026-09-22T11:21
+  escalations: 0
 ---
 
 # SPEC 004 — A release gate to trust
