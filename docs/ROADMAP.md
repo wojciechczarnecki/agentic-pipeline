@@ -75,7 +75,7 @@ Documentation only, no behaviour change. The private consumer project stays unna
       (the release procedure in `docs/CONVENTIONS.md` and `CLAUDE.md` already includes the
       GitHub Release step)
 - [x] The GitHub *About* description and topics checked against the root `README.md`
-- [ ] Owner only, in the GitHub settings: the repository pinned on the owner's profile and
+- [x] Owner only, in the GitHub settings: the repository pinned on the owner's profile and
       a social preview image
 
 ## Stage 5 — A release gate to trust, and a guard that guards itself
@@ -83,63 +83,28 @@ Documentation only, no behaviour change. The private consumer project stays unna
 Every minor release is gated on a green eval receipt, so the gate has to mean something
 before the first minor ships.
 
-- [ ] Evals stable enough to gate on: `runs: 3` with a majority score, or sharper criteria —
+- [x] Evals stable enough to gate on: `runs: 3` with a majority score, or sharper criteria —
       decided by measurement (was `docs/BACKLOG.md` P2; its trigger fires with this stage)
-- [ ] Behavioural evals for the stage skills, which have none today (the three cases cover
+      (`specs/004-eval-gate-and-canary/SPEC.md`)
+- [x] Behavioural evals for the stage skills, which have none today (the three cases cover
       `init` and the guard): `implement` escalates instead of weakening a failing test,
       `plan-review` escalates on a dependency the owner did not accept, `final-review`
       finds a planted defect and rejects a planted false positive
-- [ ] Pre-release canary, measured and documented: how to run an unreleased plugin in a
+      (`specs/004-eval-gate-and-canary/SPEC.md`)
+- [x] Pre-release canary, measured and documented: how to run an unreleased plugin in a
       consumer project beside the `--scope user` install without moving `stable`
+      (`specs/004-eval-gate-and-canary/SPEC.md`)
 - [ ] 0.4.0: the guard protects configurable release-channel branches
       (`protectedBranches` in `.claude/workflow.json`), replacing the `deny` rules on
       pushes to `stable` in `.claude/settings.json`
 - [ ] 0.4.0: the guard blocks detaching the plugin (`claude plugin disable|uninstall`,
       `claude plugin marketplace remove`) — with a `--scope user` install one command
       removes the guard from every project on the machine
-- [ ] **Ask the owner** whether Stage 8 should move ahead of Stage 6. For: the canary and the
-      eval gate from this stage are what make the translation safe, and Stages 6–7 would
-      otherwise rewrite Polish skills that get translated right after, while the Stage 4
-      storefront points at Polish skills. Against: two more releases before the pipeline
-      improvements. The answer reorders this roadmap
-
-## Stage 6 — A better pipeline
-
-One spec through the pipeline itself. Lessons from GitHub Spec Kit (`converge`, test-first)
-and 10xWorkflow (tests verified by breaking them).
-
-- [ ] 0.5.0: `implement` records every acceptance-criterion test failing before the change
-      that makes it pass — a test that was never red proves nothing
-- [ ] 0.5.0: `implement` closes with a converge pass — a fresh subagent compares the code
-      with the acceptance criteria, classifies gaps as missing / partial / contradicts /
-      unrequested and adds steps, before the final review (68% of significant findings in
-      the consumer's specs 014–022 surfaced only at final review)
-- [ ] 0.5.0: plan and review depth proportional to the change, instead of spec sizes — a
-      four-step fix got a 349-line plan and three reviewers (decision row with the spec:
-      no size tiers; small things keep the fast path)
-- [ ] 0.5.0: the final review reports at most five nits and states how many it left out
-- [ ] Eval cases for the new behaviour: a test that was never red is caught, and the
-      converge pass finds an acceptance criterion left unimplemented
-
-## Stage 7 — A cheaper pipeline, measured
-
-- [ ] 0.6.0: targeted reading in every stage — SPEC, PLAN and conventions in full;
-      decisions, roadmap and domain documents searched by the feature's topic, with what
-      was read listed (the consumer's documents are 271 KB, and every fresh subagent read
-      them whole)
-- [ ] 0.6.0: a `models` section in `.claude/workflow.json` that `/pipeline:ship` passes to
-      each stage agent; `/pipeline:init` writes the implementer on Sonnet; without the
-      section every stage inherits the session model, as today
-- [ ] 0.6.0: `deviations` split into `deviations_minor` and `deviations_major`; specs with
-      the old key still pass `--check`
-- [ ] 0.6.0: cost per stage from the local session transcripts, written into `metrics:`
-      when a spec closes (transcripts are local and expire, so it cannot be computed later)
-- [ ] Before/after comparison of the implementer on Sonnet: a baseline of 2–3 consumer
-      specs on 0.5.0 with every stage on the session model, then 3–5 specs with the new
-      defaults — not the 9 specs before Stage 6, which changes the metrics by itself;
-      the result goes into the root `README.md`
-- [ ] Write-up, linked from the root `README.md`: the guard as a shell analyser rather than
-      a regex, the measured LLM-judge noise, the before/after numbers and cost per spec
+- [x] The owner moved Stage 8 ahead of Stage 6: the canary and the eval gate from this
+      stage are what make the translation safe, and Stages 6–7 would otherwise rewrite
+      Polish skills that get translated right after. The cost is two more releases before
+      the pipeline improvements; stage numbers are kept (`docs/DECISIONS.md`, 2026-09-22)
+      (`specs/004-eval-gate-and-canary/SPEC.md`)
 
 ## Stage 8 — English everywhere, Polish on request
 
@@ -149,7 +114,7 @@ silently switch a Polish consumer's plans to English, since today only `idea` na
 `language`. Each one goes through the pre-release canary on a Polish consumer before
 `stable` moves.
 
-- [ ] 0.7.0: language made explicit, skills still Polish — every stage writes artefacts,
+- [ ] 0.5.0: language made explicit, skills still Polish — every stage writes artefacts,
       questions, escalations and PR bodies in `language`; `SPEC`/`PLAN` templates per
       language (`*.en.md`, `*.pl.md`) with a structure-parity test; section anchors and
       finding severities independent of language, with a fallback for older specs;
@@ -157,8 +122,46 @@ silently switch a Polish consumer's plans to English, since today only `idea` na
       (`templates/CLAUDE.md`, `templates/docs/*`), which today lands Polish documents
       even with `"language": "en"` — until then an English consumer translates them after
       `init` and states the language in its own `CLAUDE.md`
-- [ ] 0.8.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
+- [ ] 0.6.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
       is, since 0.3.4), with an eval case on `"language": "pl"`; Polish survives only in the `*.pl.md` templates
+
+## Stage 6 — A better pipeline
+
+One spec through the pipeline itself. Lessons from GitHub Spec Kit (`converge`, test-first)
+and 10xWorkflow (tests verified by breaking them).
+
+- [ ] 0.7.0: `implement` records every acceptance-criterion test failing before the change
+      that makes it pass — a test that was never red proves nothing
+- [ ] 0.7.0: `implement` closes with a converge pass — a fresh subagent compares the code
+      with the acceptance criteria, classifies gaps as missing / partial / contradicts /
+      unrequested and adds steps, before the final review (68% of significant findings in
+      the consumer's specs 014–022 surfaced only at final review)
+- [ ] 0.7.0: plan and review depth proportional to the change, instead of spec sizes — a
+      four-step fix got a 349-line plan and three reviewers (decision row with the spec:
+      no size tiers; small things keep the fast path)
+- [ ] 0.7.0: the final review reports at most five nits and states how many it left out
+- [ ] Eval cases for the new behaviour: a test that was never red is caught, and the
+      converge pass finds an acceptance criterion left unimplemented
+
+## Stage 7 — A cheaper pipeline, measured
+
+- [ ] 0.8.0: targeted reading in every stage — SPEC, PLAN and conventions in full;
+      decisions, roadmap and domain documents searched by the feature's topic, with what
+      was read listed (the consumer's documents are 271 KB, and every fresh subagent read
+      them whole)
+- [ ] 0.8.0: a `models` section in `.claude/workflow.json` that `/pipeline:ship` passes to
+      each stage agent; `/pipeline:init` writes the implementer on Sonnet; without the
+      section every stage inherits the session model, as today
+- [ ] 0.8.0: `deviations` split into `deviations_minor` and `deviations_major`; specs with
+      the old key still pass `--check`
+- [ ] 0.8.0: cost per stage from the local session transcripts, written into `metrics:`
+      when a spec closes (transcripts are local and expire, so it cannot be computed later)
+- [ ] Before/after comparison of the implementer on Sonnet: a baseline of 2–3 consumer
+      specs on 0.7.0 with every stage on the session model, then 3–5 specs with the new
+      defaults — not the 9 specs before Stage 6, which changes the metrics by itself;
+      the result goes into the root `README.md`
+- [ ] Write-up, linked from the root `README.md`: the guard as a shell analyser rather than
+      a regex, the measured LLM-judge noise, the before/after numbers and cost per spec
 
 ## Stage 9 — Evidence
 

@@ -408,3 +408,50 @@ def test_readme_links_the_documentation():
         "](plugin/CHANGELOG.md)",
     ]:
         assert link in README, link
+
+
+CONVENTIONS = read("docs/CONVENTIONS.md")
+
+
+# A minor or major release runs the unreleased plugin in a consumer before it is tagged;
+# the step has no mechanism behind it, so the procedure text is what keeps it.
+def test_release_procedure_runs_the_canary_before_the_tag():
+    releases = section(CONVENTIONS, "## Releases")
+    assert releases.index("canary") < releases.index("claude plugin tag")
+    bullet = next(unit for unit in releases.split("\n- ") if "canary" in unit)
+    for token in ["--plugin-dir", "patch", "minor or major", "overrides installed version"]:
+        assert token in bullet, token
+
+
+def test_claude_md_lists_the_canary():
+    commands = [body for info, body in fenced_blocks(read("CLAUDE.md")) if info == "bash"]
+    lines = "\n".join(commands[0]).splitlines()
+    tag = next(i for i, line in enumerate(lines) if "claude plugin tag" in line)
+    canary = [
+        i for i, line in enumerate(lines) if "--plugin-dir" in line and "--debug-file" in line
+    ]
+    assert canary and canary[0] < tag
+
+
+def test_conventions_state_the_eval_cost_policy():
+    tests = section(CONVENTIONS, "## Tests")
+    for token in ["runs: 3", "--model sonnet", "default model", "--max-cost-usd", "majority"]:
+        assert token in tests, token
+
+
+ROADMAP = read("docs/ROADMAP.md")
+
+
+# Stage 8 runs before Stage 6 and keeps its number, because append-only rows in
+# docs/DECISIONS.md refer to stages by number ("until Stage 8").
+def test_roadmap_stage_order():
+    stages = [int(n) for n in re.findall(r"^## Stage (\d+)\b", ROADMAP, re.M)]
+    assert stages == [1, 2, 3, 4, 5, 8, 6, 7, 9]
+
+
+def test_roadmap_release_versions_ascend():
+    versions = [
+        tuple(int(part) for part in match.split("."))
+        for match in re.findall(r"^\s*- \[[ x]\] (\d+\.\d+\.\d+)", ROADMAP, re.M)
+    ]
+    assert versions and versions == sorted(versions)
