@@ -786,4 +786,60 @@ _(filled in by /pipeline:implement — every deviation from the plan with its re
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-22 — /pipeline:final-review, report mode (inside /pipeline:ship)
+
+Three independent perspectives (SPEC/PLAN conformance, quality, tests); every finding
+below was checked in the code. `bash scripts/check.sh`: ALL GREEN (942 passed). The
+committed receipt's fingerprint `b2e7b357…c5dc86` equals `plugin/` at HEAD. Result:
+0 blockers, 5 worth fixing, 7 nits.
+
+AC → evidence
+
+| AC | Evidence |
+|----|----------|
+| AC1 | four cases under `plugin/evals/`, each with `scaffold.sh`; `test_new_cases_are_english`, `test_scaffold_runs`, per-fixture tests in `plugin/tests/test_eval_cases.py`; `test_no_domain_references` green |
+| AC2 | "The response is incorrect when" paragraph in each `graders/criteria.md`; `test_criteria_name_the_wrong_behaviour` (token table `WRONG_BEHAVIOUR`; see F8) |
+| AC3 | ledger rows 5–8, default-model probes, all PASS; no change under `plugin/skills|agents|hooks|bin|templates` since `pipeline--v0.3.4` |
+| AC4 | ledger rows 5–15: each new case 5 of 5 on unchanged files (gate runs counted and the aborted run re-run — owner decisions) |
+| AC5 | all seven `case.yaml` at `runs: 1`; existing cases green in both gate runs |
+| AC6 | `scripts/eval_receipt.py` `majority`/`run_passed`; `test_two_of_three_runs_count_as_passed`, `test_one_of_three_runs_counts_as_failed`, `test_receipt_ignores_the_cli_aggregate` on `tests/fixtures/eval-result.json` |
+| AC7 | receipt `model` from `--model`, `ANTHROPIC_MODEL`, `suite.modelOverride`; `pre-push` refuses; `test_a_model_override_receipt_is_rejected`, `test_a_receipt_without_a_model_is_rejected`, `test_receipt_records_the_model`, `test_an_environment_model_counts_as_an_override` (hand-off from `eval.sh` untested — F3) |
+| AC8 | ledger rows 14–15, both green 7/7, same fingerprint; second receipt committed (781b780) |
+| AC9 | every ledger row has `--max-cost-usd`; total $14.1419 (re-added); DECISIONS row carries counts, cost, Claude Code 2.1.272 |
+| AC10 | `docs/CONVENTIONS.md` → Tests, cost-policy bullet; `test_conventions_state_the_eval_cost_policy` |
+| AC11 | End-to-end → Results → Canary: hashes, `stable` sha and mtime equal before/after, debug-log marker, way back — measured without authentication (D4, see F4) |
+| AC12 | CONVENTIONS → Releases canary bullet before the tag; CLAUDE.md → Commands canary lines before `claude plugin tag`; `test_release_procedure_runs_the_canary_before_the_tag`, `test_claude_md_lists_the_canary` |
+| AC13 | ROADMAP items ticked with SPEC 004, 0.4.0 items open, order 1,2,3,4,5,8,6,7,9, versions renumbered; `test_roadmap_stage_order`, `test_roadmap_release_versions_ascend` |
+| AC14 | three rows appended to `docs/DECISIONS.md` |
+| AC15 | `plugin.json` and `CHANGELOG.md` unchanged against `origin/main` |
+| AC16 | `bash scripts/check.sh` ALL GREEN |
+
+Findings
+
+| id | weight | file:line | scenario | fix |
+|----|--------|-----------|----------|-----|
+| F1 | worth fixing | `scripts/eval_receipt.py:23-28`, `53-66` | the receipt divides by the runs that executed, not the case's `runsPerCase`, and ignores the result's `partial` flag: `--max-cost-usd` stops launching runs, so a `runs: 3` case with one passing run reads 1/1 and the receipt is green (reproduced by the quality reviewer) | count missing runs as failed (`max(len(runs), runsPerCase)`), `green` false when `partial`; fixture tests for both |
+| F2 | worth fixing | `scripts/eval_receipt.py:37-44`, `scripts/git-hooks/pre-push:68-82` | `eval.sh` forwards `"$@"`, so `bash scripts/eval.sh --runs 1` measures a future `runs: 3` case once and the gate accepts it — the same bypass `--model` is refused for | record a `--runs` override in the receipt and refuse it in `pre-push` (or compare receipt `runs` with `case.yaml` at the tag); tests |
+| F3 | worth fixing | `scripts/eval.sh:51-53` | `-- "$@"` is the only path by which `--model sonnet` reaches the receipt, and no test runs `eval.sh`; dropping it writes `model: default` for a Sonnet run, and the `suite.modelOverride` backstop is unverified (fixture `null`) | a test running `eval.sh --model sonnet` with stub `claude`/`socat`/`bwrap` on `PATH`, asserting `model == "sonnet"`, restoring the real receipt |
+| F4 | worth fixing | `PLAN.md` step 6 / D4; `docs/CONVENTIONS.md` canary bullet | step 6 said "if no session can authenticate → escalate"; no sandbox session authenticated and the marker was switched without an owner decision, so a skill resolving `bin/` from the unreleased copy in a logged-in session was never observed | owner accepts D4 at gate 2 explicitly, and CONVENTIONS asks the first real canary (0.4.0) to confirm inside the session that `bin/` comes from `<clone>/plugin` |
+| F5 | worth fixing | `CLAUDE.md:130`, `docs/CONVENTIONS.md` canary bullet | the pass condition "`Found 1 plugins`" / "1 plugin: this one" counts every enabled plugin; with a second user- or project-scope plugin a correct canary shows "Found 2 plugins" and reads as a failure | the marker is the "overrides installed version" line plus skills loaded from `<clone>/plugin`; the count is "the same as a plain session" |
+| F6 | nit | `scripts/git-hooks/pre-push:70` | a receipt with `"model": null` prints `None` and refuses with "produced with --model None" (still refused, message misleading) | `.get("model") or ""` |
+| F7 | nit | `docs/CONVENTIONS.md:136` | the added clause left a 104-character line (limit 100) | re-wrap the paragraph |
+| F8 | nit | `tests/test_release_gate.py`, `plugin/tests/test_eval_cases.py:33` | untested edges: zero cases (`> 0` in `green`), a fractional `score`, `--judge-model` not counted as an override, the `summary` last line only checked by prefix; the implement token table lacks "weaken" named by AC2 | add those cases and the token |
+| F9 | nit | `scripts/eval_receipt.py:108-113` | `summary` prints cost with the judge and the model from `suite.modelOverride` only, while the receipt's `cost_usd` excludes the judge and its model also reads flags/env — two numbers for one run | add `judge_cost_usd` to the receipt (or document the difference) and share the model logic |
+| F10 | nit | `tests/test_documents.py:427-434`, `tests/test_release_gate.py:199-274` | `test_claude_md_lists_the_canary` takes the first `bash` block blindly; three receipt tests repeat the `subprocess.run` boilerplate instead of `write_receipt` (and one keeps `ANTHROPIC_MODEL`) | pick the block containing `claude plugin tag`; let `write_receipt` take a result path |
+| F11 | nit | `PLAN.md:677-678`, `638-641`, `556` | owner-decision text says "run 2 … after 8 s" while ledger row 12 says run 3 after 5 turns; the "Status 12:44 … pending" paragraph is stale; the `Metrics:` line splits the numbered E2E list | align the text, mark the status paragraph superseded, move the line |
+| F12 | nit | `plugin/evals/*/scaffold.sh` (four new), `plugin/tests/test_eval_cases.py:44-70` | scaffolds inherit the developer's global git config — a global `core.hooksPath` blocking `main` or a `url.*.insteadOf` breaks `git push origin main` in the fixture and its test | `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1` in the tests, `-c core.hooksPath=/dev/null` on the scaffold push |
+
+Rejected
+
+- `pre-push` reads the working-tree receipt, not the tagged one — pre-existing behaviour
+  outside this spec's scope, and the procedure tags a clean clone; a backlog candidate.
+- `eval.sh` ignores untracked files under `plugin/` in its clean check — pre-existing,
+  outside scope; a backlog candidate.
+- Model detection misses a `model` key in user settings — the gate measures the session's
+  default model by definition, which is what that setting produces for consumers too.
+- `test_the_fingerprint_ignores_the_receipt_itself` is vacuous; `pre-push:36` is 101
+  characters — both pre-existing, not in this diff.
+- Scaffolds are not idempotent (`git remote add` on a second run) — the eval scaffolds
+  each case in a fresh workspace, so it cannot happen.
