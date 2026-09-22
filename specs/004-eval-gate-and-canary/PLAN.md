@@ -415,7 +415,7 @@ itself, so the fingerprint of step 9 stays valid.
       it does); the plain session's points into the
       sandbox plugin cache; `ls ~/.claude/plugins/installed_plugins.json` untouched
       (`stat -c %Y` before/after equal).
-- [ ] 7. Default-model probe and budget projection — one call per new case,
+- [x] 7. Default-model probe and budget projection — one call per new case,
       `--runs 1`, no `--model`, `--max-cost-usd` per case ≤ 2 (final-review) / 1 (others),
       ledger rows; `python3 scripts/eval_receipt.py summary <json>` for each. Compute the
       projection (Approach → Measurement and budget) and write it into the ledger. A case
@@ -623,6 +623,10 @@ call, including aborted ones)_
 gate` = 3.7791 + 7.1372 + 6.4836 = **17.40**, plus the one-run margin of the most expensive
 case (0.5927) = **17.99 > 15** → STOP, escalated before step 8 (no measurement run started).
 Drafting spent 1.9948 of its ≤ $4 share.
+
+**Projection after the owner decision (2026-09-22):** the two gate runs count toward each new
+case's five runs, so step 8 adds `--runs 2` per new case: `projected = 3.7791 + 2 × 1.7843 +
+2 × 3.2418 = 13.83`, plus the one-run margin 0.5927 = **14.42 ≤ 15** → continue.
 
 ## Definition of Done
 
