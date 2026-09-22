@@ -437,7 +437,7 @@ itself, so the fingerprint of step 9 stays valid.
       matches the ledger (existing three still `runs: 1`);
       `uv run pytest -q -p no:cacheprovider plugin/tests` → green;
       `git status --porcelain plugin/` → empty after the commit.
-- [ ] 9. Two consecutive gate runs — `bash scripts/eval.sh --max-cost-usd <n>` twice on
+- [x] 9. Two consecutive gate runs — `bash scripts/eval.sh --max-cost-usd <n>` twice on
       the same commit, `<n>` ≤ the remaining budget; the first receipt is overwritten by
       the second, which is committed (`test: record the eval receipt for 004` — plugin
       content is unchanged, so the fingerprint holds). The first run's receipt is
@@ -622,6 +622,7 @@ call, including aborted ones)_
 | 12 | 2026-09-22 | 8 | final-review-ignores-false-positive | default | 2 | 1 | 2 | 0.6238 | 6.8997 | measurement runs 2–3 (`measure-false-positive.json`); run 2 PASS (21 turns); run 3 **aborted by the usage limit** after 5 turns (`exit 1: You've hit your session limit`, no judge verdict, $0.0810) — an infrastructure abort, not a skill failure (owner decision), re-run below |
 | 13 | 2026-09-22 | 8 | final-review-ignores-false-positive | default | 1 | 1 | 1 | 0.6963 | 7.5960 | re-run of the aborted run 3 after the limit reset (owner decision); 8 turns; PASS |
 | 14 | 2026-09-22 | 9 | all seven (`bash scripts/eval.sh`, gate run 1) | default | 7×1 | 7 | 3.9 | 3.3885 | 10.9845 | exit 0, `(green)`; receipt: `cases_total` 7, `cases_passed` 7, every case 1/1, `cost_usd` 3.3614 (runs only; +0.0270 judge), `model` default, `plugin_fingerprint` `b2e7b357…c5dc86` (= `git ls-tree` of HEAD `8e930e7`); run 4 of each new case, PASS. Per run: defect 0.5383, false-positive 0.6459, guard 0.0914, implement 0.2917, init-keeps 0.9938, init-without 0.4099, plan-review 0.3904 |
+| 15 | 2026-09-22 | 9 | all seven (`bash scripts/eval.sh`, gate run 2) | default | 7×1 | 7 | 4.2 | 3.1574 | 14.1419 | exit 0, `(green)`; receipt (committed): `cases_total` 7, `cases_passed` 7, every case 1/1, `cost_usd` 3.1311 (+0.0264 judge), `model` default, `plugin_fingerprint` `b2e7b357…c5dc86` — equal to gate run 1; run 5 of each new case, PASS. Per run: defect 0.5482, false-positive 0.5401, guard 0.1153, implement 0.2192, init-keeps 0.6744, init-without 0.5741, plan-review 0.4598. Ceiling $16 by owner decision; total stays under $15 |
 
 **Status 2026-09-22 12:44:** the re-run of the aborted run and the two gate runs (step 9) are pending:
 child sessions return `429 You've hit your session limit · resets 2:30pm (Europe/Warsaw)` (checked with a

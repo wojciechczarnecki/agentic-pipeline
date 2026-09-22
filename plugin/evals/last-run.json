@@ -1,12 +1,12 @@
 {
-  "commit": "8e930e74637311c55f566b9fed5493287e6f5f4e",
+  "commit": "c1710b7335cf1065b4381cde23cadc99ff3b0a80",
   "plugin_fingerprint": "b2e7b35704fcee9f55e69b7dd3c765c998916b16a4eb9b9d37f4aea308c5dc86",
   "plugin_version": "0.3.4",
-  "ran_at": "2026-09-22T16:13",
+  "ran_at": "2026-09-22T16:29",
   "cases_total": 7,
   "cases_passed": 7,
   "green": true,
-  "cost_usd": 3.3614,
+  "cost_usd": 3.1311,
   "model": "default",
   "cases": {
     "final-review-finds-planted-defect": {
