@@ -445,7 +445,7 @@ way.)
       `test_init_does_not_write_protected_branches` (`"protectedBranches"` in `step(4)`).
       Verification: `uv run pytest -q plugin/tests/test_readme.py plugin/tests/test_init_templates.py plugin/tests/test_init_skill.py plugin/tests/test_no_domain_references.py && git diff --exit-code origin/main -- scripts/git-hooks/pre-push plugin/templates/pre-push`
 
-- [ ] 8. **Install guide, `CLAUDE.md`, conventions** — files: `plugin/docs/INSTALL.md`,
+- [x] 8. **Install guide, `CLAUDE.md`, conventions** — files: `plugin/docs/INSTALL.md`,
       `CLAUDE.md`, `docs/CONVENTIONS.md`, `plugin/tests/test_readme.py`,
       `tests/test_documents.py`.
       INSTALL: one note where `uninstall`/`marketplace remove` first appear (and in

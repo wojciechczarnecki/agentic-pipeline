@@ -271,3 +271,10 @@ def test_the_guard_section_links_guard_md():
     section = README.split("### Command guard", 1)[1].split("\n## ", 1)[0]
     assert "](docs/GUARD.md)" in section
     assert (PLUGIN / "docs" / "GUARD.md").is_file()
+
+
+# From 0.4.0 the guard refuses detaching the plugin in an agent session (SPEC 005, AC18);
+# the install guide must send the owner to a terminal for the commands it shows.
+def test_install_guide_leaves_detaching_to_the_owners_terminal():
+    for token in ["terminal", "agent session", "refuse", "protectedBranches"]:
+        assert token in INSTALL, token

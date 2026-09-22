@@ -87,8 +87,10 @@ for everyone:**
   `pre-push` hook matches branches only, so GitHub accepts `pipeline--vX.Y.Z` from anyone
   who can push. Tagging stays the owner's move by agreement, not by mechanism.
 - moving `stable`: with a `--scope user` install the channel feeds every project on the
-  machine, and the guard protects `main`/`master` only; `deny` rules on `git push` to
-  `stable` keep an agent off it. Moving the channel is the owner's move, like tagging.
+  machine; the guard refuses it through `"protectedBranches": ["stable"]` in
+  `.claude/workflow.json`, and refuses detaching the plugin (`claude plugin disable`,
+  `uninstall`, `marketplace remove`). Moving the channel is the owner's move, like
+  tagging. `deny` rules stay only for `gh pr merge` and `claude plugin enable`.
 - merging a PR: `required_approving_review_count` is 0, so a squash merge is server-side
   allowed; only the guard and `deny` keep an agent off it.
 
