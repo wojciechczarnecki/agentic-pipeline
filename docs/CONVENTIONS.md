@@ -43,11 +43,12 @@ and the way out (for the guard: which configuration or approval unlocks the acti
 - Cover key paths and edge cases; assertions check content where content matters.
 - Full verification in one command: `bash scripts/check.sh`.
 - `claude plugin eval` runs a real model, costs money and is run locally on demand — there
-  is no CI workflow for it (`docs/DECISIONS.md`, 2026-09-20). The whole suite:
+  is no CI workflow for it (`docs/DECISIONS.md`, 2026-09-20). The whole suite, with the
+  receipt a release needs: `bash scripts/eval.sh`, which runs
 
   ```bash
   claude plugin eval plugin/ --scaffold --allow-tools Bash Write Edit \
-    --trust-plugin --no-publish
+    --trust-plugin --no-publish --ablation none
   ```
 
   `--allow-tools` is not implied by `--trust-plugin` and every case declares `Bash`; the
@@ -56,7 +57,23 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   needs a sandbox backend (`bubblewrap` and `socat` on Linux): without it every run is
   refused at `turns: 0`, yet the LLM grader still votes FAIL on the empty transcript and
   bills for it, so the suite reads as a broken plugin. Add `--case <name>` to run one
-  case and `--max-cost-usd <n>` for a ceiling.
+  case and `--max-cost-usd <n>` for a ceiling. The receipt (`scripts/eval_receipt.py`)
+  counts a case with several runs as passed when a majority of them passed (2 of 3), not
+  by the CLI's own aggregate, and records the model the suite ran on.
+- Eval cost policy (measured in SPEC 004, `docs/DECISIONS.md`, 2026-09-22): a new case, and
+  an existing one that fails in any run, is measured with 5 runs on the default model; it
+  keeps `runs: 1` at 5 of 5, gets `runs: 3` at 4 of 5, and below that gets sharper
+  criteria or a new fixture — it is not shipped. Drafting a case may run on
+  `--model sonnet`; measurements and receipts run only on the default model, because
+  consumers work on the session model, and `pre-push` refuses a receipt made with
+  `--model`. Every eval call carries `--max-cost-usd`: the ceiling is checked before each
+  run launches, so it bounds the number of runs, not the cost of one, and a run that
+  breaches it has its grader skipped — paid for, with no verdict.
+- New eval cases are proven deterministic first: `plugin/tests/test_eval_cases.py` runs
+  every `scaffold.sh` and checks that the fixture is what the case claims (the suite red
+  where the case needs it red, the metrics check green), and a new case names its wrong
+  behaviour explicitly in the grader's "incorrect" paragraph. The grader judges the run's
+  last message, so criteria ask for what a final message shows.
 
 ## Commits and branches
 
@@ -74,6 +91,25 @@ and the way out (for the guard: which configuration or approval unlocks the acti
 - Semantic versioning in `plugin/.claude-plugin/plugin.json`; the version grows with
   behaviour (skills, agents, hooks, guard, templates), not with docs or tests.
 - Every release has a `plugin/CHANGELOG.md` section.
+- A **minor or major** release gets a canary before the tag — a mandatory step, though no
+  mechanism enforces it (nothing can check that a plugin was used in another repository);
+  patches are exempt, as for the eval receipt. On the clean `main` about to be tagged, the
+  owner opens a session in a consumer project with the unreleased plugin beside the
+  `--scope user` install and runs a real stage in it:
+
+  ```bash
+  claude --plugin-dir <clone>/plugin plugin list   # pipeline@inline, the new version
+  cd <consumer> && claude --plugin-dir <clone>/plugin --debug-file /tmp/canary.log
+  grep -E 'overrides installed version|Found [0-9]+ plugins' /tmp/canary.log
+  ```
+
+  `--plugin-dir` overrides the installed copy for that session only: the log reads
+  `Plugin "pipeline" from --plugin-dir overrides installed version` and
+  `Found 1 plugins (1 enabled, 0 disabled)` — one copy, the unreleased one — and
+  `plugin list` shows it as `pipeline@inline` with the new version beside the installed
+  one. The install, the marketplace registration and `stable` stay untouched (measured
+  2026-09-22 in a sandbox, `docs/DECISIONS.md`). The way back is a session without
+  `--plugin-dir`. A canary that misbehaves stops the release: fix, merge, canary again.
 - The owner tags a clean `main` with `claude plugin tag plugin --push` (`pipeline--vX.Y.Z`).
 - The owner — never an agent — then moves the release channel to the new tag:
   `git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'`. The `^{commit}` is
@@ -96,7 +132,8 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   `bash scripts/eval.sh`, which writes `plugin/evals/last-run.json` and is committed with
   the release. The receipt fingerprints what `plugin/` contains rather than naming a
   commit, because it ships inside the release it certifies and a squash merge would
-  invalidate any sha it named. The `pre-push` hook refuses the tag without it. Patches are exempt — a full
+  invalidate any sha it named. The `pre-push` hook refuses the tag without it, and refuses
+  a receipt that does not record its model or was produced with `--model`. Patches are exempt — a full
   suite costs real money and a patch is usually a hook or a documentation fix. The hook is
   the only layer that can enforce this: the `release tags` ruleset has no `creation` rule,
   so the server accepts a new tag from anyone who can push.

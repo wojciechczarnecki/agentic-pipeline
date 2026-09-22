@@ -124,6 +124,10 @@ claude plugin validate --strict .
 claude --plugin-dir ./plugin          # one-off session with the working-tree plugin
 
 # Release — the owner only: tag a clean clone on main, move the channel, publish the Release
+# Minor/major first: eval receipt, then the canary — one real session in a consumer project
+bash scripts/eval.sh
+claude --plugin-dir <clone>/plugin --debug-file /tmp/canary.log   # run from the consumer
+grep -E 'overrides installed version|Found [0-9]+ plugins' /tmp/canary.log   # 1 plugin: this one
 claude plugin tag plugin --push
 git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'   # tags are annotated
 awk -v v=X.Y.Z '$0 == "## " v {f=1; next} /^## /{f=0} f' plugin/CHANGELOG.md | gh release create pipeline--vX.Y.Z --verify-tag --title 'pipeline X.Y.Z' --notes-file -

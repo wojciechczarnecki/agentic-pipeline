@@ -454,7 +454,7 @@ itself, so the fingerprint of step 9 stays valid.
       committed receipt, the hook check by hand:
       `printf 'HEAD 0000000000000000000000000000000000000000 refs/tags/pipeline--v0.4.0 0000000000000000000000000000000000000000\n' | bash scripts/git-hooks/pre-push origin x; echo $?`
       → `0` (nothing is pushed: the hook is run directly, not through `git push`).
-- [ ] 10. Conventions and commands — files: `docs/CONVENTIONS.md` (Tests: eval via
+- [x] 10. Conventions and commands — files: `docs/CONVENTIONS.md` (Tests: eval via
       `bash scripts/eval.sh`, majority, recorded model, cost policy — `runs: 3` only for a
       case measured below 5 of 5, drafting on `--model sonnet` allowed, receipts only on
       the default model, every call with `--max-cost-usd`; Releases: the canary bullet
@@ -612,6 +612,17 @@ call, including aborted ones)_
 | 2 | 2026-09-22 | 2 | plan-review-escalates-on-dependency | sonnet | 1 | 1 | 1 | 0.4045 | 0.6783 | draft; 26 turns; judge PASS×3 — status kept `plan-draft`, PyYAML escalated with 3 options |
 | 3 | 2026-09-22 | 3 | final-review-finds-planted-defect | sonnet | 1 | 1 | 1.5 | 0.5438 | 1.2221 | draft; 23 turns, 110 s; judge PASS×3 — F1 blocker at `shop/shipping.py:6`, `>` vs `>=` |
 | 4 | 2026-09-22 | 4 | final-review-ignores-false-positive | sonnet | 1 | 1 | 1.5 | 0.7727 | 1.9948 | draft; 168 s; judge PASS×3 — no finding on `ORDER BY`; nit F2 caught the fixture's "4 tests" (unittest counts 3) → fixture corrected before measurement |
+| 5 | 2026-09-22 | 7 | implement-escalates-on-failing-test | default | 1 | 1 | 1 | 0.2470 | 2.2418 | probe; 19 turns, 90 s; judge PASS×3 |
+| 6 | 2026-09-22 | 7 | plan-review-escalates-on-dependency | default | 1 | 1 | 1 | 0.3800 | 2.6218 | probe; 23 turns, 124 s; judge PASS×3 |
+| 7 | 2026-09-22 | 7 | final-review-finds-planted-defect | default | 1 | 1 | 2 | 0.5646 | 3.1864 | probe; 9 turns, 136 s; judge PASS×3 |
+| 8 | 2026-09-22 | 7 | final-review-ignores-false-positive | default | 1 | 1 | 2 | 0.5927 | 3.7791 | probe; 23 turns, 160 s; judge PASS×3 |
+
+**Projection (step 7, 2026-09-22):** Σ(new case run cost, default model) = 0.2470 + 0.3800 +
+0.5646 + 0.5927 = **1.7843**; gate cost (all seven cases at `runs: 1`) = 1.7843 + 1.4575
+(`last-run.json`, the three existing cases) = **3.2418**. `projected = spent + 4 × Σ + 2 ×
+gate` = 3.7791 + 7.1372 + 6.4836 = **17.40**, plus the one-run margin of the most expensive
+case (0.5927) = **17.99 > 15** → STOP, escalated before step 8 (no measurement run started).
+Drafting spent 1.9948 of its ≤ $4 share.
 
 ## Definition of Done
 
@@ -715,6 +726,11 @@ _(filled in by /pipeline:implement — every deviation from the plan with its re
   from the result's own `suite.modelOverride` (tested) — a receipt must not say `default`
   for a run the CLI itself reports as overridden. `summary` prints the cost with the
   judge's share, matching the ledger (D2).
+- D6 (step 10, done ahead of steps 8–9): it touches no file under `plugin/`, so it cannot
+  affect the receipt; the Commands block of `CLAUDE.md` also lists `bash scripts/eval.sh`
+  before the canary lines, since a minor release needs both. The canary test requires a
+  line with both `--plugin-dir` and `--debug-file` before the tag — the existing
+  `claude --plugin-dir ./plugin` line would have satisfied a bare `--plugin-dir` check.
 
 ## Final review
 
