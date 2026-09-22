@@ -204,6 +204,19 @@ API_OWNER_DELETIONS = {
     "automated-security-fixes": "security settings",
     "private-vulnerability-reporting": "security settings",
 }
+PLUGIN_INSTALL = (
+    "the {name} plugin's install is the owner's to change — disabling or uninstalling it, "
+    "or removing its marketplace, switches the guard off; the owner runs that in a terminal"
+)
+PLUGIN_VARIABLE = (
+    "cannot verify a plugin or marketplace name built from variables: {}; spell it out"
+)
+PLUGIN_STATE_UNREADABLE = (
+    "cannot read the plugin install state to tell whether {} is this plugin's marketplace; "
+    "the owner runs that in a terminal"
+)
+CLAUDE_VALUE_OPTIONS = {"-s", "--scope"}
+DEFAULT_PLUGIN_NAME = "pipeline"
 DEFAULT_WORKTREE_DIR = "../worktrees"
 GLOB_CHARACTERS = re.compile(r"[*?\[{]")
 WORKTREE_ADD_OPTIONS = {"-b", "-B", "--reason"}
@@ -526,6 +539,8 @@ class Analyzer:
             self.git(args)
         elif program == "gh":
             check_gh(args, self.rules)
+        elif program == "claude":
+            check_claude(args, self.env, env)
         elif program in REMOVAL_PROGRAMS:
             self.removal(args)
         elif program == "find":
@@ -1090,6 +1105,120 @@ def check_gh(args: list[str], rules: Rules) -> None:
                 if match:
                     name = match.group(1)
                     raise GuardError(f"write calls to {name}: {owner_only(name)}")
+
+
+# Detaching is judged by target: this plugin (under any marketplace, or no plugin named at
+# all, or --all) and the marketplaces it comes from. Managing other plugins, and `update`,
+# `install`, `enable`, stay open. A target the guard cannot resolve is refused.
+def check_claude(args: list[str], env: dict[str, str], segment_env: dict[str, str]) -> None:
+    start = next((index for index, arg in enumerate(args) if arg in {"plugin", "plugins"}), None)
+    if start is None:
+        return
+    rest = args[start + 1 :]
+    if any(arg in {"-h", "--help"} for arg in rest):
+        return
+    positionals, every = [], False
+    index = 0
+    while index < len(rest):
+        arg = rest[index]
+        if arg in CLAUDE_VALUE_OPTIONS:
+            index += 1
+        elif arg == "--all" or (arg.startswith("-") and not arg.startswith("--") and "a" in arg):
+            every = True
+        elif not arg.startswith("-"):
+            positionals.append(arg)
+        index += 1
+    if not positionals:
+        return
+    sub, targets = positionals[0], positionals[1:]
+    plugin = PluginIdentity(segment_env)
+    if sub == "disable" and (every or not targets):
+        raise GuardError(PLUGIN_INSTALL.format(name=plugin.name))
+    if sub in {"disable", "uninstall", "remove"}:
+        for target in targets:
+            if resolved_name(target, env).split("@", 1)[0] == plugin.name:
+                raise GuardError(PLUGIN_INSTALL.format(name=plugin.name))
+    if sub == "marketplace" and targets[:1] in (["remove"], ["rm"]):
+        for target in targets[1:]:
+            plugin.check_marketplace(resolved_name(target, env))
+
+
+def resolved_name(raw: str, env: dict[str, str]) -> str:
+    expanded = expand_variables(raw, env)
+    if "$" in expanded or "`" in expanded:
+        raise GuardError(PLUGIN_VARIABLE.format(raw))
+    return expanded
+
+
+class PluginIdentity:
+    def __init__(self, env: dict[str, str]):
+        self.roots = plugin_roots(env)
+        self.name = plugin_name(self.roots)
+        self.config_dir = Path(env.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+
+    # The plugin's own layout answers first, so the install state is read only when needed.
+    def check_marketplace(self, marketplace: str) -> None:
+        if marketplace in self.layout_marketplaces():
+            raise GuardError(PLUGIN_INSTALL.format(name=self.name))
+        installed = self.installed_marketplaces()
+        if installed is None:
+            raise GuardError(PLUGIN_STATE_UNREADABLE.format(marketplace))
+        if marketplace in installed:
+            raise GuardError(PLUGIN_INSTALL.format(name=self.name))
+
+    def layout_marketplaces(self) -> set[str]:
+        found = set()
+        for root in self.roots:
+            # …/plugins/cache/<marketplace>/<plugin>/<version>
+            parents = root.parents
+            if len(parents) > 3 and parents[2].name == "cache" and parents[3].name == "plugins":
+                found.add(parents[1].name)
+            manifest = read_json(root.parent / ".claude-plugin" / "marketplace.json")
+            if isinstance(manifest, dict) and isinstance(manifest.get("name"), str):
+                entries = manifest.get("plugins")
+                if isinstance(entries, list) and any(
+                    isinstance(entry, dict) and entry.get("name") == self.name for entry in entries
+                ):
+                    found.add(manifest["name"])
+        return found
+
+    def installed_marketplaces(self) -> set[str] | None:
+        path = self.config_dir / "plugins" / "installed_plugins.json"
+        if not path.exists():
+            return set()
+        data = read_json(path)
+        if not isinstance(data, dict) or not isinstance(data.get("plugins"), dict):
+            return None
+        return {
+            key.split("@", 1)[1]
+            for key in data["plugins"]
+            if isinstance(key, str) and key.split("@", 1)[0] == self.name and "@" in key
+        }
+
+
+def plugin_roots(env: dict[str, str]) -> list[Path]:
+    roots = [Path(os.path.realpath(Path(__file__).resolve().parents[1]))]
+    raw = env.get("CLAUDE_PLUGIN_ROOT")
+    if raw:
+        root = Path(os.path.realpath(os.path.expanduser(raw)))
+        if root not in roots:
+            roots.append(root)
+    return roots
+
+
+def plugin_name(roots: list[Path]) -> str:
+    for root in roots:
+        manifest = read_json(root / ".claude-plugin" / "plugin.json")
+        if isinstance(manifest, dict) and isinstance(manifest.get("name"), str):
+            return manifest["name"]
+    return DEFAULT_PLUGIN_NAME
+
+
+def read_json(path: Path) -> object:
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
 
 
 # What an API DELETE may not touch: the same ground the gh subcommands above keep for the

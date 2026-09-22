@@ -290,7 +290,7 @@ way.)
         the "`protectedBranches` has to be list" warning.
       Verification: `uv run pytest -q plugin/tests/test_guard_protected_branches.py plugin/tests/test_guard.py && git diff --exit-code origin/main -- plugin/tests/test_guard.py`
 
-- [ ] 3. **Guard: detaching the plugin** — files: `plugin/bin/guard.py`,
+- [x] 3. **Guard: detaching the plugin** — files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard_detach.py` (new).
       Implement per Approach → Detaching the plugin. Tests (every `evaluate` passes
       `CLAUDE_CONFIG_DIR=<tmp>/config`; a helper writes `installed_plugins.json`):
