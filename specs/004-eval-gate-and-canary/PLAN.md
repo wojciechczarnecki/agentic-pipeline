@@ -847,3 +847,24 @@ Rejected
   characters — both pre-existing, not in this diff.
 - Scaffolds are not idempotent (`git remote add` on a second run) — the eval scaffolds
   each case in a fresh workspace, so it cannot happen.
+
+### 2026-09-22 — /pipeline:final-review, apply mode (inside /pipeline:ship)
+
+Owner decision (gate 2): accept F1–F5, reject the nits F6–F12. `bash scripts/check.sh`
+after the fixes: ALL GREEN (949 passed). No file under `plugin/` changed, so the committed
+receipt's fingerprint still matches and the version stays 0.3.4 (AC15).
+
+| id | change |
+|----|--------|
+| F1 | `scripts/eval_receipt.py`: a case's denominator is `max(runs that ran, runsPerCase)`, so a run the cost ceiling never started counts as failed; `green` is false on a `partial` result. Tests `test_runs_that_never_started_count_as_failed`, `test_a_partial_result_is_not_green` |
+| F2 | `scripts/git-hooks/pre-push`: refuses a receipt in which any case ran fewer times than its `case.yaml` at the tag asks (CLI default 3 when `runs` is absent), which catches `eval.sh --runs 1` and a missing case. Tests `test_a_receipt_with_fewer_runs_than_case_yaml_is_rejected` (a throwaway commit with `runs: 3`), `test_a_receipt_with_the_runs_case_yaml_asks_passes`, `test_a_receipt_missing_a_case_is_rejected`; the `receipt` fixture now writes `cases` |
+| F3 | `test_eval_sh_passes_the_model_to_the_receipt`: runs `scripts/eval.sh` in a temporary repository with stub `claude`/`socat`/`bwrap` on `PATH`, asserting `model` is `default` without flags and `sonnet` with `--model sonnet` — the real receipt is never touched |
+| F4 | owner accepted D4 at gate 2; `docs/CONVENTIONS.md` canary bullet asks the 0.4.0 canary to confirm inside the session that `bin/` resolves to `<clone>/plugin/bin` and no second `pipeline` sits on `$PATH` |
+| F5 | the pass marker is the "overrides installed version" line, skills from `<clone>/plugin` and a `Found N plugins` count equal to a plain session's (`docs/CONVENTIONS.md`; `CLAUDE.md` comment "count = plain session") |
+
+`docs/CONVENTIONS.md` receipt paragraph now names the runs rule and the partial rule (the
+paragraph was re-wrapped while edited, which also removed the 104-character line of F7).
+`docs/BACKLOG.md`: the two rejected-as-out-of-scope candidates added under P3 Evals
+(`pre-push` reads the working-tree receipt; `eval.sh` ignores untracked files). Backlog item
+whose trigger has fired: Guard — `gh api` write calls on the repository endpoint (trigger
+"Stage 5 starting"; SPEC 005 takes the guard 0.4.0 items).

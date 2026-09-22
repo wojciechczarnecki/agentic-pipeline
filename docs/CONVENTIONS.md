@@ -103,13 +103,19 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   grep -E 'overrides installed version|Found [0-9]+ plugins' /tmp/canary.log
   ```
 
-  `--plugin-dir` overrides the installed copy for that session only: the log reads
-  `Plugin "pipeline" from --plugin-dir overrides installed version` and
-  `Found 1 plugins (1 enabled, 0 disabled)` — one copy, the unreleased one — and
-  `plugin list` shows it as `pipeline@inline` with the new version beside the installed
-  one. The install, the marketplace registration and `stable` stay untouched (measured
-  2026-09-22 in a sandbox, `docs/DECISIONS.md`). The way back is a session without
-  `--plugin-dir`. A canary that misbehaves stops the release: fix, merge, canary again.
+  `--plugin-dir` overrides the installed copy for that session only. The pass marker is
+  the log line `Plugin "pipeline" from --plugin-dir overrides installed version`, skills
+  loaded from `<clone>/plugin`, and a `Found N plugins` count equal to a plain session's
+  in the same consumer — the count covers every enabled plugin, so it is 1 only where
+  `pipeline` is the sole one. `plugin list` shows the copy as `pipeline@inline` with the
+  new version beside the installed one. Inside the session, confirm that a stage resolves
+  `bin/` from the unreleased copy (`command -v workflow_metrics.py` points into
+  `<clone>/plugin/bin`, and no other `pipeline` entry sits on `$PATH`): the sandbox
+  measurement could not authenticate a session, so the first canary (0.4.0) is where this
+  is first observed. The install, the marketplace registration and `stable` stay
+  untouched (measured 2026-09-22 in a sandbox, `docs/DECISIONS.md`). The way back is a
+  session without `--plugin-dir`. A canary that misbehaves stops the release: fix,
+  merge, canary again.
 - The owner tags a clean `main` with `claude plugin tag plugin --push` (`pipeline--vX.Y.Z`).
 - The owner — never an agent — then moves the release channel to the new tag:
   `git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'`. The `^{commit}` is
@@ -132,11 +138,14 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   `bash scripts/eval.sh`, which writes `plugin/evals/last-run.json` and is committed with
   the release. The receipt fingerprints what `plugin/` contains rather than naming a
   commit, because it ships inside the release it certifies and a squash merge would
-  invalidate any sha it named. The `pre-push` hook refuses the tag without it, and refuses
-  a receipt that does not record its model or was produced with `--model`. Patches are exempt — a full
-  suite costs real money and a patch is usually a hook or a documentation fix. The hook is
-  the only layer that can enforce this: the `release tags` ruleset has no `creation` rule,
-  so the server accepts a new tag from anyone who can push.
+  invalidate any sha it named. The `pre-push` hook refuses the tag without it, and
+  refuses a receipt that does not record its model, was produced with `--model`, or ran a
+  case fewer times than its `case.yaml` asks (a `--runs` override); the receipt counts a
+  run the cost ceiling never started as failed and is not green on a partial result.
+  Patches are exempt — a full suite costs real money and a patch is usually a hook or a
+  documentation fix. The hook is the only layer that can enforce this: the `release tags`
+  ruleset has no `creation` rule, so the server accepts a new tag from anyone who can
+  push.
 
 ## Parallel work
 

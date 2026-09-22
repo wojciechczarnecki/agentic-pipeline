@@ -19,6 +19,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 5
   final_review_nits: 7
+  findings_accepted: 5
+  findings_rejected: 7
 ---
 
 # SPEC 004 — A release gate to trust

@@ -20,11 +20,14 @@ def run_passed(run: dict) -> bool:
     return (run.get("score") or 0) >= 1
 
 
+# `--max-cost-usd` stops launching runs, so a case can report fewer runs than it asked
+# for; a run that never started counts as failed, or one passing run of three reads 1/1.
 def case_runs(result: dict) -> dict[str, tuple[int, int]]:
     counted = {}
     for case in result["cases"]:
         runs = case["arms"]["with"]
-        counted[case["name"]] = (sum(run_passed(run) for run in runs), len(runs))
+        planned = max(len(runs), case.get("runsPerCase") or 0)
+        counted[case["name"]] = (sum(run_passed(run) for run in runs), planned)
     return counted
 
 
@@ -59,7 +62,8 @@ def receipt(result: dict, args: list[str], environ: dict[str, str], **recorded) 
         "ran_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M"),
         "cases_total": len(counted),
         "cases_passed": passed,
-        "green": passed == len(counted) > 0,
+        # A partial result (the cost ceiling or an abort cut the suite short) is no release.
+        "green": passed == len(counted) > 0 and not result.get("partial"),
         "cost_usd": round(result["costUsd"], 4),
         "model": model or "default",
         "cases": {name: {"runs": runs, "passed": ok} for name, (ok, runs) in counted.items()},

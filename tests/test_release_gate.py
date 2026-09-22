@@ -37,13 +37,17 @@ def receipt():
     """Swap in a receipt and restore whatever was there, so a real one is never lost."""
     previous = RECEIPT.read_text() if RECEIPT.exists() else None
 
-    total = len(list((ROOT / "plugin" / "evals").glob("*/case.yaml")))
+    names = [path.parent.name for path in (ROOT / "plugin" / "evals").glob("*/case.yaml")]
+    total = len(names)
 
-    def write(fingerprint: str, green: bool, cases_total: int = None, model="default"):
+    def write(
+        fingerprint: str, green: bool, cases_total: int = None, model="default", runs: int = 3
+    ):
         written = {
             "plugin_fingerprint": fingerprint,
             "green": green,
             "cases_total": total if cases_total is None else cases_total,
+            "cases": {name: {"runs": runs, "passed": runs} for name in names},
         }
         if model is not None:
             written["model"] = model
@@ -272,3 +276,147 @@ def test_a_model_override_named_in_the_result_counts_too(tmp_path):
         env={k: v for k, v in os.environ.items() if k != "ANTHROPIC_MODEL"},
     )
     assert json.loads(out.read_text())["model"] == "haiku"
+
+
+def commit_with_runs(runs: int) -> str:
+    """A throwaway commit of HEAD whose first case asks for `runs` — no ref, no checkout."""
+    case = sorted((ROOT / "plugin" / "evals").glob("*/case.yaml"))[0]
+    text = case.read_text().replace("runs: 1", f"runs: {runs}")
+
+    def git(*args: str, **kwargs) -> str:
+        return subprocess.run(
+            ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True, **kwargs
+        ).stdout.strip()
+
+    blob = git("hash-object", "-w", "--stdin", input=text)
+    index = ROOT / ".git" / "test-release-gate.index"
+    env = {**os.environ, "GIT_INDEX_FILE": str(index)}
+    try:
+        git("read-tree", "HEAD", env=env)
+        path = case.relative_to(ROOT).as_posix()
+        git("update-index", "--cacheinfo", f"100644,{blob},{path}", env=env)
+        tree = git("write-tree", env=env)
+    finally:
+        index.unlink(missing_ok=True)
+    return git("commit-tree", tree, "-p", "HEAD", "-m", "runs override test")
+
+
+# `eval.sh --runs 1` would measure a `runs: 3` case once — the bypass `--model` is refused for.
+def test_a_receipt_with_fewer_runs_than_case_yaml_is_rejected(receipt):
+    tagged = commit_with_runs(3)
+    receipt(fingerprint(tagged), green=True, runs=1)
+    result = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
+    assert result.returncode == 1
+    assert "ran 1 of 3" in result.stderr
+    assert "fewer runs than case.yaml" in result.stderr
+
+
+def test_a_receipt_with_the_runs_case_yaml_asks_passes(receipt):
+    tagged = commit_with_runs(3)
+    receipt(fingerprint(tagged), green=True, runs=3)
+    assert push("refs/tags/pipeline--v0.3.0", local_ref=tagged).returncode == 0
+
+
+def test_a_receipt_missing_a_case_is_rejected(receipt):
+    receipt(fingerprint(), green=True)
+    written = json.loads(RECEIPT.read_text())
+    missing = sorted(written["cases"])[0]
+    del written["cases"][missing]
+    RECEIPT.write_text(json.dumps(written))
+    result = push("refs/tags/pipeline--v0.3.0", local_ref="HEAD")
+    assert result.returncode == 1
+    assert f"{missing} ran 0 of 1" in result.stderr
+
+
+def write_result(tmp_path, data: dict) -> dict:
+    result_file = tmp_path / "result.json"
+    result_file.write_text(json.dumps(data))
+    out = tmp_path / "receipt.json"
+    subprocess.run(
+        [sys.executable, str(EVAL_RECEIPT), "write", str(result_file), str(out)]
+        + ["--commit", "c", "--version", "v", "--fingerprint", "f", "--"],
+        capture_output=True,
+        text=True,
+        env={k: v for k, v in os.environ.items() if k != "ANTHROPIC_MODEL"},
+    )
+    return json.loads(out.read_text())
+
+
+def green_result() -> dict:
+    data = json.loads(RESULT.read_text())
+    data["cases"] = [case for case in data["cases"] if case["name"] != "one-of-three"]
+    return data
+
+
+# `--max-cost-usd` stops launching runs: one passing run of three must not read 1/1.
+def test_runs_that_never_started_count_as_failed(tmp_path):
+    data = green_result()
+    two_of_three = data["cases"][0]
+    assert two_of_three["runsPerCase"] == 3
+    two_of_three["arms"]["with"] = [run for run in two_of_three["arms"]["with"] if run["passed"]][
+        :1
+    ]
+    written = write_result(tmp_path, data)
+    assert written["cases"]["two-of-three"] == {"runs": 3, "passed": 1}
+    assert written["green"] is False
+
+
+def test_a_partial_result_is_not_green(tmp_path):
+    data = green_result()
+    assert write_result(tmp_path, data)["green"] is True
+    data["partial"] = True
+    assert write_result(tmp_path, data)["green"] is False
+
+
+STUB_CLAUDE = """#!/usr/bin/env bash
+# Stands in for `claude plugin eval`: writes the canned result where --json points.
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "--json" ]]; then cp "$STUB_RESULT" "$2"; shift; fi
+  shift
+done
+"""
+
+
+# `-- "$@"` is the only path by which `--model` reaches the receipt; run eval.sh itself,
+# with stubs for the CLI and the sandbox backend, in a copy of the repository layout.
+@pytest.mark.parametrize(("args", "model"), [((), "default"), (("--model", "sonnet"), "sonnet")])
+def test_eval_sh_passes_the_model_to_the_receipt(tmp_path, args, model):
+    repo = tmp_path / "repo"
+    (repo / "scripts").mkdir(parents=True)
+    (repo / "plugin" / ".claude-plugin").mkdir(parents=True)
+    (repo / "plugin" / "evals").mkdir()
+    for name in ["eval.sh", "eval_receipt.py"]:
+        (repo / "scripts" / name).write_text((ROOT / "scripts" / name).read_text())
+    (repo / "plugin" / ".claude-plugin" / "plugin.json").write_text('{"version": "9.9.9"}')
+    git_env = {
+        **os.environ,
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+    for command in (["init", "-q"], ["add", "-A"], ["commit", "-q", "-m", "init"]):
+        subprocess.run(["git", *command], cwd=repo, env=git_env, check=True)
+
+    stubs = tmp_path / "bin"
+    stubs.mkdir()
+    for name, body in [("claude", STUB_CLAUDE), ("socat", "#!/bin/sh\n"), ("bwrap", "#!/bin/sh\n")]:
+        (stubs / name).write_text(body)
+        (stubs / name).chmod(0o755)
+    result_file = tmp_path / "result.json"
+    result_file.write_text(json.dumps(green_result()))
+    env = {k: v for k, v in git_env.items() if k != "ANTHROPIC_MODEL"}
+    env.update(PATH=f"{stubs}{os.pathsep}{os.environ['PATH']}", STUB_RESULT=str(result_file))
+
+    run = subprocess.run(
+        ["bash", str(repo / "scripts" / "eval.sh"), *args],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert run.returncode == 0, run.stderr
+    written = json.loads((repo / "plugin" / "evals" / "last-run.json").read_text())
+    assert written["model"] == model
+    assert written["plugin_version"] == "9.9.9"

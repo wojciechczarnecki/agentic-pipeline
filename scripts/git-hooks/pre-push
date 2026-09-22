@@ -60,6 +60,38 @@ while read -r local_ref _local_sha remote_ref _remote_sha; do
       exit 1
     fi
 
+    # `eval.sh --runs 1` would measure a `runs: 3` case once, and one lucky run is not the
+    # majority the case was set up for. Each case must have run as often as its case.yaml
+    # at the tag asks (the CLI's default is 3).
+    short=$(python3 - "$receipt" "$tagged" <<'PY'
+import json, re, subprocess, sys
+
+cases = json.load(open(sys.argv[1])).get("cases") or {}
+listed = subprocess.run(
+    ["git", "ls-tree", "-r", "--name-only", sys.argv[2], "--", "plugin/evals/"],
+    capture_output=True, text=True,
+).stdout.split()
+for path in [p for p in listed if p.endswith("/case.yaml")]:
+    text = subprocess.run(
+        ["git", "show", f"{sys.argv[2]}:{path}"], capture_output=True, text=True
+    ).stdout
+    name = re.search(r"^name:\s*(\S+)", text, re.M)
+    name = name.group(1) if name else path.split("/")[-2]
+    wanted = re.search(r"^runs:\s*(\d+)", text, re.M)
+    wanted = int(wanted.group(1)) if wanted else 3
+    ran = (cases.get(name) or {}).get("runs") or 0
+    if ran < wanted:
+        print(f"{name} ran {ran} of {wanted}")
+PY
+)
+
+    if [[ -n "$short" ]]; then
+      echo "pre-push: the receipt ran fewer runs than case.yaml asks (--runs override?):" >&2
+      echo "$short" | sed 's/^/pre-push:   /' >&2
+      echo "pre-push: run the whole suite: bash scripts/eval.sh" >&2
+      exit 1
+    fi
+
     if [[ "$green" != "True" ]]; then
       echo "pre-push: the last eval run was not green; ${remote_ref#refs/tags/} is blocked." >&2
       exit 1
