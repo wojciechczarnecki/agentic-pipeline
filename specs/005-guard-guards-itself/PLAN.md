@@ -437,7 +437,7 @@ way.)
       absent.
       Verification: `uv run pytest -q plugin/tests/test_guard.py plugin/tests/test_guard_own_files.py && git diff --exit-code origin/main -- plugin/tests/test_guard.py && ! grep -n "Only \`main\` and \`master\`" plugin/docs/GUARD.md`
 
-- [ ] 7. **README guard section and init** — files: `plugin/README.md` (*Command guard*),
+- [x] 7. **README guard section and init** — files: `plugin/README.md` (*Command guard*),
       `plugin/skills/init/SKILL.md`, `plugin/tests/test_init_skill.py`.
       The *Command guard* paragraph names `protectedBranches`, detaching the plugin, the
       plugin's own files and install state, and `gh api` writes (the Alembic sentence and

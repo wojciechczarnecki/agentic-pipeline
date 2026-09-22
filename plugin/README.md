@@ -82,9 +82,15 @@ command with exit code 2 and a reason. The universal rules work WITHOUT configur
 pushes, commits and merges on `main`, force and delete pushes, `--no-verify`,
 `git reset --hard`, `git clean -f`, `core.hooksPath`, push configuration and defining git
 aliases (an alias already in the configuration is not checked), `gh pr merge` and
-owner-only GitHub changes, `sudo`, removals outside the repository and the scratch
-directory, shell edits of guardrail files; the configuration adds production hosts and
-commands, the worktree directory and the migration module. The migration module recognises
+owner-only GitHub changes, `gh api` writes (`POST`/`PUT`/`PATCH`) on the owner's ground
+(repository and organisation settings, secrets, webhooks, collaborators, rulesets and the
+like — CI re-runs, releases, deployments, issues and pulls stay open), `sudo`, removals
+outside the repository and the scratch directory, shell edits of guardrail files — which
+include the plugin's own directory wherever it is installed and the plugin install state
+(`installed_plugins.json`, `known_marketplaces.json`) — and detaching the plugin
+(`claude plugin disable`, `uninstall`, `marketplace remove` aimed at it). The
+configuration adds production hosts and commands, the worktree directory, the migration
+module and `protectedBranches` — release-channel branches guarded exactly like `main`. The migration module recognises
 ONLY Alembic's verbs and the variables `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`; only
 `migrations.command` and `migrations.localHosts` are configurable, so a project on another
 migration tool is not protected — the guard's silence is not protection. Fail-open is
