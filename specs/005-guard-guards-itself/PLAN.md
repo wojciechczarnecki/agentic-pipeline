@@ -487,7 +487,7 @@ way.)
       point at this spec).
       Verification: `test "$(grep -c '^| 20' docs/DECISIONS.md)" -ge "$(( $(git show origin/main:docs/DECISIONS.md | grep -c '^| 20') + 4 ))" && ! grep -n 'gh api. write calls on the repository endpoint' docs/BACKLOG.md && for t in protectedBranches graphql 'release tag' '--scope project'; do grep -q -e "$t" docs/BACKLOG.md || { echo "missing: $t"; exit 1; }; done && test "$(grep -c '\[x\] 0.4.0' docs/ROADMAP.md)" -ge 2 && ! grep -n '\[ \] 0.4.0' docs/ROADMAP.md && uv run pytest -q tests/test_documents.py`
 
-- [ ] 10. **0.4.0 release readiness** — files: `plugin/.claude-plugin/plugin.json`,
+- [x] 10. **0.4.0 release readiness** — files: `plugin/.claude-plugin/plugin.json`,
       `plugin/CHANGELOG.md`.
       Version `0.4.0`; `## 0.4.0` section above `## 0.3.4` with a one-paragraph summary and
       `**consumer impact:**` — agent sessions can no longer disable, uninstall or remove the
