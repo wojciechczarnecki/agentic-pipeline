@@ -16,6 +16,9 @@ metrics:
   implement_steps: 11
   implement_iterations: 2
   deviations: 5
+  final_review_blockers: 1
+  final_review_worth_fixing: 6
+  final_review_nits: 7
 ---
 
 # SPEC 005 — A guard that guards itself and the release channel

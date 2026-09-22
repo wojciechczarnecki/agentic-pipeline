@@ -731,4 +731,128 @@ migration escalation.
 
 ## Final review
 
-_(filled by /pipeline:final-review)_
+### 2026-09-22 — /pipeline:final-review report (inside /pipeline:ship)
+
+Three independent perspectives (SPEC/PLAN compliance, quality, tests); every finding below
+was re-checked by running `plugin/bin/guard.py` on the command. `bash scripts/check.sh`:
+ALL GREEN (1430 passed).
+
+#### AC → evidence
+
+| AC | Evidence |
+|---|---|
+| AC1 | `workflow_config.py` `SCHEMA["protectedBranches"]`; `test_workflow_config.py::test_protected_branches_*`, `::test_load_sections_drops_only_a_bad_protected_branches`; `test_guard_protected_branches.py::test_an_invalid_value_falls_back_for_that_key_only` |
+| AC2 | `plugin/tests/test_guard.py` unchanged vs `origin/main` and green; `::test_an_empty_list_decides_like_0_3_4` |
+| AC3 | `Rules.protected_branches = DEFAULT_PROTECTED \| configured`; `::test_main_stays_protected` |
+| AC4 | `Analyzer.git`/`push`, `Rules.channel_ref` (D1); `::test_a_configured_branch_is_guarded_like_main`, `::test_work_around_a_configured_branch_passes` (gap: F5) |
+| AC5 | `shown()`/`owner_only()`; `::test_the_refusal_names_the_configured_branch` |
+| AC6 | set membership and `(?=$\|[/?#])`; `::test_names_match_exactly` |
+| AC7 | both `pre-push` files unchanged; README row, `workflow.example.json`; `test_init_skill.py::test_init_does_not_write_protected_branches` |
+| AC8 | `check_claude`; `test_guard_detach.py::test_detaching_this_plugin_is_refused` |
+| AC9 | `PluginIdentity.check_marketplace`; `::test_removing_this_plugins_marketplace_is_refused`, `::test_an_unresolved_marketplace_is_refused` |
+| AC10 | `::test_other_plugin_commands_pass` |
+| AC11 | `check_own_files`/`reject_own_files`, `redirect_writes`, `destination`; `test_guard_own_files.py` (gaps: F2, F3, F4) |
+| AC12 | `guarded_paths`; `::test_writing_the_install_state_is_refused`, `::test_reading_the_install_state_passes` (gap: F3) |
+| AC13 | `check_api_write`/`owner_write`/`API_OWNER_WRITES`; `test_guard_api_writes.py::test_a_write_on_the_owners_ground_is_refused` (gap: F1) |
+| AC14 | `::test_ordinary_writes_and_reads_pass` |
+| AC15 | `::test_a_write_on_a_variable_endpoint_is_refused`; `-X $M` refused (D5) |
+| AC16 | `plugin/docs/GUARD.md`; `tests/test_documents.py::test_guard_md_covers_the_0_4_0_rules` |
+| AC17 | two measured deny-table rows; `test_every_deny_table_command_is_refused` |
+| AC18 | `plugin/docs/INSTALL.md`; `::test_install_guide_leaves_detaching_to_the_owners_terminal` |
+| AC19 | `.claude/workflow.json`, `.claude/settings.json` (six `stable` rules existed, all removed); `::test_repository_settings_leave_stable_and_detaching_to_the_guard` |
+| AC20 | `CLAUDE.md` done; `docs/CONVENTIONS.md` names `protectedBranches` only (F12) |
+| AC21 | four new `docs/DECISIONS.md` rows |
+| AC22 | `docs/BACKLOG.md` (row removed, four P3 rows), `docs/ROADMAP.md` ticks with the spec link |
+| AC23 | `plugin.json` 0.4.0; `CHANGELOG.md` `## 0.4.0`; `::test_the_changelog_names_the_consumer_impact` |
+| AC24 | `check.sh` green; `test_no_domain_references` green; stdlib only |
+| AC25 | pending — after gate 2 (apply mode) |
+| AC26 | pending — after gate 2 (PR description) |
+
+Plan steps 1–11 are ticked with commits and tests; deviations D1–D5 are justified and do
+not change scope. Nothing outside the scope entered the branch.
+
+#### Findings
+
+- **F1 [blocker]** `plugin/bin/guard.py:1463` (`api_method`, used by the new
+  `check_api_write`) — pflag forms hide the method: `gh api repos/o/r/transfer
+  -fnew_owner=x`, `gh api repos/o/r/keys -fkey=…`, `gh api repos/o/r/hooks
+  -Fconfig[url]=…` (attached `-f`/`-F` value → read as GET), `gh api -X=PATCH repos/o/r -f
+  visibility=public` (method `=PATCH`), `gh api -iXDELETE repos/o/r` and `-X=DELETE
+  repos/o/r` (the 0.3.4 DELETE rule too) all pass → a repository transfer or deletion
+  slips through a rule 0.4.0 advertises. Fix: strip a leading `=` from an attached `-X`
+  value; recognise `-X`/`-f`/`-F` at the end of a short-flag cluster and with an attached
+  value (`-fk=v`, `-iXPATCH`); add these forms to `METHODS` in `test_guard_api_writes.py`.
+- **F2 [warto poprawić]** `plugin/bin/guard.py:1139` (`destination`) — `cp -rt
+  <plugin>/bin /tmp/evil.py`, `cp -vt …`, `ln -st ~/.claude/plugins …`, `cp
+  --target=<plugin>/bin /tmp/x`, `cp --target-dir …` pass (destination read as a source);
+  conversely `cp -rt /tmp/out <plugin>/templates` (a read) is refused. Fix: parse a short
+  cluster ending in `t` (value attached or next word) and any unambiguous prefix of
+  `--target-directory`, with or without `=`.
+- **F3 [warto poprawić]** `plugin/bin/guard.py:683-723` (`check_own_files`) — a copy into
+  a directory that holds a guarded file passes: `cp /tmp/installed_plugins.json
+  ~/.claude/plugins/`, `install … ~/.claude/plugins/`, `ln -sf … ~/.claude/plugins/`
+  overwrite the install state; `cp -r /tmp/plugin <parent of plugin>` merges over
+  `bin/guard.py` (the `mv` equivalents are refused). Fix: when the destination is an
+  existing directory, also check `dest/basename(source)`; with `-r`/`-R`/`-a` apply the
+  `contains` check to that path.
+- **F4 [warto poprawić]** `plugin/bin/guard.py:657` and `:684` — in-place detection is
+  `^-\w*i`, so `sed --in-place s/a/b/ <plugin>/bin/guard.py` (and `.claude/settings.json`,
+  a 0.3.4 gap now extended) passes. Fix: also treat `--in-place` and `--in-place=…` as
+  in-place in both places (one helper); add a parametrized case.
+- **F5 [warto poprawić]** `plugin/bin/guard.py:1272` (`channel_ref`) — only the literal
+  `refs/heads/<channel>` is matched: `gh api -X PUT repos/o/r/contents/x -f branch=stable
+  …` (commits onto `stable`) and `gh api -X POST repos/o/r/branches/stable/rename` pass.
+  For `main` the no-bypass ruleset still stops them; for `stable` the owner-credential
+  bypass makes the guard the only layer. Fix: refuse writes on `branches/<channel>/…` and
+  `contents/…` writes with a `branch=<channel>` field — or record it as a known limit in
+  `GUARD.md`.
+- **F6 [warto poprawić]** `plugin/tests/test_guard_own_files.py:17,42` — no test for the
+  removal programs (`rm -rf plugin`, `rm plugin/bin/guard.py`, `rmdir`, `unlink`, `shred`)
+  against an inside-project clone, where the own-files check is the only refusal (the
+  separate code path at `guard.py:612-614`); the fixture root is not a real
+  `…/plugins/cache/<m>/<p>/<v>` layout, so the install-state derivation in
+  `guarded_paths` (`guard.py:319-321`) is never exercised. Fix: add those cases, with a
+  no-false-positive `rm -rf backend`, and a real-cache-layout case with a separate
+  `CLAUDE_CONFIG_DIR`.
+- **F7 [warto poprawić]** `plugin/tests/test_guard_detach.py:108,114,117` — the unresolved
+  and unreadable-state marketplace tests assert only `is not None`; any unrelated refusal
+  passes. `test_guard_protected_branches.py:120` has no allowed `gh api` GET of
+  `refs/heads/stable` and no refused implicit-POST (`-f sha=x`) case. Fix: assert
+  `"built from variables"` / `"cannot read the plugin install state"`; add the two cases.
+- **F8 [nit]** `plugin/bin/guard.py:696-723` — false positives with cwd inside the plugin
+  directory: `sed -i s/a/b/ /tmp/x` and `chmod +x /tmp/x` are refused (the sed script and
+  mode resolve to paths under the plugin); `ln -s <plugin>/bin/guard.py` (link in cwd) is
+  refused. Fix: skip sed/perl script and chmod/chown mode operands; one-operand `ln`
+  writes into cwd. Fails safe.
+- **F9 [nit]** `plugin/bin/guard.py:1437` (`owner_write`) — segments are scanned in file
+  paths: `gh api -X PUT repos/o/r/contents/docs/pages/index.md …` is refused as the Pages
+  site; the comment "never scanned" overstates it. Fix: return `None` for `contents/…`, or
+  reword. Fails safe.
+- **F10 [nit]** `plugin/bin/guard.py:283` — `protectedBranches: ["refs/heads/stable"]` or
+  `[" stable"]` pass `--check` but protect nothing. Fix: warn or normalise in validation.
+- **F11 [nit]** `plugin/bin/guard.py:1280` (`check_claude`) — `npx @anthropic-ai/claude-code
+  plugin disable pipeline` passes (program `claude-code`). Fix: treat `claude-code` as
+  `claude`, or list it as a known limit.
+- **F12 [nit]** `docs/CONVENTIONS.md:126` — AC20 asks the release bullet to name the guard
+  keeping agents off detaching the plugin too; it names only `protectedBranches`. Fix: one
+  clause.
+- **F13 [nit]** `plugin/bin/guard.py` — the cache-layout test is duplicated
+  (`guarded_paths`, `PluginIdentity.layout_marketplaces`), `in_place` is computed twice,
+  and `check_claude(args, env, segment_env)` takes two confusable environments. Fix: small
+  helpers / clearer names.
+- **F14 [nit]** tests — the guard-level fallback is tested only for a string value, not
+  `["stable", 1]` (`test_guard_protected_branches.py:157`); `test_init_skill.py:155`
+  passes whether step 4 says to write the key or not; new tests copy message fragments
+  instead of deriving them from `guard` constants. Fix: parametrize; assert the negation;
+  optionally derive from constants.
+
+#### Rejected
+
+- `branches/main/rename` and `contents` writes with `branch=main` pass the guard — 0.3.4
+  behaviour, stopped server-side by the no-bypass `main` ruleset; not a regression.
+- `claude plugin rm` — not an alias in CLI 2.1.280 (SPEC Context lists `uninstall|remove`
+  only).
+- `touch`/`rsync` onto the plugin directory — outside AC11's list; the Guard P3 backlog
+  row on commands the guard cannot see covers them.
+- AC19 "settings edit as the last step": commit `2b2f829` (D4 fix) came after `4bfaee9` —
+  no practical effect before merge.
