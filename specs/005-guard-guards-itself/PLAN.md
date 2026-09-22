@@ -636,7 +636,7 @@ Afterwards the real `claude plugin list` still showed `pipeline@wcz-tools`, 0.3.
 - [x] end-to-end verification (automatic) done, results recorded here
 - [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md` updated
 - [x] spec status: `implemented`
-- [ ] after gate 2: green eval receipt as the PR's last commit; canary checklist in the PR
+- [x] after gate 2: green eval receipt (last commit touching `plugin/`, 7/7); canary checklist in the PR (#20)
 
 ## Owner decisions
 
@@ -880,3 +880,7 @@ run against the pre-fix `guard.py`: 79 cases fail there.
 | F6 | `test_removing_a_plugin_dir_clone_inside_the_project_is_refused` (`rm -rf`, `rm`, `rm -r`, `rmdir`, `unlink`, `shred -u`, `cd … && rm`), `test_removing_other_project_files_beside_the_clone_passes` (`rm -rf backend` …), `test_the_install_state_beside_a_real_cache_layout_is_guarded` (real `…/plugins/cache/<m>/<p>/<v>` root with a separate `CLAUDE_CONFIG_DIR`) |
 | F7 | `test_an_unresolved_marketplace_is_refused` asserts "built from variables"; the unreadable-state test asserts "cannot read the plugin install state" for `{"plugins": []}` too; the protected-branches tests gain the implicit-POST `-f sha=x` refusal and the allowed GETs of `refs/heads/stable` and `branches/stable` |
 | F12 | `docs/CONVENTIONS.md` release bullet: the same guard keeps agents from detaching the plugin |
+
+PR: https://github.com/wojciechczarnecki/agentic-pipeline/pull/20 — eval receipt green
+(7/7, default model, commit `chore: record the 0.4.0 eval receipt`); CI green on the first
+attempt (`plugin`, `python-audit`), no retried tests.

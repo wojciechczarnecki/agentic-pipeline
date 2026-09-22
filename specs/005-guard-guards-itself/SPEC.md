@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-09-22"
   - "spec-ready — 2026-09-22"
   - "plan-draft — 2026-09-22"
   - "plan-approved — 2026-09-22"
   - "implemented — 2026-09-22"
+  - "done — 2026-09-22"
 metrics:
   started_at: 2026-09-22T21:12
   escalations: 0
@@ -21,6 +22,7 @@ metrics:
   final_review_nits: 7
   findings_accepted: 8
   findings_rejected: 6
+  finished_at: 2026-09-22T22:37
 ---
 
 # SPEC 005 — A guard that guards itself and the release channel
