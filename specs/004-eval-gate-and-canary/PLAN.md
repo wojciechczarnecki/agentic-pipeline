@@ -662,6 +662,10 @@ _(added by /pipeline:ship or a stage on escalation: date, stage, question, decis
   aborted by the usage limit, re-run that one run (~$0.6) and continue; it does not trigger
   `runs: 3`. The step-8 results were left in the orchestrator session's scratchpad
   (`.../scratchpad/eval/measure-*.json`) before the stage agent was cut off by the same limit.
+- 2026-09-22 · implement (steps 8–9, third escalation) · Every child `claude` session returns
+  `429 session limit` until 14:30; the paid calls left cannot run. · **Decision: resume the
+  stage after the reset** (the owner took over at the third escalation and said resume at
+  15:51, limit verified reset) — nothing else changes.
 
 ## Review log
 
