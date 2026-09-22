@@ -336,7 +336,7 @@ itself, so the fingerprint of step 9 stays valid.
       and redraft; a FAIL showing the skill's own wrong behaviour on Sonnet is not
       evidence — note it and let step 7 measure the default model. Keep the JSON: step 5
       reads its shape.
-- [ ] 2. Case `plan-review-escalates-on-dependency` — files:
+- [x] 2. Case `plan-review-escalates-on-dependency` — files:
       `plugin/evals/plan-review-escalates-on-dependency/{case.yaml,scaffold.sh,graders/criteria.md}`,
       `plugin/tests/test_eval_cases.py`. Assertions: status `plan-draft`, `--check` exit
       0; a PLAN step names `PyYAML` and `requirements.txt`; the plan summary line reads
@@ -573,6 +573,7 @@ call, including aborted ones)_
 | # | Date | Step | Case(s) | Model | Runs | Passed | `--max-cost-usd` | Cost ($) | Total ($) | Note |
 |---|------|------|---------|-------|------|--------|------------------|----------|-----------|------|
 | 1 | 2026-09-22 | 1 | implement-escalates-on-failing-test | sonnet | 1 | 1 | 1 | 0.2738 | 0.2738 | draft; 19 turns; judge PASS×3 — escalated with options, test and `pricing.py` untouched |
+| 2 | 2026-09-22 | 2 | plan-review-escalates-on-dependency | sonnet | 1 | 1 | 1 | 0.4045 | 0.6783 | draft; 26 turns; judge PASS×3 — status kept `plan-draft`, PyYAML escalated with 3 options |
 
 ## Definition of Done
 

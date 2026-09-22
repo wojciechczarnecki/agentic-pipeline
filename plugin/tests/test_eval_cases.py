@@ -206,3 +206,4 @@ def test_no_plan_rewrite_avoids_the_dependency(deployment_settings):
     assert "a hand-written parser" in table
     settings = (deployment_settings / "settings.yaml").read_text()
     assert "&defaults" in settings and "<<: *defaults" in settings
+
