@@ -323,7 +323,7 @@ way.)
         `claude -p 'say hi'`.
       Verification: `uv run pytest -q plugin/tests/test_guard_detach.py plugin/tests/test_guard.py`
 
-- [ ] 4. **Guard: its own directory and the install state** — files: `plugin/bin/guard.py`,
+- [x] 4. **Guard: its own directory and the install state** — files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard_own_files.py` (new).
       Implement per Approach → The guard's own files. Tests (a fake plugin root under
       `tmp_path` with `bin/guard.py` and `hooks/hooks.json`, passed as

@@ -172,9 +172,13 @@ CONFIG_SECTION_OPERATIONS = {
     "remove-section",
 }
 GUARDRAIL_FILES = (
-    "guardrail files (.claude/settings*.json, .claude/workflow.json and the plugin "
-    "directory) change only through Edit/Write with the owner's approval"
+    "guardrail files (.claude/settings*.json, .claude/workflow.json, this plugin's directory "
+    "and its install state) change only through Edit/Write with the owner's approval"
 )
+# cp, install and ln write only their destination; their sources are reads
+DESTINATION_PROGRAMS = {"cp", "install", "ln"}
+INSTALL_STATE_FILES = ("installed_plugins.json", "known_marketplaces.json")
+KEY_VALUE = re.compile(r"^-{0,2}[A-Za-z][A-Za-z0-9_-]*=")
 GIT_HOOKS = (
     "an existing git hook changes only through Edit/Write with the owner's approval; "
     "creating a missing hook (and making it executable) is allowed"
@@ -253,6 +257,7 @@ class Rules:
             else None
         )
         self.protected_file = protected_file_pattern(config, env, cwd)
+        self.guarded_roots, self.guarded_files = guarded_paths(env)
         self.git_hooks = git_hooks_pattern(config)
         migrations = config.get("migrations") or {}
         self.migration_command = migrations.get("command", "")
@@ -267,6 +272,25 @@ def protected_file_pattern(
     if inside:
         parts.append(rf"(?:^|/|\s){re.escape(inside)}(?:/|$)")
     return re.compile("|".join(parts))
+
+
+# The running guard's own directory, wherever it lies, and the install state that decides
+# whether the plugin loads at all: a shell edit of either detaches the guard.
+def guarded_paths(env: dict[str, str]) -> tuple[list[Path], list[Path]]:
+    roots = plugin_roots(env)
+    config_dir = Path(env.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    state_dirs = [config_dir / "plugins"]
+    for root in roots:
+        parents = root.parents
+        if len(parents) > 3 and parents[2].name == "cache" and parents[3].name == "plugins":
+            state_dirs.append(parents[3])
+    files = []
+    for directory in state_dirs:
+        for name in INSTALL_STATE_FILES:
+            path = Path(os.path.realpath(directory / name))
+            if path not in files:
+                files.append(path)
+    return roots, files
 
 
 def git_hooks_pattern(config: workflow_config.Config) -> re.Pattern[str] | None:
@@ -487,6 +511,8 @@ class Analyzer:
 
     def segment(self, tokens: list[str], depth: int, conditional: bool = False) -> None:
         words, redirects = split_redirects(tokens)
+        written, io_numbers = redirect_writes(tokens)
+        total = len(words)
         words = self.control(words)
         # an assignment behind && or || or inside a block may never run (or run again), so
         # its value stays unverifiable
@@ -506,7 +532,12 @@ class Analyzer:
         program, args = os.path.basename(words[0]), words[1:]
         if program in self.rules.blocked_programs:
             raise GuardError(self.rules.blocked_programs[program])
+        # every step above only drops leading words, so positions map onto args
+        offset = total - len(words) + 1
+        plain = [arg for index, arg in enumerate(args) if index + offset not in io_numbers]
         self.check_guardrail_files(program, args, redirects)
+        if program not in REMOVAL_PROGRAMS:
+            self.check_own_files(program, plain, written)
         if program in SHELLS:
             if "-c" in args[:-1]:
                 # a new shell process sees only exported variables and its own prefix
@@ -542,7 +573,9 @@ class Analyzer:
         elif program == "claude":
             check_claude(args, self.env, env)
         elif program in REMOVAL_PROGRAMS:
+            # the removal rule speaks first, so its 0.3.4 reasons stay
             self.removal(args)
+            self.check_own_files(program, plain, written)
         elif program == "find":
             self.find(args)
         elif program == "docker":
@@ -599,6 +632,48 @@ class Analyzer:
         for target in touched:
             if hooks.search(target) and self.hook_target_exists(target):
                 raise GuardError(GIT_HOOKS)
+
+    def check_own_files(self, program: str, args: list[str], redirects: list[str]) -> None:
+        in_place = program in {"sed", "perl"} and any(re.match(r"^-\w*i", arg) for arg in args)
+        targets = list(redirects)
+        if program in DESTINATION_PROGRAMS:
+            targets += destination(args)
+        elif program in MUTATING_PROGRAMS or program in REMOVAL_PROGRAMS or in_place:
+            targets += args
+        contains = program == "mv" or program in REMOVAL_PROGRAMS
+        self.reject_own_files(targets, self.cwd, contains)
+
+    # A path-based check beside the pattern above: it resolves each written path, so a
+    # relative path, `cd`, `..`, a known variable or a symlink cannot slip past it. With
+    # `contains`, a directory holding the plugin counts too (moving or removing it).
+    def reject_own_files(self, targets: list[str], cwd: Path, contains: bool) -> None:
+        roots, files = self.rules.guarded_roots, self.rules.guarded_files
+        for raw in targets:
+            if raw.startswith("-") and "=" not in raw:
+                continue
+            match = KEY_VALUE.match(raw)
+            value = raw[match.end() :] if match else raw
+            expanded = expand_variables(value, self.env)
+            if "$" in expanded or not expanded:
+                continue
+            candidates = [expanded]
+            if GLOB_CHARACTERS.search(expanded):
+                try:
+                    if "{" in expanded:
+                        raise OSError("brace expansion")
+                    candidates += globbing.glob(os.path.expanduser(expanded), root_dir=cwd)
+                except OSError:
+                    prefix = real_path(cwd, re.split(r"[*?\[{]", expanded, maxsplit=1)[0] or ".")
+                    if any(is_within(prefix, root) or is_within(root, prefix) for root in roots):
+                        raise GuardError(GUARDRAIL_FILES) from None
+                    if any(is_within(path, prefix) for path in files):
+                        raise GuardError(GUARDRAIL_FILES) from None
+            for candidate in candidates:
+                path = real_path(cwd, candidate)
+                if path in files or any(is_within(path, root) for root in roots):
+                    raise GuardError(GUARDRAIL_FILES)
+                if contains and any(is_within(guarded, path) for guarded in [*roots, *files]):
+                    raise GuardError(GUARDRAIL_FILES)
 
     # Only an existing hook is protected, and "existing" has to survive shell patterns:
     # `scripts/git-hooks/pre-*` names no file, yet the shell hands it to the very hook the
@@ -658,9 +733,9 @@ class Analyzer:
             if hit:
                 raise GuardError(f"deleting, renaming or resetting {shown(hit)} is off limits")
         if sub in {"checkout", "restore"}:
-            self.reject_guardrail_targets(
-                [arg for arg in sub_args if not arg.startswith("-")], check_hooks=True
-            )
+            targets = [arg for arg in sub_args if not arg.startswith("-")]
+            self.reject_guardrail_targets(targets, check_hooks=True)
+            self.reject_own_files(targets, cwd, contains=False)
         if sub == "worktree" and sub_args[:1] == ["add"]:
             self.worktree_add(sub_args[1:])
         if sub in {"update-ref", "symbolic-ref"}:
@@ -987,6 +1062,47 @@ def split_redirects(tokens: list[str]) -> tuple[list[str], list[str]]:
             words.append(token)
             index += 1
     return words, targets
+
+
+# Output redirect targets that are files (not `2>&1`, `>&2`, `>&-`), and the positions of
+# the io numbers among the words (the `2` of `2>&1`), which are not arguments.
+def redirect_writes(tokens: list[str]) -> tuple[list[str], set[int]]:
+    files: list[str] = []
+    io_numbers: set[int] = set()
+    count, last_was_word = 0, False
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token and all(char in PUNCTUATION for char in token) and ("<" in token or ">" in token):
+            if last_was_word and tokens[index - 1].isdigit():
+                io_numbers.add(count - 1)
+            if ">" in token and index + 1 < len(tokens):
+                target = tokens[index + 1]
+                if not (token.endswith("&") and re.fullmatch(r"\d+|-", target)):
+                    files.append(target)
+            index += 2
+            last_was_word = False
+        else:
+            count += 1
+            index += 1
+            last_was_word = True
+    return files, io_numbers
+
+
+def destination(args: list[str]) -> list[str]:
+    for index, arg in enumerate(args):
+        if arg in {"-t", "--target-directory"} and index + 1 < len(args):
+            return [args[index + 1]]
+        if arg.startswith("--target-directory="):
+            return [arg.split("=", 1)[1]]
+        if arg.startswith("-t") and len(arg) > 2 and not arg.startswith("--"):
+            return [arg[2:]]
+    positionals = [arg for arg in args if not arg.startswith("-")]
+    return positionals[-1:]
+
+
+def real_path(base: Path, raw: str) -> Path:
+    return Path(os.path.realpath(resolve(base, raw)))
 
 
 def unwrap(words: list[str], env: dict[str, str], prefixed: set[str]) -> list[str]:
