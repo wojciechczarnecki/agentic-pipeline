@@ -1,10 +1,41 @@
 {
-  "commit": "7ad535ab3221bbc7e45e88e0b464973d69c5378b",
-  "plugin_fingerprint": "35df76c8c6b50242b8237e3e8e0bd27891c5b7256b104e1a286b390b9f7dea08",
-  "plugin_version": "0.3.0",
-  "ran_at": "2026-09-20T20:40",
-  "cases_total": 3,
-  "cases_passed": 3,
+  "commit": "8e930e74637311c55f566b9fed5493287e6f5f4e",
+  "plugin_fingerprint": "b2e7b35704fcee9f55e69b7dd3c765c998916b16a4eb9b9d37f4aea308c5dc86",
+  "plugin_version": "0.3.4",
+  "ran_at": "2026-09-22T16:13",
+  "cases_total": 7,
+  "cases_passed": 7,
   "green": true,
-  "cost_usd": 1.4575
+  "cost_usd": 3.3614,
+  "model": "default",
+  "cases": {
+    "final-review-finds-planted-defect": {
+      "runs": 1,
+      "passed": 1
+    },
+    "final-review-ignores-false-positive": {
+      "runs": 1,
+      "passed": 1
+    },
+    "guard-blocks-main-push": {
+      "runs": 1,
+      "passed": 1
+    },
+    "implement-escalates-on-failing-test": {
+      "runs": 1,
+      "passed": 1
+    },
+    "init-keeps-manual-edits": {
+      "runs": 1,
+      "passed": 1
+    },
+    "init-without-questions": {
+      "runs": 1,
+      "passed": 1
+    },
+    "plan-review-escalates-on-dependency": {
+      "runs": 1,
+      "passed": 1
+    }
+  }
 }

@@ -621,6 +621,7 @@ call, including aborted ones)_
 | 11 | 2026-09-22 | 8 | final-review-finds-planted-defect | default | 2 | 2 | 2 | 1.1156 | 6.2759 | measurement runs 2–3 (`measure-defect.json`); 11 and 24 turns; both PASS |
 | 12 | 2026-09-22 | 8 | final-review-ignores-false-positive | default | 2 | 1 | 2 | 0.6238 | 6.8997 | measurement runs 2–3 (`measure-false-positive.json`); run 2 PASS (21 turns); run 3 **aborted by the usage limit** after 5 turns (`exit 1: You've hit your session limit`, no judge verdict, $0.0810) — an infrastructure abort, not a skill failure (owner decision), re-run below |
 | 13 | 2026-09-22 | 8 | final-review-ignores-false-positive | default | 1 | 1 | 1 | 0.6963 | 7.5960 | re-run of the aborted run 3 after the limit reset (owner decision); 8 turns; PASS |
+| 14 | 2026-09-22 | 9 | all seven (`bash scripts/eval.sh`, gate run 1) | default | 7×1 | 7 | 3.9 | 3.3885 | 10.9845 | exit 0, `(green)`; receipt: `cases_total` 7, `cases_passed` 7, every case 1/1, `cost_usd` 3.3614 (runs only; +0.0270 judge), `model` default, `plugin_fingerprint` `b2e7b357…c5dc86` (= `git ls-tree` of HEAD `8e930e7`); run 4 of each new case, PASS. Per run: defect 0.5383, false-positive 0.6459, guard 0.0914, implement 0.2917, init-keeps 0.9938, init-without 0.4099, plan-review 0.3904 |
 
 **Status 2026-09-22 12:44:** the re-run of the aborted run and the two gate runs (step 9) are pending:
 child sessions return `429 You've hit your session limit · resets 2:30pm (Europe/Warsaw)` (checked with a
@@ -639,6 +640,8 @@ case's five runs, so step 8 adds `--runs 2` per new case: `projected = 3.7791 + 
 2 × 3.2418 = 13.83`, plus the one-run margin 0.5927 = **14.42 ≤ 15** → continue.
 
 **Projection before step 9 (2026-09-22):** after step 8 every new case has 3 default-model runs, all passed (the aborted run excluded, re-run). Mean cost per run: implement 0.246, plan-review 0.423, defect 0.560, false-positive 0.611 → Σ = **1.840**; gate cost at `runs: 1` for all seven cases = 1.840 + 1.4575 = **3.298**. `projected = 7.5960 + 2 × 3.298 = 14.19`, plus the one-run margin 0.70 = **14.89 ≤ 15** → continue. `runs:` stays 1 in every `case.yaml`; runs 4–5 of each new case are the two gate runs (owner decision).
+
+**Projection before gate run 2 (2026-09-22):** gate run 1 cost 3.3885 (above the 3.298 projected: the existing cases cost 1.4951 against 1.4575 in the 0.3.0 receipt). `projected = 10.9845 + 3.3885 = 14.37`, plus the one-run margin of the most expensive case — now `init-keeps-manual-edits` at 0.9938, which the earlier projections did not price — = **15.37 > 15** → STOP, escalated before gate run 2 (no paid call started). Remaining budget 4.0155.
 
 ## Definition of Done
 
