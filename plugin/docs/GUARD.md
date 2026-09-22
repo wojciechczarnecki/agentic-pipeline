@@ -31,24 +31,37 @@ Each layer covers ground the one before it cannot, and each has its own way arou
 ### The command guard
 
 - **Covers:** every Bash tool call of an agent session. Universal rules, with no
-  configuration: pushes, commits, merges, rebases and cherry-picks on `main`/`master`
-  (only `git pull --ff-only` passes there); force, mirror and delete pushes, also when the
+  configuration: pushes, commits, merges, rebases and cherry-picks on `main`/`master` and
+  on every branch listed in `protectedBranches` (only `git pull --ff-only` passes there); force, mirror and delete pushes, also when the
   option comes from a variable; a push refspec built from variables or command
   substitution that the guard cannot resolve; a push of every branch (`--all`,
   `--branches`) or of a refspec pattern or brace expansion; push configuration that
   decides where a push lands (`remote.<name>.push`, `remote.<name>.mirror`,
   `push.default`, on the command line or written); `--no-verify`; `git reset --hard`;
   `git clean -f`; `git branch -D main` and friends; `git update-ref`/`git symbolic-ref` on
-  `main`; changing `core.hooksPath` (reading it is fine); defining a git alias, on the
+  `main` or a listed branch; changing `core.hooksPath` (reading it is fine); defining a git alias, on the
   command line (`git -c alias.*`) or with `git config`; `git config --edit`, which could
   write either; `gh pr merge`; changes to repository settings, secrets, variables
   and rulesets; `sudo`; removals outside the project, its worktree directory and the
   session's scratch directory, and of the repository root or `.git`; shell edits of
-  guardrail files (`.claude/settings*.json`, `.claude/workflow.json`, the plugin directory
-  when it sits inside the project, and an existing git hook in `gitHooksDir` — creating a
-  missing hook and making it executable is allowed). The project's
-  `.claude/workflow.json` adds production hosts and commands, the worktree directory and
-  the migration module.
+  guardrail files (`.claude/settings*.json`, `.claude/workflow.json`, the plugin's own
+  directory wherever it lies — the plugin cache, a `--plugin-dir` clone, inside the
+  project — the plugin install state `~/.claude/plugins/installed_plugins.json` and
+  `known_marketplaces.json`, and an existing git hook in `gitHooksDir` — creating a
+  missing hook and making it executable is allowed); detaching this plugin. The project's
+  `.claude/workflow.json` adds production hosts and commands, the worktree directory, the
+  migration module and `protectedBranches`: extra branch names (exact, no patterns)
+  treated like `main`, whose refusals name the branch.
+- **The plugin's own ground.** `claude plugin|plugins disable`, `uninstall|remove` and
+  `marketplace remove|rm` are refused when they aim at this plugin (under any marketplace,
+  with no plugin named, or with `--all`) or at a marketplace it is installed or loaded
+  from; a name built from variables, or an install state the guard cannot read, is
+  refused rather than guessed. Other plugins, `update`, `install`, `enable`, and any of
+  these with `--help`, pass. A shell write (`sed -i`, `tee`, `mv`, `cp`, `truncate`,
+  `chmod`, `ln`, `dd`, a redirect, `git checkout`/`restore`) is judged by the real path it
+  writes, so `cd`, `..`, known variables and symlinks do not hide the plugin directory;
+  `cp`, `install` and `ln` write only their destination, so copying templates *out* of
+  the plugin passes, and reading passes.
 - **Runs:** before every Bash tool call, in the session that loaded the plugin, on plain
   `python3` with no network. It sees through `bash -c`, `eval`, `$(...)`, backticks,
   heredoc bodies that expand, wrappers such as `env`, `command`, `nohup`, `timeout`,
@@ -71,6 +84,16 @@ Each layer covers ground the one before it cannot, and each has its own way arou
   environments, webhooks, keys, collaborator access, organisation teams and members,
   Pages, deployments and security settings. An endpoint built from variables is always
   refused. Everything else (Actions artifacts and caches, comments, labels) passes.
+- **`gh api` writes** (`POST`, `PUT`, `PATCH`, and the implicit `POST` of `-f`/`-F`) are
+  refused on the owner's ground: the repository and organisation settings themselves
+  (`repos/<o>/<r>`, `repositories/<id>`, `orgs/<o>` — `default_branch`, `visibility`),
+  topics, transfer, secrets, variables, environments, webhooks, keys, collaborators and
+  invitations, organisation teams and members, Pages, security settings, Actions
+  permissions, rulesets and branch protection. Only the endpoint is judged, and only the
+  part after `repos/<o>/<r>`, `repositories/<id>` or `orgs/<o>` — field values are data,
+  and a repository named `pages` is not the Pages site; `git/refs` is left to the protected
+  branch rule. Workflow runs (re-running CI), releases, deployments, comments, labels,
+  issues and pulls stay open. A write endpoint built from variables is refused.
 - **Bypassed by:** a session without the plugin (nothing reports its absence), the Edit
   and Write tools, a person at the terminal, and everything in [Known
   limits](#known-limits).
@@ -81,7 +104,9 @@ Each layer covers ground the one before it cannot, and each has its own way arou
   IDE. It refuses a push whose remote ref is `refs/heads/main` or `refs/heads/master`,
   however the command line spelled it: git resolves the refspec before the hook sees it,
   so aliases, variables and scripts end up here too. `/pipeline:init` installs it from
-  `templates/pre-push` into `gitHooksDir`.
+  `templates/pre-push` into `gitHooksDir`. It does not read `protectedBranches`: it binds
+  the owner too, and the owner moves a release channel such as `stable` with a direct
+  push.
 - **Runs:** inside git, after the refspec is resolved and before anything goes over the
   network — only in a clone where `core.hooksPath` points at `gitHooksDir`, set once per
   clone with `git config core.hooksPath <gitHooksDir>`.
@@ -117,6 +142,11 @@ against their rules — is not listed. A test runs every command in the table th
 guard and fails if one of them passes.
 
 Measured on 2026-09-21 with Claude Code 2.1.272 (claude -p --settings).
+The two `claude plugin` rows: Measured on 2026-09-22 with Claude Code 2.1.280 (claude -p
+--safe-mode --settings; the nested Bash tool reached `claude` through a stub on `PATH`
+running it against an isolated, empty CLAUDE_CONFIG_DIR — probed empty first — so the
+measured commands never touched the real install; a control run of
+`claude plugin uninstall pipeline@wcz-tools` was denied by its rule).
 
 | Command | Deny rule it gets past | Guard's reason |
 |---|---|---|
@@ -134,11 +164,12 @@ Measured on 2026-09-21 with Claude Code 2.1.272 (claude -p --settings).
 | `git reset -q --hard HEAD~1` | `Bash(git reset --hard*)` | `discards work irreversibly` |
 | `git clean -xdf` | `Bash(git clean -f*)` | `deletes untracked files irreversibly` |
 | `git -c core.hooksPath=/dev/null push origin feat/x` | `Bash(git config core.hooksPath*)` | `would switch off the pre-push guard` |
+| `claude plugins uninstall pipeline@wcz-tools` | `Bash(claude plugin uninstall*)` | `install is the owner's to change` |
+| `claude plugin marketplace rm wcz-tools` | `Bash(claude plugin marketplace remove*)` | `install is the owner's to change` |
 
 The two layers complement each other: a `deny` rule is cheap, needs no plugin and suits
-actions with one spelling (`gh pr merge`, `claude plugin uninstall`, a push to a
-release-channel branch until the guard protects it); the guard reads the command the way
-the shell will run it.
+actions with one spelling (`gh pr merge`, `claude plugin enable`); the guard reads the
+command the way the shell will run it.
 
 ## Fail-open by design
 
@@ -158,11 +189,22 @@ layers behind it do not depend on it.
   `migrations.localHosts` are configurable. A project on another migration tool is not
   protected, and the guard's silence is not protection. Generalising it waits in
   `docs/BACKLOG.md` (Guard, P3).
-- **Only `main` and `master` are protected branches.** A release-channel branch such as
-  `stable` is kept off by `deny` rules in `.claude/settings.json` until the guard gets
-  configurable protected branches (`docs/ROADMAP.md`, Stage 5, 0.4.0). Detaching the
-  plugin (`claude plugin disable`, `uninstall`, `marketplace remove`) is left to `deny`
-  rules until the same stage.
+- **`protectedBranches` takes exact names and binds agent sessions only.** `release/*`
+  is not a pattern, and the pre-push hook refuses only `main`/`master`, so the owner's
+  direct push to a channel such as `stable` passes, and so does an agent's push that the
+  guard cannot see (a script, an interpreter). Release tags are not protected by the
+  guard. Both wait in `docs/BACKLOG.md` (Guard, P3).
+- **`gh`'s `{branch}` placeholder.** In a write endpoint such as
+  `repos/{owner}/{repo}/git/refs/heads/{branch}`, `gh` fills in the current branch, which
+  the guard cannot see; the rulesets stand behind `main`, nothing behind a configured
+  channel.
+- **`gh api graphql` mutations are not checked.** `updateRepository` and friends change the
+  same settings as the REST writes above; tracked in `docs/BACKLOG.md` (Guard, P3).
+- **A nested session runs without this session's hooks.** `claude -p --safe-mode`,
+  `--bare` or `--dangerously-skip-permissions` starts a session that does not load the
+  guard — deliberate evasion, like an interpreter below.
+- **A write target built from an unknown variable** is not resolved against the plugin
+  directory or the install state; the path rule judges only what it can resolve.
 - **The guard sees only the Bash tool.** Edits through the Edit and Write tools never
   reach it; guardrail files are protected there by Claude Code's own `ask` rules in the
   project's settings, not by the guard.

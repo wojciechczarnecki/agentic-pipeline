@@ -387,7 +387,7 @@ way.)
         `gh api -X $M repos/o/r`.
       Verification: `uv run pytest -q plugin/tests/test_guard_api_writes.py plugin/tests/test_guard.py`
 
-- [ ] 6. **Deny-table measurement and `GUARD.md`** — files: `plugin/docs/GUARD.md`,
+- [x] 6. **Deny-table measurement and `GUARD.md`** — files: `plugin/docs/GUARD.md`,
       `plugin/tests/test_guard_own_files.py` (one doc test); measurement log into this
       plan's Results.
       a) Measure before adding a row (method of the 2026-09-21 decision row, with the
@@ -593,7 +593,25 @@ Record the outputs under Results below.
 
 ### Results
 
-_(filled by /pipeline:implement: the step-6 measurement log and the end-to-end outputs)_
+#### Step 6 — deny-table measurement (2026-09-22, Claude Code 2.1.280)
+
+Sandbox under the session scratchpad: `measure/repo` (`git init`), empty `measure/config`,
+stub `measure/stub/claude` = `CLAUDE_CONFIG_DIR=<S>/config exec
+/home/czarny/.local/share/claude/versions/2.1.280 "$@"`. Every run:
+`cd <S>/repo && PATH=<S>/stub:$PATH <real claude> -p --safe-mode --max-turns 3 --settings
+'<json>' 'Run exactly this Bash command, nothing else, and report its output verbatim: <cmd>'`.
+
+| run | command | `--settings` deny | result |
+|---|---|---|---|
+| probe | `claude plugin list` | — (allow `Bash(claude *)`) | ran: `No plugins installed.` — isolated, empty |
+| 1 | `claude plugins uninstall pipeline@wcz-tools` | — | ran: `Plugin "pipeline@wcz-tools" not found in installed plugins` |
+| 2 | `claude plugins uninstall pipeline@wcz-tools` | `Bash(claude plugin uninstall*)` | ran: same "not found" output — gets past the rule |
+| 3 | `claude plugin marketplace rm wcz-tools` | — | ran: `Marketplace 'wcz-tools' not found` |
+| 4 | `claude plugin marketplace rm wcz-tools` | `Bash(claude plugin marketplace remove*)` | ran: same "not found" output — gets past the rule |
+| control | `claude plugin uninstall pipeline@wcz-tools` | `Bash(claude plugin uninstall*)` | denied ("permission to run it was refused") — `--settings` took effect |
+
+Afterwards the real `claude plugin list` still showed `pipeline@wcz-tools`, 0.3.4, scope
+`user`, enabled. No model rewrote a command. Both candidates added to the table.
 
 ## Definition of Done
 

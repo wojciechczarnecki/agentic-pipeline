@@ -164,3 +164,10 @@ def test_reading_the_install_state_passes(repo, plugin, shape, name):
     env = env_for(plugin)
     path = f"{env['CLAUDE_CONFIG_DIR']}/plugins/{name}"
     assert evaluate(shape.format(path), repo, **env) is None
+
+
+def test_guard_md_covers_the_0_4_0_rules():
+    text = (BIN.parent / "docs" / "GUARD.md").read_text()
+    for token in ["protectedBranches", "installed_plugins.json", "gh api graphql", "nested"]:
+        assert token in text, token
+    assert "Only `main` and `master`" not in text
