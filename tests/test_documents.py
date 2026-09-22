@@ -437,4 +437,3 @@ def test_conventions_state_the_eval_cost_policy():
     tests = section(CONVENTIONS, "## Tests")
     for token in ["runs: 3", "--model sonnet", "default model", "--max-cost-usd", "majority"]:
         assert token in tests, token
-
