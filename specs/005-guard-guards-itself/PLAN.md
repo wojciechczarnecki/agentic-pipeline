@@ -12,9 +12,10 @@
   `known_marketplaces.json`; `gh api` `POST`/`PUT`/`PATCH` on the owner's ground is refused
   by endpoint segment, like `DELETE`. Then documents, the 0.4.0 bump, and — last — this
   repository's `workflow.json`/`settings.json`.
-- **Main risks:** the path-based rule over-refuses a little (a `cp` *source* inside the
-  plugin, a glob whose literal prefix contains the plugin) — the same fail-safe semantics as
-  today's guardrail files. The deny-table measurement (AC17) cannot use an isolated
+- **Main risks:** the path-based rule must judge only what a command *writes*: a `cp`
+  *source* inside the plugin is a read — `/pipeline:init` copies every template with
+  `cp ${CLAUDE_PLUGIN_ROOT}/templates/…` in every consumer (plan review, B1), so `cp`,
+  `install` and `ln` are judged by their destination only. The deny-table measurement (AC17) cannot use an isolated
   `CLAUDE_CONFIG_DIR` for the nested session itself (it is then logged out — probed while
   planning), so the isolation sits in a `claude` stub on `PATH` that runs the measured
   command against an isolated config dir; a probe must prove the isolation before any
@@ -124,6 +125,9 @@ way.)
   - `plugin name` = `name` from the first readable `<root>/.claude-plugin/plugin.json`,
     fallback `"pipeline"`.
   - `config dir` = `env["CLAUDE_CONFIG_DIR"]` or `~/.claude`.
+  - Resolution order (plan review, m5): (c) and (b) first; a hit refuses without reading
+    the install state, so the deny-table rows in the frozen `test_guard.py` (which passes
+    no `CLAUDE_CONFIG_DIR`) never read the owner's real `~/.claude`.
   - `plugin_marketplaces(...) -> set[str] | None`: (a) keys `<name>@<m>` of
     `<config dir>/plugins/installed_plugins.json` → `plugins`; a missing file counts as
     empty, an unreadable or malformed one returns `None`; (b) each root laid out as
@@ -142,6 +146,18 @@ way.)
 - Added: `Rules.guarded_paths` = the plugin roots (realpath) and the install-state files
   `<config dir>/plugins/installed_plugins.json`, `known_marketplaces.json`, plus the same
   two files in the `plugins` directory a cache-layout root sits in (when it differs).
+- **What counts as written (plan review, B1).** The new path check gets its own target
+  list, narrower than `touched`: for `cp`, `install` and `ln` only the destination — the
+  value of `-t`/`--target-directory` when given, else the last non-option argument; the
+  sources are reads (`/pipeline:init` step 4 copies `${CLAUDE_PLUGIN_ROOT}/templates/…`
+  into the project with `cp` in every consumer, and `ln -s <root>/x link` changes nothing
+  in the plugin). `mv`, `tee`, `truncate`, `chmod`, `chown`, `dd`, the removal programs and
+  `sed -i`/`perl -i` keep every argument. `dd` operands `of=<path>` (any `key=value` word)
+  are judged by their value. Redirect targets that are file-descriptor duplications
+  (`2>&1`, `>&2`, `<&-`: a target of digits or `-` after an operator ending in `&`, or
+  after `>&`) are skipped — otherwise every `… 2>&1` run from a cwd inside the plugin is
+  refused (plan review, M1). The 0.3.4 regex check (`protected_file_pattern`) keeps its
+  own, unchanged `touched` list.
 - `reject_guardrail_targets(touched, check_hooks, cwd)` gains a path check per target:
   skip a plain option word; for `--opt=value` check the value; `expand_variables`; a target
   still holding `$` is left to the other rules (as today — unknown variables in a write
@@ -149,8 +165,12 @@ way.)
   the command's cwd (`self.cwd`, or the `-C` directory for `git checkout`/`restore`), then
   `os.path.realpath`. Refused with `GUARDRAIL_FILES` when:
   - the path is within a guarded root or equals a guarded file;
-  - the target has glob characters and its literal prefix is within a guarded root, or a
-    guarded root/file is within that prefix;
+  - the target has glob characters: expand it with `glob` against the cwd (as
+    `hook_target_exists` does) and refuse when any match is guarded; only when expansion is
+    impossible (braces, `OSError`) fall back to the prefix test — its literal prefix is
+    within a guarded root, or a guarded root/file is within that prefix (plan review, m6:
+    the bare prefix test refuses `sed -i … *.py` at a project root that holds a
+    `--plugin-dir` clone);
   - the program is `mv` or a removal program and a guarded root/file is within the path
     (moving or removing a directory that contains the plugin).
 - `GUARDRAIL_FILES` text extends to name the new ground: "guardrail files
@@ -171,9 +191,15 @@ way.)
   `topics` ("repository topics"), `transfer` ("the repository's ownership"),
   `permissions` ("Actions permissions"). `owner_write(endpoint)`: the same
   `repos/<o>/<r>`, `repositories/<id>`, `orgs/<o>` width logic as `owner_deletion`; no rest
-  → "the repository's settings" / "the organization's settings"; otherwise a segment in
-  `API_OWNER_WRITES` → its label. `git/refs` is **not** on the write ground (branch
-  creation through the API stays open; protected refs stay covered by the ref regex).
+  → "the repository's settings" / "the organization's settings"; otherwise a segment **of
+  `rest`** (the path after `repos/<o>/<r>`, `repositories/<id>` or `orgs/<o>`) in
+  `API_OWNER_WRITES` → its label; with no such prefix (e.g. `user/keys`), every segment,
+  as for `DELETE`. Unlike `owner_deletion`, the owner and repository names are not
+  scanned — a consumer repository named `pages` or `hooks` would otherwise have every
+  comment write refused (plan review, M2). `git/refs` is **not** on the write ground, and a
+  `rest` starting with `git/refs` is not scanned for keywords at all (branch creation
+  and updates through the API stay open — a branch `fix/hooks` is not "webhooks";
+  protected refs stay covered by the ref regex).
 - `check_gh`: method `POST`/`PUT`/`PATCH` → endpoint with `$`, `` ` `` or ending in `$`
   (a `$(` the lexer cut) → refuse ("`gh api` write on an endpoint built from variables
   cannot be verified; spell the endpoint out"); `owner_write` hit → refuse
@@ -198,7 +224,7 @@ way.)
 | AC8 | 3 | `test_guard_detach.py::test_detaching_this_plugin_is_refused` |
 | AC9 | 3 | `test_guard_detach.py::test_removing_this_plugins_marketplace_is_refused`, `::test_an_unresolved_marketplace_is_refused` |
 | AC10 | 3 | `test_guard_detach.py::test_other_plugin_commands_pass` |
-| AC11 | 4 | `test_guard_own_files.py::test_writing_the_plugin_directory_is_refused`, `::test_reading_the_plugin_directory_passes`, `::test_the_running_guards_own_directory_is_guarded`, `::test_a_plugin_dir_clone_inside_the_project_is_guarded` |
+| AC11 | 4 | `test_guard_own_files.py::test_writing_the_plugin_directory_is_refused`, `::test_reading_the_plugin_directory_passes`, `::test_the_running_guards_own_directory_is_guarded`, `::test_a_plugin_dir_clone_inside_the_project_is_guarded`, `::test_copying_out_of_the_plugin_passes`, `::test_descriptor_redirects_inside_the_plugin_pass` |
 | AC12 | 4 | `test_guard_own_files.py::test_writing_the_install_state_is_refused`, `::test_reading_the_install_state_passes` |
 | AC13 | 5 | `test_guard_api_writes.py::test_a_write_on_the_owners_ground_is_refused` |
 | AC14 | 5 | `test_guard_api_writes.py::test_ordinary_writes_and_reads_pass` |
@@ -308,8 +334,17 @@ way.)
         `git restore` onto `<root>/bin/guard.py` and `<root>/hooks/hooks.json`; also
         `cd <root> && sed -i s/a/b/ bin/guard.py`, `P=<root>; tee $P/bin/guard.py`,
         `cp /dev/null <root>/bin/*`, `mv <root>/.. /tmp/x`; reason holds "guardrail files";
+        plus `cp x <root>/bin/guard.py`, `cp -t <root>/bin x`,
+        `install -m 755 x <root>/bin/guard`, `ln -sf /dev/null <root>/bin/guard.py`,
+        `dd if=/dev/null of=<root>/bin/guard.py`;
       - `test_reading_the_plugin_directory_passes` — `cat`, `grep -n x`, `sed -n 1p`,
         `cp <tmp>/x <tmp>/y` next to it, `diff` on those files;
+      - `test_copying_out_of_the_plugin_passes` (B1) — the `/pipeline:init` shapes:
+        `cp <root>/templates/pre-push scripts/git-hooks/pre-push`,
+        `cp -r <root>/templates/docs docs`, `cp $CLAUDE_PLUGIN_ROOT/templates/x y`,
+        `cat <root>/templates/x > y`, `ln -s <root>/bin/guard.py <tmp>/link`;
+      - `test_descriptor_redirects_inside_the_plugin_pass` (M1) — `cd <root> && ls 2>&1`,
+        `cd <root> && git status >&2`, `cd <root> && cat x 2>/dev/null`;
       - `test_the_running_guards_own_directory_is_guarded` — no `CLAUDE_PLUGIN_ROOT`:
         `sed -i s/a/b/ <BIN>/guard.py` (the working tree's real guard; evaluated, never
         run) is refused;
@@ -342,6 +377,11 @@ way.)
         `gh api -X PATCH repos/o/r/pulls/1 -f title=x`, `gh api -X POST repos/o/r/labels -f
         name=x`, `gh api -X POST repos/o/r/issues -f title=x`, `gh api -X POST
         repos/o/r/releases -f tag_name=v1`, `gh api -X POST repos/o/r/deployments -f ref=x`;
+        (M2) `gh api -X POST repos/o/pages/issues/1/comments -f body=x`,
+        `gh api -X POST repos/hooks/r/labels -f name=x`,
+        `gh api -X PATCH repos/o/r/git/refs/heads/fix/hooks -f sha=x`,
+        `gh api -X POST repos/{owner}/{repo}/issues/1/comments -f body=x`;
+        and refused alongside: `gh api -X PATCH repos/{owner}/{repo} -f visibility=public`;
       - `test_a_write_on_a_variable_endpoint_is_refused` — `gh api -X PATCH "$EP" -f x=y`,
         `gh api -X POST repos/o/${R}/topics`, `gh api -f name=x repos/o/$(echo r)`,
         `gh api -X $M repos/o/r`.
@@ -387,7 +427,11 @@ way.)
       `gh api graphql` mutations (`updateRepository`) unchecked; a nested session
       (`claude -p --safe-mode`, `--dangerously-skip-permissions`, `--bare`) runs without
       this session's hooks — deliberate evasion, beside interpreters; a write target built
-      from an unknown variable is not resolved against the plugin directory.
+      from an unknown variable is not resolved against the plugin directory; `gh`'s own
+      `{branch}` placeholder in a write endpoint (`…/git/refs/heads/{branch}`) is resolved
+      by `gh` from the current branch, so the guard cannot see it names a protected branch
+      (plan review, m4 — the rulesets stand behind `main`, nothing behind a configured
+      channel).
       `test_guard_md_covers_the_0_4_0_rules`: tokens `protectedBranches`,
       `installed_plugins.json`, `gh api graphql`, `nested`, and "Only `main` and `master`"
       absent.
@@ -417,7 +461,9 @@ way.)
       `test_install_guide_leaves_detaching_to_the_owners_terminal` (INSTALL holds
       "terminal" and "agent session" and "refuse"); `test_claude_md_and_conventions_name_protected_branches`
       (both hold `protectedBranches`; neither says `stable` is kept off by `deny` rules —
-      assert the phrase "kept off it by `deny` rules" absent).
+      assert absent in both files: "kept off it by `deny` rules" (CONVENTIONS' wording),
+      "`deny` rules on `git push` to" and "the guard protects `main`/`master` only"
+      (CLAUDE.md's wording, lines 89–91 today — plan review, m2)).
       Verification: `uv run pytest -q plugin/tests/test_readme.py tests/test_documents.py`
 
 - [ ] 9. **Decisions, backlog, roadmap** — files: `docs/DECISIONS.md`, `docs/BACKLOG.md`,
@@ -434,9 +480,12 @@ way.)
       `CLAUDE_CONFIG_DIR`. BACKLOG: remove the `gh api` repository-endpoint row; add P3
       rows (Guard): branch patterns in `protectedBranches`; protecting release tags; `claude
       plugin enable|install --scope project` duplicate (the `deny` rule stays); `gh api
-      graphql` mutations — triggers verbatim from the SPEC's Out of scope. ROADMAP: tick
-      both Stage 5 0.4.0 items (links already point at this spec).
-      Verification: `test "$(grep -c '^| 20' docs/DECISIONS.md)" -ge "$(( $(git show origin/main:docs/DECISIONS.md | grep -c '^| 20') + 4 ))" && ! grep -n 'gh api. write calls on the repository endpoint' docs/BACKLOG.md && grep -c 'protectedBranches\|graphql\|release tag\|--scope project' docs/BACKLOG.md && grep -n '\[x\] 0.4.0' docs/ROADMAP.md && uv run pytest -q tests/test_documents.py`
+      graphql` mutations — triggers verbatim from the SPEC's Out of scope. The existing
+      Guard row on `gh api -X DELETE` keyword matching gains one clause: writes match
+      keywords only after the `repos/<o>/<r>` / `orgs/<o>` prefix and never under
+      `git/refs` (plan review, M2). ROADMAP: tick both Stage 5 0.4.0 items (links already
+      point at this spec).
+      Verification: `test "$(grep -c '^| 20' docs/DECISIONS.md)" -ge "$(( $(git show origin/main:docs/DECISIONS.md | grep -c '^| 20') + 4 ))" && ! grep -n 'gh api. write calls on the repository endpoint' docs/BACKLOG.md && for t in protectedBranches graphql 'release tag' '--scope project'; do grep -q -e "$t" docs/BACKLOG.md || { echo "missing: $t"; exit 1; }; done && test "$(grep -c '\[x\] 0.4.0' docs/ROADMAP.md)" -ge 2 && ! grep -n '\[ \] 0.4.0' docs/ROADMAP.md && uv run pytest -q tests/test_documents.py`
 
 - [ ] 10. **0.4.0 release readiness** — files: `plugin/.claude-plugin/plugin.json`,
       `plugin/CHANGELOG.md`.
@@ -477,10 +526,15 @@ way.)
 
 ## Risks and traps
 
-- **Over-refusal of the path rule.** `cp`'s source counts as touched (as for today's
-  guardrail files), a glob prefix that contains the plugin is refused, and a relative
-  argument to `git checkout` from a cwd inside the plugin resolves into it. All fail
-  safe; in this repository they bite only in a `--plugin-dir` session, which AC11 wants.
+- **Over-refusal of the path rule — not only in `--plugin-dir` sessions.** The guard's
+  own directory is the plugin root in *every* consumer, and skills read from it:
+  `/pipeline:init` copies templates with `cp ${CLAUDE_PLUGIN_ROOT}/templates/…`. Judging
+  `cp`'s source as a write (as the 0.3.4 regex does for an inside-project plugin) would
+  break init everywhere and fail the `init-*` eval cases of the AC25 receipt — hence
+  destination-only for `cp`/`install`/`ln` and the `test_copying_out_of_the_plugin_passes`
+  cases. What stays fail-safe: a relative argument (a `sed` script, a `chmod` mode, a
+  `git checkout` branch name) run from a cwd inside the plugin resolves into it and is
+  refused.
 - **Tests must never read the owner's `~/.claude`.** Every new test that reaches the claude
   rule or the install state sets `CLAUDE_CONFIG_DIR` under `tmp_path`. The deny-table rows
   are refused without any install state (plugin name from `plugin.json`, marketplace from
@@ -524,6 +578,8 @@ expected:
 5. `claude plugin update pipeline@wcz-tools --scope user` → exit 0;
 6. `sed -i s/a/b/ plugin/bin/guard.py` with `CLAUDE_PLUGIN_ROOT=$PWD/plugin` in the
    environment → exit 2, "guardrail files";
+   and, same environment, `cp plugin/templates/pre-push /tmp/pre-push-copy` → exit 0
+   (the `/pipeline:init` copy shape — plan review, B1);
 7. `gh api -X PATCH repos/o/r -f default_branch=x` → exit 2;
    `gh api -X POST repos/o/r/issues/1/comments -f body=x` → exit 0;
 8. `python3 plugin/bin/workflow_config.py --check` → exit 0;
@@ -554,7 +610,65 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled by /pipeline:plan-review)_
+### 2026-09-22 — /pipeline:plan-review (inside /pipeline:ship)
+
+Anti-anchoring notes taken from the SPEC alone before reading the plan: one protected set
+fed from config; a `claude plugin` parser with aliases, `--help` passing and target
+resolution from `plugin.json` / install state; a path-based check for the plugin root and
+`~/.claude/plugins/*.json`; `gh api` writes by endpoint on the owner's ground with implicit
+`POST`; the deny measurement isolated from the owner's install. The plan matches on all
+five; the divergences found are in how the path check decides what a command *writes*.
+
+Findings (weights counted before the fixes):
+
+| id | weight | finding | change |
+|----|--------|---------|--------|
+| B1 | blocker | The path rule reused `touched`, where every `cp` argument — source included — counts. The guard's own directory is the plugin root in *every* consumer, and `plugin/skills/init/SKILL.md` step 4 tells the agent to copy templates with `cp ${CLAUDE_PLUGIN_ROOT}/templates/…`: 0.4.0 would refuse `/pipeline:init` everywhere and likely fail the `init-*` cases of the AC25 receipt. The plan's risk note ("bites only in a `--plugin-dir` session") was wrong. | Approach → own files: `cp`/`install`/`ln` judged by destination only (`-t` value or last positional); new test `test_copying_out_of_the_plugin_passes`; destination cases added to the refused list; E2E check 6 gains the init copy shape; risks and owner summary rewritten. |
+| M1 | major | Redirect targets are checked for every program; `2>&1` / `>&2` yield the target `1`/`2`, which the new path check would resolve against the cwd — any `… 2>&1` from a cwd inside the plugin refused. | Descriptor duplications skipped; test `test_descriptor_redirects_inside_the_plugin_pass`. |
+| M2 | major | `owner_write` reused `owner_deletion`'s scan of *every* path segment, so the owner/repository name and ref names count: in a consumer repository named `pages` or `hooks` every comment write is refused, and `PATCH …/git/refs/heads/fix/hooks` reads as "webhooks". The DELETE variant is accepted debt (BACKLOG); writes are far more frequent. | Keywords matched only in `rest` after the `repos/…`/`repositories/…`/`orgs/…` prefix, never under `git/refs`; four pass cases and a `{owner}/{repo}` refusal case in step 5; the BACKLOG row gets a clause in step 9. |
+| m1 | minor | `dd of=<path>` escaped the path check (the value hides behind `of=`). | `key=value` operands judged by value; a `dd` refusal case. |
+| m2 | minor | Step 8's test only asserted CONVENTIONS' phrase absent; CLAUDE.md words it differently ("`deny` rules on `git push` to", "the guard protects `main`/`master` only"). | Both phrases asserted absent too. |
+| m3 | minor | Step 9's verification passed with one of four backlog tokens and one of two roadmap ticks (`grep -c` of an alternation). | Per-token loop; `[x] 0.4.0` count ≥ 2 and no `[ ] 0.4.0`. |
+| m4 | minor | `gh`'s `{branch}` placeholder in a write endpoint is resolved by `gh`, invisible to the guard — unmentioned. | Known limit added to step 6's GUARD.md list. |
+| m5 | minor | Marketplace resolution read the install state first, so the frozen deny-table test (no `CLAUDE_CONFIG_DIR`) would read the owner's real `~/.claude`. | Order: enclosing `marketplace.json` and cache layout first; a hit refuses without reading the install state. |
+| m6 | minor | The glob fallback "a guarded root is within the literal prefix" refuses `sed -i … *.py` at a project root holding a `--plugin-dir` clone. | Expand with `glob` first (as `hook_target_exists`); prefix test only when expansion is impossible. |
+
+Checked and found correct (no need to repeat downstream):
+
+- Coverage: every AC1–AC26 has steps and a named test or command; the matrix matches the
+  steps (AC11 row updated for the two new tests). AC25/AC26 are correctly left to gate 2.
+- AC1/AC2: `load_sections` validates each top-level key alone, so a bad `protectedBranches`
+  costs only that key; `check_list` already gives the "`protectedBranches[1]` has to be
+  str" message. Keeping `test_guard.py` byte-for-byte unchanged is proven by
+  `git diff --exit-code`; its existing plugin-directory tests (lines 911–917) still pass
+  under the new rule (their targets resolve outside the guarded roots).
+- Protected branches: every `PROTECTED_BRANCHES` use is listed (branch rewrite,
+  update-ref/symbolic-ref, current branch, push targets, `gh api` regex); dropping `""`
+  and keeping the 0.3.4 texts for `main`/`master` are right.
+- Detaching: `unwrap`/`basename`/`bash -c`/`eval` reach a `claude` segment; the option
+  list matches the CLI help recorded in the plan; unresolved targets refuse.
+- `gh api`: `api_method` already yields implicit `POST`; checking only the endpoint for
+  writes (not field values) is right; `/merges?` and protection/rulesets stay covered by
+  the unchanged regex.
+- Deny measurement: the stub-on-`PATH` isolation with a mandatory empty-`plugin list`
+  probe before any measured command is safe (a profile that re-prepends the real `claude`
+  is caught by the probe); it meets AC17's intent — the measured command never touches
+  the owner's install — and the deviation from the SPEC's wording is flagged in the owner
+  summary. The SPEC's "seven" `git push … stable` rules are six in the file; the plan
+  removes all of them, matching AC19's intent.
+- The init skill clause (AC7) is required: step 4 enumerates the sections it writes from
+  the example, which will now show `protectedBranches`.
+- Conventions/decisions: new texts English (init clause Polish, as its skill is), tests in
+  `plugin/tests`, version bump and CHANGELOG `**consumer impact:**` (tested), DECISIONS
+  rows, no runtime dependency, no domain references; `pre-push` untouched per the
+  2026-09-22 design. Ordering has no forward dependency; step 11 last, with the `ask`
+  escalation spelled out.
+- Owner summary flags: no new dependency, no data migration — consistent with the SPEC's
+  owner decisions.
+
+Decision: `plan-approved` — the one blocker and both majors were fixable inside the plan
+and are fixed, no SPEC gap needs the owner, and nothing triggers a dependency or
+migration escalation.
 
 ## Deviations
 
