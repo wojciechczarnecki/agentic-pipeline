@@ -621,6 +621,11 @@ call, including aborted ones)_
 | 11 | 2026-09-22 | 8 | final-review-finds-planted-defect | default | 2 | 2 | 2 | 1.1156 | 6.2759 | measurement runs 2–3 (`measure-defect.json`); 11 and 24 turns; both PASS |
 | 12 | 2026-09-22 | 8 | final-review-ignores-false-positive | default | 2 | 1 | 2 | 0.6238 | 6.8997 | measurement runs 2–3 (`measure-false-positive.json`); run 2 PASS (21 turns); run 3 **aborted by the usage limit** after 5 turns (`exit 1: You've hit your session limit`, no judge verdict, $0.0810) — an infrastructure abort, not a skill failure (owner decision), re-run below |
 
+**Status 2026-09-22 12:44:** the re-run of the aborted run and the two gate runs (step 9) are pending:
+child sessions return `429 You've hit your session limit · resets 2:30pm (Europe/Warsaw)` (checked with a
+zero-cost `claude -p` probe), so no paid call was started. Remaining budget: 15 − 6.8997 = 8.1003; projected
+re-run 0.60 + two gate runs 2 × 3.31 (measured per-run averages) + margin 0.60 = 7.82 ≤ 8.10.
+
 **Projection (step 7, 2026-09-22):** Σ(new case run cost, default model) = 0.2470 + 0.3800 +
 0.5646 + 0.5927 = **1.7843**; gate cost (all seven cases at `runs: 1`) = 1.7843 + 1.4575
 (`last-run.json`, the three existing cases) = **3.2418**. `projected = spent + 4 × Σ + 2 ×
