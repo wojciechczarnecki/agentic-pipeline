@@ -94,10 +94,10 @@ before the first minor ships.
 - [x] Pre-release canary, measured and documented: how to run an unreleased plugin in a
       consumer project beside the `--scope user` install without moving `stable`
       (`specs/004-eval-gate-and-canary/SPEC.md`)
-- [ ] 0.4.0: the guard protects configurable release-channel branches
+- [x] 0.4.0: the guard protects configurable release-channel branches
       (`protectedBranches` in `.claude/workflow.json`), replacing the `deny` rules on
       pushes to `stable` in `.claude/settings.json` (`specs/005-guard-guards-itself/SPEC.md`)
-- [ ] 0.4.0: the guard blocks detaching the plugin (`claude plugin disable|uninstall`,
+- [x] 0.4.0: the guard blocks detaching the plugin (`claude plugin disable|uninstall`,
       `claude plugin marketplace remove`) — with a `--scope user` install one command
       removes the guard from every project on the machine
       (`specs/005-guard-guards-itself/SPEC.md`)

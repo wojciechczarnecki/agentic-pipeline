@@ -466,7 +466,7 @@ way.)
       (CLAUDE.md's wording, lines 89–91 today — plan review, m2)).
       Verification: `uv run pytest -q plugin/tests/test_readme.py tests/test_documents.py`
 
-- [ ] 9. **Decisions, backlog, roadmap** — files: `docs/DECISIONS.md`, `docs/BACKLOG.md`,
+- [x] 9. **Decisions, backlog, roadmap** — files: `docs/DECISIONS.md`, `docs/BACKLOG.md`,
       `docs/ROADMAP.md`.
       DECISIONS: four rows dated today, appended — (1) `protectedBranches` additive to
       `main`/`master`, exact names, guard-only, why `pre-push` does not read it (binds the
