@@ -868,3 +868,8 @@ paragraph was re-wrapped while edited, which also removed the 104-character line
 (`pre-push` reads the working-tree receipt; `eval.sh` ignores untracked files). Backlog item
 whose trigger has fired: Guard — `gh api` write calls on the repository endpoint (trigger
 "Stage 5 starting"; SPEC 005 takes the guard 0.4.0 items).
+
+PR: https://github.com/wojciechczarnecki/agentic-pipeline/pull/19. CI run 1 red: the two
+F2 tests call `git commit-tree`, and the CI runner has no git identity; the helper now
+sets author and committer in its environment and keeps its temporary index under
+`tmp_path`. CI run 2 green (`plugin`, `python-audit`); no flaky test. Status `done`.

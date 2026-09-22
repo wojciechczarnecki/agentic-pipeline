@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-09-22"
   - "spec-ready — 2026-09-22"
   - "plan-draft — 2026-09-22"
   - "plan-approved — 2026-09-22"
   - "implemented — 2026-09-22"
+  - "done — 2026-09-22"
 metrics:
   started_at: 2026-09-22T11:21
   escalations: 4
@@ -21,6 +22,7 @@ metrics:
   final_review_nits: 7
   findings_accepted: 5
   findings_rejected: 7
+  finished_at: 2026-09-22T16:47
 ---
 
 # SPEC 004 — A release gate to trust
