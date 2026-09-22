@@ -688,6 +688,10 @@ _(added by /pipeline:ship or a stage on escalation: date, stage, question, decis
   $3.3885; spent $10.9845, projection with the one-run margin $15.37 > $15. · **Decision:
   raise the ceiling to $16** (the fallback named in the step-7 decision) and run gate 2 with
   `--max-cost-usd 4.2`.
+- 2026-09-22 · final review (gate 2) · Which findings to fix? · **Decision: accept F1, F2,
+  F3, F4, F5 (worth fixing); reject the nits F6, F7, F8, F9, F10, F11, F12.** Accepting F4
+  means the owner accepts deviation D4, and the 0.4.0 canary checks a logged-in session
+  loading `bin/` from the unreleased copy.
 
 ## Review log
 
