@@ -672,6 +672,10 @@ _(added by /pipeline:ship or a stage on escalation: date, stage, question, decis
   `429 session limit` until 14:30; the paid calls left cannot run. · **Decision: resume the
   stage after the reset** (the owner took over at the third escalation and said resume at
   15:51, limit verified reset) — nothing else changes.
+- 2026-09-22 · implement (step 9, before gate run 2) · Gate run 1 is green (7/7) but cost
+  $3.3885; spent $10.9845, projection with the one-run margin $15.37 > $15. · **Decision:
+  raise the ceiling to $16** (the fallback named in the step-7 decision) and run gate 2 with
+  `--max-cost-usd 4.2`.
 
 ## Review log
 
