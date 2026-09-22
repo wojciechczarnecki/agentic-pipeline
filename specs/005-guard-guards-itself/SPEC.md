@@ -1,11 +1,13 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-09-22"
   - "spec-ready — 2026-09-22"
+  - "plan-draft — 2026-09-22"
 metrics:
   started_at: 2026-09-22T21:12
   escalations: 0
+  plan_steps: 11
 ---
 
 # SPEC 005 — A guard that guards itself and the release channel
