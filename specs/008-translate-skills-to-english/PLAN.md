@@ -389,7 +389,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       "worth"); `plugin/tests/test_stage_skills.py` (visual sentence words, views,
       `5. **Finish`), `plugin/tests/test_language_contract.py` (plan-review step 3).
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_stage_skills.py plugin/tests/test_language_contract.py && grep -cP '[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]' plugin/skills/plan-review/SKILL.md plugin/skills/implement/SKILL.md` (prints `0` twice)
-- [ ] 5. `final-review` — files: `plugin/skills/final-review/SKILL.md` (the finding format
+- [x] 5. `final-review` — files: `plugin/skills/final-review/SKILL.md` (the finding format
       span becomes `` `[blocker|worth-fixing|nit] file:line — scenario (input → wrong behaviour) — fix` ``;
       `4. **Write the report**`; `## Apply mode` step 3 `gh pr create` bullet keeps
       `--title`, "English" and `` `language` ``; `gh pr checks <nr> --json name,workflow,link`

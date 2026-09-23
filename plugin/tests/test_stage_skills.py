@@ -97,7 +97,7 @@ CLOSING_STEPS = {
         ["implement_steps", "implement_iterations", "deviations"],
     ),
     "final-review": (
-        "4. **Zapisz raport",
+        "4. **Write the report",
         ["final_review_blockers", "final_review_worth_fixing", "final_review_nits"],
     ),
 }
@@ -121,7 +121,7 @@ def closing_step(name: str) -> str:
 
 
 def apply_closing_step() -> str:
-    text = skill_text("final-review").split("## Tryb apply", 1)[1]
+    text = skill_text("final-review").split("## Apply mode", 1)[1]
     lines = text.splitlines()
     start = next(i for i, line in enumerate(lines) if line.startswith("5. "))
     end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("6. ")), len(lines))

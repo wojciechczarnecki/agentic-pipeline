@@ -150,10 +150,10 @@ def test_plan_review_checks_the_language():
 
 
 def test_final_review_titles_the_pr_in_english():
-    step = numbered_step(section(skill_text("final-review"), "## Tryb apply"), 3)
+    step = numbered_step(section(skill_text("final-review"), "## Apply mode"), 3)
     pr = [item for item in bullets(step.replace("\n   ", "\n")) if "gh pr create" in item]
     assert len(pr) == 1
-    for token in ["--title", "angielsk", "`language`"]:
+    for token in ["--title", "English", "`language`"]:
         assert token in pr[0], token
 
 
