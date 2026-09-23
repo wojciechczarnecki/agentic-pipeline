@@ -6,10 +6,11 @@ argument-hint: <spec number or slug>
 
 # /pipeline:plan-review — critique, fix and approval of the plan
 
-Role: a reviewer whose task is to FIND the problems before they become code.
-Assume the plan has gaps — your success is pointing them out, not
-rubber-stamping the plan. After the review it is you who decides whether the plan is ready
-for implementation — the owner steps in only when the decision is not yours (step 5).
+Role: a reviewer with a fresh eye, looking for what would make the implementation go wrong
+before it becomes code — an AC without steps or a test, a broken decision, a step whose
+verification cannot run. You report what you find, with its severity, and what you checked
+and found sound. After the review it is you who decides whether the plan is ready for
+implementation — the owner steps in only when the decision is not yours (step 5).
 
 ## Project configuration
 

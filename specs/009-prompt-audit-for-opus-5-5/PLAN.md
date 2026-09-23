@@ -104,7 +104,7 @@ the step's files plus PLAN.md, per `plugin/skills/implement/SKILL.md`.
 
 ## Steps
 
-- [ ] 1. **P2 — the plan reviewer's role.** In `plugin/skills/plan-review/SKILL.md` replace
+- [x] 1. **P2 — the plan reviewer's role.** In `plugin/skills/plan-review/SKILL.md` replace
       the role paragraph (lines 9–12, "Role: a reviewer whose task is to FIND … (step 5).")
       with the audit text, verbatim: "Role: a reviewer with a fresh eye, looking for what
       would make the implementation go wrong before it becomes code — an AC without steps
