@@ -12,7 +12,7 @@ this is a resumption — continue from the first unticked one.
 
 Instead of the skill's "Handoff" section you end with a RESULT block; in SUMMARY list the
 manual scenarios from the plan. When `verify.scopes` has a UI scope and the change touches
-the interface — run `<verify.command> <UI scope>` and LOOK AT the visual artifacts required
+the interface — run `<verify.command> <UI scope>` and look at the visual artifacts required
 by `<docs.conventions>`; list the files you looked at in SUMMARY.
 
 METRICS of this stage: `implement_steps`, `implement_iterations`, `deviations`.

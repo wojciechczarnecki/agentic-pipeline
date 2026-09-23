@@ -221,7 +221,7 @@ uv run pytest plugin/tests -q
       and do NOT review", "contains ONLY:", "a NEW agent". The stage contract fence stays
       untouched.
       Automatic verification: the P1 block above with `F=plugin/skills/ship/SKILL.md`, plus `uv run pytest plugin/tests/test_stage_contract.py -q`
-- [ ] 14. **P1 `implementer` agent** — `plugin/agents/implementer.md`: "LOOK AT". The
+- [x] 14. **P1 `implementer` agent** — `plugin/agents/implementer.md`: "LOOK AT". The
       other three agents have no emphasis and are not touched.
       Automatic verification: the P1 block above with `F=plugin/agents/implementer.md`, plus `uv run pytest plugin/tests/test_stage_contract.py plugin/tests/test_stage_skills.py -q`
 - [ ] 15. **AC1 — the scanner.** Create `plugin/tests/test_prompt_style.py` (shape in
