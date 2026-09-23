@@ -38,14 +38,14 @@ def bullets(block: str) -> list[str]:
 # block, so a stage cannot drift from the others: files in `language`, commits and PR titles
 # in English, the conversation in the session language.
 def test_the_language_block_is_identical_everywhere():
-    blocks = {name: section(skill_text(name), "## Język") for name in STAGE_SKILLS}
+    blocks = {name: section(skill_text(name), "## Language") for name in STAGE_SKILLS}
     assert len(set(blocks.values())) == 1, sorted(blocks)
     items = bullets(next(iter(blocks.values())))
     assert len(items) == 3
     assert "`language`" in items[0]
-    for token in ["commit", "PR", "angielsku"]:
+    for token in ["commit", "PR", "English"]:
         assert token in items[1], token
-    assert "sesji" in items[2]
+    assert "session" in items[2]
 
 
 # The lists above are the parametrisation of every check here; a new stage skill or agent
@@ -58,9 +58,9 @@ def test_the_lists_cover_every_stage_and_agent():
 
 @pytest.mark.parametrize("agent", AGENTS)
 def test_every_agent_states_its_language_part(agent):
-    contract = section(agent_text(agent), "## Kontrakt agenta etapu")
+    contract = section(agent_text(agent), "## Stage agent contract")
     assert "`language`" in contract
-    assert "angielsku" in contract
+    assert "English" in contract
 
 
 TEMPLATE_READS = {"idea": "SPEC", "plan": "PLAN"}
@@ -81,14 +81,14 @@ def template_headings(document: str) -> set[str]:
 def test_idea_and_plan_read_their_template(skill):
     document = TEMPLATE_READS[skill]
     text = skill_text(skill)
-    choice = section(text, f"## Szablon {document}.md")
+    choice = section(text, f"## {document}.md template")
     root = "${CLAUDE_PLUGIN_ROOT}/templates"
     assert f"{root}/{document}.pl.md" in choice
     assert "`Read`" in choice
     assert "`language`" in choice
     english = [line for line in choice.splitlines() if f"{root}/{document}.en.md" in line]
     assert len(english) == 1
-    for phrase in ["brak klucza", "inna wartość"]:
+    for phrase in ["a missing key", "any other value"]:
         assert phrase in english[0], phrase
     assert "```markdown" not in text and "````markdown" not in text
     own = {line for line in text.splitlines() if line.startswith("## ")}
@@ -98,7 +98,7 @@ def test_idea_and_plan_read_their_template(skill):
 
 
 def mapping_block(name: str) -> str:
-    return section(skill_text(name), "## Mapa sekcji")
+    return section(skill_text(name), "## Section map")
 
 
 # Every stage reads the section map from the plugin at run time (SPEC 007, AC4), through one
@@ -109,8 +109,9 @@ def test_every_stage_reads_the_section_map():
     block = blocks[STAGE_SKILLS[0]]
     assert MAP_PATH in block
     assert "`Read`" in block
+    assert "either" in block
     for name in STAGE_SKILLS:
-        assert "mapa sekcji w README" not in skill_text(name), name
+        assert "section map in the README" not in skill_text(name), name
 
 
 # A failed read ends the stage with the file and the rule to add (SPEC 007, AC5): a stage that
@@ -127,8 +128,8 @@ def test_a_failed_read_stops_the_stage():
     ]:
         assert token in block, token
     for skill, document in TEMPLATE_READS.items():
-        choice = normalise(section(skill_text(skill), f"## Szablon {document}.md"))
-        assert "„Mapa sekcji" in choice, skill
+        choice = normalise(section(skill_text(skill), f"## {document}.md template"))
+        assert '"Section map"' in choice, skill
 
 
 def test_plan_writes_in_the_current_language():

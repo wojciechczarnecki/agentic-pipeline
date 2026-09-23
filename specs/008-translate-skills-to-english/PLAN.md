@@ -351,7 +351,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
 
 ## Steps
 
-- [ ] 1. The shared blocks and the template choice — files: the six stage
+- [x] 1. The shared blocks and the template choice — files: the six stage
       `plugin/skills/*/SKILL.md` (`## Project configuration`, `## Language`,
       `## Section map`; in `idea` and `plan` also `## SPEC.md template` /
       `## PLAN.md template`), `plugin/skills/ship/SKILL.md` and `plugin/agents/*.md`

@@ -13,37 +13,38 @@ właściciela: to druga bramka człowieka w pipeline'ie.
 Tryby: **`report`** (domyślny) i **`apply`**. W sesji samodzielnej wykonujesz oba po kolei
 z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uruchomienie.
 
-## Konfiguracja projektu
+## Project configuration
 
-- Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
-- `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
+- Read `.claude/workflow.json`; no file = the defaults from the plugin README → `/pipeline:init`.
+- `<verify.command>`, `<docs.specsDir>` etc. = values from this configuration (keys in the README).
 
-## Język
+## Language
 
-- Pliki, które zapisujesz w repozytorium (SPEC, PLAN — każda sekcja, także wpisy decyzji,
-  review log, deviations i raport końcowego review), oraz treść PR piszesz w języku
-  z `language` w `.claude/workflow.json`; brak klucza albo wartość spoza `en`/`pl` = `en`.
-  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji — sekcja
-  „Mapa sekcji").
-- Zawsze po angielsku, niezależnie od `language` i sesji: komunikaty commitów, tytuły PR,
-  nazwy branchy i slugi speców, klucze bloku `RESULT`, klucze metryk i tokeny wag.
-- Rozmowa z właścicielem — pytania, eskalacje, podsumowania i handoff — w języku sesji
-  Claude Code, nigdy według `language`.
+- Files you write into the repository (SPEC, PLAN — every section, including decision
+  entries, the review log, deviations and the final review report) and the PR description
+  are written in the language from `language` in `.claude/workflow.json`; a missing key or
+  a value other than `en`/`pl` = `en`. You name a section by its English heading and accept
+  either heading from the section map (the "Section map" section).
+- Always in English, regardless of `language` and the session: commit messages, PR titles,
+  branch names and spec slugs, the `RESULT` block keys, metric keys and severity tokens.
+- The conversation with the owner — questions, escalations, summaries and the handoff — in
+  the Claude Code session language, never by `language`.
 
-## Mapa sekcji
+## Section map
 
-- Zanim poszukasz sekcji w SPEC albo PLAN, wczytaj narzędziem `Read` mapę sekcji
-  `${CLAUDE_PLUGIN_ROOT}/templates/sections.md` (klucz → nagłówek polski → angielski).
-  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek.
-- Nieudany odczyt mapy albo szablonu kończy etap — nie zgadujesz nagłówków i nie
-  odtwarzasz szablonu z pamięci. Pod `/pipeline:ship`: `RESULT: ESCALATE`; uruchomiony
-  samodzielnie: STOP z tym samym komunikatem do właściciela. Komunikat podaje ścieżkę
-  pliku i regułę do dopisania w `permissions.allow` (`.claude/settings.json` projektu
-  albo ustawień użytkownika): `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)`,
-  a dla klonu z `--plugin-dir` — `Read(//<ścieżka katalogu pluginu bez początkowego />/**)`;
-  `<marketplace>` odczytujesz z rozwiniętej ścieżki `${CLAUDE_PLUGIN_ROOT}`
-  (`…/plugins/cache/<marketplace>/pipeline/<wersja>`); gdy strażnik pokazał już
-  ostrzeżenie z gotową regułą, podajesz tę regułę.
+- Before you look for a section in a SPEC or PLAN, load the section map
+  `${CLAUDE_PLUGIN_ROOT}/templates/sections.md` with the `Read` tool (key → Polish heading →
+  English heading). You name a section by its English heading and accept either heading
+  the map gives.
+- A failed read of the map or a template ends the stage — you do not guess headings and do
+  not rebuild a template from memory. Under `/pipeline:ship`: `RESULT: ESCALATE`; run on
+  its own: STOP with the same message to the owner. The message gives the file path and
+  the rule to add to `permissions.allow` (the project's `.claude/settings.json` or the user
+  settings): `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)`, and for a
+  `--plugin-dir` clone — `Read(//<plugin directory path without the leading />/**)`; you
+  read `<marketplace>` from the expanded path `${CLAUDE_PLUGIN_ROOT}`
+  (`…/plugins/cache/<marketplace>/pipeline/<version>`); when the guard has already shown a
+  warning with a ready rule, you give that rule.
 
 ## Wejście / wyjście
 

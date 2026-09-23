@@ -21,7 +21,7 @@ def section(name: str, heading: str) -> str:
 
 
 def test_the_configuration_block_is_two_bullets_everywhere():
-    blocks = {name: section(name, "Konfiguracja projektu") for name in STAGE_SKILLS}
+    blocks = {name: section(name, "Project configuration") for name in STAGE_SKILLS}
     for name, block in blocks.items():
         bullets = [line for line in block.splitlines() if line.startswith("- ")]
         assert len(bullets) == 2, f"{name}: the configuration block must be two bullets"
@@ -35,7 +35,7 @@ def test_the_configuration_block_is_two_bullets_everywhere():
 
 @pytest.mark.parametrize("name", STAGE_SKILLS)
 def test_the_configuration_block_keeps_the_fallback(name):
-    block = section(name, "Konfiguracja projektu")
+    block = section(name, "Project configuration")
     for token in [".claude/workflow.json", "README", "/pipeline:init"]:
         assert token in block, f"{name}: the configuration block must name {token}"
 
