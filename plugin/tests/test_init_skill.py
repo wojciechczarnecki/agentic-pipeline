@@ -49,7 +49,7 @@ def settings_bullet(text: str) -> str:
 
 
 def test_write_scope_is_declared():
-    scope = section("Zakres zapisu (bezwzględny)")
+    scope = section("Write scope (absolute)")
     for prefix in WRITE_SCOPE:
         assert prefix in scope, prefix
 
@@ -112,8 +112,8 @@ def test_the_marketplace_ref_is_the_stable_channel():
         sentence for sentence in sentences if "`ref`" in sentence and '`"stable"`' in sentence
     ]
     assert channel, 'init step 4 must set `ref` to the literal `"stable"`'
-    assert "<plugin>--v<wersja>" not in block, "init step 4 must not build a tag pin"
-    fallback = [sentence for sentence in sentences if "TODO:" in sentence and "kszta" in sentence]
+    assert "<plugin>--v<version>" not in block, "init step 4 must not build a tag pin"
+    fallback = [sentence for sentence in sentences if "TODO:" in sentence and "shape" in sentence]
     assert fallback, "init step 4 must keep the `TODO:` fallback for an unexpected path shape"
 
 
@@ -123,8 +123,8 @@ def test_the_marketplace_ref_is_the_stable_channel():
 def test_the_settings_file_does_not_enable_the_plugin():
     block = settings_bullet(step(4))
     assert "extraKnownMarketplaces" in block
-    assert "**Bez `enabledPlugins`**" in block, "init step 4 must forbid `enabledPlugins`"
-    assert "i w `enabledPlugins`" not in block
+    assert "**No `enabledPlugins`**" in block, "init step 4 must forbid `enabledPlugins`"
+    assert "and in `enabledPlugins`" not in block
 
 
 # A rule the model can reach only after it has already been told to ask is a rule it will
@@ -145,7 +145,7 @@ def test_the_question_step_checks_for_the_tool_before_asking():
 @pytest.mark.parametrize("number", [2, 3])
 def test_the_non_interactive_mode_forbids_asking_in_prose(number):
     body = " ".join(step(number).split())
-    assert "tekst" in body or "prozą" in body, (
+    assert "text" in body or "prose" in body, (
         f"init step {number} must close the prose loophole: without AskUserQuestion the "
         "skill may not ask in plain text either"
     )
@@ -186,7 +186,7 @@ def test_unattended_language_comes_from_the_argument():
 def test_templates_are_picked_by_language():
     generating = step(4)
     assert "templates/CLAUDE.<language>.md" in generating
-    assert "templates/docs/<NAZWA>.<language>.md" in generating
+    assert "templates/docs/<NAME>.<language>.md" in generating
     assert "templates/CLAUDE.md" not in generating
 
 
@@ -197,26 +197,26 @@ def test_a_re_run_keeps_the_configured_language():
     _, first = questions()[0]
     first = " ".join(first.split())
     assert "`.claude/workflow.json`" in first
-    assert "istniejącą wartość" in first
+    assert "existing value" in first
     body = " ".join(step(3).split())
-    fallback = body[body.index("Wyjątek — `language`") :]
-    assert fallback.index("`.claude/workflow.json`") < fallback.index("ustawiasz `en`")
-    assert "istniejąca wartość" in " ".join(step(4).split())
+    fallback = body[body.index("Exception — `language`") :]
+    assert fallback.index("`.claude/workflow.json`") < fallback.index("you set `en`")
+    assert "existing value" in " ".join(step(4).split())
 
 
 # The unattended TODO example must not carry Polish into an English project's config.
 def test_the_todo_example_is_not_tied_to_one_language():
     body = " ".join(step(3).split())
     assert "TODO: <verify command>" in body
-    assert "komenda pełnej weryfikacji" not in body
+    assert "full verification command" not in body
 
 
 # SPEC 006, AC13: a re-run with another language changes the key, not the documents.
 def test_a_language_change_leaves_documents_alone():
     rerun = " ".join(step(6).split())
     assert "`language`" in rerun
-    assert "istniejących dokumentów nie tłumaczysz ani nie podmieniasz" in rerun
-    assert "że istniejące dokumenty zostały w dotychczasowym języku" in " ".join(step(7).split())
+    assert "you do not translate or replace existing documents" in rerun
+    assert "that existing documents stayed in their previous language" in " ".join(step(7).split())
 
 
 # SPEC 007, AC6: the marketplace name init derives goes into the `Read` rule as well as the
@@ -229,6 +229,6 @@ def test_init_fills_the_read_rule_with_the_marketplace():
     assert any(
         "Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)" in sentence
         and "extraKnownMarketplaces" in sentence
-        and "ta sama wartość" in sentence
+        and "the same value" in sentence
         for sentence in derivation
     ), derivation

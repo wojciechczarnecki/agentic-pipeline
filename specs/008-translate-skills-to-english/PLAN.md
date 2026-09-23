@@ -397,7 +397,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       `4. **Write the report`), `plugin/tests/test_language_contract.py` (`## Apply mode`,
       `English`).
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_stage_skills.py plugin/tests/test_language_contract.py && grep -cP '[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]' plugin/skills/final-review/SKILL.md` (prints `0`)
-- [ ] 6. `init` — files: `plugin/skills/init/SKILL.md` (whole file; step 2's question
+- [x] 6. `init` — files: `plugin/skills/init/SKILL.md` (whole file; step 2's question
       list keeps `(Recommended)` in question 1 with `language`, `en`, `pl`,
       `.claude/workflow.json` and "existing value"; step 3 keeps
       `"command": "TODO: <verify command>"` and the language names the argument may use —
@@ -600,7 +600,10 @@ by an owner scenario the SPEC assigns, and no escalation trigger applies.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- D1 (step 6, planned in R5) — `init` step 3 names the argument's language as "`en`, `pl` or
+  its name: English, Polish" instead of "English/angielski, polski/po polsku": the Polish words
+  carry Polish letters (AC1), and a Polish request in an argument is understood without them.
+  The colon of the original is kept rather than the plan's parenthesis, to stay one to one.
 
 ## Final review
 
