@@ -16,7 +16,7 @@ metrics:
   plan_changes: 4
   implement_steps: 11
   implement_iterations: 2
-  deviations: 1
+  deviations: 2
   final_review_blockers: 0
   final_review_worth_fixing: 4
   final_review_nits: 9

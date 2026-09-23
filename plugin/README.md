@@ -217,13 +217,13 @@ permission prompt, so nothing is read from the plugin at run time.
 Finding severities are fixed English tokens, written as code in every language, like metric
 keys:
 
-| token | stage | older label read as this token |
-|---|---|---|
-| `blocker` | plan-review, final-review | — |
-| `major` | plan-review | — |
-| `minor` | plan-review | — |
-| `worth-fixing` | final-review | `warto poprawić` |
-| `nit` | final-review | — |
+| token | stage |
+|---|---|
+| `blocker` | plan-review, final-review |
+| `major` | plan-review |
+| `minor` | plan-review |
+| `worth-fixing` | final-review |
+| `nit` | final-review |
 
 ## Workflow metrics
 

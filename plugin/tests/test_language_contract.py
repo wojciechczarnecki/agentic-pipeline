@@ -131,9 +131,7 @@ def test_severities_are_tokens():
     assert "`worth-fixing`" in section(skill_text("ship"), "## Bramka: końcowe review")
     texts = [skill_text(name) for name in STAGE_SKILLS] + [agent_text(name) for name in AGENTS]
     for text in texts:
-        for line in text.splitlines():
-            if "warto poprawić" in line:
-                assert "worth-fixing" in line, line
+        assert "warto poprawić" not in text
 
 
 def normalise(text: str) -> str:

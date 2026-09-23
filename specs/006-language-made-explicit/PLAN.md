@@ -770,6 +770,10 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 - 2026-09-23 · final review (gate 2) · Question: which final-review findings to fix?
   · Decision: **accept all** — F1, F2, F3, F4 (worth-fixing) and F5, F6, F7, F8, F9, F10,
   F11, F12, F13 (nits). Rejected: none.
+- 2026-09-23 · after gate 2 (owner review of PR #21) · Question: keep the rule that a
+  pre-0.5.0 report labelled `warto poprawić` is read as `worth-fixing`? · Decision: **drop
+  it** — the model reads such a report without an instruction, and the rule only covers a
+  spec paused at gate 2 across the upgrade. AC9's legacy clause is waived (D2).
 
 ## Review log
 
@@ -843,6 +847,11 @@ needs an owner decision the SPEC does not already give.
   blocks, and the choice paragraph names `language` and both template files. The
   `plugin/README.md` section map gained one sentence saying so. Rationale: the step 5 probe
   (Results) — a headless stage subagent is refused the read.
+- **D2 — the legacy `warto poprawić` rule is removed (owner decision, 2026-09-23).**
+  `final-review` no longer tells the reviewer how to read the pre-0.5.0 label; the README
+  severity table loses its "older label" column; `docs/DECISIONS.md` and `CHANGELOG.md`
+  drop the clause. `test_severities_are_tokens` now asserts no stage skill or agent carries
+  the label at all, and the README section-map parser reads two-cell severity rows.
 
 ## Final review
 

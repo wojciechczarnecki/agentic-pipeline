@@ -236,10 +236,10 @@ def section_map() -> list[tuple[str, str, str, str]]:
         if not line.startswith("| `"):
             continue
         cells = [cell.strip() for cell in line.strip("|").split("|")]
-        # Three cells are the severity rows; any other count is a broken map row that would
+        # Two cells are the severity rows; any other count is a broken map row that would
         # otherwise drop out of every parity check unnoticed.
-        assert len(cells) in (3, 4), line
-        if len(cells) == 3:
+        assert len(cells) in (2, 4), line
+        if len(cells) == 2:
             continue
         key, document, polish, english = cells
         rows.append((key.strip("`"), document, polish[1:-1], english[1:-1]))
@@ -287,10 +287,9 @@ def test_the_section_map_is_well_formed():
     severities = {}
     for line in section(README, "### Section map").splitlines():
         cells = [cell.strip() for cell in line.strip("|").split("|")]
-        if line.startswith("| `") and len(cells) == 3:
-            severities[cells[0].strip("`")] = cells[2]
+        if line.startswith("| `") and len(cells) == 2:
+            severities[cells[0].strip("`")] = cells[1]
     assert set(severities) == {"blocker", "major", "minor", "worth-fixing", "nit"}
-    assert "`warto poprawić`" in severities["worth-fixing"]
 
 
 HEADINGS = [

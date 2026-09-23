@@ -61,8 +61,7 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
      wizualnych i scenariuszu przeglądowym wymaganych przez `<docs.conventions>`.
    Format znaleziska od perspektywy:
    `[blocker|worth-fixing|nit] plik:linia — scenariusz (wejście → złe zachowanie) — poprawka`.
-   Wagi to tokeny pisane jako kod w każdym języku, jak klucze metryk; raport sprzed 0.5.0
-   z etykietą `warto poprawić` czytasz jako `worth-fixing`.
+   Wagi to tokeny pisane jako kod w każdym języku, jak klucze metryk.
 3. **Scal i zweryfikuj.** Duplikaty połącz. KAŻDE znalezisko sprawdź sam w kodzie —
    fałszywe odrzuć z jednozdaniowym powodem. Ustal wagę końcową wg realnego ryzyka.
 4. **Zapisz raport** w `## Final review` w PLAN.md: data; macierz AC → dowód; znaleziska

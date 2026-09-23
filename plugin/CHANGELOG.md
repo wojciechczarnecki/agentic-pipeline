@@ -13,8 +13,8 @@ English specs, plans and PR descriptions — add `"language": "pl"` to keep Poli
 other than `en` or `pl` warns and falls back to `en`. `/pipeline:init` asks for the language
 first and generates `CLAUDE.md` and `docs/*` in it. Commit messages, PR titles and branch
 names are English whatever `language` says. Final-review findings use the severity token
-`worth-fixing`; reports written earlier with `warto poprawić` are still read. Existing specs
-and documents are not translated, and specs in either language keep working.
+`worth-fixing`. Existing specs and documents are not translated, and specs in either
+language keep working.
 
 ### Added
 
