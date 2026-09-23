@@ -184,7 +184,8 @@ def test_the_changelog_names_the_consumer_impact():
     assert "**consumer impact:**" in section
 
 
-POLISH = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
+POLISH_LOWER = "\u0105\u0107\u0119\u0142\u0144\u00f3\u015b\u017a\u017c"
+POLISH = set(POLISH_LOWER + POLISH_LOWER.upper())
 
 
 def strip_code(text: str) -> str:
@@ -200,8 +201,8 @@ def strip_code(text: str) -> str:
     return re.sub(r"`[^`\n]*`", "", "\n".join(kept))
 
 
-# Quoted literals the Polish skills produce (`## Decyzje właściciela`) stay verbatim inside
-# code spans; everything around them is English.
+# Polish literals quoted from the section map stay verbatim inside code spans; everything
+# around them is English.
 @pytest.mark.parametrize(
     "document",
     [

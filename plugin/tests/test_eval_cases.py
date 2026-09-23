@@ -24,7 +24,8 @@ EVALS = PLUGIN / "evals"
 METRICS = PLUGIN / "bin" / "workflow_metrics.py"
 VERIFY = [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-q"]
 
-POLISH = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
+POLISH_LOWER = "\u0105\u0107\u0119\u0142\u0144\u00f3\u015b\u017a\u017c"
+POLISH = set(POLISH_LOWER + POLISH_LOWER.upper())
 
 NEW_CASES = [
     "implement-escalates-on-failing-test",

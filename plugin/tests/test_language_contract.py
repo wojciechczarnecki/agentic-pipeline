@@ -115,8 +115,8 @@ def test_every_stage_reads_the_section_map():
 
 
 # A failed read ends the stage with the file and the rule to add (SPEC 007, AC5): a stage that
-# guessed the headings would miss `## Decyzje właściciela` and escalate on an accepted
-# dependency.
+# guessed the headings would miss the Polish owner-decisions heading and escalate on an
+# accepted dependency.
 def test_a_failed_read_stops_the_stage():
     block = mapping_block(STAGE_SKILLS[0])
     for token in [

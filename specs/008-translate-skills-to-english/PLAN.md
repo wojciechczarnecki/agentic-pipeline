@@ -421,7 +421,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       tests, comments). Graders keep their numbered points and the "incorrect" paragraph
       and the `.claude/` environment paragraph one to one.
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_eval_cases.py plugin/tests/test_plugin_structure.py`
-- [ ] 9. Test prose and the changelog's Polish — files: comments and docstrings of every
+- [x] 9. Test prose and the changelog's Polish — files: comments and docstrings of every
       `plugin/tests/*.py` and `tests/*.py` that hold Polish letters or say the skills are
       Polish (`test_readme.py` lines around `POLISH` and the "Quoted literals" comment,
       `test_stage_skills.py`, `test_no_domain_references.py`, `test_eval_cases.py`);

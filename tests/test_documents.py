@@ -147,7 +147,8 @@ def test_no_document_names_the_private_consumer(path):
     assert not found, (str(path.relative_to(ROOT)), found)
 
 
-POLISH = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
+POLISH_LOWER = "\u0105\u0107\u0119\u0142\u0144\u00f3\u015b\u017a\u017c"
+POLISH = set(POLISH_LOWER + POLISH_LOWER.upper())
 
 
 @pytest.mark.parametrize("doc", ROOT_DOCUMENTS)
