@@ -405,7 +405,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
 
 ## Steps
 
-- [ ] 1. **`language`: `en`/`pl`, default `en`** — files: `plugin/bin/workflow_config.py`,
+- [x] 1. **`language`: `en`/`pl`, default `en`** — files: `plugin/bin/workflow_config.py`,
       `plugin/tests/test_workflow_config.py`, `plugin/README.md` (configuration row only).
       Implement per Approach → Configuration. Tests: `test_defaults_cover_every_documented_key`
       asserts `"en"`; `test_an_unsupported_language_is_rejected` (parametrized `"de"`,
