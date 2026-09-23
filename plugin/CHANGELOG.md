@@ -2,6 +2,21 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.6.1
+
+The hook commands quote the plugin path, so the guard, the formatter and the notifications
+run from a plugin directory whose path contains a space.
+
+**consumer impact:** none — no configuration change; update as usual.
+
+### Fixed
+
+- `hooks/hooks.json` wraps `${CLAUDE_PLUGIN_ROOT}` in double quotes in all four commands.
+  Unquoted, a path with a space split into several words: the hook exited 127, which
+  Claude Code treats as a non-blocking error, so the guard did not run and every command
+  passed. `claude plugin validate --strict` (Claude Code 2.1.281) also refuses the
+  unquoted form.
+
 ## 0.6.0
 
 Stages read their templates and the section map at run time: `idea` and `plan` read the one

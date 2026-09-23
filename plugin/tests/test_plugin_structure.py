@@ -89,11 +89,20 @@ def test_each_event_runs_its_own_script(event, matcher):
     entries = [entry for entry in data["hooks"][event] if entry.get("matcher") == matcher]
     assert len(entries) == 1, (event, matcher)
     commands = [hook["command"] for hook in entries[0]["hooks"]]
-    assert commands == [f"{PLUGIN_ROOT_VARIABLE}/{EXPECTED_WIRING[(event, matcher)]}"]
+    assert commands == [f'"{PLUGIN_ROOT_VARIABLE}/{EXPECTED_WIRING[(event, matcher)]}"']
+
+
+# An unquoted path splits into several words when the plugin directory holds a space, and
+# `claude plugin validate --strict` refuses it; the command is the quoted path and nothing else.
+@pytest.mark.parametrize("command", hook_commands())
+def test_hook_commands_are_one_quoted_path(command):
+    assert command.startswith('"') and command.endswith('"'), command
+    assert command.count('"') == 2, command
 
 
 @pytest.mark.parametrize("command", hook_commands())
 def test_hook_paths_are_plugin_relative(command):
+    command = command.strip('"')
     assert command.startswith(PLUGIN_ROOT_VARIABLE)
     assert "CLAUDE_PROJECT_DIR" not in command
     relative = command[len(PLUGIN_ROOT_VARIABLE) :].lstrip("/")
