@@ -103,7 +103,9 @@ One new section, character-identical in all six stage skills, placed right after
   pliku i regułę do dopisania w `permissions.allow` (`.claude/settings.json` projektu
   albo ustawień użytkownika): `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)`,
   a dla klonu z `--plugin-dir` — `Read(//<ścieżka katalogu pluginu bez początkowego />/**)`;
-  gdy strażnik pokazał już ostrzeżenie z gotową regułą, podajesz tę regułę.
+  `<marketplace>` odczytujesz z rozwiniętej ścieżki `${CLAUDE_PLUGIN_ROOT}`
+  (`…/plugins/cache/<marketplace>/pipeline/<wersja>`); gdy strażnik pokazał już
+  ostrzeżenie z gotową regułą, podajesz tę regułę.
 ```
 
 (The wording may be tightened in implementation; the pinned tokens are listed in step 2.)
@@ -154,8 +156,12 @@ In `plugin/bin/guard.py`, no new module (the guard is one file plus `workflow_co
   not count — documented as a known limit together with `--settings` and managed policy.
 - `suggested_rule(target, env) -> str`: when the target lies under
   `~/.claude/plugins/cache/<m>/<p>/<version>` →
-  `Read(~/.claude/plugins/cache/<m>/<p>/**)`; otherwise `Read(//<target without its
-  leading />/**)` — never the single-slash form (AC9).
+  `Read(~/.claude/plugins/cache/<m>/<p>/**)`; when it lies under
+  `$CLAUDE_CONFIG_DIR/plugins/cache/<m>/<p>/<version>` with a config dir outside
+  `~/.claude` → `Read(//<config dir without its leading />/plugins/cache/<m>/<p>/**)` (the
+  version directory is dropped in both cache forms, so the rule survives a plugin update);
+  otherwise (a clone) `Read(//<target without its leading />/**)` — never the single-slash
+  form (AC9).
 - `READ_RULE` message (English, names the rule and the way out, per CONVENTIONS
   "User-facing text"): `pipeline guard: no Read allow rule covers this plugin's directory
   (<target>), so stages that read its templates and section map will stop — a stage agent
@@ -225,7 +231,7 @@ negative check needs it removable per case).
 | AC6 | 3, 9 | `test_init_templates.py::test_settings_template_allows_reading_the_plugin`; `test_init_skill.py::test_init_fills_the_read_rule_with_the_marketplace`; `tests/test_documents.py::test_repository_settings_allow_reading_the_installed_plugin` |
 | AC7 | 4 | `test_guard_read_rule.py::test_no_rule_warns_once_without_blocking`, `::test_a_blocked_first_call_carries_the_notice` |
 | AC8 | 4, E2E-A2 | `test_guard_read_rule.py::test_the_notice_reaches_the_owner_and_the_model`; measurement above; E2E automatic 2 |
-| AC9 | 4 | `test_guard_read_rule.py::test_a_covering_rule_silences_the_notice` (parametrised: user, config-dir user, project, local × cache `~/` form, clone `//` form, a broader rule, bare `Read`), `::test_a_clone_gets_the_absolute_rule`, `::test_a_settings_relative_rule_does_not_count` |
+| AC9 | 4 | `test_guard_read_rule.py::test_a_covering_rule_silences_the_notice` (parametrised: user, config-dir user, project, local × cache `~/` form, clone `//` form, a broader rule, bare `Read`), `::test_a_clone_gets_the_absolute_rule`, `::test_the_cache_gets_the_home_rule`, `::test_a_config_dir_cache_gets_a_version_free_rule`, `::test_a_settings_relative_rule_does_not_count` |
 | AC10 | 4 | `test_guard_read_rule.py::test_broken_settings_count_as_no_rule` (bad JSON, unreadable file, wrong types) |
 | AC11 | — (measured), E2E-A3 | measurement above (cache); E2E automatic 3 (clone) |
 | AC12 | 6, 8 | `test_eval_cases.py::test_polish_mirror_fixture_is_ready_for_the_skill`, `::test_stage_scaffolds_allow_reading_the_plugin`; step 8 ledger (5/5, negative check) |
@@ -258,7 +264,10 @@ negative check needs it removable per case).
       `TEMPLATE_BLOCKS`/`BLOCK_HEADINGS`/`inline_template` helpers) with:
       `test_idea_and_plan_read_their_template` — `## Szablon {SPEC,PLAN}.md` names
       `${CLAUDE_PLUGIN_ROOT}/templates/<DOC>.pl.md` and `…/<DOC>.en.md`, `` `Read` `` and
-      `` `language` ``; the skill has no `markdown` fence and no line equal to a template
+      `` `language` ``, and the line naming `<DOC>.en.md` also states the fallback (a
+      missing key and any other value — pin the two phrases the implementation uses, e.g.
+      `brak klucza` and `inna wartość`), so AC3's "`en` for a missing or unsupported value"
+      is pinned, not only the two paths; the skill has no `markdown` fence and no line equal to a template
       heading other than its own `## ` section headings (e.g. none of `## Cel`, `## Goal`,
       `## Kroki`, `## Steps` as a line in `idea`; for `plan`, `## Kroki` is the skill's own
       section, so check the template-only headings from `sections.md` minus the skill's own
@@ -298,6 +307,9 @@ negative check needs it removable per case).
       stdout); `test_a_clone_gets_the_absolute_rule` (suggested rule is
       `Read(//<clone path without leading />/**)`);
       `test_the_cache_gets_the_home_rule` (`Read(~/.claude/plugins/cache/mkt/pipeline/**)`);
+      `test_a_config_dir_cache_gets_a_version_free_rule` (`CLAUDE_CONFIG_DIR` outside
+      `HOME`, plugin root `<config>/plugins/cache/mkt/pipeline/0.6.0` → the suggested rule
+      is `Read(//<config without leading />/plugins/cache/mkt/pipeline/**)`, no `0.6.0`);
       `test_a_settings_relative_rule_does_not_count` (`Read(/<abs>/**)` in project settings
       still warns); `test_broken_settings_count_as_no_rule` (bad JSON, `chmod 000` — skipped
       when running as root —, `permissions` a list, `allow` a string; exit 0 and the
@@ -368,7 +380,11 @@ negative check needs it removable per case).
       --trust-plugin --no-publish --ablation none --json <scratchpad>/<name>.json
       --max-cost-usd <remaining of $8> --case <name> [--runs N]` on the default model
       (drafting on `--model sonnet` allowed, not counted as a pass). Never
-      `scripts/eval.sh` (it writes the release receipt — SPEC 008).
+      `scripts/eval.sh` (it writes the release receipt — SPEC 008). Never add `Read` to
+      `--allow-tools`: that flag is the permission grant (`scripts/eval.sh`: "--allow-tools
+      is not implied by --trust-plugin"), while `allowed_tools` in `case.yaml` only makes
+      the tool available — granting `Read` on the command line would allow it on every
+      path and void the negative check in b).
       a) Probe: the new case, `--runs 1`. Red → read the transcript. If the harness ignores
          the scaffold's `.claude/settings.json` (the read is refused with the rule present)
          → **escalate** (AC12 cannot hold as written); do not move the rule elsewhere.
@@ -419,7 +435,9 @@ negative check needs it removable per case).
   guard prints only to stderr today — keep it so. JSON on stdout is ignored on exit code
   2, hence the stderr fallback.
 - **Warn-once scope.** The marker is per `session_id`; a subagent shares its parent's
-  session id (assumed; not measured), so under `/pipeline:ship` the orchestrator's first
+  session id (assumed; measured in End-to-end → Automatic, item 2b — if the ids differ,
+  a subagent gets its own notice in its model's context and the owner still gets one from
+  the main session's first Bash call; record which holds and correct this bullet), so under `/pipeline:ship` the orchestrator's first
   Bash call usually takes the notice. The stage skills' stop rule is the second line of
   defence, so a subagent that never saw the notice still stops on the failed read instead
   of stalling (a refused read is returned, not prompted, in headless runs — measured).
@@ -427,8 +445,9 @@ negative check needs it removable per case).
   developer's machine and in CI. No assertion on empty stdout may be added to them; the
   new tests isolate `HOME` and `CLAUDE_CONFIG_DIR`.
 - **`init` eval cases** see the notice too (their workspace has no rule until `init`
-  writes one). They are not rerun here; SPEC 008's receipt runs every case — note it in
-  the step 8 ledger.
+  writes one), and so does `guard-blocks-main-push`, whose blocked push now carries the
+  notice in the stderr reason. They are not rerun here; SPEC 008's receipt runs every
+  case — note all four in the step 8 ledger.
 - **Parity test coupling.** `test_language_contract.py` and `test_init_templates.py`
   import from `test_readme.py`; after step 1 `section_map` comes from
   `test_templates_language.py` — a stale import fails at collection, not silently.
@@ -449,6 +468,11 @@ negative check needs it removable per case).
    `Read(//home/…/agentic-pipeline/plugin/**)`, and the final `result` quotes the same
    rule. (Neither user nor this repository's settings cover the working-tree plugin, so
    the notice is due.)
+2b. Subagent session id (Risks → Warn-once scope): a throwaway probe plugin under the
+   scratchpad whose `PreToolUse: Bash` hook appends the payload's `session_id` to a
+   scratchpad file; `claude --plugin-dir <probe> -p --model haiku --max-turns 4` with a
+   prompt that runs `date` itself and then once more through the Agent tool
+   (`general-purpose`). Record whether the two ids are equal and correct the risk bullet.
 3. Clone rule (AC11, clone half): in a scratch consumer (`git init` under the
    scratchpad), `claude --plugin-dir <repo>/plugin -p --model haiku --max-turns 4 --output-format json`
    with the prompt "Do not run any tool yourself. Use the Agent tool once (subagent_type
@@ -486,7 +510,30 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-23 — /pipeline:plan-review
+
+Findings (counted before the fixes): 0 `blocker`, 0 `major`, 6 `minor`.
+
+| # | Severity | Finding | Change |
+|---|---|---|---|
+| R1 | `minor` | `suggested_rule` sent a cache under a non-default `CLAUDE_CONFIG_DIR` to the clone branch, so the suggested `//…/<version>/**` rule would go stale on every plugin update (AC9 "exact rule"). | Approach → The guard notice: a config-dir cache gets a version-free `//…/plugins/cache/<m>/<p>/**`; step 4 gains `test_a_config_dir_cache_gets_a_version_free_rule`; AC9 matrix row lists it and `test_the_cache_gets_the_home_rule`. |
+| R2 | `minor` | The stop message asks for `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)`, but a stage has no source for `<marketplace>` when the guard notice was not in its context. | `## Mapa sekcji` block: `<marketplace>` is read from the expanded `${CLAUDE_PLUGIN_ROOT}` path. |
+| R3 | `minor` | AC3's fallback ("`en` for a missing or unsupported value") was not pinned: the planned test checked only the two paths, `Read` and `language`. | Step 2: `test_idea_and_plan_read_their_template` also pins the fallback phrases on the `.en.md` line. |
+| R4 | `minor` | Step 8 did not forbid granting `Read` through `--allow-tools`; every stage `case.yaml` lists `Read` in `allowed_tools` (availability), and a command-line grant would void AC12's negative check. | Step 8: explicit "never add `Read` to `--allow-tools`" with the reason. |
+| R5 | `minor` | "A subagent shares its parent's session id" was an unmeasured assumption behind the warn-once and owner-visibility reasoning (AC8). | E2E automatic item 2b measures it with a throwaway probe hook; the risk bullet points there. |
+| R6 | `minor` | `guard-blocks-main-push` also changes observable output (the notice in the stderr reason of a blocked push) and is not rerun; only the `init` cases were noted. | Risks: the note covers all four unrerun cases for SPEC 008's receipt. |
+
+Checked and found correct (later stages need not repeat this):
+
+- **Coverage:** AC1–AC17 each have steps and a proving test or a recorded measurement; the matrix matches the step list. AC11's cache half is measured and recorded; the clone half is E2E automatic 3.
+- **Codebase facts:** the README has Polish only in the section-map rows (so moving the table satisfies AC1's "no Polish letter"); the severity table has no Polish and may stay; all six stage skills reference "mapa sekcji w README" in `## Język`, and no `plugin/agents/*.md` does; the guard prints nothing on stdout today and no guard test asserts on stdout; `warn_once` and `Config.root` exist as described; the stage scaffolds write no `.claude/settings.json` today (a new file, no merge); earlier eval results show the plugin loaded from `/home/…/agentic-pipeline/plugin/`, so the clone rule in the scaffolds is right; `.claude/settings.json` is behind `Edit(**/.claude/settings*.json)` in `ask`, so step 9's planned escalation is real.
+- **Conventions and decisions:** standard library only; project-agnostic (`<marketplace>` placeholder, `wcz-tools` only in this repository's settings); version bump and CHANGELOG consumer-impact line; the DECISIONS row reverses the 2026-09-23 inline decision explicitly; the eval policy of 2026-09-22 (5 runs for a new case, default model, `--max-cost-usd`, `runs: 1` afterwards) is followed.
+- **Minimality and feasibility:** no step depends on a later one (step 6's fixture test imports `guard.rule_covers` from step 4); the escalation rule lives in the skills, which the stage contract already maps to `RESULT: ESCALATE`; eval budget is realistic (the last receipt cost $3.32 for 8 single runs, about $0.41 a run, against roughly 11 runs here).
+- **E2E split:** everything automatable is automatic; the one manual item (TUI rendering of `systemMessage`) cannot be checked headless.
+- **Owner summary:** no new dependency, no data migration (the hand-added rule is accepted in SPEC → "Owner decisions"); matches the plan.
+- **Language:** the PLAN is in English (`language: en`); the Polish skill block is skill text, not plan prose.
+
+Decision: approved. There is no blocker, no SPEC gap, and no dependency or migration the owner has not accepted; every finding was fixed in the plan.
 
 ## Deviations
 
