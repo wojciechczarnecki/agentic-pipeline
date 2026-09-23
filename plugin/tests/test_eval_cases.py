@@ -6,6 +6,8 @@ score the setup instead of the behaviour. Every claim a case makes about its fix
 checked here first.
 """
 
+import json
+import os
 import re
 import subprocess
 import sys
@@ -14,6 +16,10 @@ from pathlib import Path
 import pytest
 
 PLUGIN = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PLUGIN / "bin"))
+
+import guard  # noqa: E402
+
 EVALS = PLUGIN / "evals"
 METRICS = PLUGIN / "bin" / "workflow_metrics.py"
 VERIFY = [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-q"]
@@ -327,3 +333,88 @@ print(conn.execute("SELECT count(*) FROM users").fetchone()[0])
     result = python(sortable_users, code)
     assert result.returncode == 0, result.stderr
     assert result.stdout.split("\n")[:3] == ["rejected", "['b', 'a']", "2"]
+
+
+# SPEC 007: every stage reads its templates and the section map from the plugin with Read.
+# Under `claude plugin eval` the plugin loads from this clone, outside the workspace, so each
+# stage case's consumer carries an allow rule that covers it.
+MIRROR_CASES = ["plan-review-approves-polish-owner-decision"]
+STAGE_CASES = NEW_CASES + MIRROR_CASES
+MIRROR_WRONG_BEHAVIOUR = {
+    "plan-review-approves-polish-owner-decision": ["plan-draft", "escalat", "PyYAML"],
+}
+
+
+@pytest.mark.parametrize("name", STAGE_CASES)
+def test_stage_scaffolds_allow_reading_the_plugin(name, tmp_path):
+    env = {k: v for k, v in os.environ.items() if k != "CLAUDE_PLUGIN_ROOT"}
+    result = subprocess.run(
+        ["bash", str(EVALS / name / "scaffold.sh")],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert result.returncode == 0, result.stderr
+    settings = json.loads((tmp_path / ".claude" / "settings.json").read_text())
+    rules = [rule for rule in settings["permissions"]["allow"] if rule.startswith("Read")]
+    assert rules, name
+    assert any(guard.rule_covers(rule, PLUGIN) for rule in rules), rules
+    assert all(rule.startswith("Read(//") for rule in rules), rules
+
+
+def test_every_mirror_case_names_its_wrong_behaviour():
+    assert set(MIRROR_WRONG_BEHAVIOUR) == set(MIRROR_CASES)
+
+
+@pytest.mark.parametrize("name", MIRROR_CASES)
+def test_mirror_cases_are_graded_in_english(name):
+    manifest = (EVALS / name / "case.yaml").read_text()
+    assert f"name: {name}\n" in manifest
+    assert "scaffold_script: scaffold.sh" in manifest
+    criteria = (EVALS / name / "graders" / "criteria.md").read_text()
+    assert criteria.startswith("---\ntype: llm\n")
+    for text in (manifest, criteria):
+        assert not POLISH & set(text)
+    paragraph = incorrect_paragraph(name)
+    missing = [token for token in MIRROR_WRONG_BEHAVIOUR[name] if token not in paragraph]
+    assert not missing, (name, missing)
+
+
+# plan-review-approves-polish-owner-decision
+
+
+@pytest.fixture
+def polish_settings(tmp_path) -> Path:
+    return scaffold("plan-review-approves-polish-owner-decision", tmp_path)
+
+
+def test_polish_mirror_fixture_is_ready_for_the_skill(polish_settings):
+    assert_ready_for_the_skill(
+        polish_settings, "feat/001-deployment-settings", "001-deployment-settings", "plan-draft"
+    )
+    assert run(VERIFY, polish_settings).returncode == 0
+    workflow = json.loads((polish_settings / ".claude" / "workflow.json").read_text())
+    assert workflow["language"] == "pl"
+
+
+def template_headings(name: str) -> list[str]:
+    text = (PLUGIN / "templates" / name).read_text()
+    return [line for line in text.splitlines() if re.match(r"#+ ", line)][1:]
+
+
+def body_headings(text: str) -> list[str]:
+    return [line for line in text.splitlines() if re.match(r"#+ ", line)][1:]
+
+
+def test_the_mirror_owner_accepted_the_dependency(polish_settings):
+    folder = polish_settings / "specs" / "001-deployment-settings"
+    spec, plan = (folder / "SPEC.md").read_text(), (folder / "PLAN.md").read_text()
+    assert "PyYAML" in section(spec, "## Decyzje właściciela")
+    assert "zaakceptowana" in section(spec, "## Decyzje właściciela")
+    summary = section(plan, "## Streszczenie dla właściciela")
+    field = next(line for line in summary.splitlines() if "**Nowa zależność:**" in line)
+    assert field.split("**Nowa zależność:**", 1)[1].strip().startswith("tak")
+    assert "PyYAML" in section(plan, "## Kroki")
+    assert body_headings(plan) == template_headings("PLAN.pl.md")
+    assert body_headings(spec) == template_headings("SPEC.pl.md")

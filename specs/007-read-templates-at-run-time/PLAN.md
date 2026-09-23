@@ -337,7 +337,7 @@ negative check needs it removable per case).
       CONVENTIONS contains `Read(//`). No Polish outside code in plugin docs.
       Automatic verification: `uv run pytest -q plugin/tests/test_readme.py tests/test_documents.py`
 
-- [ ] 6. **Eval scaffolds and the Polish mirror case** — files:
+- [x] 6. **Eval scaffolds and the Polish mirror case** — files:
       `plugin/evals/{implement-escalates-on-failing-test,plan-review-escalates-on-dependency,final-review-finds-planted-defect,final-review-ignores-false-positive}/scaffold.sh`,
       `plugin/evals/plan-review-approves-polish-owner-decision/{case.yaml,scaffold.sh,graders/criteria.md}`
       (new), `plugin/tests/test_eval_cases.py`.
