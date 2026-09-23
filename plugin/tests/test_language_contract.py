@@ -7,6 +7,8 @@ from test_readme import section_map
 PLUGIN = Path(__file__).resolve().parents[1]
 STAGE_SKILLS = ["idea", "plan", "plan-review", "implement", "final-review", "ship"]
 AGENTS = ["planner", "plan-reviewer", "implementer", "reviewer"]
+# `init` is the scaffold, not a pipeline stage: it asks for `language` instead of obeying it.
+NOT_STAGES = {"init"}
 
 
 def skill_text(name: str) -> str:
@@ -44,6 +46,14 @@ def test_the_language_block_is_identical_everywhere():
     for token in ["commit", "PR", "angielsku"]:
         assert token in items[1], token
     assert "sesji" in items[2]
+
+
+# The lists above are the parametrisation of every check here; a new stage skill or agent
+# that is not on them would slip past the language contract, so they have to be complete.
+def test_the_lists_cover_every_stage_and_agent():
+    skills = {path.parent.name for path in (PLUGIN / "skills").glob("*/SKILL.md")}
+    assert skills - NOT_STAGES == set(STAGE_SKILLS)
+    assert {path.stem for path in (PLUGIN / "agents").glob("*.md")} == set(AGENTS)
 
 
 @pytest.mark.parametrize("agent", AGENTS)
@@ -162,7 +172,9 @@ def quoted(text: str) -> list[str]:
 def test_sections_are_named_by_both_headings(path):
     text = (PLUGIN / path).read_text()
     spans = quoted(text)
-    flat = normalise(text)
+    # Outside fences only: the inline English template of `idea` and `plan` holds every
+    # English heading and would satisfy the check whatever the prose says.
+    flat = normalise(without_fences(text))
     missing = []
     for _, _, polish, english in section_map():
         if polish == english:

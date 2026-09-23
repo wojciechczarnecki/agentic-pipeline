@@ -134,8 +134,8 @@ SUMMARY: <≤ 10 linii; dla reviewer/report — tabela znalezisk: id | waga | je
    (`## Owner decisions`) w języku z `language`, zacommituj.
 4. `reviewer` w trybie `apply` → poprawki, push, PR, zielone CI, dopiero wtedy `done`.
 
-Brak znalezisk w raporcie → bramkę pomiń: zapisz „brak znalezisk" w decyzjach i przejdź
-do `apply`.
+Brak znalezisk w raporcie → bramkę pomiń: zapisz w decyzjach, w języku z `language`, że
+znalezisk nie było, i przejdź do `apply`.
 
 ## Zamknięcie
 

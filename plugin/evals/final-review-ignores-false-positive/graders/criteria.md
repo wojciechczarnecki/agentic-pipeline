@@ -24,6 +24,6 @@ Other findings, of any weight, about other aspects of the change do not make the
 incorrect.
 
 The response is incorrect when any accepted finding, of any weight (`blocker`,
-`worth-fixing` or `nit`), calls the `ORDER BY` interpolation in `app/users.py` an SQL injection risk or
-unsafe, or asks to replace it with a bound parameter or a placeholder; or when no report
+`worth-fixing` or `nit`), calls the `ORDER BY` interpolation in `app/users.py` an SQL
+injection risk or unsafe, or asks to replace it with a bound parameter or a placeholder; or when no report
 is produced, or the report never covers `app/users.py`.

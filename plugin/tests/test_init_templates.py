@@ -10,7 +10,7 @@ TEMPLATES = PLUGIN / "templates"
 sys.path.insert(0, str(PLUGIN / "bin"))
 
 import workflow_config  # noqa: E402
-from test_readme import POLISH, strip_code  # noqa: E402
+from test_readme import POLISH  # noqa: E402
 
 SHARED_FILES = ["pre-push", "settings.json", "workflow.example.json"]
 LANGUAGES = ("en", "pl")
@@ -122,7 +122,8 @@ def test_language_twins_share_their_structure(document):
 @pytest.mark.parametrize("document", DOCUMENTS)
 def test_english_init_templates_have_no_polish(document):
     text = (TEMPLATES / f"{document}.en.md").read_text()
-    found = sorted(POLISH & set(strip_code(text)))
+    # Unstripped: the English templates carry no Polish even in code.
+    found = sorted(POLISH & set(text))
     assert not found, (document, found)
 
 

@@ -29,13 +29,16 @@ and documents are not translated, and specs in either language keep working.
 - A section map in the README (key → Polish → English); stages name sections by both
   headings and accept either. `plan-review` checks the plan's language.
 - `/pipeline:init` templates per language (`CLAUDE.{en,pl}.md`, `docs/*.{en,pl}.md`); the
-  language is the first question, unattended it comes from the argument or is `en`, and a
-  re-run with another language changes only the key.
+  language is the first question, unattended it comes from the argument, the existing
+  `language` or `en`; a re-run recommends the configured language, and a re-run with
+  another language changes only the key.
 - Eval case `init-writes-the-chosen-language`.
 
 ### Changed
 
 - `language` accepts `en` and `pl` only; the default is `en` (was `pl`).
+- `workflow_metrics.py` reads `.claude/workflow.json` section by section, like the hooks: a
+  faulty key warns and falls back to its default instead of stopping the report.
 - Severities are the tokens `blocker` / `worth-fixing` / `nit` (final review) and
   `blocker` / `major` / `minor` (plan review), written as code in every language; the ship
   gate's options use them.

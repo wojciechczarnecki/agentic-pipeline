@@ -256,8 +256,10 @@ caught before code, and escalations per spec:
 workflow_metrics.py [specs-directory]
 ```
 
-Without an argument the directory comes from `docs.specsDir`. The script is called by name:
-Claude Code appends an enabled plugin's `bin/` to the session's `PATH`, in consumers too.
+Without an argument the directory comes from `docs.specsDir`; a faulty key in
+`.claude/workflow.json` only warns and falls back to its default, as in the hooks. The
+script is called by name: Claude Code appends an enabled plugin's `bin/` to the session's
+`PATH`, in consumers too.
 Not through `${CLAUDE_PLUGIN_ROOT}` — skill text gets that variable substituted, but
 `permissions` rules do not, so a call by absolute path matches no `allow` rule (and the
 Bash tool's shell does not have the variable at all).

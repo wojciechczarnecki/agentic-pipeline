@@ -92,15 +92,46 @@ def test_specs_dir_comes_from_the_config(tmp_path):
     assert "| 014-e2e | 4.5 |" in result.stdout
 
 
-def test_a_broken_config_is_reported(tmp_path):
+def test_a_faulty_key_warns_and_the_report_goes_on(tmp_path):
     (tmp_path / ".git").mkdir()
     (tmp_path / ".claude").mkdir()
-    (tmp_path / ".claude" / "workflow.json").write_text('{"nope": 1}')
+    (tmp_path / ".claude" / "workflow.json").write_text(
+        '{"nope": 1, "docs": {"specsDir": "plans"}}'
+    )
+    write_specs(tmp_path / "plans")
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT)], cwd=str(tmp_path), capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert "workflow.json: unknown key `nope`" in result.stderr
+    assert "| 014-e2e | 4.5 |" in result.stdout
+
+
+@pytest.mark.parametrize("language", ["EN", "polski"])
+def test_an_unsupported_language_warns_and_does_not_stop_the_report(tmp_path, language):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "workflow.json").write_text(
+        f'{{"language": "{language}", "docs": {{"specsDir": "plans"}}}}'
+    )
+    write_specs(tmp_path / "plans")
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT)], cwd=str(tmp_path), capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert "workflow.json: `language` has to be one of: en, pl" in result.stderr
+    assert "| 014-e2e | 4.5 |" in result.stdout
+
+
+def test_an_unreadable_config_is_reported(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "workflow.json").write_text("{not json")
     result = subprocess.run(
         [sys.executable, str(SCRIPT)], cwd=str(tmp_path), capture_output=True, text=True
     )
     assert result.returncode == 1
-    assert "unknown key `nope`" in result.stderr
+    assert "is not valid JSON" in result.stderr
 
 
 COMPLETE = {

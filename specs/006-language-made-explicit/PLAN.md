@@ -18,7 +18,8 @@
 - **Main risks:** a Polish consumer silently changing (guarded by the verbatim move, the
   snapshot test and the canary); a stage subagent stalling on a permission prompt when it
   `cat`s a template from the plugin cache — measured in step 5 before any skill depends on
-  it, escalation if it prompts; eval spend — two cases measured 5 times each plus one smoke run of
+  it, escalation if it prompts (it did: owner decision C keeps the templates inline, see
+  D1); eval spend — two cases measured 5 times each plus one smoke run of
   each of the three existing cases the change touches, under a $10 ceiling (the
   `docs/CONVENTIONS.md` policy for a new case), then the owner-approved
   receipt after gate 2; `plugin/README.md` may now carry Polish, but only inside code spans

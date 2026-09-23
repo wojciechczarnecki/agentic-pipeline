@@ -190,6 +190,30 @@ def test_templates_are_picked_by_language():
     assert "templates/CLAUDE.md" not in generating
 
 
+# A re-run keeps the project's language unless the owner changes it: the question
+# recommends the supported value `.claude/workflow.json` already holds, and unattended that
+# value is the fallback before `en` — otherwise a Polish project would get English documents.
+def test_a_re_run_keeps_the_configured_language():
+    _, first = questions()[0]
+    first = " ".join(first.split())
+    assert "`.claude/workflow.json`" in first
+    assert "istniejącą wartość" in first
+    body = " ".join(step(3).split())
+    fallback = body[body.index("Wyjątek — `language`") :]
+    assert fallback.index("`.claude/workflow.json`") < fallback.index("ustawiasz `en`")
+    assert "istniejąca wartość" in " ".join(step(4).split())
+
+
+# The unattended TODO example must not carry Polish into an English project's config.
+def test_the_todo_example_is_not_tied_to_one_language():
+    body = " ".join(step(3).split())
+    assert "TODO: <verify command>" in body
+    assert "komenda pełnej weryfikacji" not in body
+
+
 # SPEC 006, AC13: a re-run with another language changes the key, not the documents.
 def test_a_language_change_leaves_documents_alone():
-    assert "`language`" in step(6)
+    rerun = " ".join(step(6).split())
+    assert "`language`" in rerun
+    assert "istniejących dokumentów nie tłumaczysz ani nie podmieniasz" in rerun
+    assert "że istniejące dokumenty zostały w dotychczasowym języku" in " ".join(step(7).split())

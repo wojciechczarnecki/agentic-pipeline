@@ -35,7 +35,9 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
    z rekomendacją: opcja pierwsza z dopiskiem „(Recommended)" w etykiecie):
    1. język plików projektu (`language`): `en` „(Recommended)" albo `pl` — rekomendujesz
       `en`, bo to wartość domyślna i język, którego oczekują czytelnicy spoza projektu;
-      odpowiedź decyduje o dokumentach, specach, planach i treści PR;
+      gdy `.claude/workflow.json` ma już obsługiwany `language` (`en` albo `pl`),
+      rekomendujesz tę istniejącą wartość — przyjęcie rekomendacji nie zmienia języka
+      projektu; odpowiedź decyduje o dokumentach, specach, planach i treści PR;
    2. nazwa projektu i problem, który rozwiązuje (jedno zdanie);
    3. potwierdzenie wykrytego stacku i komendy pełnej weryfikacji;
    4. produkcja poza zasięgiem agenta — hosty i komendy CLI (albo „brak produkcji").
@@ -52,11 +54,13 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
    uruchomionej z `--permission-mode bypassPermissions`; przy słabszym trybie zapisujesz
    wszystko poza `.claude/`, a pominięte pliki wypisujesz z treścią do wklejenia i kończysz
    sukcesem. Brakujące wartości zapisujesz jako `TODO:` — w `.claude/workflow.json`
-   (np. `"command": "TODO: komenda pełnej weryfikacji"`) i w nagłówkach dokumentów.
+   (np. `"command": "TODO: <verify command>"`, z opisem po `TODO:` w języku z `language`)
+   i w nagłówkach dokumentów.
    Wyjątek — `language`: bierzesz go z argumentu, gdy argument wskazuje język (`en`,
-   `pl` albo jego nazwa: English/angielski, polski/po polsku), a w pozostałych
-   przypadkach ustawiasz `en` — bez znacznika `TODO:`, bo `en` to wartość domyślna. Język,
-   w którym napisano prompt, nie jest takim wskazaniem.
+   `pl` albo jego nazwa: English/angielski, polski/po polsku); bez takiego argumentu
+   zostawiasz obsługiwany `language` z istniejącego `.claude/workflow.json`, a gdy go
+   nie ma — ustawiasz `en`; nigdy ze znacznikiem `TODO:`, bo `en` to wartość domyślna.
+   Język, w którym napisano prompt, nie jest takim wskazaniem.
    Kończysz sukcesem, wypisując listę wartości do uzupełnienia.
 4. **Wygeneruj pliki** z `${CLAUDE_PLUGIN_ROOT}/templates/`, podstawiając odpowiedzi.
    **Szablony przenoś powłoką** (`cp`, `cat`, `sed`), nie narzędziami Read/Glob: katalog
@@ -91,8 +95,8 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
    - `.claude/workflow.json` — z `templates/workflow.example.json`, przycięty do tego
      projektu: sekcja `migrations` zostaje tylko wtedy, gdy projekt ma narzędzie migracji;
      `production`, `verify`, `format`, `docs`, `gitHooksDir` wypełnione odpowiedziami
-     albo `TODO:`; `language` to zawsze `en` albo `pl` (odpowiedź, argument albo `en`),
-     nigdy `TODO:`; klucza `protectedBranches` nie zapisujesz (kanał wydań
+     albo `TODO:`; `language` to zawsze `en` albo `pl` (odpowiedź, argument, istniejąca
+     wartość albo `en`), nigdy `TODO:`; klucza `protectedBranches` nie zapisujesz (kanał wydań
      chroni właściciel ręcznie, po `/pipeline:init`);
    - `CLAUDE.md` — z `templates/CLAUDE.<language>.md` (szablon w języku z `language`),
      z mapą dokumentów przepisaną na ścieżki z `docs.*` (inaczej instrukcja dla agentów

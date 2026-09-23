@@ -195,6 +195,8 @@ def strip_code(text: str) -> str:
             continue
         if not fenced:
             kept.append(line)
+    # An unclosed fence would hide the rest of the text from every check that strips code.
+    assert not fenced, "unbalanced code fence"
     return re.sub(r"`[^`\n]*`", "", "\n".join(kept))
 
 
@@ -234,7 +236,10 @@ def section_map() -> list[tuple[str, str, str, str]]:
         if not line.startswith("| `"):
             continue
         cells = [cell.strip() for cell in line.strip("|").split("|")]
-        if len(cells) != 4:
+        # Three cells are the severity rows; any other count is a broken map row that would
+        # otherwise drop out of every parity check unnoticed.
+        assert len(cells) in (3, 4), line
+        if len(cells) == 3:
             continue
         key, document, polish, english = cells
         rows.append((key.strip("`"), document, polish[1:-1], english[1:-1]))
