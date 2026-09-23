@@ -18,6 +18,8 @@ claude plugin install pipeline@wcz-tools --scope user
 
 See the [install guide](docs/INSTALL.md) for updating, the release channel, the one-time
 migration, verification, the opt-out and the known traps.
+For a new repository, [starting a new project](docs/NEW-PROJECT.md) walks from an empty
+directory to the first feature.
 
 ## Commands and agents
 

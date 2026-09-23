@@ -28,6 +28,7 @@ LINKED = [
     "plugin/README.md",
     "plugin/docs/INSTALL.md",
     "plugin/docs/GUARD.md",
+    "plugin/docs/NEW-PROJECT.md",
 ]
 PLUGIN_DOCUMENTS = [doc for doc in LINKED if doc.startswith("plugin/")]
 ROOT_DOCUMENTS = ["README.md", "CONTRIBUTING.md", "SECURITY.md"]
@@ -437,6 +438,11 @@ def test_readme_explains_the_three_names():
         and "`pipeline`" in paragraph
         for paragraph in paragraphs(README)
     )
+
+
+def test_the_new_project_guide_is_linked():
+    assert "](docs/NEW-PROJECT.md)" in section(read("plugin/README.md"), "## Installation")
+    assert "](NEW-PROJECT.md)" in INSTALL_GUIDE
 
 
 def test_readme_links_the_documentation():

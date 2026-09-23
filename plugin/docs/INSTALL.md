@@ -188,3 +188,6 @@ of the scaffold. A non-interactive session (`claude -p`) needs
 `--permission-mode bypassPermissions`: Claude Code treats files in `.claude/` as sensitive
 and asks before writing them regardless of permission rules. In a weaker mode init writes
 everything outside `.claude/` and prints the content of the files it skipped.
+
+For a new repository, [starting a new project](NEW-PROJECT.md) covers the whole route:
+the repository, init, the owner's steps after it and filling the documents.
