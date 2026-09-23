@@ -348,6 +348,19 @@ full verification plus the commit-shape checks:
 
 Record the results in this section when done.
 
+**Results (2026-09-24, /pipeline:implement):**
+
+1. `bash scripts/check.sh` — ALL GREEN: validate --strict passed for the plugin and the
+   marketplace, ruff and black clean, 1938 tests passed.
+2. AC8 — `git log --format=%s origin/main..HEAD` lists one commit each for `(P2)`, `(P3)`,
+   `(S1)`, `(S2)`, `(S3)`, `(R1)`, eight `(P1)` commits (plan, plan-review, implement,
+   final-review, idea, init, ship, implementer), the scanner commit `(AC1)`, the version
+   bump and the documents commit.
+3. AC2 — the lower-cased diff loop over the eight P1 commits printed nothing.
+4. Step 15 merge-base scan — non-empty: emphasis found in 8 files at the merge base
+   (`implementer`, `final-review`, `idea`, `implement`, `init`, `plan`, `plan-review`,
+   `ship`), e.g. `FIND`, `IMPORTANT`, `NOT`, `FULL`; the assertion held.
+
 ### Manual (performed by the owner)
 
 1. **AC9, after the PR is open, on the owner's explicit command** (Owner decisions): run
@@ -369,12 +382,12 @@ Record the results in this section when done.
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` / domain documents from the map
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` / domain documents from the map
       in `CLAUDE.md`, if applicable
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -426,6 +439,9 @@ dependency or migration is introduced, so the plan is ready for implementation.
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+
+None. The allowlist was not extended. In step 9 the lowered `NEVER` in the loop fence
+starts a sentence, so it became `Never`, per the P1 rule in `## Steps`.
 
 ## Final review
 
