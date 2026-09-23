@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-09-23"
   - "spec-ready — 2026-09-23"
   - "plan-draft — 2026-09-23"
   - "plan-approved — 2026-09-23"
   - "implemented — 2026-09-23"
+  - "done — 2026-09-23"
 metrics:
   started_at: 2026-09-23T12:45
   escalations: 1
@@ -21,6 +22,7 @@ metrics:
   final_review_nits: 10
   findings_accepted: 4
   findings_rejected: 10
+  finished_at: 2026-09-23T15:02
 ---
 
 # SPEC 007 — Stages read their templates and the section map at run time
