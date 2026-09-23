@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 
 import pytest
-from test_readme import POLISH, section_map
+from test_readme import POLISH
 
 PLUGIN = Path(__file__).resolve().parents[1]
 TEMPLATES = PLUGIN / "templates"
@@ -87,8 +87,9 @@ ENGLISH_HEADINGS = {
     ],
 }
 
-# Every literal pair of the README section map, including the ones that are not headings —
-# stages find sections and summary fields by these strings in specs of either language.
+# Every literal pair of the section map (templates/sections.md), including the ones that are
+# not headings — stages find sections and summary fields by these strings in specs of either
+# language.
 MAP_SNAPSHOT = [
     ("goal", "SPEC", "## Cel", "## Goal"),
     ("context", "SPEC", "## Kontekst", "## Context"),
@@ -171,6 +172,12 @@ def headings(text: str) -> list[str]:
     return [line for line in text.splitlines() if re.match(r"#+ ", line)]
 
 
+# The owner-summary fields (`- **Approach:** …`) are looked up by stages like headings, so the
+# structure check covers them too — a field row dropped from the map must break it.
+def fields(text: str) -> list[str]:
+    return re.findall(r"^- (\*\*[^*\n]+:\*\*)", text, flags=re.MULTILINE)
+
+
 def frontmatter(text: str) -> list[str]:
     lines = text.splitlines()
     if not lines or lines[0] != "---":
@@ -183,14 +190,53 @@ def frontmatter_keys(text: str) -> list[str]:
     return [line.split(":", 1)[0] for line in frontmatter(text) if re.match(r"\w+:", line)]
 
 
-def rows(document: str) -> list[tuple[str, str, str, str]]:
-    return [row for row in section_map() if row[1] == document]
+def section_map() -> list[tuple[str, str, str, str]]:
+    rows = []
+    for line in (TEMPLATES / "sections.md").read_text().splitlines():
+        if not line.startswith("| `"):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        # Any other count is a broken map row that would otherwise drop out of every parity
+        # check unnoticed.
+        assert len(cells) == 4, line
+        key, document, polish, english = cells
+        rows.append((key.strip("`"), document, polish[1:-1], english[1:-1]))
+    return rows
 
 
-def key_of(heading: str, document: str, column: int) -> str:
-    matches = [row[0] for row in rows(document) if row[column] == heading]
+def rows(document: str, table=None) -> list[tuple[str, str, str, str]]:
+    return [row for row in (section_map() if table is None else table) if row[1] == document]
+
+
+def key_of(heading: str, document: str, column: int, table=None) -> str:
+    matches = [row[0] for row in rows(document, table) if row[column] == heading]
     assert len(matches) == 1, (document, heading)
     return matches[0]
+
+
+def check_structure(document: str, table=None) -> None:
+    polish, english = template(document, "pl"), template(document, "en")
+    structure = {}
+    for language, text, column in (("pl", polish, 2), ("en", english, 3)):
+        lines = headings(text)
+        assert lines[0].startswith(f"# {document} NNN — "), (language, lines[0])
+        structure[language] = [
+            (line.split(" ", 1)[0], key_of(line, document, column, table)) for line in lines[1:]
+        ] + [("field", key_of(field, document, column, table)) for field in fields(text)]
+    assert structure["pl"] == structure["en"]
+    assert frontmatter_keys(polish) == frontmatter_keys(english)
+
+
+def check_occurs(document: str, table=None) -> None:
+    polish, english = template(document, "pl"), template(document, "en")
+    for key, _, polish_literal, english_literal in rows(document, table):
+        assert polish_literal in polish, (key, polish_literal)
+        assert english_literal in english, (key, english_literal)
+
+
+def check_unique_keys(document: str, table=None) -> None:
+    keys = [row[0] for row in rows(document, table)]
+    assert len(keys) == len(set(keys))
 
 
 @pytest.mark.parametrize("document", DOCUMENTS)
@@ -211,24 +257,12 @@ def test_the_section_map_matches_the_snapshot():
 
 @pytest.mark.parametrize("document", DOCUMENTS)
 def test_template_pairs_have_the_same_structure(document):
-    polish, english = template(document, "pl"), template(document, "en")
-    structure = {}
-    for language, text, column in (("pl", polish, 2), ("en", english, 3)):
-        lines = headings(text)
-        assert lines[0].startswith(f"# {document} NNN — "), (language, lines[0])
-        structure[language] = [
-            (line.split(" ", 1)[0], key_of(line, document, column)) for line in lines[1:]
-        ]
-    assert structure["pl"] == structure["en"]
-    assert frontmatter_keys(polish) == frontmatter_keys(english)
+    check_structure(document)
 
 
 @pytest.mark.parametrize("document", DOCUMENTS)
 def test_every_map_row_occurs_in_its_template(document):
-    polish, english = template(document, "pl"), template(document, "en")
-    for key, _, polish_literal, english_literal in rows(document):
-        assert polish_literal in polish, (key, polish_literal)
-        assert english_literal in english, (key, english_literal)
+    check_occurs(document)
 
 
 @pytest.mark.parametrize("name", ENGLISH_TEMPLATES)
@@ -241,5 +275,35 @@ def test_english_templates_have_no_polish(name):
 
 @pytest.mark.parametrize("document", DOCUMENTS)
 def test_map_keys_are_unique_per_document(document):
-    keys = [row[0] for row in rows(document)]
-    assert len(keys) == len(set(keys))
+    check_unique_keys(document)
+
+
+def test_the_section_map_is_well_formed():
+    table = section_map()
+    assert {document for _, document, _, _ in table} == {"SPEC", "PLAN"}
+    for line in (TEMPLATES / "sections.md").read_text().splitlines():
+        if line.startswith("| `"):
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            for cell in cells[2:]:
+                assert re.fullmatch(r"`[^`]+`", cell), line
+    for _, _, _, english in table:
+        assert not POLISH & set(english), english
+
+
+# AC2: the parity checks are only worth something if a row missing from the map breaks them.
+@pytest.mark.parametrize(
+    "document, dropped", [("SPEC", "owner-decisions"), ("PLAN", "summary-dependency")]
+)
+def test_the_parity_checks_miss_a_removed_row(document, dropped):
+    table = [row for row in section_map() if not (row[1] == document and row[0] == dropped)]
+    assert len(table) == len(section_map()) - 1
+    failed = 0
+    for check in (check_structure, check_occurs):
+        try:
+            check(document, table)
+        except AssertionError:
+            failed += 1
+    assert failed, dropped
+    duplicated = section_map() + [next(r for r in section_map() if r[1] == document)]
+    with pytest.raises(AssertionError):
+        check_unique_keys(document, duplicated)

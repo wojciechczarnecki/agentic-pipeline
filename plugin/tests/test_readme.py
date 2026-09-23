@@ -221,29 +221,17 @@ def section(text: str, heading: str) -> str:
     return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0].split("\n### ", 1)[0]
 
 
-# The section map quotes the Polish literals verbatim (docs/DECISIONS.md, 2026-09-21); they
-# are the only Polish the README may carry, and only inside code spans.
-def test_readme_polish_only_in_the_section_map():
+# The section map moved to templates/sections.md (SPEC 007, AC1); the README carries no
+# Polish at all, not even inside code spans.
+def test_the_readme_has_no_polish():
+    assert not sorted(POLISH & set(README))
+
+
+def test_the_section_map_section_links_the_file():
     mapped = section(README, "### Section map")
-    outside = README.replace(mapped, "")
-    assert not sorted(POLISH & set(outside))
-    assert not sorted(POLISH & set(strip_code(mapped)))
-
-
-def section_map() -> list[tuple[str, str, str, str]]:
-    rows = []
-    for line in section(README, "### Section map").splitlines():
-        if not line.startswith("| `"):
-            continue
-        cells = [cell.strip() for cell in line.strip("|").split("|")]
-        # Two cells are the severity rows; any other count is a broken map row that would
-        # otherwise drop out of every parity check unnoticed.
-        assert len(cells) in (2, 4), line
-        if len(cells) == 2:
-            continue
-        key, document, polish, english = cells
-        rows.append((key.strip("`"), document, polish[1:-1], english[1:-1]))
-    return rows
+    assert "](templates/sections.md)" in mapped
+    assert not [line for line in mapped.splitlines() if line.startswith("| `")]
+    assert (PLUGIN / "templates" / "sections.md").is_file()
 
 
 def test_the_language_contract_names_three_groups():
@@ -271,23 +259,12 @@ def test_the_language_contract_names_three_groups():
         assert token in contract, token
 
 
-def test_the_section_map_is_well_formed():
-    rows = section_map()
-    assert {document for _, document, _, _ in rows} == {"SPEC", "PLAN"}
-    for document in ("SPEC", "PLAN"):
-        keys = [key for key, doc, _, _ in rows if doc == document]
-        assert len(keys) == len(set(keys)), document
-    for line in section(README, "### Section map").splitlines():
-        if line.startswith("| `") and line.count("|") == 5:
-            cells = [cell.strip() for cell in line.strip("|").split("|")]
-            for cell in cells[2:]:
-                assert re.fullmatch(r"`[^`]+`", cell), line
-    for _, _, _, english in rows:
-        assert not POLISH & set(english), english
+def test_the_severity_tokens_are_listed():
     severities = {}
-    for line in section(README, "### Section map").splitlines():
+    for line in section(README, "### Severity tokens").splitlines():
         cells = [cell.strip() for cell in line.strip("|").split("|")]
-        if line.startswith("| `") and len(cells) == 2:
+        if line.startswith("| `"):
+            assert len(cells) == 2, line
             severities[cells[0].strip("`")] = cells[1]
     assert set(severities) == {"blocker", "major", "minor", "worth-fixing", "nit"}
 
@@ -304,6 +281,7 @@ HEADINGS = [
     "### Escalation triggers",
     "### Language contract",
     "### Section map",
+    "### Severity tokens",
     "## Workflow metrics",
     "### Checking metrics (`--check`)",
     "## CHANGELOG",

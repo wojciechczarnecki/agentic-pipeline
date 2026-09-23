@@ -243,7 +243,7 @@ negative check needs it removable per case).
 
 ## Steps
 
-- [ ] 1. **Section map into `templates/sections.md`** — files: `plugin/templates/sections.md`
+- [x] 1. **Section map into `templates/sections.md`** — files: `plugin/templates/sections.md`
       (new), `plugin/README.md`, `plugin/tests/test_templates_language.py`,
       `plugin/tests/test_readme.py`, `plugin/tests/test_language_contract.py` (import only).
       Per Approach → The section map file. Keep `MAP_SNAPSHOT` as is (it proves the rows
@@ -538,6 +538,12 @@ Decision: approved. There is no blocker, no SPEC gap, and no dependency or migra
 ## Deviations
 
 _(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+
+- **D1 (step 1)** — the structure check also covers the owner-summary fields
+  (`- **Approach:** …`), not only headings. Why: dropping `summary-dependency` from the map
+  (the planned proof of AC2) made no parity helper fail, because the structure check saw
+  headings only and the occurs check simply ran one row fewer. With the fields in the
+  structure, a removed field row fails `key_of`. Test-only; no plugin behaviour change.
 
 ## Final review
 

@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 
 import pytest
-from test_readme import section_map
+from test_templates_language import section_map
 
 PLUGIN = Path(__file__).resolve().parents[1]
 STAGE_SKILLS = ["idea", "plan", "plan-review", "implement", "final-review", "ship"]
