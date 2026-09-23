@@ -101,3 +101,15 @@ def test_implement_gate_is_stated_plainly():
 
 def test_implement_gate_drops_the_no_exceptions_line():
     assert "No exceptions" not in skill_text("implement")
+
+
+# S3: the "be thorough" line is gone; the three perspectives set the depth of the review.
+def test_final_review_drops_the_thoroughness_line():
+    assert "Green tests ≠ correct code" not in skill_text("final-review")
+
+
+def test_final_review_keeps_the_other_guardrails():
+    bullets = [
+        line for line in section("final-review", "Guardrails").splitlines() if line.startswith("- ")
+    ]
+    assert len(bullets) == 4

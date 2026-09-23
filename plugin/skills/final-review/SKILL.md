@@ -148,7 +148,6 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
 
 ## Guardrails
 
-- Green tests ≠ correct code — do not shorten the review for that reason.
 - In report mode you fix nothing — the report first, changes after the decision.
 - `done` means "a PR with green CI waits for the merge" — you do not set it earlier.
 - Do not report cosmetic nits as blockers — the severity has to match the real risk.

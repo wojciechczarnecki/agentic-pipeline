@@ -152,7 +152,7 @@ the step's files plus PLAN.md, per `plugin/skills/implement/SKILL.md`.
       plainly (S2)`.
       files: `plugin/skills/implement/SKILL.md`, `plugin/tests/test_prompt_audit.py`
       Automatic verification: `uv run pytest plugin/tests/test_prompt_audit.py -q`
-- [ ] 5. **S3 — the thoroughness line.** In `plugin/skills/final-review/SKILL.md` →
+- [x] 5. **S3 — the thoroughness line.** In `plugin/skills/final-review/SKILL.md` →
       `## Guardrails` delete the bullet "Green tests ≠ correct code — do not shorten the
       review for that reason."; the other four bullets stay. Add `test_final_review_*`:
       the file does not contain "Green tests ≠ correct code", and `## Guardrails` still has
