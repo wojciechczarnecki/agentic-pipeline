@@ -127,9 +127,6 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
       limited to `en`/`pl`, default `en`; `/pipeline:init` asks for the language first
       and generates `CLAUDE.md` and `docs/*` in it from per-language templates
       (`specs/006-language-made-explicit/SPEC.md`)
-- [ ] 0.6.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
-      is, since 0.3.4), with an eval case on `"language": "pl"`; Polish survives only in the
-      `*.pl.md` templates — SPEC, PLAN and the `init` documents
 - [ ] 0.6.0: `idea` and `plan` read their template with `Read` instead of carrying both
       languages inline (0.5.0 owner decision C) — one source, one language in context, and
       the precondition for Polish living only in `*.pl.md`. A skill gets no free read of its
@@ -140,13 +137,36 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
       user settings, a consumer-impact line for existing consumers, a guard warning when the
       rule is missing (a stage subagent cannot answer the prompt and would stall), and a
       separate rule for a `--plugin-dir` canary (`specs/006-language-made-explicit/PLAN.md`,
-      deviation D1)
+      deviation D1). The same read replaces the Polish and English headings the skills
+      quote today: the section map moves out of `plugin/README.md` into a file of its own
+      (`plugin/templates/sections.md`, the table alone; the README links to it, and the
+      map-to-template parity test follows it), every stage reads it with `Read`, and a
+      failed read stops the stage (`RESULT: ESCALATE`) — a missing template is visible, a
+      missing map would silently miss `## Decyzje właściciela`. Lands before the
+      translation, so the skills can drop the Polish headings when they are translated
+- [ ] 0.6.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
+      is, since 0.3.4), with an eval case on `"language": "pl"`: a Polish SPEC whose
+      `## Decyzje właściciela` accepts a new dependency, and `plan-review` approves the plan
+      without escalating (the mirror of `plan-review-escalates-on-dependency`) — it fails if
+      the rule above is missing or the section map is misread; Polish survives only in the
+      `*.pl.md` templates — SPEC, PLAN and the `init` documents — and in the section map
 
 ## Stage 6 — A better pipeline
 
 One spec through the pipeline itself. Lessons from GitHub Spec Kit (`converge`, test-first)
 and 10xWorkflow (tests verified by breaking them).
 
+- [ ] 0.7.0, first and as its own spec: a prompt audit of the English skills and agents for
+      Claude Opus 5.5 (`/claude-api prompt-audit`), with an eval run before the other items
+      of this stage land — the new instructions below are then written on the audited
+      text, and a regression points at either the audit or the additions, not both. The
+      report comes first, then each accepted change on its own. The 0.6.0 translation
+      stays one to one so that the eval gate proves parity; the audit is where the
+      wording changes. Expected findings: emphasis in capitals, strategy hints the model
+      follows unprompted (`implement`: read the full output, start from the first error)
+      and the plan reviewer's "assume the plan has gaps", which invites made-up findings.
+      The stage contract repeated in every agent and the exact git, test and status steps
+      stay: the repetition is pinned by tests, and exact steps suit fragile operations
 - [ ] 0.7.0: `implement` records every acceptance-criterion test failing before the change
       that makes it pass — a test that was never red proves nothing
 - [ ] 0.7.0: `implement` closes with a converge pass — a fresh subagent compares the code
@@ -156,7 +176,10 @@ and 10xWorkflow (tests verified by breaking them).
 - [ ] 0.7.0: plan and review depth proportional to the change, instead of spec sizes — a
       four-step fix got a 349-line plan and three reviewers (decision row with the spec:
       no size tiers; small things keep the fast path)
-- [ ] 0.7.0: the final review reports at most five nits and states how many it left out
+- [ ] 0.7.0: the final review reports at most five nits and states how many it left out;
+      the cap applies when the report is merged, not in the perspectives' prompts — they
+      report every finding with its severity, since a reviewer told to report less finds
+      less (current Claude models follow severity filters literally)
 - [ ] Eval cases for the new behaviour: a test that was never red is caught, and the
       converge pass finds an acceptance criterion left unimplemented
 
@@ -167,14 +190,20 @@ and 10xWorkflow (tests verified by breaking them).
       was read listed (the consumer's documents are 271 KB, and every fresh subagent read
       them whole)
 - [ ] 0.8.0: a `models` section in `.claude/workflow.json` that `/pipeline:ship` passes to
-      each stage agent; `/pipeline:init` writes the implementer on Sonnet; without the
-      section every stage inherits the session model, as today
+      each stage agent — a model and an effort level per stage; `/pipeline:init` writes the
+      defaults the comparison below measured; without the section every stage inherits the
+      session model and its effort, as today. On Claude Opus 5.5 the first candidate for a
+      stage is the same model at `low` or `medium` effort (its default is `medium`), and
+      a cheaper model only when that measures worse; whether an agent's frontmatter or
+      the `Agent` tool accepts an effort level is checked before the spec is written
 - [ ] 0.8.0: `deviations` split into `deviations_minor` and `deviations_major`; specs with
       the old key still pass `--check`
 - [ ] 0.8.0: cost per stage from the local session transcripts, written into `metrics:`
       when a spec closes (transcripts are local and expire, so it cannot be computed later)
-- [ ] Before/after comparison of the implementer on Sonnet: a baseline of 2–3 consumer
-      specs on 0.7.0 with every stage on the session model, then 3–5 specs with the new
+- [ ] Before/after comparison of model and effort per stage: a baseline of 2–3 consumer
+      specs on 0.7.0 with every stage on the session model at its default effort, then
+      3–5 specs with the candidates — Opus at `low` effort for the stages that follow a
+      checklist or a script, Opus at `low` or Sonnet for the implementer — and the chosen
       defaults — not the 9 specs before Stage 6, which changes the metrics by itself;
       the result goes into the root `README.md`
 - [ ] Write-up, linked from the root `README.md`: the guard as a shell analyser rather than
