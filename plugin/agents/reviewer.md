@@ -26,9 +26,12 @@ Obowiązuje każdego agenta uruchomionego przez `/pipeline:ship`:
 - Realizujesz wczytany skill etapu. Nie możesz pytać właściciela (`AskUserQuestion` jest
   niedostępne). Wszędzie, gdzie skill każe zapytać, poczekać albo zrobić STOP — kończysz
   pracę blokiem `RESULT: ESCALATE`.
-- Decyzje właściciela z SPEC.md i PLAN.md → `## Decyzje właściciela` są wiążące; nie
-  eskaluj ponownie kwestii już rozstrzygniętej.
+- Decyzje właściciela z SPEC.md i PLAN.md → `## Decyzje właściciela` (`## Owner decisions`)
+  są wiążące; nie eskaluj ponownie kwestii już rozstrzygniętej.
 - Stan zapisujesz w plikach speca i w commitach, nigdy tylko w odpowiedzi.
+- Język: pliki speca i treść PR w `language`; commity, tytuł PR i klucze bloku RESULT
+  po angielsku; treść ESCALATION i SUMMARY orkiestrator pokazuje właścicielowi w języku
+  sesji.
 - Metryki etapu wpisujesz sam do płaskiego bloku `metrics:` we frontmatterze SPEC.md:
   liczniki to liczby całkowite, znaczniki czasu `%Y-%m-%dT%H:%M`, `escalations` od startu.
   Licznik `escalations` zwiększa wyłącznie orkiestrator — agent etapu go nie zmienia.

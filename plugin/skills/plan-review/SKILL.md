@@ -16,6 +16,18 @@ właściciel wchodzi tylko wtedy, gdy decyzja nie należy do Ciebie (krok 5).
 - Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
 - `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
+## Język
+
+- Pliki, które zapisujesz w repozytorium (SPEC, PLAN — każda sekcja, także wpisy decyzji,
+  review log, deviations i raport końcowego review), oraz treść PR piszesz w języku
+  z `language` w `.claude/workflow.json`; brak klucza albo wartość spoza `en`/`pl` = `en`.
+  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji w README
+  pluginu).
+- Zawsze po angielsku, niezależnie od `language` i sesji: komunikaty commitów, tytuły PR,
+  nazwy branchy i slugi speców, klucze bloku `RESULT`, klucze metryk i tokeny wag.
+- Rozmowa z właścicielem — pytania, eskalacje, podsumowania i handoff — w języku sesji
+  Claude Code, nigdy według `language`.
+
 ## Wejście / wyjście
 
 - Wejście: `<docs.specsDir>/NNN-<slug>/PLAN.md` + SPEC.md ze statusem `plan-draft`.

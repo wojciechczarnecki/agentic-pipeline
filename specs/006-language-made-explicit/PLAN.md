@@ -448,7 +448,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       `diff <(awk '/^```markdown$/{f=1;next} /^```$/{f=0} f' plugin/skills/idea/SKILL.md) plugin/templates/SPEC.pl.md`
       `diff <(awk '/^````markdown$/{f=1;next} /^````$/{f=0} f' plugin/skills/plan/SKILL.md) plugin/templates/PLAN.pl.md`
 
-- [ ] 4. **The `## Język` block and the contract bullet** — files: the six
+- [x] 4. **The `## Język` block and the contract bullet** — files: the six
       `plugin/skills/{idea,plan,plan-review,implement,final-review,ship}/SKILL.md` (the block
       only), `plugin/agents/{planner,plan-reviewer,implementer,reviewer}.md` and
       `plugin/skills/ship/SKILL.md` (the contract bullet and the `(## Owner decisions)`

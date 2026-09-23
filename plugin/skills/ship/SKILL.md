@@ -16,6 +16,18 @@ właściciela" z PLAN.md i bloki RESULT od subagentów — nie diff, nie kod.
 - Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
 - `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
+## Język
+
+- Pliki, które zapisujesz w repozytorium (SPEC, PLAN — każda sekcja, także wpisy decyzji,
+  review log, deviations i raport końcowego review), oraz treść PR piszesz w języku
+  z `language` w `.claude/workflow.json`; brak klucza albo wartość spoza `en`/`pl` = `en`.
+  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji w README
+  pluginu).
+- Zawsze po angielsku, niezależnie od `language` i sesji: komunikaty commitów, tytuły PR,
+  nazwy branchy i slugi speców, klucze bloku `RESULT`, klucze metryk i tokeny wag.
+- Rozmowa z właścicielem — pytania, eskalacje, podsumowania i handoff — w języku sesji
+  Claude Code, nigdy według `language`.
+
 ## Stan
 
 Źródłem prawdy jest `status:` w SPEC.md, nie ta rozmowa. `/pipeline:ship` przerwany
@@ -65,9 +77,12 @@ Obowiązuje każdego agenta uruchomionego przez `/pipeline:ship`:
 - Realizujesz wczytany skill etapu. Nie możesz pytać właściciela (`AskUserQuestion` jest
   niedostępne). Wszędzie, gdzie skill każe zapytać, poczekać albo zrobić STOP — kończysz
   pracę blokiem `RESULT: ESCALATE`.
-- Decyzje właściciela z SPEC.md i PLAN.md → `## Decyzje właściciela` są wiążące; nie
-  eskaluj ponownie kwestii już rozstrzygniętej.
+- Decyzje właściciela z SPEC.md i PLAN.md → `## Decyzje właściciela` (`## Owner decisions`)
+  są wiążące; nie eskaluj ponownie kwestii już rozstrzygniętej.
 - Stan zapisujesz w plikach speca i w commitach, nigdy tylko w odpowiedzi.
+- Język: pliki speca i treść PR w `language`; commity, tytuł PR i klucze bloku RESULT
+  po angielsku; treść ESCALATION i SUMMARY orkiestrator pokazuje właścicielowi w języku
+  sesji.
 - Metryki etapu wpisujesz sam do płaskiego bloku `metrics:` we frontmatterze SPEC.md:
   liczniki to liczby całkowite, znaczniki czasu `%Y-%m-%dT%H:%M`, `escalations` od startu.
   Licznik `escalations` zwiększa wyłącznie orkiestrator — agent etapu go nie zmienia.
