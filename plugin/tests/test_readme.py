@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from test_english_only import POLISH_LETTERS as POLISH
 
 PLUGIN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN / "bin"))
@@ -184,10 +185,6 @@ def test_the_changelog_names_the_consumer_impact():
     assert "**consumer impact:**" in section
 
 
-POLISH_LOWER = "\u0105\u0107\u0119\u0142\u0144\u00f3\u015b\u017a\u017c"
-POLISH = set(POLISH_LOWER + POLISH_LOWER.upper())
-
-
 def strip_code(text: str) -> str:
     kept, fenced = [], False
     for line in text.splitlines():
@@ -347,11 +344,9 @@ def test_install_guide_documents_the_read_rule():
         assert token in guide, token
 
 
-# SPEC 007, AC14: existing consumers learn from the release notes that the stages now need
-# the Read rule, and what happens without it.
+# SPEC 008, AC9: the 0.6.0 release notes record the English skills and tell a Polish
+# consumer what stays in Polish for them.
 def test_the_changelog_records_the_translation():
-    manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
-    assert manifest["version"] == "0.6.0"
     section = CHANGELOG.split("## 0.6.0", 1)[1].split("\n## ", 1)[0]
     changed = section.split("### Changed", 1)[1].split("\n### ", 1)[0]
     assert "English" in changed
@@ -360,6 +355,8 @@ def test_the_changelog_records_the_translation():
     assert '"language": "pl"' in impact
 
 
+# SPEC 007, AC14: existing consumers learn from the release notes that the stages now need
+# the Read rule, and what happens without it.
 def test_the_changelog_names_the_read_rule():
     manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
     section = CHANGELOG.split(f"## {manifest['version']}", 1)[1].split("\n## ", 1)[0]

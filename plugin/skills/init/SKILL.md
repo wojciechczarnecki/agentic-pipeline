@@ -71,8 +71,8 @@ Nothing outside these prefixes — no source files, no tool configuration and no
    First copy the file into the project, only then edit it with the Edit tool. Should the
    shell not reach the plugin directory either — stop without writing and ask for `--add-dir
    ${CLAUDE_PLUGIN_ROOT}`; do NOT rebuild the templates from memory.
-   **Exception — files in `.claude/`:** the guard does not let their write from the shell
-   through (they are guard files). READ the template's content with the shell (`cat`), and
+   **Exception — files in `.claude/`:** the guard blocks writing them from the shell
+   (they are guard files). READ the template's content with the shell (`cat`), and
    write the target file with the Write tool — the only sanctioned route. A block from the
    shell is not a reason to give up the file.
    The list of files:
@@ -81,9 +81,9 @@ Nothing outside these prefixes — no source files, no tool configuration and no
      are provided by the plugin; duplicating them here would run the guard twice.
      **No `enabledPlugins`** — a session in a directory that enables the plugin in
      `.claude/settings.json` sets up a `--scope project` install by itself beside the
-     `user` install, and `claude plugin update --scope user` does not raise it.
+     `user` install, and `claude plugin update --scope user` does not update it.
      Substitute two things: in the `ask` rule the git hooks directory path with this
-     project's `gitHooksDir` (a rule with another path guards emptiness) and the marketplace
+     project's `gitHooksDir` (a rule with another path guards nothing) and the marketplace
      source. Read the marketplace name from the path `${CLAUDE_PLUGIN_ROOT}`
      (`…/<marketplace>/<plugin>/<version>/`): the same value goes into the key
      `extraKnownMarketplaces` and into the rule

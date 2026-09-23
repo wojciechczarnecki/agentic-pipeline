@@ -652,6 +652,8 @@ by an owner scenario the SPEC assigns, and no escalation trigger applies.
 - D4 (step 3) — `idea` step 4 named the suffix by both literals (`(założenie)` /
   `(assumption)`); with the Polish one dropped by rule 3, the sentence says "`(assumption)` or
   its Polish twin from the section map", so a Polish SPEC still gets the Polish suffix.
+  Extended in the final review (F1): step 5 and the `spec-ready` guardrail name the Polish
+  twin the same way, so a Polish SPEC's assumptions are listed and gated too.
 - D5 (step 9) — the 0.6.0 changelog line reads "a Polish consumer whose owner-decisions
   section, under its Polish heading, accepts" instead of the plan's "whose Polish
   owner-decisions heading accepts", which would have said "Polish" twice in one phrase.
@@ -744,3 +746,27 @@ Rejected:
   accepted by `claude plugin validate --strict`; not a regression.
 - `markdown_section` raises a bare `IndexError` on a missing heading — the test still fails,
   with a readable traceback.
+
+### 2026-09-23 — /pipeline:final-review (apply)
+
+Owner decision: accept all ten findings (F1–F10), reject none. Fixes:
+
+- F1 — `plugin/skills/idea/SKILL.md`: step 5 and the `spec-ready` guardrail read
+  "`(assumption)` items (or their Polish twin from the section map)"; D4 extended.
+- F2 — `plugin/tests/test_language_contract.py`: `heading_like()` also takes spans ending in
+  `:` and spans wrapped in `(…)`; frontmatter keys `metrics:` / `status:` and init's `TODO:`
+  marker go to `OTHER_HEADINGS`. Mutation `Automated verification:` in `implement` now
+  fails the test; `test_the_heading_checks_see_wrapped_spans` pins `heading_like()`.
+- F3 — `plugin/tests/test_readme.py`: the `manifest["version"] == "0.6.0"` assertion dropped.
+- F4 — the translation test has its own `# SPEC 008, AC9` comment; the `# SPEC 007, AC14`
+  comment sits above `test_the_changelog_names_the_read_rule` again.
+- F5 — `plugin/tests/test_init_skill.py`: `"plain text" in body or "prose" in body`.
+- F6 — `test_every_stage_reads_the_section_map` asserts `"Before you look for a section"`.
+- F7 — `tests/test_documents.py`, `plugin/tests/test_readme.py`, `plugin/tests/test_eval_cases.py`
+  import `POLISH_LETTERS` from `test_english_only` instead of copying the escapes.
+- F8 — `plugin/skills/init/SKILL.md`: "blocks writing them from the shell", "does not update
+  it", "guards nothing".
+- F9 — `test_graders_and_descriptions_are_english` rejects a block-scalar `description`.
+- F10 — `plugin/README.md` → Section map paragraph re-wrapped at ≤ 92 columns.
+
+`bash scripts/check.sh` → `ALL GREEN` (1887 passed). No new backlog item: nothing was deferred.

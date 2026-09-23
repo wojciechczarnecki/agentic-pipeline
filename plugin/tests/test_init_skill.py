@@ -145,7 +145,7 @@ def test_the_question_step_checks_for_the_tool_before_asking():
 @pytest.mark.parametrize("number", [2, 3])
 def test_the_non_interactive_mode_forbids_asking_in_prose(number):
     body = " ".join(step(number).split())
-    assert "text" in body or "prose" in body, (
+    assert "plain text" in body or "prose" in body, (
         f"init step {number} must close the prose loophole: without AskUserQuestion the "
         "skill may not ask in plain text either"
     )

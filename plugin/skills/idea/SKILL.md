@@ -108,8 +108,8 @@ A gap in the SPEC comes back later as an escalation — it is cheaper here.
    from the section map — it is the most common source of spec errors. Record consents given
    up front (dependency, migration) in the `## Owner decisions` section.
 5. **Present to the owner** a concise summary, the decisions made along the way and
-   SEPARATELY the list of all `(assumption)` items to approve or
-   reject.
+   SEPARATELY the list of all `(assumption)` items (or their Polish twin from the section
+   map) to approve or reject.
    After their acceptance remove the suffixes from the approved ones, set
    `status: spec-ready`, add an entry to `stage_history` and commit
    (`docs: add SPEC NNN <slug>`).
@@ -133,8 +133,8 @@ template from memory).
 - Do NOT design the implementation (files, functions, steps) — that is the role of
   `/pipeline:plan`.
 - A SPEC with status `spec-ready` may not contain blocking questions or
-  unapproved `(assumption)` items — the `## Open questions (non-blocking)` section
-  is only for non-blocking matters.
+  unapproved `(assumption)` items (or their Polish twin from the section map) — the
+  `## Open questions (non-blocking)` section is only for non-blocking matters.
 - A SPEC with status `spec-ready` has in the `## Read context` section
   an item for `<docs.roadmap>`, `<docs.project>`, `<docs.decisions>` and every domain
   document from the map in `CLAUDE.md` (definition in step 1).

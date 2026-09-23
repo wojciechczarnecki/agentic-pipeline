@@ -110,6 +110,7 @@ def test_every_stage_reads_the_section_map():
     assert MAP_PATH in block
     assert "`Read`" in block
     assert "either" in block
+    assert "Before you look for a section" in block
     for name in STAGE_SKILLS:
         assert "section map in the README" not in skill_text(name), name
 
@@ -201,8 +202,9 @@ def quoted(text: str) -> list[str]:
 FILES = [f"skills/{name}/SKILL.md" for name in STAGE_SKILLS + sorted(NOT_STAGES)] + [
     f"agents/{name}.md" for name in AGENTS
 ]
-# Heading-like spans that are not SPEC/PLAN sections; none are needed today.
-OTHER_HEADINGS: set[str] = set()
+# Heading-like spans that are not SPEC/PLAN sections: frontmatter keys and the init
+# scaffold's placeholder marker.
+OTHER_HEADINGS: set[str] = {"metrics:", "status:", "TODO:"}
 
 
 # A stage names a section by its English heading only (SPEC 008): the Polish twin comes from
@@ -222,13 +224,21 @@ def test_no_polish_heading_is_named(path):
     assert not named, (path, named)
 
 
-# Every quoted heading is the English literal of a map row, so a stage cannot name a section
-# the templates do not have.
+def heading_like(span: str) -> bool:
+    return (
+        span.startswith(("#", "**"))
+        or span.endswith(":")
+        or (span.startswith("(") and span.endswith(")"))
+    )
+
+
+# Every quoted heading or map literal (`## …`, `**…:**`, `…:`, `(…)`) is the English literal
+# of a map row, so a stage cannot name a section the templates do not have.
 @pytest.mark.parametrize("path", FILES)
 def test_quoted_headings_are_english_map_literals(path):
     english = {row[3] for row in section_map()} | OTHER_HEADINGS
     spans = quoted((PLUGIN / path).read_text())
-    unknown = [span for span in spans if span.startswith(("#", "**")) and span not in english]
+    unknown = [span for span in spans if heading_like(span) and span not in english]
     assert not unknown, (path, unknown)
 
 
@@ -238,3 +248,6 @@ def test_the_heading_checks_see_wrapped_spans():
     assert heading_text("Automatic verification:") == "Automatic verification"
     assert heading_text("**Approach:**") == "Approach"
     assert heading_text("## Read context") == "Read context"
+    for span in ["## Goal", "**Approach:**", "Automatic verification:", "(assumption)"]:
+        assert heading_like(span), span
+    assert not heading_like("git diff origin/main...HEAD")

@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from test_english_only import POLISH_LETTERS as POLISH
 
 PLUGIN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN / "bin"))
@@ -23,9 +24,6 @@ import guard  # noqa: E402
 EVALS = PLUGIN / "evals"
 METRICS = PLUGIN / "bin" / "workflow_metrics.py"
 VERIFY = [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-q"]
-
-POLISH_LOWER = "\u0105\u0107\u0119\u0142\u0144\u00f3\u015b\u017a\u017c"
-POLISH = set(POLISH_LOWER + POLISH_LOWER.upper())
 
 NEW_CASES = [
     "implement-escalates-on-failing-test",
@@ -155,6 +153,8 @@ def test_graders_and_descriptions_are_english(case):
     manifest = (case / "case.yaml").read_text()
     description = [line for line in manifest.splitlines() if line.startswith("description:")]
     assert len(description) == 1, case.name
+    value = description[0].split(":", 1)[1].strip()
+    assert value and value[0] not in ">|", (case.name, "a block scalar hides its text")
     assert not POLISH & set(description[0]), case.name
 
 

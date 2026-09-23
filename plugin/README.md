@@ -178,12 +178,12 @@ already written is translated.
 ### Section map
 
 Stages name a section by its English literal and accept either when reading, so a spec
-written before a language change, or before 0.5.0, still reads correctly. The literals of every
-SPEC and PLAN section live in [templates/sections.md](templates/sections.md), and the SPEC
-and PLAN templates (`templates/SPEC.<language>.md`, `templates/PLAN.<language>.md`) carry
-exactly those literals. Everything is read at run time with `Read`: `idea` and `plan` read
-the one template for the current `language`, and every stage reads the section map before
-it looks for a section.
+written before a language change, or before 0.5.0, still reads correctly. The literals of
+every SPEC and PLAN section live in [templates/sections.md](templates/sections.md), and the
+SPEC and PLAN templates (`templates/SPEC.<language>.md`, `templates/PLAN.<language>.md`)
+carry exactly those literals. Everything is read at run time with `Read`: `idea` and `plan`
+read the one template for the current `language`, and every stage reads the section map
+before it looks for a section.
 
 A stage subagent cannot answer a permission prompt, so a consumer needs an allow rule for
 the plugin's directory in `permissions.allow`:

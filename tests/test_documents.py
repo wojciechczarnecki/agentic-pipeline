@@ -17,6 +17,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "plugin" / "tests"))
 
+from test_english_only import POLISH_LETTERS as POLISH  # noqa: E402
 from test_english_only import polish_files, polish_in_python_names  # noqa: E402
 from test_no_domain_references import CASE_INSENSITIVE, CASE_SENSITIVE  # noqa: E402
 
@@ -146,10 +147,6 @@ def test_no_document_names_the_private_consumer(path):
     found = [p for p in CONSUMER_PATTERNS if re.search(p, text, re.IGNORECASE)]
     found += [p for p in CASE_SENSITIVE if re.search(p, text)]
     assert not found, (str(path.relative_to(ROOT)), found)
-
-
-POLISH_LOWER = "\u0105\u0107\u0119\u0142\u0144\u00f3\u015b\u017a\u017c"
-POLISH = set(POLISH_LOWER + POLISH_LOWER.upper())
 
 
 @pytest.mark.parametrize("doc", ROOT_DOCUMENTS)
