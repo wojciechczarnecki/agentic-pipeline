@@ -53,7 +53,16 @@ POLISH_SNAPSHOT = {
     },
 }
 
-ENGLISH_TEMPLATES = ["SPEC.en.md", "PLAN.en.md"]
+ENGLISH_TEMPLATES = [
+    "SPEC.en.md",
+    "PLAN.en.md",
+    "CLAUDE.en.md",
+    "docs/PROJECT.en.md",
+    "docs/ROADMAP.en.md",
+    "docs/BACKLOG.en.md",
+    "docs/DECISIONS.en.md",
+    "docs/CONVENTIONS.en.md",
+]
 
 
 def template(document: str, language: str) -> str:

@@ -12,12 +12,12 @@ TEXT = SKILL.read_text()
 GENERATED = {
     ".claude/settings.json": "settings.json",
     ".claude/workflow.json": "workflow.example.json",
-    "CLAUDE.md": "CLAUDE.md",
-    "docs/PROJECT.md": "docs/PROJECT.md",
-    "docs/ROADMAP.md": "docs/ROADMAP.md",
-    "docs/BACKLOG.md": "docs/BACKLOG.md",
-    "docs/DECISIONS.md": "docs/DECISIONS.md",
-    "docs/CONVENTIONS.md": "docs/CONVENTIONS.md",
+    "CLAUDE.md": "CLAUDE.{language}.md",
+    "docs/PROJECT.md": "docs/PROJECT.{language}.md",
+    "docs/ROADMAP.md": "docs/ROADMAP.{language}.md",
+    "docs/BACKLOG.md": "docs/BACKLOG.{language}.md",
+    "docs/DECISIONS.md": "docs/DECISIONS.{language}.md",
+    "docs/CONVENTIONS.md": "docs/CONVENTIONS.{language}.md",
     "scripts/git-hooks/pre-push": "pre-push",
     ".github/workflows/ci.yml": "github/workflows/ci-placeholder.yml",
     ".github/workflows/security.yml": "github/workflows/security-python.yml",
@@ -61,9 +61,11 @@ def test_configurable_values_are_substituted_into_the_templates():
 
 
 @pytest.mark.parametrize("generated, template", sorted(GENERATED.items()))
-def test_generated_file_list_matches_templates(generated, template):
+@pytest.mark.parametrize("language", ["en", "pl"])
+def test_generated_file_list_matches_templates(generated, template, language):
     assert generated in TEXT, generated
-    assert (TEMPLATES / template).is_file(), template
+    source = template.format(language=language)
+    assert (TEMPLATES / source).is_file(), source
 
 
 def test_the_git_hook_template_is_executable_and_its_setup_is_printed():

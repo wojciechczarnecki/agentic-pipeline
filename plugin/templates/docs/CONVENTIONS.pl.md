@@ -5,8 +5,11 @@ ten dokument jest źródłem szczegółów.
 
 ## Język
 
-- Kod, identyfikatory, komentarze i komunikaty commitów: TODO
-- Dokumentacja (`docs/`, `specs/`): TODO (to samo, co `language` w `.claude/workflow.json`)
+- Komunikaty commitów, tytuły PR i nazwy branchy: po angielsku, niezależnie od `language`.
+- Kod, identyfikatory i komentarze: TODO
+- Dokumentacja (`docs/`, `specs/`) i treść PR: po polsku (`language: "pl"`
+  w `.claude/workflow.json`).
+- Język rozmowy z agentem nie jest ustawieniem projektu — wynika z sesji Claude Code.
 - Nie mieszamy języków w obrębie jednego dokumentu.
 
 ## Styl kodu

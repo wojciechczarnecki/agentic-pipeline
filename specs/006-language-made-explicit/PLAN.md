@@ -494,7 +494,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       `gh pr checks <nr> --json name,workflow,link` (existing tests).
       Automatic verification: `uv run pytest -q plugin/tests/test_language_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py plugin/tests/test_readme.py plugin/tests/test_no_domain_references.py`
 
-- [ ] 7. **`init` templates per language** — files: `plugin/templates/CLAUDE.md` →
+- [x] 7. **`init` templates per language** — files: `plugin/templates/CLAUDE.md` →
       `CLAUDE.pl.md`, `plugin/templates/docs/*.md` → `*.pl.md` (`git mv`), new
       `plugin/templates/CLAUDE.en.md` and `plugin/templates/docs/*.en.md`,
       `plugin/templates/docs/CONVENTIONS.{pl,en}.md` language section (AC14),
