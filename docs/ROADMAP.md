@@ -127,9 +127,6 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
       limited to `en`/`pl`, default `en`; `/pipeline:init` asks for the language first
       and generates `CLAUDE.md` and `docs/*` in it from per-language templates
       (`specs/006-language-made-explicit/SPEC.md`)
-- [ ] 0.6.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
-      is, since 0.3.4), with an eval case on `"language": "pl"`; Polish survives only in the
-      `*.pl.md` templates — SPEC, PLAN and the `init` documents
 - [ ] 0.6.0: `idea` and `plan` read their template with `Read` instead of carrying both
       languages inline (0.5.0 owner decision C) — one source, one language in context, and
       the precondition for Polish living only in `*.pl.md`. A skill gets no free read of its
@@ -140,7 +137,19 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
       user settings, a consumer-impact line for existing consumers, a guard warning when the
       rule is missing (a stage subagent cannot answer the prompt and would stall), and a
       separate rule for a `--plugin-dir` canary (`specs/006-language-made-explicit/PLAN.md`,
-      deviation D1)
+      deviation D1). The same read replaces the Polish and English headings the skills
+      quote today: the section map moves out of `plugin/README.md` into a file of its own
+      (`plugin/templates/sections.md`, the table alone; the README links to it, and the
+      map-to-template parity test follows it), every stage reads it with `Read`, and a
+      failed read stops the stage (`RESULT: ESCALATE`) — a missing template is visible, a
+      missing map would silently miss `## Decyzje właściciela`. Lands before the
+      translation, so the skills can drop the Polish headings when they are translated
+- [ ] 0.6.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
+      is, since 0.3.4), with an eval case on `"language": "pl"`: a Polish SPEC whose
+      `## Decyzje właściciela` accepts a new dependency, and `plan-review` approves the plan
+      without escalating (the mirror of `plan-review-escalates-on-dependency`) — it fails if
+      the rule above is missing or the section map is misread; Polish survives only in the
+      `*.pl.md` templates — SPEC, PLAN and the `init` documents — and in the section map
 
 ## Stage 6 — A better pipeline
 
