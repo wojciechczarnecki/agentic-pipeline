@@ -1,11 +1,13 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-09-23"
   - "spec-ready — 2026-09-23"
+  - "plan-draft — 2026-09-24"
 metrics:
   started_at: 2026-09-24T00:06
   escalations: 0
+  plan_steps: 17
 ---
 
 # SPEC 009 — Prompt audit of the skills and agents for Claude Opus 5.5
