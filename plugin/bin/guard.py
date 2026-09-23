@@ -387,9 +387,13 @@ def main() -> int:
     env = dict(os.environ)
     config = read_config(cwd, env, warn=True)
     session_id = payload.get("session_id")
+    notice = None
     if not config.found and not config.unreadable:
         warn_once(session_id)
-    notice = read_rule_notice(session_id, env, config, cwd)
+    else:
+        # Only a pipeline project reads the templates: with a `--scope user` install every
+        # other project would get the notice too, and `/pipeline:init` writes the rule.
+        notice = read_rule_notice(session_id, env, config, cwd)
     reason = evaluate(command, cwd, env, config)
     if reason is None:
         if notice:
@@ -552,7 +556,8 @@ READ_RULE = (
     "pipeline guard: no Read allow rule covers this plugin's directory ({target}), so stages "
     "that read its templates and section map will stop — a stage agent cannot answer the "
     'permission prompt. Add "{rule}" to permissions.allow in .claude/settings.json (or '
-    "~/.claude/settings.json). A stage that sees this notice escalates instead of reading."
+    "~/.claude/settings.json). A stage subagent's read will be refused; if a read of a "
+    "template or the section map fails, escalate naming this rule."
 )
 
 

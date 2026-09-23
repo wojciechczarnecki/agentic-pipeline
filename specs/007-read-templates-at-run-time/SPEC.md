@@ -19,6 +19,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 4
   final_review_nits: 10
+  findings_accepted: 4
+  findings_rejected: 10
 ---
 
 # SPEC 007 — Stages read their templates and the section map at run time

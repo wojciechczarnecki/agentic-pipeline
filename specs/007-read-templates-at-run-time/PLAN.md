@@ -716,3 +716,18 @@ the outcomes are unchanged and the case was re-measured 5/5). Nothing outside sc
   evidence (Owner decisions, 2026-09-23).
 - A version-pinned rule (`…/pipeline/0.5.0/**`) as a missed negative in F4 — it does cover
   the running version, so staying silent is correct today.
+
+### 2026-09-23 — /pipeline:final-review (apply)
+
+Owner decision (Owner decisions, 2026-09-23): accepted F1–F4, rejected the nits F5–F14.
+
+| Id | Change |
+|---|---|
+| F1 | `plugin/bin/guard.py` `READ_RULE`: the notice informs — "A stage subagent's read will be refused; if a read of a template or the section map fails, escalate naming this rule." — instead of telling every stage to escalate; `test_guard_read_rule.py::test_the_notice_escalates_only_on_a_failed_read` |
+| F2 | `plugin/bin/guard.py` `main`: `read_rule_notice` runs only when `.claude/workflow.json` is found or unreadable, so a non-pipeline project under a `--scope user` install gets only the missing-configuration warning; `test_the_config_notice_is_unchanged` now asserts no read-rule notice there, and `test_a_broken_config_still_gets_the_notice` keeps it for a broken configuration; `plugin/README.md`, `plugin/docs/GUARD.md` and the `## 0.6.0` CHANGELOG entry say so |
+| F3 | `docs/ROADMAP.md`: the open 0.6.0 item no longer claims the Polish mirror case fails without the rule; it points at PLAN 007 → Owner decisions (`claude plugin eval` grants `Read` itself) |
+| F4 | `test_guard_read_rule.py::test_a_rule_elsewhere_does_not_count` (other marketplace, single-segment `…/cache/mkt/*`, `Edit(…)`, `Bash(…)`) and `::test_an_absolute_rule_elsewhere_does_not_count` (sibling directory, `//<clone>/*`, `Edit(//…)`), each expecting the notice; checked by mutation — `rule_covers` returning true for any `~/`/`//` rule fails four of them. A version-pinned `templates/*` rule was dropped from the negatives: it covers every template a stage reads, so silence is correct (the same reasoning as the rejected version-pinned case in the report) |
+
+Verification after the fixes: `bash scripts/check.sh` ALL GREEN (1810 passed). The guard's
+eval cases are not rerun here: the notice text and its condition changed, and SPEC 008's
+receipt runs every case (Risks, R6).

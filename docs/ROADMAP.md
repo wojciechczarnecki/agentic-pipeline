@@ -149,8 +149,9 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
       is, since 0.3.4), with an eval case on `"language": "pl"`: a Polish SPEC whose
       `## Decyzje właściciela` accepts a new dependency, and `plan-review` approves the plan
       without escalating (the mirror of `plan-review-escalates-on-dependency`) — it fails if
-      the rule above is missing or the section map is misread (the eval case landed with
-      SPEC 007; this item re-runs it on the translated skills); Polish survives only in the
+      the section map is misread (the eval case landed with SPEC 007; `claude plugin eval`
+      grants `Read` itself, so it does not prove the rule — PLAN 007 → Owner decisions;
+      this item re-runs it on the translated skills); Polish survives only in the
       `*.pl.md` templates — SPEC, PLAN and the `init` documents — and in the section map
 
 ## Stage 6 — A better pipeline

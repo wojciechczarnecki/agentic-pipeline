@@ -95,9 +95,9 @@ ONLY Alembic's verbs and the variables `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`;
 `migrations.command` and `migrations.localHosts` are configurable, so a project on another
 migration tool is not protected — the guard's silence is not protection. Fail-open is
 deliberate: a missing `.claude/workflow.json`, a validation error and a missing `python3`
-end with a warning on stderr and exit code 0. Once per session the guard also checks that a
-settings file allows `Read` on the plugin's own directory (see the section map below) and,
-when none does, prints a notice naming the exact rule to add — as `systemMessage` for the
+end with a warning on stderr and exit code 0. Once per session, in a project with
+`.claude/workflow.json`, the guard also checks that a settings file allows `Read` on the
+plugin's own directory (see the section map below) and, when none does, prints a notice naming the exact rule to add — as `systemMessage` for the
 owner and `additionalContext` for the model, never blocking the call.
 
 What the guard defends against, the three layers behind it (guard, `pre-push`, GitHub

@@ -25,11 +25,12 @@ rule for new projects.
   with `Read` before it looks for a section; a failed read of the map or a template ends the
   stage (`RESULT: ESCALATE` under `/pipeline:ship`, a stop with the same message when run
   on its own), naming the file and the allow rule to add.
-- A once-per-session guard notice when no user, project or project-local settings file
-  holds a `Read` allow rule covering the plugin's directory: one JSON object on stdout, as
-  `systemMessage` for the owner and `additionalContext` for the model, never blocking; on a
-  refused call it follows the reason on stderr. It names the exact rule — the version-free
-  cache form, or the absolute `//` form for a clone.
+- A once-per-session guard notice, in a project with `.claude/workflow.json`, when no
+  user, project or project-local settings file holds a `Read` allow rule covering the
+  plugin's directory: one JSON object on stdout, as `systemMessage` for the owner and
+  `additionalContext` for the model, never blocking; on a refused call it follows the
+  reason on stderr. It names the exact rule — the version-free cache form, or the absolute
+  `//` form for a clone.
 - `templates/settings.json` allows `Read(~/.claude/plugins/cache/TODO-marketplace/pipeline/**)`,
   and `/pipeline:init` fills the marketplace name into the rule and `extraKnownMarketplaces`
   alike.

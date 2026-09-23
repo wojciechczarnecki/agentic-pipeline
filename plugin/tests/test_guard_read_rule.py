@@ -96,6 +96,14 @@ def test_the_notice_reaches_the_owner_and_the_model(cache):
     assert "permissions.allow" in notice["systemMessage"]
 
 
+# The notice reaches any session's first Bash call, where the owner may still approve the
+# prompt: it informs, and the stop belongs to a read that actually fails (final review F1).
+def test_the_notice_escalates_only_on_a_failed_read(cache):
+    message = notice_of(cache.run())["systemMessage"]
+    assert "escalates instead of reading" not in message
+    assert "if a read of a template or the section map fails, escalate" in message
+
+
 def test_a_blocked_first_call_carries_the_notice(cache):
     result = cache.run("gh pr merge 1")
     assert result.returncode == 2
@@ -177,6 +185,34 @@ def test_a_config_dir_cache_gets_a_version_free_rule(tmp_path):
     assert setup.run().stdout == ""
 
 
+# Well-formed rules that point elsewhere must not silence the notice (final review F4).
+@pytest.mark.parametrize(
+    "rule",
+    [
+        "Read(~/.claude/plugins/cache/other/pipeline/**)",
+        "Read(~/.claude/plugins/cache/mkt/*)",
+        "Edit(~/.claude/plugins/**)",
+        "Bash(cat ~/.claude/plugins/**)",
+    ],
+)
+def test_a_rule_elsewhere_does_not_count(cache, rule):
+    write_settings(settings_path(cache, "project"), allow(rule))
+    assert NOTICE in notice_of(cache.run())["systemMessage"]
+
+
+@pytest.mark.parametrize(
+    "rule",
+    [
+        lambda root: f"Read(//{without_slash(root.parent)}/other/**)",
+        lambda root: f"Read(//{without_slash(root)}/*)",
+        lambda root: f"Edit(//{without_slash(root)}/**)",
+    ],
+)
+def test_an_absolute_rule_elsewhere_does_not_count(clone, rule):
+    write_settings(settings_path(clone, "project"), allow(rule(clone.plugin_root)))
+    assert NOTICE in notice_of(clone.run())["systemMessage"]
+
+
 # Claude Code reads `/x` in a permission rule as relative to the settings file, and `//x` as
 # absolute; a rule the guard cannot place is not counted.
 def test_a_settings_relative_rule_does_not_count(clone):
@@ -224,7 +260,8 @@ def test_the_config_notice_is_unchanged(tmp_path):
     assert first.returncode == 0
     assert "no .claude/workflow.json found" in first.stderr
     assert NOTICE not in first.stderr
-    assert NOTICE in notice_of(first)["systemMessage"]
+    # a project without the pipeline reads no templates: no read-rule notice (final review F2)
+    assert first.stdout == ""
     second = setup.run()
     assert (second.stdout, second.stderr) == ("", "")
     # independent markers: a rule-covered session still gets the config warning once
@@ -234,3 +271,11 @@ def test_the_config_notice_is_unchanged(tmp_path):
     result = other.run()
     assert "no .claude/workflow.json found" in result.stderr
     assert result.stdout == ""
+
+
+def test_a_broken_config_still_gets_the_notice(cache):
+    (cache.repo / ".claude" / "workflow.json").write_text("{not json")
+    result = cache.run()
+    assert result.returncode == 0
+    assert "falling back to the defaults" in result.stderr
+    assert NOTICE in notice_of(result)["systemMessage"]

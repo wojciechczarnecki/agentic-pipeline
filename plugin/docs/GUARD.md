@@ -104,8 +104,9 @@ Each layer covers ground the one before it cannot, and each has its own way arou
   and when a `branch` field names it (a `contents` commit, `merge-upstream`).
 - **The read-rule notice.** Stages read the plugin's templates and section map with
   `Read` at run time, and a stage subagent cannot answer a permission prompt. On the first
-  Bash call of a session the guard looks for a `Read` allow rule covering the plugin's own
-  directory (`${CLAUDE_PLUGIN_ROOT}`) in `~/.claude/settings.json` (or
+  Bash call of a session in a project with `.claude/workflow.json` (a project without it
+  runs no stages and gets only the missing-configuration warning) the guard looks for a
+  `Read` allow rule covering the plugin's own directory (`${CLAUDE_PLUGIN_ROOT}`) in `~/.claude/settings.json` (or
   `$CLAUDE_CONFIG_DIR/settings.json`), `.claude/settings.json` and
   `.claude/settings.local.json`. When none covers it, the call still runs, and the guard
   prints one JSON object on stdout carrying the same notice as `systemMessage` (shown to
@@ -114,7 +115,8 @@ Each layer covers ground the one before it cannot, and each has its own way arou
   `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)` for the install cache, the
   absolute `Read(//<clone>/plugin/**)` for a `--plugin-dir` clone. On a refused call the
   notice follows the reason on stderr, because JSON is ignored with exit code 2. A marker
-  per session keeps it to one notice, apart from the missing-configuration warning.
+  per session keeps it to one notice. The notice informs; a stage stops only when its read
+  actually fails, and then escalates naming the rule.
 - **Bypassed by:** a session without the plugin (nothing reports its absence), the Edit
   and Write tools, a person at the terminal, and everything in [Known
   limits](#known-limits).
