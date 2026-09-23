@@ -130,7 +130,7 @@ the step's files plus PLAN.md, per `plugin/skills/implement/SKILL.md`.
       `refactor: drop the emphasis heading in plan-review (P3)`.
       files: `plugin/skills/plan-review/SKILL.md`, `plugin/tests/test_prompt_audit.py`
       Automatic verification: `uv run pytest plugin/tests/test_prompt_audit.py plugin/tests/test_stage_skills.py -q`
-- [ ] 3. **S1 — the strategy hint in the loop.** In `plugin/skills/implement/SKILL.md`,
+- [x] 3. **S1 — the strategy hint in the loop.** In `plugin/skills/implement/SKILL.md`,
       in the fenced self-correction loop, delete sub-point `a.` ("read the FULL error
       output … cascade of the first);", two lines) and reletter `b.`–`e.` to `a.`–`d.`
       with their text unchanged (continuation lines keep their indentation). Add

@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parents[1]
@@ -58,3 +59,28 @@ def test_plan_review_status_heading_keeps_the_paragraph():
 def test_plan_review_status_heading_has_no_emphasis():
     headings = [line for line in skill_text("plan-review").splitlines() if line.startswith("#")]
     assert not [line for line in headings if "IMPORTANT" in line]
+
+
+# S1: the strategy hint (read the full output, start from the first error) is gone from the
+# loop; the other sub-points keep their content under new letters. Lower-cased, so the check
+# survives the P1 case changes in the same fence.
+def implement_loop() -> str:
+    body = section("implement", "Self-correction loop (mandatory for every step)")
+    return body.split("```", 2)[1].lower()
+
+
+def test_implement_loop_drops_the_strategy_hint():
+    loop = implement_loop()
+    assert "read the full error output" not in collapse(loop)
+    assert "start from the first" not in collapse(loop)
+
+
+def test_implement_loop_keeps_the_other_sub_points():
+    loop = implement_loop()
+    assert re.findall(r"^\s+([a-z])\. ", loop, re.M) == ["a", "b", "c", "d"]
+    points = dict(re.findall(r"^\s+([a-z])\. (.*)$", loop, re.M))
+    assert points["a"].startswith("establish the cause")
+    assert points["b"].startswith("a mismatch with the plan → escalation")
+    assert points["c"].startswith("a product defect")
+    assert points["d"].startswith("a bug → fix it and go back to 1.")
+    assert "never fit the test to the defect" in collapse(loop)

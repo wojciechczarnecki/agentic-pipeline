@@ -111,16 +111,14 @@ layer there is `<verify.command>` with a scope from `verify.scopes`).
 1. Run ALL the step's verification commands.
 2. Everything green → end of the loop, the step is done.
 3. Something red:
-   a. read the FULL error output — do not skim; with many errors start from
-      the FIRST (the next ones are often a cascade of the first);
-   b. establish the cause: an implementation bug / a wrong assumption / a mismatch with
+   a. establish the cause: an implementation bug / a wrong assumption / a mismatch with
       the plan / a product defect the test rightly found;
-   c. a mismatch with the plan → escalation (Expected / Found / Why it matters);
-   d. a product defect (also in code from before this spec) → fix the product, if the fix
+   b. a mismatch with the plan → escalation (Expected / Found / Why it matters);
+   c. a product defect (also in code from before this spec) → fix the product, if the fix
       fits within the plan's scope and the owner decisions; otherwise escalation.
       NEVER fit the test to the defect — no change of test data, assertions,
       selectors, timeouts or views just so that the error stops being visible;
-   e. a bug → fix it and go back to 1. — run ALL the commands AGAIN
+   d. a bug → fix it and go back to 1. — run ALL the commands AGAIN
       (a fix can break what already passed).
 4. The fourth iteration on the same error → escalation: what you tried (a list of attempts
    with results), a hypothesis of the cause, what you need. Do not guess any further.
