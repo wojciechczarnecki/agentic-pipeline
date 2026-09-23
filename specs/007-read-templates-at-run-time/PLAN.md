@@ -621,3 +621,97 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
 ## Final review
 
 _(filled in by /pipeline:final-review)_
+
+### 2026-09-23 — /pipeline:final-review (report)
+
+Three independent perspectives (SPEC/PLAN compliance, quality, tests); every finding
+checked against the code. `bash scripts/check.sh`: ALL GREEN (1801 passed).
+
+**AC → evidence**
+
+| AC | Evidence |
+|---|---|
+| AC1 | `plugin/templates/sections.md`; `test_templates_language.py::test_the_section_map_matches_the_snapshot`, `test_readme.py::test_the_readme_has_no_polish`, `::test_the_section_map_section_links_the_file` |
+| AC2 | parity helpers parse `sections.md`; `test_templates_language.py::test_the_parity_checks_miss_a_removed_row` (D1) |
+| AC3 | `idea`/`plan` → `## Szablon …`; `test_language_contract.py::test_idea_and_plan_read_their_template` |
+| AC4 | identical `## Mapa sekcji` block in six skills; `test_language_contract.py::test_every_stage_reads_the_section_map` |
+| AC5 | same block; `test_language_contract.py::test_a_failed_read_stops_the_stage` |
+| AC6 | `plugin/templates/settings.json`, `init` step 4, `.claude/settings.json`; `test_init_templates.py::test_settings_template_allows_reading_the_plugin`, `test_init_skill.py::test_init_fills_the_read_rule_with_the_marketplace`, `tests/test_documents.py::test_repository_settings_allow_reading_the_installed_plugin` |
+| AC7 | `guard.py::read_rule_notice`; `test_guard_read_rule.py::test_no_rule_warns_once_without_blocking`, `::test_a_blocked_first_call_carries_the_notice` |
+| AC8 | JSON `systemMessage` + `additionalContext`; `::test_the_notice_reaches_the_owner_and_the_model`; measurement in Approach and E2E automatic |
+| AC9 | `::test_a_covering_rule_silences_the_notice_for_the_cache`, `…_for_a_clone`, `::test_the_user_settings_follow_the_config_dir`, `::test_a_clone_gets_the_absolute_rule`, `::test_the_cache_gets_the_home_rule`, `::test_a_config_dir_cache_gets_a_version_free_rule`, `::test_a_settings_relative_rule_does_not_count` |
+| AC10 | `::test_broken_settings_count_as_no_rule`, `::test_an_unreadable_settings_file_counts_as_no_rule`; fail-open `try` in `read_rule_notice` |
+| AC11 | measured: cache (Approach), clone (E2E automatic 3) |
+| AC12 | case `plan-review-approves-polish-owner-decision` 5/5; `test_eval_cases.py::test_stage_scaffolds_allow_reading_the_plugin`; negative check waived by the owner (Owner decisions, 2026-09-23) |
+| AC13 | eval ledger 8d, three smoke cases green, $6.74 of $8 in total |
+| AC14 | `plugin.json` 0.6.0; `test_readme.py::test_the_changelog_names_the_consumer_impact`, `::test_the_changelog_names_the_read_rule` |
+| AC15 | `plugin/docs/INSTALL.md`; `test_install_guide_documents_the_read_rule`, `tests/test_documents.py::test_the_canary_names_the_clone_read_rule` |
+| AC16 | `docs/DECISIONS.md` row, ROADMAP ticked; `test_decisions_record_run_time_reads` |
+| AC17 | `bash scripts/check.sh` ALL GREEN |
+
+Plan steps: all 10 ticks justified. Deviations D1–D4 justified (D4 changes criteria only;
+the outcomes are unchanged and the case was re-measured 5/5). Nothing outside scope.
+
+**Findings**
+
+- **F1** `worth-fixing` — `plugin/bin/guard.py:555` — the notice tells the model "A stage
+  that sees this notice escalates instead of reading", while the six skills say to `Read`
+  and stop only when the read fails; the notice reaches any session's first Bash call
+  (interactive `idea`, `ship` itself, unrelated work), where the owner could approve the
+  prompt, so the model stops needlessly → word it as information ("a stage subagent's
+  read will be refused; if a read fails, escalate with this rule").
+- **F2** `worth-fixing` — `plugin/bin/guard.py:392` — `read_rule_notice` runs even without
+  `.claude/workflow.json`; with the `--scope user` install every non-pipeline project gets
+  the missing-config warning plus a Read-rule notice (and the model gets the "escalate"
+  text) although `/pipeline:init` writes the rule anyway → compute the notice only when
+  `config.found` or `config.unreadable`; test beside `test_the_config_notice_is_unchanged`.
+- **F3** `worth-fixing` — `docs/ROADMAP.md:151` — the open 0.6.0 item says the Polish
+  mirror case "fails if the rule above is missing", but ledger 8b and the owner decision
+  show it passes without the rule under `claude plugin eval`; SPEC 008 would inherit a
+  false claim → drop "the rule above is missing or", pointing at PLAN 007 → Owner decisions.
+- **F4** `worth-fixing` — `plugin/tests/test_guard_read_rule.py:182` — the only negative
+  test uses forms rejected before glob matching; no test has a well-formed `~/`/`//` rule
+  that must not cover the plugin, so `rule_covers` regressing to "any `~/` rule counts"
+  passes the suite → parametrized negative test: other marketplace
+  (`…/cache/other/pipeline/**`), single-segment `…/cache/mkt/*`, another tool
+  (`Edit(~/.claude/plugins/**)`), each expecting the notice.
+- **F5** `nit` — `plugin/bin/guard.py:470,522,567` — untested fallbacks: the `realpath`
+  candidate (symlinked plugin root), `plugin_dir` without `CLAUDE_PLUGIN_ROOT`, and the
+  project lookup without `CLAUDE_PROJECT_DIR` from a subdirectory →
+  one test each.
+- **F6** `nit` — `plugin/bin/guard.py:555` — the notice names `~/.claude/settings.json` even
+  when `CLAUDE_CONFIG_DIR` is set and the guard reads `$CLAUDE_CONFIG_DIR/settings.json`
+  → format the notice with the actual user settings path.
+- **F7** `nit` — `plugin/bin/guard.py:523` — `rule_covers` checks only
+  `templates/sections.md`; a narrow `Read(//…/templates/sections.md)` silences the notice
+  while `SPEC.*.md`/`PLAN.*.md` stay unreadable → also require a template path.
+- **F8** `nit` — `plugin/skills/ship/SKILL.md:38` (shared block) — "Pod `/pipeline:ship`:
+  `RESULT: ESCALATE`" is ambiguous inside the orchestrator, which emits no RESULT →
+  "Pod `/pipeline:ship` (etap jako subagent)" across all six, keeping the block identical.
+- **F9** `nit` — `plugin/bin/guard.py:495,506` — `glob_regex` maps `**/` to `.*/` (so
+  `a/**/b` misses `a/b`), a glob-free directory rule is never counted, and `deny`/`ask`
+  rules covering the plugin are ignored; none is in GUARD.md's known limits → map `**/`
+  to `(?:.*/)?` and list the rest under known limits.
+- **F10** `nit` — `plugin/bin/guard.py:564` — no marker when a rule covers the plugin, so
+  every Bash call of a correctly configured session re-parses up to three settings files
+  → write a per-session "checked" marker too.
+- **F11** `nit` — `plugin/bin/guard.py:478` — `settings_files` computes the config dir a
+  third time (lines 335, 1575), with `HOME` from the environment where the others use
+  `Path.home()` → one shared helper.
+- **F12** `nit` — `specs/007-read-templates-at-run-time/PLAN.md:234` — the AC matrix cites
+  `test_a_covering_rule_silences_the_notice`; the tests are `…_for_the_cache` and
+  `…_for_a_clone` (plus two more for AC9/AC10) → update the names.
+- **F13** `nit` — `tests/test_documents.py:436` — the canary check asserts only that
+  `Read(//` occurs somewhere in `## Releases` → assert it in the canary bullet with
+  `--plugin-dir`.
+- **F14** `nit` — `plugin/tests/test_eval_cases.py:350` — the scaffolds'
+  `${CLAUDE_PLUGIN_ROOT:-…}` branch is never exercised (the test strips the variable) →
+  also run with `CLAUDE_PLUGIN_ROOT` set, with and without a trailing slash.
+
+**Rejected**
+
+- The mirror case's grader does not prove the map is read from the file — the owner
+  accepted AC12 without the negative eval check; the headless measurements carry that
+  evidence (Owner decisions, 2026-09-23).
+- A version-pinned rule (`…/pipeline/0.5.0/**`) as a missed negative in F4 — it does cover
+  the running version, so staying silent is correct today.
