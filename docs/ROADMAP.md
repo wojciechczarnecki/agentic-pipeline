@@ -141,22 +141,23 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
       rule is missing (a stage subagent cannot answer the prompt and would stall), and a
       separate rule for a `--plugin-dir` canary (`specs/006-language-made-explicit/PLAN.md`,
       deviation D1)
-- [ ] Prompt audit of the English skills and agents for Claude Opus 5.5
-      (`/claude-api prompt-audit`), after the 0.6.0 translation and released before
-      Stage 6: the report first, then each accepted change through the eval gate on its
-      own, so a regression points at its cause. The translation stays one to one so that
-      the eval gate proves parity; the audit is where the wording changes. Expected
-      findings: emphasis in capitals, strategy hints the model follows unprompted
-      (`implement`: read the full output, start from the first error) and the plan
-      reviewer's "assume the plan has gaps", which invites made-up findings. The stage
-      contract repeated in every agent and the exact git, test and status steps stay:
-      the repetition is pinned by tests, and exact steps suit fragile operations
 
 ## Stage 6 — A better pipeline
 
 One spec through the pipeline itself. Lessons from GitHub Spec Kit (`converge`, test-first)
 and 10xWorkflow (tests verified by breaking them).
 
+- [ ] 0.7.0, first and as its own spec: a prompt audit of the English skills and agents for
+      Claude Opus 5.5 (`/claude-api prompt-audit`), with an eval run before the other items
+      of this stage land — the new instructions below are then written on the audited
+      text, and a regression points at either the audit or the additions, not both. The
+      report comes first, then each accepted change on its own. The 0.6.0 translation
+      stays one to one so that the eval gate proves parity; the audit is where the
+      wording changes. Expected findings: emphasis in capitals, strategy hints the model
+      follows unprompted (`implement`: read the full output, start from the first error)
+      and the plan reviewer's "assume the plan has gaps", which invites made-up findings.
+      The stage contract repeated in every agent and the exact git, test and status steps
+      stay: the repetition is pinned by tests, and exact steps suit fragile operations
 - [ ] 0.7.0: `implement` records every acceptance-criterion test failing before the change
       that makes it pass — a test that was never red proves nothing
 - [ ] 0.7.0: `implement` closes with a converge pass — a fresh subagent compares the code
