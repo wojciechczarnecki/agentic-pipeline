@@ -143,7 +143,7 @@ the step's files plus PLAN.md, per `plugin/skills/implement/SKILL.md`.
       Commit: `refactor: drop the strategy hint from the implement loop (S1)`.
       files: `plugin/skills/implement/SKILL.md`, `plugin/tests/test_prompt_audit.py`
       Automatic verification: `uv run pytest plugin/tests/test_prompt_audit.py plugin/tests/test_stage_skills.py -q`
-- [ ] 4. **S2 — the gate.** In `plugin/skills/implement/SKILL.md` replace the two gate
+- [x] 4. **S2 — the gate.** In `plugin/skills/implement/SKILL.md` replace the two gate
       lines with the audit text, verbatim: "**Gate:** you go on to the next step only when
       the current one's verification is green. A test you suspect is flaky is still red,
       and a skipped test is not green." Add `test_implement_gate_*`: the paragraph that

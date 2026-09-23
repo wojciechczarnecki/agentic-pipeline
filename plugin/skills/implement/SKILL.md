@@ -124,8 +124,8 @@ layer there is `<verify.command>` with a scope from `verify.scopes`).
    with results), a hypothesis of the cause, what you need. Do not guess any further.
 ```
 
-**Gate:** you do NOT go on to the next step with the current one's verification red.
-No exceptions, no "it is probably flaky", no skipping tests.
+**Gate:** you go on to the next step only when the current one's verification is green. A
+test you suspect is flaky is still red, and a skipped test is not green.
 
 ## Guardrails
 

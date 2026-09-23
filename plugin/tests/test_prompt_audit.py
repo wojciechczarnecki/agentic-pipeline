@@ -84,3 +84,20 @@ def test_implement_loop_keeps_the_other_sub_points():
     assert points["c"].startswith("a product defect")
     assert points["d"].startswith("a bug → fix it and go back to 1.")
     assert "never fit the test to the defect" in collapse(loop)
+
+
+# S2: the gate is stated plainly, without the run of "no exceptions / no … / no …".
+GATE = (
+    "**Gate:** you go on to the next step only when the current one's verification is green. "
+    "A test you suspect is flaky is still red, and a skipped test is not green."
+)
+
+
+def test_implement_gate_is_stated_plainly():
+    text = skill_text("implement")
+    paragraphs = [p for p in text.split("\n\n") if p.startswith("**Gate:**")]
+    assert [collapse(p) for p in paragraphs] == [GATE]
+
+
+def test_implement_gate_drops_the_no_exceptions_line():
+    assert "No exceptions" not in skill_text("implement")
