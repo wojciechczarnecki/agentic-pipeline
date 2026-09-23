@@ -2,6 +2,34 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.7.0
+
+The skills and agents are reworded for Claude Opus 5.5 after a prompt audit
+(`specs/009-prompt-audit-for-opus-5-5/AUDIT.md` in the repository): rules keep their words
+and their reasons, stated at normal volume; a line that only raised the pressure or coached
+a strategy the model follows unprompted is gone, and `idea` gains two guardrails.
+
+**consumer impact:** none — no configuration change; update as usual.
+
+### Changed
+
+- Capitals used as emphasis are lowered across the skills and agents; capitals stay only
+  for contract tokens and identifiers (`STOP`, `RESULT: ESCALATE`, `SPEC`, `PLAN`, …), and
+  a test keeps them out (P1).
+- `plan-review`: the role asks for the real review targets — an AC without steps or a
+  test, a broken decision, a step whose verification cannot run — and a report of the
+  findings with their severity next to what was checked and found sound, instead of
+  telling the reviewer that its success is finding gaps; the `IMPORTANT` status heading is
+  now `What the status triggers` (P2, P3).
+- `implement`: the self-correction loop drops the hint to read the full error output from
+  the first error; the gate says the next step starts only on green, that a suspected
+  flaky test is still red and that a skipped test is not green (S1, S2).
+- `final-review`: the line "Green tests ≠ correct code" is removed; the three perspectives
+  and the check of every finding set the depth of the review (S3).
+- `idea`: the stage ends at the handoff and never starts `/pipeline:ship` or a later stage,
+  and it neither removes an `(assumption)` suffix nor sets `spec-ready` before the owner
+  has answered on every such item (R1).
+
 ## 0.6.1
 
 The hook commands quote the plugin path, so the guard, the formatter and the notifications

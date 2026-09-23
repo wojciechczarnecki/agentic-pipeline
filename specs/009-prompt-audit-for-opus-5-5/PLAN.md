@@ -259,7 +259,7 @@ uv run pytest plugin/tests -q
       assert hits, "the check must fail on the pre-audit text"
       EOF
       ```
-- [ ] 16. **Version and CHANGELOG.** `plugin/.claude-plugin/plugin.json` → `"version":
+- [x] 16. **Version and CHANGELOG.** `plugin/.claude-plugin/plugin.json` → `"version":
       "0.7.0"`. In `plugin/CHANGELOG.md` add `## 0.7.0` above `## 0.6.1`: one intro
       paragraph (the skills and agents are reworded for Claude Opus 5.5 after a prompt
       audit; rules keep their words and reasons), the line `**consumer impact:** none — no
