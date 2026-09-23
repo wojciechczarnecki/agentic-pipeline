@@ -282,7 +282,7 @@ negative check needs it removable per case).
       template any more).
       Automatic verification: `uv run pytest -q plugin/tests/test_language_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py plugin/tests/test_no_domain_references.py plugin/tests/test_templates_language.py plugin/tests/test_plugin_structure.py`
 
-- [ ] 3. **Settings template and `init`** — files: `plugin/templates/settings.json`,
+- [x] 3. **Settings template and `init`** — files: `plugin/templates/settings.json`,
       `plugin/skills/init/SKILL.md`, `plugin/tests/test_init_templates.py`,
       `plugin/tests/test_init_skill.py`.
       Per Approach → Settings template and `init`. Tests:

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -230,3 +231,15 @@ def test_settings_template_allows_the_metrics_checker():
     assert "Bash(workflow_metrics.py *)" in allow, allow
     assert not any("CLAUDE_PLUGIN_ROOT" in rule for rule in allow), allow
     assert not any(rule.startswith("Bash(python3 *") for rule in allow), allow
+
+
+# Stages read their templates and the section map from the plugin at run time (SPEC 007,
+# AC6); a stage subagent cannot answer the prompt, so the rule is allowed up front, spelled
+# with the same marketplace placeholder init fills in for `extraKnownMarketplaces`.
+def test_settings_template_allows_reading_the_plugin():
+    settings = json.loads((TEMPLATES / "settings.json").read_text())
+    rules = [rule for rule in settings["permissions"]["allow"] if rule.startswith("Read(")]
+    assert len(rules) == 1, rules
+    match = re.fullmatch(r"Read\(~/\.claude/plugins/cache/([^/]+)/pipeline/\*\*\)", rules[0])
+    assert match, rules[0]
+    assert [match.group(1)] == list(settings["extraKnownMarketplaces"])
