@@ -482,7 +482,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       prefixes (`"8. "` for plan) must still match — keep the step numbering.
       Automatic verification: `uv run pytest -q plugin/tests/test_language_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py plugin/tests/test_no_domain_references.py plugin/tests/test_templates_language.py`
 
-- [ ] 6. **`plan-review`, `implement`, `final-review`, `ship`: language, tokens, both
+- [x] 6. **`plan-review`, `implement`, `final-review`, `ship`: language, tokens, both
       headings** — files: `plugin/skills/{plan-review,implement,final-review,ship}/SKILL.md`,
       `plugin/tests/test_language_contract.py`.
       Edit per Approach → The stage skills. Tests: `test_plan_review_checks_the_language`,

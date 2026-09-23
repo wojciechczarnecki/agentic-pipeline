@@ -1,6 +1,8 @@
+import re
 from pathlib import Path
 
 import pytest
+from test_readme import section_map
 
 PLUGIN = Path(__file__).resolve().parents[1]
 STAGE_SKILLS = ["idea", "plan", "plan-review", "implement", "final-review", "ship"]
@@ -85,3 +87,94 @@ def test_plan_writes_in_the_current_language():
     assert "`language`" in step
     assert "SPEC" in step
     assert "nie tłumaczysz" in step
+
+
+def numbered_step(block: str, number: int) -> str:
+    assert f"\n{number}. " in f"\n{block}", number
+    return f"\n{block}".split(f"\n{number}. ", 1)[1].split(f"\n{number + 1}. ", 1)[0]
+
+
+def test_plan_review_checks_the_language():
+    step = numbered_step(section(skill_text("plan-review"), "## Kroki"), 3)
+    assert any("`language`" in item for item in bullets(step.replace("\n   ", "\n")))
+
+
+def test_final_review_titles_the_pr_in_english():
+    step = numbered_step(section(skill_text("final-review"), "## Tryb apply"), 3)
+    pr = [item for item in bullets(step.replace("\n   ", "\n")) if "gh pr create" in item]
+    assert len(pr) == 1
+    for token in ["--title", "angielsk", "`language`"]:
+        assert token in pr[0], token
+
+
+def test_ship_talks_to_the_owner_in_the_session_language():
+    text = skill_text("ship")
+    for heading in ["## Bramka: końcowe review", "## Protokół wyniku"]:
+        assert "sesji" in section(text, heading), heading
+
+
+def test_severities_are_tokens():
+    assert "`[blocker|worth-fixing|nit] " in skill_text("final-review")
+    plan_review = skill_text("plan-review")
+    for token in ["`blocker`", "`major`", "`minor`"]:
+        assert token in plan_review, token
+    assert "`worth-fixing`" in section(skill_text("ship"), "## Bramka: końcowe review")
+    texts = [skill_text(name) for name in STAGE_SKILLS] + [agent_text(name) for name in AGENTS]
+    for text in texts:
+        for line in text.splitlines():
+            if "warto poprawić" in line:
+                assert "worth-fixing" in line, line
+
+
+def normalise(text: str) -> str:
+    return re.sub(r"\s+", " ", text)
+
+
+def heading_text(literal: str) -> str:
+    text = literal.lstrip("#").strip().replace("**", "")
+    return text[:-1] if text.endswith(":") else text
+
+
+def without_fences(text: str) -> str:
+    kept, fenced = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if not fenced:
+            kept.append(line)
+    return "\n".join(kept)
+
+
+def quoted(text: str) -> list[str]:
+    flat = normalise(without_fences(text))
+    return re.findall(r"`([^`]+)`", flat) + re.findall(r"„([^\"”]+)[\"”]", flat)
+
+
+# A stage names a section by both literals (plugin/README.md → Section map, SPEC 006 AC7), so
+# a spec written in either language, or before 0.5.0, is found. The check covers every map
+# row whose literals differ: a Polish heading quoted in a skill or agent brings its English
+# twin into the same file.
+@pytest.mark.parametrize(
+    "path",
+    [f"skills/{name}/SKILL.md" for name in STAGE_SKILLS] + [f"agents/{name}.md" for name in AGENTS],
+)
+def test_sections_are_named_by_both_headings(path):
+    text = (PLUGIN / path).read_text()
+    spans = quoted(text)
+    flat = normalise(text)
+    missing = []
+    for _, _, polish, english in section_map():
+        if polish == english:
+            continue
+        name = heading_text(polish)
+        if any(name in span for span in spans) and heading_text(english) not in flat:
+            missing.append((polish, english))
+    assert not missing, (path, missing)
+
+
+def test_the_both_headings_check_sees_wrapped_quotes():
+    text = 'czytasz „Streszczenie dla\nwłaściciela" z planu'
+    assert any("Streszczenie dla właściciela" in span for span in quoted(text))
+    assert heading_text("Weryfikacja automatyczna:") == "Weryfikacja automatyczna"
+    assert heading_text("**Podejście:**") == "Podejście"

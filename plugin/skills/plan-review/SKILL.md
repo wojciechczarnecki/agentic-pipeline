@@ -53,13 +53,16 @@ właściciel wchodzi tylko wtedy, gdy decyzja nie należy do Ciebie (krok 5).
      trafia nic, co da się zautomatyzować. Gdy `verify.scopes` ma zakres UI, a zmiana
      dotyka interfejsu — wymagaj `<verify.command> <zakres UI>` oraz artefaktów wizualnych
      i scenariusza przeglądowego wymaganych przez `<docs.conventions>`.
-   - **testowalność:** każdy krok ma sekcję „Weryfikacja automatyczna" z DOKŁADNYMI
-     komendami (ścieżki testów), które `/pipeline:implement` uruchomi w pętli samokorekty —
-     nie ogólnik „dodaj testy";
-   - **streszczenie:** „Streszczenie dla właściciela" zgodne z planem — zwłaszcza flagi
-     nowej zależności i migracji danych.
-   Każdy problem ma wagę: **blocker** (plan doprowadzi do złego wyniku albo nie pokrywa
-   AC), **major** (istotna luka poprawialna w planie), **minor**.
+   - **testowalność:** każdy krok ma sekcję „Weryfikacja automatyczna"
+     (`Automatic verification:`) z DOKŁADNYMI komendami (ścieżki testów), które
+     `/pipeline:implement` uruchomi w pętli samokorekty — nie ogólnik „dodaj testy";
+   - **streszczenie:** „Streszczenie dla właściciela" (`## Owner summary`) zgodne z planem
+     — zwłaszcza flagi nowej zależności i migracji danych;
+   - **język:** PLAN (każda sekcja, także Review log) w bieżącym `language`; niezgodność
+     poprawiasz w miejscu (tłumaczysz plan, SPEC-a nie ruszasz) — waga `major`.
+   Każdy problem ma wagę — token pisany jako kod w każdym języku: `blocker` (plan
+   doprowadzi do złego wyniku albo nie pokrywa AC), `major` (istotna luka poprawialna
+   w planie), `minor`.
 4. **Wprowadź poprawki bezpośrednio w PLAN.md.** W `## Review log` zapisz: datę,
    znaleziska z wagą, co zmieniono i dlaczego, oraz co sprawdzono i uznano za poprawne
    (żeby kolejne etapy nie powtarzały tej pracy).
@@ -68,11 +71,12 @@ właściciel wchodzi tylko wtedy, gdy decyzja nie należy do Ciebie (krok 5).
    - problem leży w SPEC (luka, sprzeczność, AC niemożliwe do pokrycia) — SPEC nie
      poprawiasz;
    - plan wprowadza nową zależność (lub podbicie major) albo migrację danych, a SPEC/PLAN →
-     „Decyzje właściciela" jej nie akceptuje.
+     „Decyzje właściciela" (`## Owner decisions`) jej nie akceptuje.
    W pozostałych przypadkach ustaw sam `status: plan-approved` + wpis w `stage_history`,
    a w Review log jednym zdaniem uzasadnij, dlaczego plan jest gotowy.
    Eskalacja w sesji samodzielnej: `AskUserQuestion` z opcjami i rekomendacją (pierwsza,
-   „(Recommended)"), decyzja dopisana do PLAN.md → `## Decyzje właściciela`, potem
+   „(Recommended)"), decyzja dopisana do PLAN.md → `## Decyzje właściciela`
+   (`## Owner decisions`), potem
    dokończ krok 5.
 6. **Zamknięcie etapu:** w bloku `metrics:` SPEC.md ustaw `plan_review_blockers`,
    `plan_review_majors` (liczone przed poprawkami) i `plan_changes` (liczba zmian
