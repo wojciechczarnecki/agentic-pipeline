@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-09-22"
   - "spec-ready — 2026-09-22"
   - "plan-draft — 2026-09-23"
   - "plan-approved — 2026-09-23"
   - "implemented — 2026-09-23"
+  - "done — 2026-09-23"
 metrics:
   started_at: 2026-09-23T02:06
   escalations: 1
@@ -21,6 +22,7 @@ metrics:
   final_review_nits: 9
   findings_accepted: 13
   findings_rejected: 0
+  finished_at: 2026-09-23T09:04
 ---
 
 # SPEC 006 — Language made explicit
