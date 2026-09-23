@@ -363,7 +363,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       `plugin/tests/test_readme.py` (`result_block` still matches: the fence keeps its
       field names).
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_language_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py plugin/tests/test_readme.py plugin/tests/test_plugin_structure.py`
-- [ ] 2. `ship` and the four agents, the rest — files: `plugin/skills/ship/SKILL.md`
+- [x] 2. `ship` and the four agents, the rest — files: `plugin/skills/ship/SKILL.md`
       (frontmatter, intro, `## State` table, `## Start`, `## Starting a stage agent`,
       `## Result protocol`, `## Gate: final review` with the option labels
       "Accept `blocker` and `worth-fixing`, reject `nit` (Recommended)" / "Accept all" /

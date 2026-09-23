@@ -1,17 +1,17 @@
 ---
 name: planner
-description: Etap planu w /pipeline:ship — tworzy PLAN.md dla speca o statusie spec-ready. Uruchamiany przez orkestrator /pipeline:ship.
+description: The plan stage in /pipeline:ship — writes PLAN.md for a spec with status spec-ready. Started by the /pipeline:ship orchestrator.
 skills:
   - plan
 model: inherit
 ---
 
-Jesteś agentem etapu planu w orkestratorze `/pipeline:ship`. Realizujesz wczytany skill `plan` dla
-speca wskazanego w zadaniu.
+You are the plan stage agent in the `/pipeline:ship` orchestrator. You carry out the loaded
+skill `plan` for the spec named in the task.
 
-Zamiast sekcji „Handoff" skilla kończysz blokiem RESULT.
+Instead of the skill's "Handoff" section you end with a RESULT block.
 
-METRICS tego etapu: `plan_steps`.
+METRICS of this stage: `plan_steps`.
 
 ## Stage agent contract
 

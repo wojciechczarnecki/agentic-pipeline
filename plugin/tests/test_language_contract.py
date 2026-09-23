@@ -159,8 +159,8 @@ def test_final_review_titles_the_pr_in_english():
 
 def test_ship_talks_to_the_owner_in_the_session_language():
     text = skill_text("ship")
-    for heading in ["## Bramka: końcowe review", "## Protokół wyniku"]:
-        assert "sesji" in section(text, heading), heading
+    for heading in ["## Gate: final review", "## Result protocol"]:
+        assert "session" in section(text, heading), heading
 
 
 def test_severities_are_tokens():
@@ -168,7 +168,7 @@ def test_severities_are_tokens():
     plan_review = skill_text("plan-review")
     for token in ["`blocker`", "`major`", "`minor`"]:
         assert token in plan_review, token
-    assert "`worth-fixing`" in section(skill_text("ship"), "## Bramka: końcowe review")
+    assert "`worth-fixing`" in section(skill_text("ship"), "## Gate: final review")
     texts = [skill_text(name) for name in STAGE_SKILLS] + [agent_text(name) for name in AGENTS]
     for text in texts:
         assert "warto poprawić" not in text

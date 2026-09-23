@@ -312,7 +312,7 @@ def result_fields(block: str) -> list[str]:
 
 
 # The field names are the contract the orchestrator parses; the placeholders after them only
-# describe the values, so the README gives them in English while the ship skill is Polish.
+# describe the values, so only the field names have to match.
 def test_the_result_block_matches_the_contract():
     ship = (PLUGIN / "skills" / "ship" / "SKILL.md").read_text()
     assert result_fields(result_block(README)) == result_fields(result_block(ship))

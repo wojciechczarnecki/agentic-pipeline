@@ -51,6 +51,7 @@ def test_no_agent_sends_the_reader_to_the_ship_skill(agent):
     text = agent_text(agent)
     assert "skills/ship" not in text
     assert "skill `ship`" not in text
+    assert "`ship` skill" not in text
 
 
 def test_the_contract_states_the_metrics_format():
@@ -69,13 +70,13 @@ def test_the_contract_leaves_escalations_to_the_orchestrator():
 
 # The harness may run agents in the background; what matters is waiting for the result.
 def test_ship_waits_for_the_stage_result_without_naming_a_mode():
-    assert "na pierwszym planie" not in SHIP
-    assert "Na wynik agenta etapu czekasz, zanim pójdziesz dalej." in SHIP
+    assert "in the foreground" not in SHIP
+    assert "You wait for the stage agent's result before you go on." in SHIP
 
 
 @pytest.mark.parametrize("skill", STAGE_SKILLS)
 def test_no_stage_skill_orders_a_read_of_the_ship_skill(skill):
-    assert "skill `ship` tego pluginu" not in skill_text(skill)
+    assert "this plugin's `ship` skill" not in skill_text(skill)
 
 
 def test_ship_step_three_states_the_metrics_format():

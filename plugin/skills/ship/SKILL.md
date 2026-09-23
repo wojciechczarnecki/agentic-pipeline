@@ -1,16 +1,16 @@
 ---
 name: ship
-description: Orkestrator pipeline'u — prowadzi feature od SPEC (status spec-ready lub późniejszy) do otwartego PR, uruchamiając etapy jako subagenty ze świeżym kontekstem; właściciel wchodzi tylko przy eskalacji i przy decyzjach po końcowym review.
-argument-hint: <numer lub slug speca>
+description: The pipeline orchestrator — takes a feature from the SPEC (status spec-ready or later) to an open PR, running the stages as subagents with a fresh context; the owner steps in only on escalation and for the decisions after the final review.
+argument-hint: <spec number or slug>
 ---
 
-# /pipeline:ship — od SPEC do PR
+# /pipeline:ship — from SPEC to PR
 
-Rola: koordynator, nie wykonawca. NIE planujesz, NIE implementujesz i NIE recenzujesz sam —
-każdy etap robi osobny subagent ze świeżym kontekstem (daje to samo, co nowa sesja po
-`/clear`). Twój kontekst ma zostać lekki: czytasz frontmatter SPEC.md, „Streszczenie dla
-właściciela" (`## Owner summary`) z PLAN.md i bloki RESULT od subagentów — nie diff, nie
-kod.
+Role: coordinator, not executor. You do NOT plan, do NOT implement and do NOT review
+yourself — every stage is done by a separate subagent with a fresh context (it gives the
+same as a new session after `/clear`). Your context has to stay light: you read the SPEC.md
+frontmatter, `## Owner summary` from PLAN.md and the RESULT blocks from the subagents — not
+the diff, not the code.
 
 ## Project configuration
 
@@ -45,47 +45,49 @@ kod.
   (`…/plugins/cache/<marketplace>/pipeline/<version>`); when the guard has already shown a
   warning with a ready rule, you give that rule.
 
-## Stan
+## State
 
-Źródłem prawdy jest `status:` w SPEC.md, nie ta rozmowa. `/pipeline:ship` przerwany
-w dowolnym miejscu wznawia się od bieżącego statusu — także dla speców rozpoczętych
-ręcznie etap po etapie.
+The source of truth is `status:` in SPEC.md, not this conversation. `/pipeline:ship`
+interrupted at any point resumes from the current status — also for specs started
+by hand stage by stage.
 
-| Status          | Agent           | Tryb     | Wynik DONE                              |
+| Status          | Agent           | Mode     | DONE result                             |
 |-----------------|-----------------|----------|-----------------------------------------|
 | `spec-ready`    | `planner`       | —        | `plan-draft`                            |
-| `plan-draft`    | `plan-reviewer` | —        | `plan-approved` (sam, gdy brak eskalacji) |
+| `plan-draft`    | `plan-reviewer` | —        | `plan-approved` (itself, when there is no escalation) |
 | `plan-approved` | `implementer`   | —        | `implemented`                           |
-| `implemented`   | `reviewer`      | `report` | raport znalezisk → **bramka właściciela** |
-| `implemented` + decyzje zapisane | `reviewer` | `apply` | PR z zielonym CI + `done` |
-| `done`          | —               | —        | STOP: nic do zrobienia (podaj link PR, jeśli istnieje) |
+| `implemented`   | `reviewer`      | `report` | findings report → **owner gate**        |
+| `implemented` + decisions recorded | `reviewer` | `apply` | PR with green CI + `done` |
+| `done`          | —               | —        | STOP: nothing to do (give the PR link, if it exists) |
 
-Status `spec-draft` lub brak SPEC → STOP: najpierw `/pipeline:idea`.
+Status `spec-draft` or no SPEC → STOP: `/pipeline:idea` first.
 
 ## Start
 
-1. Ustal spec (argument; bez argumentu wylistuj `<docs.specsDir>/*/SPEC.md` ze statusem
-   od `spec-ready` do `implemented` i zapytaj, który brać).
-2. `git status` czysty. Branch lane'a `feat/NNN-<slug>`: istnieje → `git switch` na niego;
-   nie istnieje → `git switch main && git pull --ff-only && git switch -c feat/NNN-<slug>`.
-   Przy pracy równoległej sesja działa już w worktree lane'a — nie przełączaj branchy.
-3. Brak `metrics.started_at` w SPEC → dopisz (`date +%Y-%m-%dT%H:%M`) razem z
-   `escalations: 0` i zacommituj. Płaski blok `metrics:` trzyma liczniki jako liczby
-   całkowite, a znaczniki czasu w formacie `%Y-%m-%dT%H:%M`. Licznik ma istnieć od startu,
-   żeby zestawienie metryk pokazywało `0`, a nie `-` (brak pomiaru).
+1. Determine the spec (the argument; without an argument list `<docs.specsDir>/*/SPEC.md`
+   with a status from `spec-ready` to `implemented` and ask which one to take).
+2. `git status` clean. The lane branch `feat/NNN-<slug>`: it exists → `git switch` to it; it
+   does not exist →
+   `git switch main && git pull --ff-only && git switch -c feat/NNN-<slug>`. In parallel
+   work the session already runs in the lane's worktree — do not switch branches.
+3. No `metrics.started_at` in the SPEC → add it (`date +%Y-%m-%dT%H:%M`) together with
+   `escalations: 0` and commit. The flat `metrics:` block holds counters as integers, and
+   timestamps in the format `%Y-%m-%dT%H:%M`. The counter has to exist from the start, so
+   that the metrics summary shows `0`, not `-` (no measurement).
 
-## Uruchamianie agenta etapu
+## Starting a stage agent
 
-Narzędzie `Agent` z typem agenta z tabeli. Agenci pochodzą z tego pluginu, więc w sesji
-widoczni są pod nazwami z przedrostkiem: `pipeline:planner`, `pipeline:plan-reviewer`,
-`pipeline:implementer`, `pipeline:reviewer` — używaj tych nazw jako `subagent_type`.
-Jeśli sesja nie zna nazwy z przedrostkiem, użyj samej nazwy agenta (`planner` itd.).
+The `Agent` tool with the agent type from the table. The agents come from this plugin, so in
+a session they are visible under prefixed names: `pipeline:planner`,
+`pipeline:plan-reviewer`, `pipeline:implementer`, `pipeline:reviewer` — use these names as
+`subagent_type`. If the session does not know the prefixed name, use the bare agent name
+(`planner` etc.).
 
-Prompt zawiera WYŁĄCZNIE: numer i ścieżkę speca, tryb (dla `reviewer`), katalog roboczy
-oraz przypomnienie o kontrakcie niżej. Nie przekazuj historii tej rozmowy ani własnych
-hipotez — świeży kontekst to element metody.
+The prompt contains ONLY: the spec number and path, the mode (for `reviewer`), the working
+directory and a reminder of the contract below. Do not pass the history of this conversation
+or your own hypotheses — a fresh context is part of the method.
 
-Na wynik agenta etapu czekasz, zanim pójdziesz dalej.
+You wait for the stage agent's result before you go on.
 
 ## Stage agent contract
 
@@ -114,18 +116,19 @@ ESCALATION: <only on ESCALATE — problem; options (≤ 4); recommendation; why>
 SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severity | one sentence>
 ```
 
-## Protokół wyniku
+## Result protocol
 
-- Brak bloku RESULT albo `STATUS` niezgodny z plikiem → uruchom etap ponownie raz; drugi
-  raz → eskaluj sam, opisując, co agent zwrócił.
-- **ESCALATE** → `AskUserQuestion`: pytanie z `ESCALATION`, opcje od agenta, rekomendowana
-  pierwsza z dopiskiem „(Recommended)" — zadane w języku sesji, niezależnie od języka,
-  w którym agent je napisał. Odpowiedź (data, etap, pytanie, decyzja) dopisz w języku
-  z `language` do PLAN.md → `## Decyzje właściciela` (`## Owner decisions`), a gdy PLAN.md
-  jeszcze nie istnieje — do tej samej sekcji SPEC.md. Zwiększ `metrics.escalations`,
-  zacommituj (`docs: record owner decision for NNN`) i uruchom NOWEGO agenta tego samego etapu.
-- Ten sam etap eskaluje po raz trzeci → STOP. Opisz właścicielowi sytuację i poproś
-  o przejęcie sterowania.
+- No RESULT block, or a `STATUS` that does not match the file → run the stage again once;
+  the second time → escalate yourself, describing what the agent returned.
+- **ESCALATE** → `AskUserQuestion`: the question from `ESCALATION`, the options from the
+  agent, the recommended one first with the label suffix "(Recommended)" — asked in the
+  session language, whatever the language the agent wrote them in. Append the answer (date,
+  stage, question, decision) in the language from `language` to PLAN.md →
+  `## Owner decisions`, and when PLAN.md does not exist yet — to the same section of
+  SPEC.md. Increment `metrics.escalations`, commit (`docs: record owner decision for NNN`)
+  and start a NEW agent of the same stage.
+- The same stage escalates for the third time → STOP. Describe the situation to the owner
+  and ask them to take over.
 
 ## Escalation triggers (binding on every agent)
 
@@ -139,39 +142,39 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
   decisions — instead of working around it by changing the test or the test data,
 - a conflict on `git merge origin/main`.
 
-## Bramka: końcowe review
+## Gate: final review
 
-1. `reviewer` w trybie `report` → raport w PLAN.md → `## Final review`.
-2. Pokaż właścicielowi tabelę znalezisk z SUMMARY i zadaj `AskUserQuestion` — oba
-   w języku sesji, tokeny wag bez tłumaczenia:
-   „Przyjmij `blocker` i `worth-fixing`, odrzuć `nit` (Recommended)" / „Przyjmij
-   wszystkie" / „Wybiorę pojedynczo" / „Tylko `blocker`". Przy „Wybiorę pojedynczo" poproś
-   o listę id.
-3. Decyzje (przyjęte i odrzucone id) zapisz w `## Decyzje właściciela`
-   (`## Owner decisions`) w języku z `language`, zacommituj.
-4. `reviewer` w trybie `apply` → poprawki, push, PR, zielone CI, dopiero wtedy `done`.
+1. `reviewer` in `report` mode → the report in PLAN.md → `## Final review`.
+2. Show the owner the findings table from SUMMARY and ask `AskUserQuestion` — both
+   in the session language, severity tokens untranslated:
+   "Accept `blocker` and `worth-fixing`, reject `nit` (Recommended)" / "Accept
+   all" / "I will choose one by one" / "Only `blocker`". On "I will choose one by one" ask
+   for the list of ids.
+3. Record the decisions (accepted and rejected ids) in `## Owner decisions`
+   in the language from `language`, commit.
+4. `reviewer` in `apply` mode → fixes, push, PR, green CI, only then `done`.
 
-Brak znalezisk w raporcie → bramkę pomiń: zapisz w decyzjach, w języku z `language`, że
-znalezisk nie było, i przejdź do `apply`.
+No findings in the report → skip the gate: record in the decisions, in the language from
+`language`, that there were no findings, and go on to `apply`.
 
-## Zamknięcie
+## Closing
 
-1. Z RESULT `reviewer/apply` weź link PR, status CI i link do artefaktów wizualnych
-   z przebiegu CI.
-2. `PushNotification`: „PR NNN gotowy do merge: <tytuł>" — tylko przy zielonym CI. PR
-   z czerwonym CI nie dostaje tego powiadomienia; reviewer zwraca wtedy ESCALATE, który
-   prowadzisz przez „Protokół wyniku".
-3. Zielone CI z testem zaliczonym dopiero po retry (flaky) → sprawdź, że reviewer dopisał
-   go do `<docs.backlog>`; jeśli nie, uruchom `reviewer` (tryb `apply`)
-   ponownie z tym zadaniem. Sam nie edytujesz plików speca ani dokumentów.
-4. Podsumowanie dla właściciela: link PR, status CI, link do artefaktów wizualnych, ręczne
-   scenariusze do sprawdzenia przed merge'em (z PLAN.md → „Weryfikacja end-to-end →
-   Ręczna" / `### Manual (performed by the owner)` w `## End-to-end verification`),
-   metryki speca.
+1. From the `reviewer/apply` RESULT take the PR link, the CI status and the link to the
+   visual artifacts of the CI run.
+2. `PushNotification`: "PR NNN ready to merge: <title>" — only with green CI. A PR
+   with red CI does not get this notification; the reviewer then returns ESCALATE, which
+   you handle through "Result protocol".
+3. Green CI with a test passed only after a retry (flaky) → check that the reviewer added
+   it to `<docs.backlog>`; if not, run `reviewer` (`apply` mode)
+   again with that task. You do not edit spec files or documents yourself.
+4. Summary for the owner: the PR link, the CI status, the link to the visual artifacts, the
+   manual scenarios to check before the merge (from PLAN.md →
+   `### Manual (performed by the owner)` in `## End-to-end verification`), the spec metrics.
 
-## Guardraile
+## Guardrails
 
-- Nigdy nie mergujesz PR — to bramka właściciela (egzekwuje też strażnik komend tego
-  pluginu).
-- Nie pomijasz etapów i nie wykonujesz pracy etapu we własnym kontekście, nawet „drobnej".
-- Nie ustawiasz statusów speca za agentów — robią to etapy; Ty tylko czytasz.
+- You never merge the PR — that is the owner's gate (also enforced by this plugin's command
+  guard).
+- You do not skip stages and do not do a stage's work in your own context, not even "small"
+  work.
+- You do not set spec statuses for the agents — the stages do that; you only read.
