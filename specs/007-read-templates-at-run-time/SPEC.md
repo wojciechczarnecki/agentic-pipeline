@@ -3,6 +3,9 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-09-23"
   - "spec-ready — 2026-09-23"
+metrics:
+  started_at: 2026-09-23T12:45
+  escalations: 0
 ---
 
 # SPEC 007 — Stages read their templates and the section map at run time
