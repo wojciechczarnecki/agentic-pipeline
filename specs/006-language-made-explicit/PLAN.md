@@ -522,7 +522,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       loophole) and `test_the_exempt_skill_only_documents_generated_files` stay green.
       Automatic verification: `uv run pytest -q plugin/tests/test_init_skill.py plugin/tests/test_init_templates.py plugin/tests/test_no_domain_references.py`
 
-- [ ] 9. **Eval cases** — files: `plugin/evals/init-writes-the-chosen-language/case.yaml`,
+- [x] 9. **Eval cases** — files: `plugin/evals/init-writes-the-chosen-language/case.yaml`,
       `…/graders/criteria.md` (new), `plugin/evals/init-without-questions/case.yaml`,
       `…/graders/criteria.md`, `plugin/evals/final-review-finds-planted-defect/graders/criteria.md`,
       `plugin/evals/final-review-ignores-false-positive/graders/criteria.md`,

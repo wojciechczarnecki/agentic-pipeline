@@ -1,0 +1,18 @@
+schema_version: "1.0"
+name: init-writes-the-chosen-language
+description: Unattended init with a language named in its argument writes that language to the configuration and generates the documents in it.
+runs: 1
+execution:
+  # The same limits as the other init cases: a real /pipeline:init writes a dozen files
+  # and overruns the default 300 s timeout and 30 turns (measured 2026-09-20).
+  timeout_seconds: 900
+  max_turns: 80
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
+  prompt: |
+    You are in an empty directory where `git init` has already run and there are no files.
+    Run `/pipeline:init Tally — a small tool for counting charity collections; language: pl`.
+    I will not answer any question — you work without me, so finish the task on your own.
+    At the end, list the files you created and the `TODO:` values left to fill in, show the
+    first five lines of `CLAUDE.md` and of every file in `docs/`, and show the `language`
+    value written to `.claude/workflow.json` (or, if `.claude/` could not be written, the
+    value in the content you print for pasting).
