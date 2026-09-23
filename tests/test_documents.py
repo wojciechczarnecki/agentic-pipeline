@@ -17,6 +17,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "plugin" / "tests"))
 
+from test_english_only import polish_files, polish_in_python_names  # noqa: E402
 from test_no_domain_references import CASE_INSENSITIVE, CASE_SENSITIVE  # noqa: E402
 
 LINKED = [
@@ -155,6 +156,17 @@ POLISH = set(POLISH_LOWER + POLISH_LOWER.upper())
 def test_no_polish_outside_code(doc):
     found = sorted(POLISH & set(strip_code((ROOT / doc).read_text())))
     assert not found, (doc, found)
+
+
+# SPEC 008, AC2 and AC3 for the repository's own tests: no allowlist, nothing here pins a
+# Polish file as data.
+def test_repository_tests_are_english():
+    assert polish_files(ROOT / "tests") == []
+
+
+@pytest.mark.parametrize("path", sorted((ROOT / "tests").glob("*.py")), ids=lambda p: p.name)
+def test_repository_test_code_is_english(path):
+    assert not polish_in_python_names(path)
 
 
 def read(doc: str) -> str:

@@ -431,7 +431,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       owner-decisions heading accepts", 0.6.0 "`## Mapa sekcji` block" → "`## Section map`
       block", 0.5.0 "identical `## Język` block" → "identical language block".
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests tests && grep -lP '[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]' plugin/tests/*.py tests/*.py plugin/CHANGELOG.md` (lists only `test_templates_language.py`, `test_eval_cases.py`, `test_init_templates.py`)
-- [ ] 10. AC1–AC3 checks — files: `plugin/tests/test_english_only.py` (new),
+- [x] 10. AC1–AC3 checks — files: `plugin/tests/test_english_only.py` (new),
       `tests/test_documents.py` (`test_repository_tests_are_english`,
       `test_repository_test_code_is_english`); run once with a planted Polish letter in a
       scratch copy (`tmp_path`) through the helpers to prove they fail — a unit test
