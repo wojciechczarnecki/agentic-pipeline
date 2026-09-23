@@ -344,3 +344,14 @@ def test_install_guide_documents_the_read_rule():
         "--plugin-dir",
     ]:
         assert token in guide, token
+
+
+# SPEC 007, AC14: existing consumers learn from the release notes that the stages now need
+# the Read rule, and what happens without it.
+def test_the_changelog_names_the_read_rule():
+    manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
+    section = CHANGELOG.split(f"## {manifest['version']}", 1)[1].split("\n## ", 1)[0]
+    impact = section.split("**consumer impact:**", 1)[1].split("\n### ", 1)[0]
+    assert "Read(~/.claude/plugins/cache/" in impact
+    assert "permissions.allow" in impact
+    assert "stops" in impact

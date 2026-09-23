@@ -357,7 +357,7 @@ negative check needs it removable per case).
       and are checked for no Polish).
       Automatic verification: `uv run pytest -q plugin/tests/test_eval_cases.py`
 
-- [ ] 7. **Version, CHANGELOG, decision** — files: `plugin/.claude-plugin/plugin.json`
+- [x] 7. **Version, CHANGELOG, decision** — files: `plugin/.claude-plugin/plugin.json`
       (`0.6.0`), `plugin/CHANGELOG.md` (`## 0.6.0` above `## 0.5.0`: summary; `**consumer
       impact:**` add `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)` to
       `permissions.allow` in `.claude/settings.json` or user settings, otherwise every stage

@@ -490,3 +490,9 @@ def test_repository_settings_leave_stable_and_detaching_to_the_guard():
     assert settings["permissions"]["deny"] == ["Bash(gh pr merge*)", "Bash(claude plugin enable*)"]
     workflow = json.loads(read(".claude/workflow.json"))
     assert workflow["protectedBranches"] == ["stable"]
+
+
+# SPEC 007, AC16: the run-time reads reverse the inline-template decision in the register.
+def test_decisions_record_run_time_reads():
+    rows = [line for line in read("docs/DECISIONS.md").splitlines() if line.startswith("| ")]
+    assert any("templates/sections.md" in row and "Read(" in row for row in rows)
