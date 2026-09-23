@@ -435,7 +435,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       file (`section_map()`), step 3 imports it.
       Automatic verification: `uv run pytest -q plugin/tests/test_readme.py tests/test_documents.py`
 
-- [ ] 3. **SPEC and PLAN templates per language** — files: `plugin/templates/SPEC.pl.md`,
+- [x] 3. **SPEC and PLAN templates per language** — files: `plugin/templates/SPEC.pl.md`,
       `plugin/templates/SPEC.en.md`, `plugin/templates/PLAN.pl.md`,
       `plugin/templates/PLAN.en.md` (all new), `plugin/tests/test_templates_language.py`
       (new).
