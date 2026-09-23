@@ -16,6 +16,9 @@ metrics:
   implement_steps: 12
   implement_iterations: 1
   deviations: 5
+  final_review_blockers: 0
+  final_review_worth_fixing: 3
+  final_review_nits: 7
 ---
 
 # SPEC 008 — Skills, agents and tests translated into English

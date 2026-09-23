@@ -659,4 +659,86 @@ by an owner scenario the SPEC assigns, and no escalation trigger applies.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-23 — /pipeline:final-review (report)
+
+Three independent perspectives (SPEC/PLAN compliance, quality, tests) over
+`git diff origin/main...HEAD` (branch point `4bbe647`); every finding checked in the code.
+`uv run pytest` 1887 passed, ruff and black clean, `claude plugin validate --strict plugin/`
+passed. Mutation runs on scratch copies (tests perspective) confirmed that AC1–AC3 catch an
+uppercase letter in frontmatter, a new non-Markdown file, a Polish comment in an allowlisted
+test module and a stale allowlist entry, and that AC4 catches `Kroki` in prose and `` `## Cel` ``.
+No retargeted test lost an assertion (counts per module at base and head compared).
+
+AC → evidence:
+
+| AC | Evidence |
+|----|----------|
+| AC1 | `plugin/tests/test_english_only.py::test_skills_and_agents_have_no_polish` (every file under `skills/` and `agents/` is `.md`) |
+| AC2 | `test_english_only.py::test_polish_lives_only_in_the_allowlist`, `::test_the_allowlist_is_live`; `tests/test_documents.py::test_repository_tests_are_english`; the allowlist equals the AC's set, `matches()` does not let `*` cross `/` |
+| AC3 | `test_english_only.py::test_test_code_is_english`, `tests/test_documents.py::test_repository_test_code_is_english`, self-test `test_the_checks_catch_a_planted_letter` |
+| AC4 | `test_language_contract.py::test_no_polish_heading_is_named`, `::test_quoted_headings_are_english_map_literals` (only `#` / `**` spans — F2), `::test_every_stage_reads_the_section_map`, `::test_a_failed_read_stops_the_stage` |
+| AC5 | `test_the_language_block_is_identical_everywhere`, `test_the_configuration_block_is_two_bullets_everywhere`, `::test_the_configuration_block_keeps_the_fallback`, `test_every_agent_carries_the_contract` |
+| AC6 | End-to-end → Automatic 5; an independent span comparison against `4bbe647` reproduced the table; the one `OTHER` is D2 |
+| AC7 | `test_eval_cases.py::test_graders_and_descriptions_are_english`, `::test_prompts_are_english`, `::test_the_polish_prompt_stays`, `::test_init_language_cases_name_the_wrong_behaviour` |
+| AC8 | deferred by design: Manual 1, after the PR opens, on the owner's command |
+| AC9 | `tests/test_documents.py::test_contributing_covers_the_workflow`, `::test_conventions_state_english_skills`, `::test_decisions_record_the_translation`, `::test_roadmap_ticks_the_translation`; `plugin/tests/test_readme.py::test_the_changelog_records_the_translation` |
+| AC10 | deferred by design: Manual 2, the release canary |
+| AC11 | `bash scripts/check.sh` → `ALL GREEN` (End-to-end → Automatic 1) |
+
+Steps 1–12 are ticked with matching commits; D1–D5 are justified; nothing outside the scope
+entered the branch.
+
+Findings:
+
+- F1 `worth-fixing` — `plugin/skills/idea/SKILL.md:111`, `:136` — with `language: pl` the
+  SPEC marks inferred requirements `(założenie)`, but step 5 ("the list of all
+  `(assumption)` items") and the spec-ready guardrail ("unapproved `(assumption)` items")
+  name only the English marker; the original named both in all three places and D4 fixed
+  only step 4, so a literal reading shows the owner an empty list and lets unapproved
+  Polish assumptions through `spec-ready` — fix: at both places "`(assumption)` items (or
+  their Polish twin from the section map)", and extend D4.
+- F2 `worth-fixing` — `plugin/tests/test_language_contract.py:231` —
+  `test_quoted_headings_are_english_map_literals` checks only spans starting with `#` or
+  `**`; the map literals `` `Automatic verification:` `` (plan, plan-review, implement) and
+  `` `(assumption)` `` (idea) are never checked, so a mistyped literal (proved by mutation:
+  `Automated verification:` stays green) sends `implement` looking for a section no PLAN
+  has — fix: also check spans ending in `:` or wrapped in `(…)` against the English column
+  of the map.
+- F3 `worth-fixing` — `plugin/tests/test_readme.py:354` —
+  `assert manifest["version"] == "0.6.0"` fails on the next version bump (0.7.0) although
+  the 0.6.0 entry stays correct — fix: drop the assertion, keep the `## 0.6.0` section
+  checks.
+- F4 `nit` — `plugin/tests/test_readme.py:350-352` — the new test sits under the
+  `# SPEC 007, AC14 …` comment of `test_the_changelog_names_the_read_rule`, so the comment
+  labels the wrong test — fix: move the new test above it with its own `# SPEC 008, AC9`
+  comment.
+- F5 `nit` — `plugin/tests/test_init_skill.py:148` — `"text" in body` also matches
+  `context`, so dropping the "plain text" clause from init step 2 would pass — fix:
+  `"plain text" in body or "prose" in body`.
+- F6 `nit` — `plugin/tests/test_language_contract.py:112` — the map-block test pins
+  `either` but not that the map is read before looking for a section (AC4) — fix: assert
+  `"Before you look for a section"` in the block.
+- F7 `nit` — `tests/test_documents.py:151-152`, `plugin/tests/test_readme.py:187-188`,
+  `plugin/tests/test_eval_cases.py:27-28` — the escaped Polish-letter set is copied three
+  times beside `test_english_only.POLISH_LETTERS` — fix: import it from
+  `test_english_only`.
+- F8 `nit` — `plugin/skills/init/SKILL.md:74`, `:84`, `:86` — word-for-word renderings that
+  read poorly: "does not let their write from the shell through", "does not raise it",
+  "guards emptiness" — fix: "blocks writing them from the shell", "does not update it",
+  "guards nothing" (or leave to the Stage 6 prompt audit).
+- F9 `nit` — `plugin/tests/test_eval_cases.py:156` — the description check reads only the
+  `description:` line, so a block scalar (`description: >`) with Polish on the next lines
+  would pass; every case is a one-liner today — fix: also assert the value is not `>` / `|`.
+- F10 `nit` — `plugin/README.md:181` — the re-wrapped Section map sentence leaves one
+  95-column line among ~90-column prose — fix: re-wrap the paragraph.
+
+Rejected:
+
+- Whole-file allowlisting of the mirror `scaffold.sh` and `init-without-questions/case.yaml`
+  — AC2 names these files as the allowlist entries; a narrower check is beyond the AC.
+- `polish_files` skips non-UTF-8 files — no such text file exists under `plugin/` or
+  `tests/`, and every repository file is UTF-8 by convention.
+- init `argument-hint` holds `: ` in a plain scalar — present on `main` before this branch,
+  accepted by `claude plugin validate --strict`; not a regression.
+- `markdown_section` raises a bare `IndexError` on a missing heading — the test still fails,
+  with a readable traceback.
