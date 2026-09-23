@@ -49,3 +49,39 @@ def test_every_agent_states_its_language_part(agent):
     contract = section(agent_text(agent), "## Kontrakt agenta etapu")
     assert "`language`" in contract
     assert "angielsku" in contract
+
+
+TEMPLATE_BLOCKS = {"idea": ("SPEC", "```"), "plan": ("PLAN", "````")}
+BLOCK_HEADINGS = {"pl": "### Polski (`pl`)", "en": "### Angielski (`en`)"}
+
+
+def inline_template(text: str, heading: str, fence: str) -> str:
+    assert f"\n{heading}\n" in text, heading
+    after = text.split(f"\n{heading}\n", 1)[1].lstrip("\n")
+    opening = f"{fence}markdown\n"
+    assert after.startswith(opening), heading
+    return after[len(opening) :].split(f"\n{fence}\n", 1)[0] + "\n"
+
+
+# A headless stage subagent cannot read a file outside the working directory without a
+# permission prompt (PLAN 006, step 5 probe), so `idea` and `plan` carry both templates
+# inline; the files under `templates/` stay the tested source and each block is pinned to
+# its file byte for byte (owner decision, SPEC 006 AC5).
+@pytest.mark.parametrize("skill", sorted(TEMPLATE_BLOCKS))
+@pytest.mark.parametrize("language", sorted(BLOCK_HEADINGS))
+def test_idea_and_plan_carry_their_templates_pinned_to_the_files(skill, language):
+    document, fence = TEMPLATE_BLOCKS[skill]
+    text = skill_text(skill)
+    template = (PLUGIN / "templates" / f"{document}.{language}.md").read_text()
+    assert inline_template(text, BLOCK_HEADINGS[language], fence) == template
+    assert text.count(f"{fence}markdown\n") == 2
+    choice = section(text, f"## Szablon {document}.md").split("\n### ", 1)[0]
+    assert "`language`" in choice
+    assert f"templates/{document}.pl.md" in choice and f"templates/{document}.en.md" in choice
+
+
+def test_plan_writes_in_the_current_language():
+    step = section(skill_text("plan"), "## Kroki").split("\n5. ", 1)[1].split("\n6. ", 1)[0]
+    assert "`language`" in step
+    assert "SPEC" in step
+    assert "nie tłumaczysz" in step

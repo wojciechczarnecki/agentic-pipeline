@@ -178,7 +178,9 @@ Stages name a section by both literals and accept either when reading, so a spec
 before a language change, or before 0.5.0, still reads correctly. The SPEC and PLAN
 templates (`templates/SPEC.<language>.md`, `templates/PLAN.<language>.md`) carry exactly
 these literals; the H1 lines (`# SPEC NNN — `, `# PLAN NNN — `) are shared by both
-languages.
+languages. `idea` and `plan` carry both templates inline, pinned to these files byte for
+byte by a test: a stage subagent cannot read a file outside the working directory without a
+permission prompt, so nothing is read from the plugin at run time.
 
 | key | document | Polish | English |
 |---|---|---|---|

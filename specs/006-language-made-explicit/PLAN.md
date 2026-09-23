@@ -457,7 +457,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       `test_every_agent_states_its_language_part`.
       Automatic verification: `uv run pytest -q plugin/tests/test_language_contract.py plugin/tests/test_stage_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_plugin_structure.py plugin/tests/test_no_domain_references.py`
 
-- [ ] 5. **`idea` and `plan` read their template; PLAN in the current language** — files:
+- [x] 5. **`idea` and `plan` read their template; PLAN in the current language** — files:
       `plugin/skills/idea/SKILL.md`, `plugin/skills/plan/SKILL.md`,
       `plugin/tests/test_language_contract.py`.
       First the permission probe (AC5 depends on it — a stage subagent cannot answer a
@@ -783,7 +783,16 @@ needs an owner decision the SPEC does not already give.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- **D1 — step 5, templates stay inline (owner decision C, 2026-09-23).** `idea` and `plan`
+  do not `cat` their template; `## Szablon SPEC.md` / `## Szablon PLAN.md` keep the template
+  as two fenced blocks, `### Polski (\`pl\`)` and `### Angielski (\`en\`)`, chosen by
+  `language` (`en` for a missing or unsupported value). The planned
+  `test_idea_and_plan_read_their_template_through_the_shell` became
+  `test_idea_and_plan_carry_their_templates_pinned_to_the_files`: each inline block equals
+  `templates/<DOC>.<language>.md` byte for byte, the skill has exactly two `markdown`
+  blocks, and the choice paragraph names `language` and both template files. The
+  `plugin/README.md` section map gained one sentence saying so. Rationale: the step 5 probe
+  (Results) — a headless stage subagent is refused the read.
 
 ## Final review
 
