@@ -1,12 +1,12 @@
 {
-  "commit": "faaf1dfb9cdf4e09c0b153c02b7c5279b246a362",
-  "plugin_fingerprint": "207f526108b2261216c143b212d70f7f41fda151953a755e2a4647c3b76e90c2",
-  "plugin_version": "0.5.0",
-  "ran_at": "2026-09-23T11:20",
-  "cases_total": 8,
-  "cases_passed": 8,
+  "commit": "2728624cba503ebb6126c2d83e773c04bbd76475",
+  "plugin_fingerprint": "ea3d08cf888f4ec71a02de2b7d2f71d696d1a0b39149c4158ff4a14aefa675d7",
+  "plugin_version": "0.6.0",
+  "ran_at": "2026-09-23T19:10",
+  "cases_total": 9,
+  "cases_passed": 9,
   "green": true,
-  "cost_usd": 3.3173,
+  "cost_usd": 3.8847,
   "model": "default",
   "cases": {
     "final-review-finds-planted-defect": {
@@ -34,6 +34,10 @@
       "passed": 1
     },
     "init-writes-the-chosen-language": {
+      "runs": 1,
+      "passed": 1
+    },
+    "plan-review-approves-polish-owner-decision": {
       "runs": 1,
       "passed": 1
     },
