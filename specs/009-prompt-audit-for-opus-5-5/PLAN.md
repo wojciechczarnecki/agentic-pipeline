@@ -61,9 +61,10 @@ are for.
   (copied, not imported: test modules do not import one another in this repository).
 
 **Allowlist.** The current text, scanned outside code, has only these capital words beyond
-emphasis: `STOP RESULT DONE ESCALATE STATUS METRICS ESCALATION SUMMARY SPEC PLAN NNN CLI
-API README CLAUDE E2E` — all on the SPEC's list, so the list is not extended and
-`## Deviations` needs no allowlist entry. Two-letter tokens (`AC2`, `OK`, `CI`) are not
+emphasis: `STOP RESULT DONE ESCALATE METRICS ESCALATION SUMMARY SPEC PLAN NNN CLI API
+README CLAUDE` (`STATUS` appears only inside the contract fence, and `E2E` is not matched
+by `[A-Z]{3,}` because of its digit) — all on the SPEC's list, so the list is not extended
+and `## Deviations` needs no allowlist entry. Two-letter tokens (`AC2`, `OK`, `CI`) are not
 matched by `[A-Z]{3,}`. Two-letter emphasis inside a phrase (`IN FULL`, `LOOK AT`,
 `BY ANY`, `LOOKING AT`) is lowered together with its phrase in P1.
 
@@ -98,7 +99,7 @@ the step's files plus PLAN.md, per `plugin/skills/implement/SKILL.md`.
 | AC7 | 6 | `plugin/tests/test_prompt_audit.py::test_idea_guardrails_*` |
 | AC8 | 1–14 (commit messages) | E2E automatic: `git log --format=%s origin/main..HEAD` |
 | AC9 | after the PR is open, on the owner's command (not part of `/pipeline:implement`) | `plugin/evals/last-run.json` green, fingerprint matching `plugin/` at the branch head |
-| AC10 | 16, 17 | `plugin/tests/test_readme.py` (CHANGELOG section for the manifest version, consumer impact); `tests/test_documents.py`; review of the diff |
+| AC10 | 16, 17 | `plugin/tests/test_readme.py` (CHANGELOG section for the manifest version, consumer impact); `tests/test_documents.py::test_conventions_state_the_prompt_style`, `::test_decisions_record_the_prompt_style`, `::test_backlog_drops_the_idea_chaining_item`, `::test_roadmap_ticks_the_prompt_audit`; review of the CHANGELOG entries |
 | AC11 | all | `bash scripts/check.sh` (E2E automatic) |
 
 ## Steps
@@ -170,8 +171,10 @@ the step's files plus PLAN.md, per `plugin/skills/implement/SKILL.md`.
       the handoff", "never by `idea`", "GATE 1 is the owner's", "You do not remove the
       `(assumption)` suffix or set `spec-ready` before the owner has answered on every such
       item" and "including in a session without `AskUserQuestion`, leaves the SPEC
-      `spec-draft`". Commit: `feat: keep idea from chaining into ship or approving its
-      own assumptions (R1)`.
+      `spec-draft`". When hard-wrapping the new bullets (and the P2 and S2 texts), do not
+      break a code span across two lines: the AC1 scanner strips code spans line by line.
+      Commit: `feat: keep idea from chaining into ship or approving its own assumptions
+      (R1)`.
       files: `plugin/skills/idea/SKILL.md`, `plugin/tests/test_prompt_audit.py`
       Automatic verification: `uv run pytest plugin/tests/test_prompt_audit.py plugin/tests/test_stage_skills.py plugin/tests/test_english_only.py -q`
 
@@ -276,9 +279,18 @@ uv run pytest plugin/tests -q
       remove the Idea row "`idea` must not start `/pipeline:ship` …" (delivered by R1).
       `docs/ROADMAP.md` → Stage 6: tick the first item (`- [ ]` → `- [x]`; the link to this
       spec is already there). `docs/DECISIONS.md`: confirm the 2026-09-23 prompt-style row
-      is present (added with the SPEC) — no edit. Commit: `docs: record the prompt style
-      and tick the audit (SPEC 009)`.
-      files: `docs/CONVENTIONS.md`, `docs/BACKLOG.md`, `docs/ROADMAP.md`
+      is present (added with the SPEC) — no edit. In `tests/test_documents.py`, after
+      `test_roadmap_ticks_the_translation` and in its style (`# SPEC 009, AC10: …`), add:
+      `test_conventions_state_the_prompt_style` (the `## Language` section of
+      `docs/CONVENTIONS.md` names `test_prompt_style.py` and "normal volume"),
+      `test_decisions_record_the_prompt_style` (a `docs/DECISIONS.md` row contains
+      "SPEC 009" and "normal volume"), `test_backlog_drops_the_idea_chaining_item`
+      (`docs/BACKLOG.md` no longer contains "`idea` must not start `/pipeline:ship`") and
+      `test_roadmap_ticks_the_prompt_audit` (exactly one roadmap item contains
+      `specs/009-prompt-audit-for-opus-5-5/SPEC.md`, and it starts with `- [x]`). Commit:
+      `docs: record the prompt style and tick the audit (SPEC 009)`.
+      files: `docs/CONVENTIONS.md`, `docs/BACKLOG.md`, `docs/ROADMAP.md`,
+      `tests/test_documents.py`
       Automatic verification: `uv run pytest tests/test_documents.py -q` and `bash scripts/check.sh`
 
 ## Risks and traps
@@ -297,7 +309,9 @@ uv run pytest plugin/tests -q
   after the last change to `plugin/` — including any final-review fix. A red case is
   re-run alone with `--case` first; `plan-review-escalates-on-dependency` has a known
   flakiness (backlog P2 Evals). The spend ceiling is $10 (Owner decisions): pass
-  `--max-cost-usd` accordingly.
+  `--max-cost-usd` accordingly. A `--case` re-run overwrites the receipt with a one-case
+  result that still reads green — only a full-suite receipt is committed (Manual
+  scenario 1).
 - **Literal reading of R1.** The second R1 bullet names `(assumption)` only; the guardrail
   above it already extends the suffix to its Polish twin from the section map, so the
   verbatim audit text is kept rather than reworded.
@@ -341,8 +355,17 @@ Record the results in this section when done.
    spend), confirm every case green, and commit `plugin/evals/last-run.json` on the PR
    branch (the agent may do the run and the commit once the owner commands it). A red case
    is re-run alone with `--case <name>` first; a regression is traced to its finding's
-   commit and fixed on the branch. This cannot run in `/pipeline:implement`: it needs the
-   owner's command and costs real money.
+   commit and fixed on the branch. `eval.sh` writes `plugin/evals/last-run.json` on every
+   run, so a `--case` run overwrites the full-suite receipt with a one-case receipt that
+   is green and fingerprint-matching yet proves nothing about the other cases: never
+   commit it — restore the file (`git checkout -- plugin/evals/last-run.json`). The
+   committed receipt comes only from a full-suite run at the final branch head, with
+   `cases_total` equal to the number of eval cases (9 today, as in the 0.6.0 receipt), so after a
+   flake or a fix the full suite is run again. A full suite costs about $3.9 (the 0.6.0
+   receipt), so the $10 ceiling covers two suites and one single-case re-run; if a further
+   run is needed (e.g. the 5-run measurement of a failing case from the eval cost policy),
+   stop and ask the owner before spending beyond $10. This cannot run in
+   `/pipeline:implement`: it needs the owner's command and costs real money.
 
 ## Definition of Done
 
@@ -359,7 +382,46 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-24 — /pipeline:plan-review (under /pipeline:ship)
+
+Anti-anchoring leads (from the SPEC alone): a scanner that goes red on the old text without
+leaving the branch red; P1 edits that must not touch the pinned contract and configuration
+blocks; sentence rewrites ordered before P1 so the P1 diffs stay case-only; `final-review`
+has emphasis the audit's line list missed; the eval receipt as a manual, owner-gated step.
+The plan matches all five.
+
+Findings (severity counted before the fixes):
+
+| Id | Severity | Finding | Change |
+|----|----------|---------|--------|
+| RV1 | `major` | Manual scenario 1 (AC9) says to re-run a red case alone with `--case`, but `scripts/eval.sh` rewrites `plugin/evals/last-run.json` on every run: a one-case run leaves a green, fingerprint-matching receipt for one case, which could be committed as the AC9 receipt. The spend split was not stated either. | Manual scenario 1 and the eval risk now say: never commit a `--case` receipt (restore the file), commit only a full-suite receipt from the final head with all 9 cases, re-run the full suite after a flake or fix, stop and ask before spending beyond $10. |
+| RV2 | `minor` | AC10's documents parts had "review of the diff" as proof, while `tests/test_documents.py` pins the same kind of items per spec (SPEC 008, AC9). | Step 17 adds four document tests; the matrix names them. |
+| RV3 | `minor` | The Allowlist paragraph listed `STATUS` and `E2E` as present outside code; `STATUS` is only inside the contract fence and `E2E` is not matched by `[A-Z]{3,}`. No effect on the allowlist. | Paragraph corrected. |
+| RV4 | `minor` | The scanner strips code spans per line, so a code span wrapped across two lines in new text (P2, S2, R1) would expose its words to the scan. | Step 6 notes not to break a code span across lines. |
+
+Checked and found sound (later stages need not repeat):
+
+- Coverage: AC1–AC11 each have steps and a proving test or check; the matrix matches the
+  steps. AC9 is correctly outside `/pipeline:implement` (owner's command, Owner decisions).
+- Every capital word the plan lists per P1 step equals a simulation of the planned scanner
+  over the current files (8 files with hits; `planner`, `plan-reviewer`, `reviewer` have
+  none). Adding `final-review` to P1 is inside AC1, not a scope change.
+- No test in `plugin/tests`, `tests` or the eval cases pins a capital word the audit
+  lowers; the stage contract fences and the six configuration blocks contain no emphasis,
+  so `test_stage_contract.py` and `test_stage_skills.py` stay green.
+- The exact texts of P2, S2 and R1 match `AUDIT.md` → Action; the R1 insertion point
+  exists in `idea/SKILL.md` → `## Guardrails`; the P3 paragraph and the S1/S3 targets are
+  where the plan says.
+- Ordering: no forward dependencies; the scanner commit last keeps every commit green and
+  the merge-base scan proves the red state on the old text (AC1).
+- The lower-cased diff (AC2) and the AC8 `git log` checks are runnable as written; the
+  DECISIONS 2026-09-23 prompt-style row exists; version 0.6.1 → 0.7.0 is carried only in
+  `plugin.json`; `test_readme.py` requires the `**consumer impact:**` line the plan adds.
+- Owner summary: no new dependency, no data migration, one manual scenario — consistent
+  with the SPEC's Owner decisions. Language: English, as `language: en`.
+
+Decision: approved — no blocker, the one major is fixed in the plan itself, and no
+dependency or migration is introduced, so the plan is ready for implementation.
 
 ## Deviations
 
