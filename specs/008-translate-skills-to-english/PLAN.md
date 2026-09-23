@@ -408,7 +408,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       `plugin/tests/test_no_domain_references.py` (`**Generate the files**`, the comment
       on the acronym).
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_init_skill.py plugin/tests/test_no_domain_references.py plugin/tests/test_init_templates.py plugin/tests/test_plugin_structure.py && grep -cP '[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]' plugin/skills/init/SKILL.md` (prints `0`)
-- [ ] 7. AC4 heading checks — files: `plugin/tests/test_language_contract.py` (replace
+- [x] 7. AC4 heading checks — files: `plugin/tests/test_language_contract.py` (replace
       `test_sections_are_named_by_both_headings` and
       `test_the_both_headings_check_sees_wrapped_quotes` with the three tests in Approach →
       New checks; `test_severities_are_tokens` forbids `worth fixing`; the `quoted()`

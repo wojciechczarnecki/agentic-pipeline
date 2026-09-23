@@ -171,7 +171,7 @@ def test_severities_are_tokens():
     assert "`worth-fixing`" in section(skill_text("ship"), "## Gate: final review")
     texts = [skill_text(name) for name in STAGE_SKILLS] + [agent_text(name) for name in AGENTS]
     for text in texts:
-        assert "warto poprawić" not in text
+        assert "worth fixing" not in text
 
 
 def normalise(text: str) -> str:
@@ -195,36 +195,46 @@ def without_fences(text: str) -> str:
 
 
 def quoted(text: str) -> list[str]:
-    flat = normalise(without_fences(text))
-    return re.findall(r"`([^`]+)`", flat) + re.findall(r"„([^\"”]+)[\"”]", flat)
+    return re.findall(r"`([^`]+)`", normalise(without_fences(text)))
 
 
-# A stage names a section by both literals (templates/sections.md, SPEC 006 AC7), so
-# a spec written in either language, or before 0.5.0, is found. The check covers every map
-# row whose literals differ: a Polish heading quoted in a skill or agent brings its English
-# twin into the same file.
-@pytest.mark.parametrize(
-    "path",
-    [f"skills/{name}/SKILL.md" for name in STAGE_SKILLS] + [f"agents/{name}.md" for name in AGENTS],
-)
-def test_sections_are_named_by_both_headings(path):
-    text = (PLUGIN / path).read_text()
-    spans = quoted(text)
-    # Outside fences only: an English heading quoted inside a code example would satisfy the
-    # check whatever the prose says.
-    flat = normalise(without_fences(text))
-    missing = []
+FILES = [f"skills/{name}/SKILL.md" for name in STAGE_SKILLS + sorted(NOT_STAGES)] + [
+    f"agents/{name}.md" for name in AGENTS
+]
+# Heading-like spans that are not SPEC/PLAN sections; none are needed today.
+OTHER_HEADINGS: set[str] = set()
+
+
+# A stage names a section by its English heading only (SPEC 008): the Polish twin comes from
+# templates/sections.md, which every stage reads before it looks for a section. A Polish
+# heading without a Polish letter (`Cel`, `Kroki`) would slip past the letter check, so the
+# heading text is matched as a whole word, with case.
+@pytest.mark.parametrize("path", FILES)
+def test_no_polish_heading_is_named(path):
+    flat = normalise((PLUGIN / path).read_text())
+    named = []
     for _, _, polish, english in section_map():
         if polish == english:
             continue
         name = heading_text(polish)
-        if any(name in span for span in spans) and heading_text(english) not in flat:
-            missing.append((polish, english))
-    assert not missing, (path, missing)
+        if re.search(rf"(?<!\w){re.escape(name)}(?!\w)", flat):
+            named.append(polish)
+    assert not named, (path, named)
 
 
-def test_the_both_headings_check_sees_wrapped_quotes():
-    text = 'czytasz „Streszczenie dla\nwłaściciela" z planu'
-    assert any("Streszczenie dla właściciela" in span for span in quoted(text))
-    assert heading_text("Weryfikacja automatyczna:") == "Weryfikacja automatyczna"
-    assert heading_text("**Podejście:**") == "Podejście"
+# Every quoted heading is the English literal of a map row, so a stage cannot name a section
+# the templates do not have.
+@pytest.mark.parametrize("path", FILES)
+def test_quoted_headings_are_english_map_literals(path):
+    english = {row[3] for row in section_map()} | OTHER_HEADINGS
+    spans = quoted((PLUGIN / path).read_text())
+    unknown = [span for span in spans if span.startswith(("#", "**")) and span not in english]
+    assert not unknown, (path, unknown)
+
+
+def test_the_heading_checks_see_wrapped_spans():
+    text = "you read `## Owner\nsummary` from the plan"
+    assert "## Owner summary" in quoted(text)
+    assert heading_text("Automatic verification:") == "Automatic verification"
+    assert heading_text("**Approach:**") == "Approach"
+    assert heading_text("## Read context") == "Read context"
