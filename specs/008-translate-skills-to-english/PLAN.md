@@ -312,7 +312,8 @@ differs, the implementer changes skill and test together and lists the pair in
 - `plugin/CHANGELOG.md` 0.6.0: a `### Changed` bullet (skills, agents, tests and graders
   English, one to one; sections named by their English heading, Polish only in the map and
   the `*.pl.md` templates) and one consumer-impact sentence ("no configuration change; a
-  `"language": "pl"` consumer keeps Polish specs, plans and documents"); the 0.6.0 bullet
+  `"language": "pl"` consumer keeps Polish specs, plans and documents") appended to the
+  existing 0.6.0 `**consumer impact:**` paragraph, not a second marker; the 0.6.0 bullet
   "`## Mapa sekcji` block" becomes "`## Section map` block"; version stays `0.6.0`.
 - `plugin/README.md` → Section map and `plugin/templates/sections.md` intro: "Stages name a
   section by both literals" becomes "Stages name a section by its English literal and
@@ -371,7 +372,8 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       `description`, intro, `METRICS` lines — the visual sentence in `implementer.md` stays
       one sentence naming `verify.scopes` and `<docs.conventions>`);
       `plugin/tests/test_stage_contract.py` (foreground, waiting sentence, `ship` skill
-      reads), `plugin/tests/test_language_contract.py` (ship session-language test),
+      reads), `plugin/tests/test_language_contract.py` (ship session-language test, and
+      the `## Gate: final review` section read in `test_severities_are_tokens`),
       `plugin/tests/test_readme.py` (the comment "while the ship skill is Polish").
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_stage_contract.py plugin/tests/test_language_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_readme.py plugin/tests/test_plugin_structure.py && grep -cP '[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]' plugin/skills/ship/SKILL.md plugin/agents/*.md` (the grep prints `0` for each file)
 - [ ] 3. `idea` and `plan`, the rest — files: `plugin/skills/idea/SKILL.md`,
@@ -401,7 +403,8 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       `"command": "TODO: <verify command>"` and the language names the argument may use —
       "English/angielski, polski/po polsku" become "`en`, `pl` or its name (English,
       Polish)": the Polish words carry Polish letters and a Polish request in an argument is
-      understood without them); `plugin/tests/test_init_skill.py`,
+      understood without them — a wording change beyond one to one, listed in
+      `## Deviations`); `plugin/tests/test_init_skill.py`,
       `plugin/tests/test_no_domain_references.py` (`**Generate the files**`, the comment
       on the acronym).
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_init_skill.py plugin/tests/test_no_domain_references.py plugin/tests/test_init_templates.py plugin/tests/test_plugin_structure.py && grep -cP '[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]' plugin/skills/init/SKILL.md` (prints `0`)
@@ -478,9 +481,14 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
 - `init` step 3 lists "angielski, polski/po polsku" as argument names; dropping the Polish
   words is required by AC1; the eval case `init-writes-the-chosen-language` passes
   `language: pl` explicitly, and `init-keeps-manual-edits` says "documents in Polish".
-- `claude plugin validate --strict plugin/` parses the frontmatter: an English
-  `description` with `: ` stays on one line (as today's Polish ones), no YAML quoting
-  surprises.
+- `claude plugin validate --strict plugin/` parses the frontmatter: `description` and
+  `argument-hint` stay single-line plain scalars; do not introduce a `: ` or ` #` the
+  Polish original did not have (a plain YAML scalar does not allow them) — only init's
+  `argument-hint` carries a `: ` today, and it passes validate as it is.
+- Line-based checks break on re-wrapping: the `…/templates/{SPEC,PLAN}.en.md` bullet of
+  the template block must stay one physical line (`test_idea_and_plan_read_their_template`
+  filters lines), and no stage-skill line may carry both `README` and `metric`
+  (`test_no_stage_skill_sends_metrics_rules_to_the_readme`).
 - The eval suite judges behaviour in English prompts except `init-without-questions`;
   a Polish request triggering the right skill (AC10) is only seen in the canary.
 
@@ -536,7 +544,59 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-23 — /pipeline:plan-review
+
+Findings (counted before fixes): 0 `blocker`, 0 `major`, 5 `minor`.
+
+- R1 `minor` — step 2 translates ship's `## Gate: final review`, but its file list named
+  only the session-language test; `test_severities_are_tokens` also reads that section and
+  would turn step 2's verification red. Added to step 2.
+- R2 `minor` — the frontmatter risk said a `description` with `: ` is safe on one line; a
+  plain YAML scalar does not allow `: `. Reworded: keep single-line plain scalars and do
+  not introduce `: ` / ` #`.
+- R3 `minor` — the shared-block note says wrapping is free, but two checks are line-based
+  (the `.en.md` template line; `README` + `metric` on one line). Added to Risks and traps.
+- R4 `minor` — 0.6.0 already has a `**consumer impact:**` paragraph
+  (`test_the_changelog_names_the_consumer_impact`); the new sentence extends it rather than
+  adding a second marker. Clarified in Documents.
+- R5 `minor` — dropping "angielski, polski/po polsku" from init step 3 is a wording change
+  beyond one to one; step 6 now lists it in `## Deviations`.
+
+Checked and found correct (later stages need not redo it):
+
+- Coverage: every AC1–AC11 has steps and a named test or manual scenario; the matrix
+  matches the steps. AC8 and AC10 are correctly outside implementation (SPEC → Owner
+  decisions, Decisions).
+- Every Polish-pinned assertion in `plugin/tests` and `tests/` was checked against the
+  code (`test_language_contract.py`, `test_stage_skills.py`, `test_stage_contract.py`,
+  `test_init_skill.py`, `test_no_domain_references.py`, `test_eval_cases.py`,
+  `test_readme.py`, `tests/test_documents.py`); the Approach list is complete apart from
+  R1. The `test_eval_cases.py` checks of the mirror fixture (its Polish PLAN and SPEC
+  headings) stay as allowlisted data.
+- The current Polish-letter file set (`grep -rlP` over `plugin` and `tests`) matches the
+  plan: after translation exactly the 8 `*.pl.md` templates, `sections.md`, the mirror
+  `scaffold.sh`, `init-without-questions/case.yaml` and the three allowlisted test modules
+  remain; `plugin/CHANGELOG.md` has exactly the two Polish lines step 9 rewords;
+  `tests/fixtures/` holds no Polish.
+- The English shared blocks carry every token the retargeted tests assert (`either`,
+  `English`, `session`, `a missing key`/`any other value`, `"Section map"`, the failed-read
+  tokens, `` `escalations` is incremented only by the orchestrator ``, no `README` in the
+  contract) and translate the Polish blocks one to one, except the SPEC-decided naming.
+- The heading-like spans in skills and agents today are all map literals, so
+  `test_quoted_headings_are_english_map_literals` can start with an empty
+  `OTHER_HEADINGS`.
+- Rewording the "both literals" sentence in `plugin/README.md` and
+  `templates/sections.md`, and amending the 2026-09-23 DECISIONS row, follows SPEC →
+  Scope bullet 2 and Decisions; no test pins the old sentence.
+- Branch point `4bbe647` = `git merge-base origin/main HEAD`; the fingerprint command in
+  Manual 1 is the one `scripts/eval.sh` uses; `--max-cost-usd` is a real flag, and $5 per
+  run fits the last measured full run ($3.32 for 8 cases) within the $10 spend.
+- No new dependency, no migration, no configuration key change; hooks and `plugin/bin/`
+  match no skill prose. The step order has no forward dependency. The PLAN is in English
+  (`language: en`).
+
+The plan is ready: no blocker or major remains, every AC is provable by an exact command or
+by an owner scenario the SPEC assigns, and no escalation trigger applies.
 
 ## Deviations
 
