@@ -710,6 +710,17 @@ the skills still carry their inline templates (step 5 not started beyond the pro
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-23 · implement (step 5) · Question: a headless stage subagent (`claude -p`) is
+  refused permission to `cat` a SPEC/PLAN template outside the working directory (the
+  `--plugin-dir` path, the installed cache path and the unresolved `${CLAUDE_PLUGIN_ROOT}`
+  path), so `idea`/`plan` cannot read their templates at runtime without stalling
+  `/pipeline:ship`. Options: (A) an allow rule in `plugin/templates/settings.json`;
+  (B) templates as skill reference files; (C) templates stay inline. · Decision: **C**.
+  The SPEC/PLAN templates stay inline in `idea` and `plan`, as a Polish and an English block;
+  the `*.pl.md`/`*.en.md` files remain the tested source, and a pytest check pins each inline
+  block to its file byte for byte. AC5's "no inline template" reads as "inline, pinned to
+  the template files". Nothing is read at runtime; consumers need no settings change.
+
 ## Review log
 
 ### 2026-09-23 — /pipeline:plan-review
