@@ -445,4 +445,43 @@ starts a sentence, so it became `Never`, per the P1 rule in `## Steps`.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-24 — /pipeline:final-review report (under /pipeline:ship)
+
+Three independent perspectives (SPEC/PLAN compliance, quality, tests) on
+`git diff origin/main...HEAD`. `bash scripts/check.sh`: all green (1938 tests passed).
+
+AC → evidence:
+
+| AC | Evidence | State |
+|----|----------|-------|
+| AC1 | `plugin/tests/test_prompt_style.py` (1902157): allowlist equals the SPEC list, parametrised scan of 7 skills + 4 agents, completeness guard, scanner self-tests, loop-fence test; the scanner flags 8 files of the merge-base text | met |
+| AC2 | lower-cased diff of the eight `(P1)` commits is empty; word-diffs touch only listed words, no pinned fence changed | met |
+| AC3 | b5bf11b; `test_prompt_audit.py::test_plan_review_role_*` | met |
+| AC4 | 947c70d; `test_plan_review_status_heading_*` | met |
+| AC5 | b9ff17b, 37dd606; `test_implement_loop_*`, `test_implement_gate_*` | met |
+| AC6 | 9c5c7d2; `test_final_review_*` | met |
+| AC7 | a753fd6; `test_idea_guardrails_*` | met |
+| AC8 | one commit each for P2, P3, S1, S2, S3, R1; eight P1 commits, one per file; every message names its id | met |
+| AC9 | by design after the PR opens, on the owner's command (Owner decisions); no receipt on the branch yet | pending |
+| AC10 | DECISIONS row (a6b1ae5), CONVENTIONS `## Language` bullet, CHANGELOG 0.7.0, `plugin.json` 0.7.0, BACKLOG item removed, ROADMAP ticked; `tests/test_documents.py` (four tests), `plugin/tests/test_readme.py` | met |
+| AC11 | `bash scripts/check.sh` all green | met |
+
+Findings:
+
+| Id | Severity | Where | Scenario | Fix |
+|----|----------|-------|----------|-----|
+| F1 | `worth-fixing` | `plugin/tests/test_prompt_style.py:54` | The code-span pattern `` `[^`\n]*` `` works per line, but the skills are hard-wrapped and already wrap spans (`init/SKILL.md:27-28`, `:72-73`). Input ``Run (`git rev-parse\n--inside`) and you MUST `x` here.`` → `[]` (the same text on one line → `['MUST']`): a mis-paired backtick hides prose from the scan. Nothing is hidden in the current text. | Strip spans across line breaks after the fences are removed (`` `[^`]*` ``, or per blank-line paragraph) and add a scanner self-test with a wrapped span. |
+| F2 | `worth-fixing` | `plugin/skills/idea/SKILL.md:151-156` | The new R1 guardrail (`:141-143`) lets the stage end with the SPEC still `spec-draft` (no owner answer, headless). `## Handoff` has only one script: "the SPEC is ready and committed; the next step is `/pipeline:ship NNN`", so in the very case R1 targets the skill still tells the model to announce a ready SPEC and point at ship. | Add a Handoff branch: SPEC left `spec-draft` → list the open `(assumption)` items, `/pipeline:ship` waits for the owner's answer; state whether the draft is committed. |
+| F3 | `nit` | `plugin/tests/test_prompt_audit.py:121` | AC7's clause "`/pipeline:ship` and the later stages are started by the owner" is not asserted; dropping it keeps the test green. | Add `"started by the owner"` to the phrase list. |
+| F4 | `nit` | `plugin/tests/test_prompt_audit.py:82-85` | AC5 "same content" is checked by the start of each sub-point only; dropping "otherwise escalation" from c or the re-run clause from d stays green. | Compare the whole loop fence, whitespace-collapsed and lower-cased, with a constant. |
+| F5 | `nit` | `plugin/tests/test_prompt_audit.py:115` | `len(bullets) == 4` breaks on any added final-review guardrail (the planned Stage 6 nit cap) and passes a reworded, lost rule. | Assert the four guardrails by key phrase. |
+| F6 | `nit` | `plugin/tests/test_prompt_style.py:47` | Fence detection knows only ```` ``` ````; a ```` ``` ```` line inside a `~~~` block hides the prose after it. No `~~~` in the audited files today. | Track the opening marker and close only on a matching one. |
+| F7 | `nit` | `plugin/skills/idea/SKILL.md:142-143` | "no answer, including in a session without `AskUserQuestion`, leaves the SPEC `spec-draft`" can be read as "not one answer". The text is AUDIT's verbatim. | "without the owner's answer — also in a session without `AskUserQuestion` — the SPEC stays `spec-draft`", with the pinned phrase in `test_prompt_audit.py` updated. |
+
+Rejected:
+
+- Allowlist entries that `\b[A-Z]{3,}\b` can never match (`AC`, `CI`, `PR`, `UI`, `ACs`,
+  `E2E`) or that are unused (`HTTPS`, `JSON`, `URL`) — AC1 fixes the list verbatim, so
+  trimming it would depart from the SPEC; they are harmless.
+- Two-letter emphasis (`NO`) is not caught — AC1 defines emphasis as three or more
+  capitals, and the PLAN accepts the limit knowingly; no current text is affected.
