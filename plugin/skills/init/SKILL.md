@@ -18,7 +18,7 @@ initialisation into a design interview.
 
 ## Write scope (absolute)
 
-You write ONLY in: `.claude/`, `CLAUDE.md`, `docs/`, `scripts/`, `.github/`.
+You write only in: `.claude/`, `CLAUDE.md`, `docs/`, `scripts/`, `.github/`.
 Nothing outside these prefixes — no source files, no tool configuration and no
 `.gitignore`. You do not commit; the commit belongs to the owner.
 
@@ -30,7 +30,7 @@ Nothing outside these prefixes — no source files, no tool configuration and no
    Look into the detected files for the script names (`scripts` in `package.json`, the lint
    and test tools in `pyproject.toml`) — that fills `verify` and `format` without asking.
 2. **Check whether you have `AskUserQuestion`. If you do not — skip this step and go to
-   step 3.** You then ask no questions BY ANY route: neither with the tool nor in plain
+   step 3.** You then ask no questions by any route: neither with the tool nor in plain
    text, and you do not wait for an answer, because there is no one to get it from.
    With `AskUserQuestion` — **ask the questions: one round, at most 4** (every question
    with a recommendation: the first option with the suffix "(Recommended)" in the label):
@@ -48,7 +48,7 @@ Nothing outside these prefixes — no source files, no tool configuration and no
    **A second round only when the stack autodetection failed** — you then ask
    for the verification command, the formatting commands and the git hooks directory. In no
    other case is there a second round.
-3. **Non-interactive mode** (`claude -p`, no `AskUserQuestion`): you do NOT ask and do NOT
+3. **Non-interactive mode** (`claude -p`, no `AskUserQuestion`): you do not ask and do not
    block. A question asked in prose and ending the reply with a request for a decision is a
    block too — you finish the task to the end on the values you have, not with a question.
    Claude Code treats files in `.claude/` as sensitive and asks for consent to write them
@@ -70,9 +70,9 @@ Nothing outside these prefixes — no source files, no tool configuration and no
    may be blocked there or wait for a consent that does not exist in non-interactive mode.
    First copy the file into the project, only then edit it with the Edit tool. Should the
    shell not reach the plugin directory either — stop without writing and ask for `--add-dir
-   ${CLAUDE_PLUGIN_ROOT}`; do NOT rebuild the templates from memory.
+   ${CLAUDE_PLUGIN_ROOT}`; do not rebuild the templates from memory.
    **Exception — files in `.claude/`:** the guard blocks writing them from the shell
-   (they are guard files). READ the template's content with the shell (`cat`), and
+   (they are guard files). Read the template's content with the shell (`cat`), and
    write the target file with the Write tool — the only sanctioned route. A block from the
    shell is not a reason to give up the file.
    The list of files:
@@ -114,20 +114,20 @@ Nothing outside these prefixes — no source files, no tool configuration and no
      (`chmod +x`); the directory path matching `gitHooksDir`;
    - `.github/workflows/ci.yml` — assembled from variants by the detected stack:
      Python → the job from `templates/github/workflows/ci-python.yml`, Node → the job
-     from `ci-node.yml`, both → BOTH jobs in one file, neither → `ci-placeholder.yml`;
+     from `ci-node.yml`, both → both jobs in one file, neither → `ci-placeholder.yml`;
    - `.github/workflows/security.yml` — the same from `security-python.yml` /
      `security-node.yml`; with an unknown stack a file with one job to fill in;
    - `.github/dependabot.yml` — from `templates/github/dependabot.yml`, with entries
-     for the ecosystems of the detected stack; the `github-actions` entry stays ALWAYS,
+     for the ecosystems of the detected stack; the `github-actions` entry stays always,
      whatever the stack.
 5. **Existing files.**
-   - interactive mode: show the difference (what you add / change) and ASK before
+   - interactive mode: show the difference (what you add / change) and ask before
      overwriting — separately for every file;
-   - non-interactive mode: you NEVER overwrite an existing file — you skip it
+   - non-interactive mode: you never overwrite an existing file — you skip it
      and put it on the list of skipped files.
 6. **Idempotence.** A second run does not force the template back: content added
    by the user (a new section in `CLAUDE.md`, a row in the decision register, an item
-   in the backlog) stays untouched. You change only what follows from NEW answers;
+   in the backlog) stays untouched. You change only what follows from new answers;
    files the new answers do not concern you do not write at all — `git status`
    has to stay silent about them after such a run. An answer on the language other than the
    existing `language` changes only `language` in `.claude/workflow.json`: you do not

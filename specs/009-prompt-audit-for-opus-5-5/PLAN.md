@@ -213,7 +213,7 @@ uv run pytest plugin/tests -q
       "ALWAYS recommend", "option LABEL", "on WHY you", "VERIFY in the code", "SEPARATELY",
       "Do NOT design".
       Automatic verification: the P1 block above with `F=plugin/skills/idea/SKILL.md`
-- [ ] 12. **P1 `init`** — `plugin/skills/init/SKILL.md`: "write ONLY in", "BY ANY route",
+- [x] 12. **P1 `init`** — `plugin/skills/init/SKILL.md`: "write ONLY in", "BY ANY route",
       "do NOT ask and do NOT block", "do NOT rebuild", "READ the template's", "BOTH jobs",
       "stays ALWAYS", "ASK before", "you NEVER overwrite", "NEW answers".
       Automatic verification: the P1 block above with `F=plugin/skills/init/SKILL.md`, plus `uv run pytest plugin/tests/test_init_skill.py -q`
