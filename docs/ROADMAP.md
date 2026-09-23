@@ -160,7 +160,7 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
 One spec through the pipeline itself. Lessons from GitHub Spec Kit (`converge`, test-first)
 and 10xWorkflow (tests verified by breaking them).
 
-- [ ] 0.7.0, first and as its own spec: a prompt audit of the English skills and agents for
+- [x] 0.7.0, first and as its own spec: a prompt audit of the English skills and agents for
       Claude Opus 5.5 (`/claude-api prompt-audit`), with an eval run before the other items
       of this stage land — the new instructions below are then written on the audited
       text, and a regression points at either the audit or the additions, not both. The

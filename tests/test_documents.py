@@ -213,6 +213,29 @@ def test_roadmap_ticks_the_translation():
     assert "specs/008-translate-skills-to-english/SPEC.md" in item[0]
 
 
+# SPEC 009, AC10: the documents record the prompt style and the delivered audit.
+def test_conventions_state_the_prompt_style():
+    language = markdown_section(read("docs/CONVENTIONS.md"), "## Language")
+    assert "test_prompt_style.py" in language
+    assert "normal volume" in language
+
+
+def test_decisions_record_the_prompt_style():
+    rows = [line for line in read("docs/DECISIONS.md").splitlines() if "SPEC 009" in line]
+    assert any("normal volume" in row for row in rows), rows
+
+
+def test_backlog_drops_the_idea_chaining_item():
+    assert "`idea` must not start `/pipeline:ship`" not in read("docs/BACKLOG.md")
+
+
+def test_roadmap_ticks_the_prompt_audit():
+    items = re.split(r"\n(?=- \[)", read("docs/ROADMAP.md"))
+    item = [item for item in items if "specs/009-prompt-audit-for-opus-5-5/SPEC.md" in item]
+    assert len(item) == 1, item
+    assert item[0].startswith("- [x]")
+
+
 def test_security_policy():
     text = read("SECURITY.md")
     for token in [

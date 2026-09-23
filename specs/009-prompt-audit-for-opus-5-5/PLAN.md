@@ -270,7 +270,7 @@ uv run pytest plugin/tests -q
       guardrails (R1). Commit: `chore: bump the plugin to 0.7.0`.
       files: `plugin/.claude-plugin/plugin.json`, `plugin/CHANGELOG.md`
       Automatic verification: `uv run pytest plugin/tests/test_readme.py plugin/tests/test_english_only.py tests/test_documents.py -q`
-- [ ] 17. **Documents.** `docs/CONVENTIONS.md` → `## Language`: after the bullet "A change
+- [x] 17. **Documents.** `docs/CONVENTIONS.md` → `## Language`: after the bullet "A change
       to the skills' wording is a behaviour change …" add a bullet stating the rule for
       skill and agent text — a rule is stated at normal volume with its reason beside it,
       capitals are kept for contract tokens and identifiers, and
