@@ -121,7 +121,7 @@ the step's files plus PLAN.md, per `plugin/skills/implement/SKILL.md`.
       implementation". Commit: `refactor: reword the plan reviewer's role (P2)`.
       files: `plugin/skills/plan-review/SKILL.md`, `plugin/tests/test_prompt_audit.py`
       Automatic verification: `uv run pytest plugin/tests/test_prompt_audit.py plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py -q`
-- [ ] 2. **P3 — the status heading.** In `plugin/skills/plan-review/SKILL.md` change
+- [x] 2. **P3 — the status heading.** In `plugin/skills/plan-review/SKILL.md` change
       `## IMPORTANT — what the status triggers` to `## What the status triggers`; the
       paragraph under it stays byte for byte. Add `test_plan_review_status_heading_*`:
       `section("plan-review", "What the status triggers")` equals the pinned original

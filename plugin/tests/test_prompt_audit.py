@@ -41,3 +41,20 @@ def test_plan_review_role_names_the_targets_and_the_report():
         "it is you who decides whether the plan is ready for implementation",
     ]:
         assert phrase in paragraph, phrase
+
+
+# P3: the heading that only raised the volume is gone; the paragraph under it is unchanged.
+STATUS_PARAGRAPH = """\
+`plan-approved` triggers the approval rule: from that moment `/pipeline:implement` edits
+the files within the plan's scope without asking. That is why the escalation triggers of
+step 5 are absolute — do not approve a plan with an unaccepted dependency or migration, even
+if it seems obvious."""
+
+
+def test_plan_review_status_heading_keeps_the_paragraph():
+    assert section("plan-review", "What the status triggers") == STATUS_PARAGRAPH
+
+
+def test_plan_review_status_heading_has_no_emphasis():
+    headings = [line for line in skill_text("plan-review").splitlines() if line.startswith("#")]
+    assert not [line for line in headings if "IMPORTANT" in line]

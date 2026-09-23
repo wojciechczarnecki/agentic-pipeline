@@ -107,7 +107,7 @@ implementation — the owner steps in only when the decision is not yours (step 
    STOP with a question) with the names of the missing keys; you do not invent a value you
    did not measure. Commit (`docs: review PLAN NNN <slug>`).
 
-## IMPORTANT — what the status triggers
+## What the status triggers
 
 `plan-approved` triggers the approval rule: from that moment `/pipeline:implement` edits
 the files within the plan's scope without asking. That is why the escalation triggers of
