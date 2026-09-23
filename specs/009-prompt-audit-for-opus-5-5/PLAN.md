@@ -200,7 +200,7 @@ uv run pytest plugin/tests -q
       "EXACT commands", "(do NOT set `plan-approved`)". (`FIND` and `IMPORTANT` are gone
       after steps 1–2; `OK` is a verdict token and stays.)
       Automatic verification: the P1 block above with `F=plugin/skills/plan-review/SKILL.md`
-- [ ] 9. **P1 `implement`** — `plugin/skills/implement/SKILL.md`: "IN FULL", "LOOK AT",
+- [x] 9. **P1 `implement`** — `plugin/skills/implement/SKILL.md`: "IN FULL", "LOOK AT",
       "REALLY performed", and inside the loop fence "Run ALL", "NEVER fit", "run ALL the
       commands AGAIN". (`FULL`/`FIRST` and `NOT` are gone after steps 3–4.) The AC1 grep
       above skips nothing inside the fence, so it also checks the loop.
