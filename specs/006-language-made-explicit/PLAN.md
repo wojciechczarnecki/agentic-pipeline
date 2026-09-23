@@ -512,7 +512,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       — both paths, or git cannot pair the rename and shows a whole new file — touches only
       its `## Język` section).
 
-- [ ] 8. **`init` skill: the language first, per-language templates, re-run** — files:
+- [x] 8. **`init` skill: the language first, per-language templates, re-run** — files:
       `plugin/skills/init/SKILL.md`, `plugin/tests/test_init_skill.py`.
       Edit per Approach → `/pipeline:init`. Tests:
       `test_the_language_is_the_first_question`,

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -155,3 +156,40 @@ def test_the_non_interactive_mode_forbids_asking_in_prose(number):
 # out (SPEC 005, AC7).
 def test_init_does_not_write_protected_branches():
     assert "protectedBranches" in step(4)
+
+
+def questions() -> list[str]:
+    asking = step(2)
+    return re.findall(r"\n   (\d)\. (.*(?:\n      .*)*)", asking)
+
+
+# SPEC 006, AC10: the language comes first, because it decides every document init writes;
+# `en` is the recommended default.
+def test_the_language_is_the_first_question():
+    found = questions()
+    assert 1 <= len(found) <= 4, found
+    number, first = found[0]
+    assert number == "1"
+    for token in ["`language`", "`en`", "`pl`", "(Recommended)"]:
+        assert token in first, token
+
+
+# SPEC 006, AC12: unattended, the argument names the language or it is `en`, without a
+# `TODO:` marker — the prompt's own language does not count.
+def test_unattended_language_comes_from_the_argument():
+    body = " ".join(step(3).split())
+    for token in ["argument", "`en`", "`pl`", "`language`"]:
+        assert token in body, token
+
+
+# SPEC 006, AC11: every document is copied from the template of the chosen language.
+def test_templates_are_picked_by_language():
+    generating = step(4)
+    assert "templates/CLAUDE.<language>.md" in generating
+    assert "templates/docs/<NAZWA>.<language>.md" in generating
+    assert "templates/CLAUDE.md" not in generating
+
+
+# SPEC 006, AC13: a re-run with another language changes the key, not the documents.
+def test_a_language_change_leaves_documents_alone():
+    assert "`language`" in step(6)
