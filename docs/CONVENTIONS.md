@@ -107,6 +107,11 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   grep -E 'overrides installed version|Found [0-9]+ plugins' /tmp/canary.log
   ```
 
+  The clone is not the install cache, so the consumer's `Read` rule for the cache does
+  not cover the templates the stages read from it: add the absolute clone rule
+  `Read(//<clone without its leading />/plugin/**)` to the consumer's settings (or user
+  settings) for the canary — a headless canary run through `--settings` needs it in that
+  file too — or the first stage stops on the read. The guard's notice names the exact rule.
   `--plugin-dir` overrides the installed copy for that session only. The pass marker is
   the log line `Plugin "pipeline" from --plugin-dir overrides installed version`, skills
   loaded from `<clone>/plugin`, and a `Found N plugins` count equal to a plain session's

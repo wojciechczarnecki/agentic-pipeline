@@ -330,3 +330,17 @@ def test_the_guard_section_links_guard_md():
 def test_install_guide_leaves_detaching_to_the_owners_terminal():
     for token in ["terminal", "agent session", "refuse", "protectedBranches"]:
         assert token in INSTALL, token
+
+
+# SPEC 007, AC15: the install guide documents the rule stages need to read the plugin, where
+# it goes, and the absolute form a `--plugin-dir` clone needs.
+def test_install_guide_documents_the_read_rule():
+    guide = section(INSTALL, "## Reading the plugin's templates")
+    for token in [
+        "Read(~/.claude/plugins/cache/",
+        "Read(//",
+        "~/.claude/settings.json",
+        ".claude/settings.json",
+        "--plugin-dir",
+    ]:
+        assert token in guide, token

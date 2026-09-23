@@ -319,6 +319,12 @@ def test_readme_guard_block_matches_the_guard(tmp_path):
         subprocess.run(command, cwd=repo, check=True)
     (repo / ".claude").mkdir()
     (repo / ".claude" / "workflow.json").write_text("{}")
+    # A consumer set up as documented: the Read rule for the plugin keeps the guard's
+    # once-per-session notice (SPEC 007) out of the refusal the README quotes.
+    plugin = str(ROOT / "plugin").lstrip("/")
+    (repo / ".claude" / "settings.json").write_text(
+        json.dumps({"permissions": {"allow": [f"Read(//{plugin}/**)"]}})
+    )
     payload = {
         "tool_input": {"command": block[0].removeprefix("$ ")},
         "cwd": str(repo),
@@ -421,6 +427,13 @@ def test_release_procedure_runs_the_canary_before_the_tag():
     bullet = next(unit for unit in releases.split("\n- ") if "canary" in unit)
     for token in ["--plugin-dir", "patch", "minor or major", "overrides installed version"]:
         assert token in bullet, token
+
+
+# SPEC 007, AC15: a canary loads the plugin from a clone, which the cache rule does not
+# cover, so the procedure names the absolute clone rule.
+def test_the_canary_names_the_clone_read_rule():
+    releases = section(CONVENTIONS, "## Releases")
+    assert "Read(//" in releases
 
 
 def test_claude_md_lists_the_canary():

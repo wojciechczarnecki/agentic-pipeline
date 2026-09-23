@@ -95,7 +95,10 @@ ONLY Alembic's verbs and the variables `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`;
 `migrations.command` and `migrations.localHosts` are configurable, so a project on another
 migration tool is not protected — the guard's silence is not protection. Fail-open is
 deliberate: a missing `.claude/workflow.json`, a validation error and a missing `python3`
-end with a warning on stderr and exit code 0.
+end with a warning on stderr and exit code 0. Once per session the guard also checks that a
+settings file allows `Read` on the plugin's own directory (see the section map below) and,
+when none does, prints a notice naming the exact rule to add — as `systemMessage` for the
+owner and `additionalContext` for the model, never blocking the call.
 
 What the guard defends against, the three layers behind it (guard, `pre-push`, GitHub
 rulesets), the commands it stops that a string `deny` rule lets through, and its known
@@ -188,7 +191,8 @@ the plugin's directory in `permissions.allow`:
 `--plugin-dir` clone the absolute form `Read(//<clone>/plugin/**)` (`//` is absolute, a
 single `/` is relative to the settings file). A read that fails stops the stage: under
 `/pipeline:ship` with `RESULT: ESCALATE` naming the file and the rule to add, and in an
-interactive `idea` or `plan` with the same message to the owner.
+interactive `idea` or `plan` with the same message to the owner. The command guard warns
+once per session when no user, project or project-local settings file holds such a rule.
 
 ### Severity tokens
 

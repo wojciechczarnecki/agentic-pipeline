@@ -319,7 +319,7 @@ negative check needs it removable per case).
       stdout; they keep passing with the real `HOME` (the notice only adds stdout).
       Automatic verification: `uv run pytest -q plugin/tests/test_guard_read_rule.py plugin/tests/test_guard.py plugin/tests/test_guard_detach.py plugin/tests/test_guard_own_files.py plugin/tests/test_guard_protected_branches.py plugin/tests/test_guard_api_writes.py`
 
-- [ ] 5. **Documentation of the rule** — files: `plugin/README.md` (the `### Command guard`
+- [x] 5. **Documentation of the rule** — files: `plugin/README.md` (the `### Command guard`
       paragraph: one sentence on the read-rule notice and its two channels),
       `plugin/docs/GUARD.md` (the notice under the command guard; `## Known limits`: a rule
       given only through `claude --settings` or managed policy, and rules in the
@@ -544,6 +544,13 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   (the planned proof of AC2) made no parity helper fail, because the structure check saw
   headings only and the occurs check simply ran one row fewer. With the fields in the
   structure, a removed field row fails `key_of`. Test-only; no plugin behaviour change.
+- **D2 (step 5)** — `tests/test_documents.py::test_readme_guard_block_matches_the_guard`
+  now writes a project `.claude/settings.json` with the clone `Read` rule into its scratch
+  repository. Why: it compares the guard's stderr on a refused push with the README block
+  exactly, and since step 4 a refused first call of a session carries the read-rule notice
+  after the reason (as planned); the Risks section assumed the notice only adds stdout. The
+  test now models a consumer set up as documented, which keeps its subject — the refusal
+  text — deterministic on a fresh machine. Assertion and README block unchanged.
 
 ## Final review
 
