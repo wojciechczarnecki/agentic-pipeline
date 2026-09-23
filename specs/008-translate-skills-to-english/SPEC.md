@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-09-23"
   - "spec-ready — 2026-09-23"
   - "plan-draft — 2026-09-23"
   - "plan-approved — 2026-09-23"
+  - "implemented — 2026-09-23"
 metrics:
   started_at: 2026-09-23T15:42
   escalations: 0
@@ -12,6 +13,9 @@ metrics:
   plan_review_blockers: 0
   plan_review_majors: 0
   plan_changes: 5
+  implement_steps: 12
+  implement_iterations: 1
+  deviations: 5
 ---
 
 # SPEC 008 — Skills, agents and tests translated into English

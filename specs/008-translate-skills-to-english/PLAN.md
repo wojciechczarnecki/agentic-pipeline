@@ -452,7 +452,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       and `one to one`, the impact holds `"language": "pl"`, the manifest version is
       `0.6.0`).
       Automatic verification: `uv run pytest -q -p no:cacheprovider tests/test_documents.py plugin/tests/test_readme.py plugin/tests/test_templates_language.py`
-- [ ] 12. AC6 span comparison — scratch `span_diff.py` (Approach → AC6) run over the 11
+- [x] 12. AC6 span comparison — scratch `span_diff.py` (Approach → AC6) run over the 11
       files against `4bbe647`; counts into End-to-end → Automatic, every `OTHER` into
       `## Deviations`; a span found changed without reason is fixed in the skill (then
       re-run steps 1–7 verification) rather than justified.
@@ -510,7 +510,43 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
    added `english-twin` spans, and the number of `OTHER` differences (each in
    `## Deviations`) — recorded here.
 
-_(results recorded here by /pipeline:implement)_
+Results (2026-09-23, branch head before the closing commit):
+
+1. `bash scripts/check.sh` → `ALL GREEN` (validate plugin and marketplace passed, ruff, black,
+   1887 tests).
+2. `cd plugin && python3 -m pytest -q -p no:cacheprovider tests` → 1786 passed.
+3. The grep lists exactly the allowlist: `templates/{CLAUDE,SPEC,PLAN}.pl.md`, the five
+   `templates/docs/*.pl.md`, `templates/sections.md`,
+   `evals/plan-review-approves-polish-owner-decision/scaffold.sh`,
+   `evals/init-without-questions/case.yaml`, `tests/test_eval_cases.py`,
+   `tests/test_init_templates.py`, `tests/test_templates_language.py` (14 files).
+4. `claude plugin validate --strict plugin/` and `claude plugin validate --strict .` → passed.
+5. Span comparison against `4bbe647` (removed `map` / removed `polish` / removed `OTHER`;
+   added, all of them `english-twin`):
+
+   | File | map | polish | OTHER | added |
+   |---|---|---|---|---|
+   | `skills/idea` | 3 | 2 | 0 | 2 |
+   | `skills/plan` | 0 | 3 | 0 | 3 |
+   | `skills/plan-review` | 1 | 3 | 0 | 3 |
+   | `skills/implement` | 1 | 5 | 0 | 5 |
+   | `skills/final-review` | 2 | 5 | 0 | 5 |
+   | `skills/ship` | 3 | 2 | 0 | 2 |
+   | `skills/init` | 0 | 2 | 0 | 2 |
+   | `agents/planner` | 1 | 0 | 0 | 0 |
+   | `agents/plan-reviewer` | 1 | 0 | 0 | 0 |
+   | `agents/implementer` | 1 | 1 | 0 | 1 |
+   | `agents/reviewer` | 1 | 0 | 1 | 1 |
+
+   Added spans: `Read(//<plugin directory path without the leading />/**)`,
+   `…/plugins/cache/<marketplace>/pipeline/<version>`, `<verify.command> <UI scope>`,
+   `git add <files>`, `<type>: <message>`, the finding format with `file:line`, the
+   `gh pr create … "<type>: <English message after the squash>" --body-file <file>` line,
+   `…/<marketplace>/<plugin>/<version>/`, `templates/docs/<NAME>.<language>.md`,
+   `id | severity | one sentence` — each the twin of a removed Polish span. One `OTHER`:
+   D2. Fenced blocks (outside the comparison) changed only in their Polish prose: the
+   `RESULT` placeholders and the self-correction loop; the `RESULT` field names are
+   unchanged (`test_the_result_block_matches_the_contract`).
 
 ### Manual (performed by the owner)
 
@@ -531,12 +567,12 @@ _(results recorded here by /pipeline:implement)_
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` / domain documents from the map
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` / domain documents from the map
       in `CLAUDE.md`, if applicable
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -604,6 +640,22 @@ by an owner scenario the SPEC assigns, and no escalation trigger applies.
   its name: English, Polish" instead of "English/angielski, polski/po polsku": the Polish words
   carry Polish letters (AC1), and a Polish request in an argument is understood without them.
   The colon of the original is kept rather than the plan's parenthesis, to stay one to one.
+- D2 (step 2, span comparison `OTHER`) — `reviewer.md`: `id | waga | jedno zdanie` →
+  `id | severity | one sentence`. The span holds Polish words without a Polish letter, so the
+  script classifies it `OTHER`; it is the same table header the contract's `SUMMARY` line
+  translates, and rule 2 covers it in substance.
+- D3 (steps 4–5) — placeholder words not on rule 2's list were translated like those on it:
+  `git add <pliki>` → `git add <files>` (implement), `--body-file <plik>` → `<file>`
+  (final-review).
+- D4 (step 3) — `idea` step 4 named the suffix by both literals (`(założenie)` /
+  `(assumption)`); with the Polish one dropped by rule 3, the sentence says "`(assumption)` or
+  its Polish twin from the section map", so a Polish SPEC still gets the Polish suffix.
+- D5 (step 9) — the 0.6.0 changelog line reads "a Polish consumer whose owner-decisions
+  section, under its Polish heading, accepts" instead of the plan's "whose Polish
+  owner-decisions heading accepts", which would have said "Polish" twice in one phrase.
+- Line wrapping: translated paragraphs were re-wrapped at ≤ 92 columns where English ran
+  longer; the shared blocks are character-identical across files (the plan binds the
+  wording, not the wrapping).
 
 ## Final review
 
