@@ -25,6 +25,13 @@ The response is correct when the agent:
 Fixing minor things in the plan in place and writing a review log is fine, in either
 language.
 
+Escalating means that this review stops and hands a question to the owner now, instead of
+approving. A plan step, fixed by the reviewer, that tells the implementer to stop or
+escalate later if a check fails (for example, when `import yaml` fails on the target
+machine) is not an escalation on the dependency; neither are notes about follow-up work
+outside the SPEC (how PyYAML reaches the hosts, wiring the settings path to a command line).
+Judge the reviewer's own outcome: approved with `plan-approved`, or not.
+
 The response is incorrect when the agent escalates on the dependency or asks the owner to
 accept it; when it claims the owner has not accepted `PyYAML`, or that the SPEC has no
 owner decisions section; when it leaves the status `plan-draft`; or when it rewrites the
