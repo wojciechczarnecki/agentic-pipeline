@@ -33,10 +33,16 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
    i nie czekasz na odpowiedź, bo nie ma jej od kogo dostać.
    Mając `AskUserQuestion` — **zadaj pytania: jedna runda, maksymalnie 4** (każde pytanie
    z rekomendacją: opcja pierwsza z dopiskiem „(Recommended)" w etykiecie):
-   1. nazwa projektu i problem, który rozwiązuje (jedno zdanie);
-   2. potwierdzenie wykrytego stacku i komendy pełnej weryfikacji;
-   3. produkcja poza zasięgiem agenta — hosty i komendy CLI (albo „brak produkcji");
-   4. język dokumentów (`language`).
+   1. język plików projektu (`language`): `en` „(Recommended)" albo `pl` — rekomendujesz
+      `en`, bo to wartość domyślna i język, którego oczekują czytelnicy spoza projektu;
+      gdy `.claude/workflow.json` ma już obsługiwany `language` (`en` albo `pl`),
+      rekomendujesz tę istniejącą wartość — przyjęcie rekomendacji nie zmienia języka
+      projektu; odpowiedź decyduje o dokumentach, specach, planach i treści PR;
+   2. nazwa projektu i problem, który rozwiązuje (jedno zdanie);
+   3. potwierdzenie wykrytego stacku i komendy pełnej weryfikacji;
+   4. produkcja poza zasięgiem agenta — hosty i komendy CLI (albo „brak produkcji").
+   Pytania zadajesz w języku sesji Claude Code — odpowiedź o `language` rządzi plikami,
+   nie rozmową.
    **Druga runda tylko wtedy, gdy autowykrycie stacku zawiodło** — pytasz wówczas
    o komendę weryfikacji, komendy formatowania i katalog hooków gita. W żadnym innym
    przypadku drugiej rundy nie ma.
@@ -48,7 +54,13 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
    uruchomionej z `--permission-mode bypassPermissions`; przy słabszym trybie zapisujesz
    wszystko poza `.claude/`, a pominięte pliki wypisujesz z treścią do wklejenia i kończysz
    sukcesem. Brakujące wartości zapisujesz jako `TODO:` — w `.claude/workflow.json`
-   (np. `"command": "TODO: komenda pełnej weryfikacji"`) i w nagłówkach dokumentów.
+   (np. `"command": "TODO: <verify command>"`, z opisem po `TODO:` w języku z `language`)
+   i w nagłówkach dokumentów.
+   Wyjątek — `language`: bierzesz go z argumentu, gdy argument wskazuje język (`en`,
+   `pl` albo jego nazwa: English/angielski, polski/po polsku); bez takiego argumentu
+   zostawiasz obsługiwany `language` z istniejącego `.claude/workflow.json`, a gdy go
+   nie ma — ustawiasz `en`; nigdy ze znacznikiem `TODO:`, bo `en` to wartość domyślna.
+   Język, w którym napisano prompt, nie jest takim wskazaniem.
    Kończysz sukcesem, wypisując listę wartości do uzupełnienia.
 4. **Wygeneruj pliki** z `${CLAUDE_PLUGIN_ROOT}/templates/`, podstawiając odpowiedzi.
    **Szablony przenoś powłoką** (`cp`, `cat`, `sed`), nie narzędziami Read/Glob: katalog
@@ -82,13 +94,16 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
      (wraz z jego treścią) i kończ sukcesem — reszta szkieletu i tak stoi;
    - `.claude/workflow.json` — z `templates/workflow.example.json`, przycięty do tego
      projektu: sekcja `migrations` zostaje tylko wtedy, gdy projekt ma narzędzie migracji;
-     `production`, `verify`, `format`, `docs`, `gitHooksDir`, `language` wypełnione
-     odpowiedziami albo `TODO:`; klucza `protectedBranches` nie zapisujesz (kanał wydań
+     `production`, `verify`, `format`, `docs`, `gitHooksDir` wypełnione odpowiedziami
+     albo `TODO:`; `language` to zawsze `en` albo `pl` (odpowiedź, argument, istniejąca
+     wartość albo `en`), nigdy `TODO:`; klucza `protectedBranches` nie zapisujesz (kanał wydań
      chroni właściciel ręcznie, po `/pipeline:init`);
-   - `CLAUDE.md` — z `templates/CLAUDE.md`, z mapą dokumentów przepisaną na ścieżki
-     z `docs.*` (inaczej instrukcja dla agentów wskazuje inne pliki niż konfiguracja);
+   - `CLAUDE.md` — z `templates/CLAUDE.<language>.md` (szablon w języku z `language`),
+     z mapą dokumentów przepisaną na ścieżki z `docs.*` (inaczej instrukcja dla agentów
+     wskazuje inne pliki niż konfiguracja);
    - `docs/PROJECT.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/DECISIONS.md`,
-     `docs/CONVENTIONS.md` — z `templates/docs/`;
+     `docs/CONVENTIONS.md` — każdy z `templates/docs/<NAZWA>.<language>.md`, zapisany pod
+     nazwą docelową bez przyrostka języka;
    - `scripts/git-hooks/pre-push` — z `templates/pre-push`, **z bitem wykonywalności**
      (`chmod +x`); ścieżka katalogu zgodna z `gitHooksDir`;
    - `.github/workflows/ci.yml` — złożony z wariantów według wykrytego stacku:
@@ -108,10 +123,15 @@ Nic poza tymi prefiksami — żadnych plików źródłowych, konfiguracji narzę
    przez użytkownika (nowa sekcja w `CLAUDE.md`, wiersz w rejestrze decyzji, pozycja
    w backlogu) zostaje nietknięta. Zmieniasz wyłącznie to, co wynika z NOWYCH odpowiedzi;
    plików, których nowe odpowiedzi nie dotyczą, nie zapisujesz wcale — `git status`
-   ma po takim przebiegu milczeć na ich temat.
+   ma po takim przebiegu milczeć na ich temat. Odpowiedź o języku inna niż istniejący
+   `language` zmienia wyłącznie `language` w `.claude/workflow.json`: istniejących
+   dokumentów nie tłumaczysz ani nie podmieniasz na szablon w nowym języku (w nowym
+   powstaje tylko plik, którego brakowało), a w zamknięciu mówisz właścicielowi, że
+   zostają w dotychczasowym języku.
 7. **Zamknięcie.** Wypisz właścicielowi:
    - listę utworzonych, zaktualizowanych i pominiętych plików;
    - wartości `TODO:` do uzupełnienia;
+   - przy zmianie `language` — że istniejące dokumenty zostały w dotychczasowym języku;
    - instrukcję włączenia hooka gita: `git config core.hooksPath <gitHooksDir>`
      (raz na klon — inaczej `pre-push` nie działa);
    - następny krok: `/pipeline:idea` dla pierwszego feature'a.

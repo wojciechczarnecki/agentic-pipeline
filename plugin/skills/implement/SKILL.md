@@ -15,6 +15,18 @@ gdy mówią to komendy weryfikacyjne — nigdy dlatego, że „wygląda dobrze".
 - Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
 - `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
+## Język
+
+- Pliki, które zapisujesz w repozytorium (SPEC, PLAN — każda sekcja, także wpisy decyzji,
+  review log, deviations i raport końcowego review), oraz treść PR piszesz w języku
+  z `language` w `.claude/workflow.json`; brak klucza albo wartość spoza `en`/`pl` = `en`.
+  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji w README
+  pluginu).
+- Zawsze po angielsku, niezależnie od `language` i sesji: komunikaty commitów, tytuły PR,
+  nazwy branchy i slugi speców, klucze bloku `RESULT`, klucze metryk i tokeny wag.
+- Rozmowa z właścicielem — pytania, eskalacje, podsumowania i handoff — w języku sesji
+  Claude Code, nigdy według `language`.
+
 ## Wejście / wyjście
 
 - Wejście: `<docs.specsDir>/NNN-<slug>/` ze statusem `plan-approved`.
@@ -33,22 +45,23 @@ gdy mówią to komendy weryfikacyjne — nigdy dlatego, że „wygląda dobrze".
   praca na fragmencie to praca na przestarzałym modelu kodu.
 - Edycje w zakresie planu — bez pytania. Eskalacja przed: dodaniem zależności lub
   migracji, których plan nie przewiduje (albo których nie akceptują „Decyzje
-  właściciela"); usunięciem plików spoza zakresu planu.
+  właściciela" / `## Owner decisions`); usunięciem plików spoza zakresu planu.
 - Eskalacja w sesji samodzielnej: `AskUserQuestion` z opcjami i rekomendacją, decyzja
-  dopisana do PLAN.md → `## Decyzje właściciela`. W ramach `/pipeline:ship`: blok RESULT.
+  dopisana do PLAN.md → `## Decyzje właściciela` (`## Owner decisions`). W ramach
+  `/pipeline:ship`: blok RESULT.
 
 ## Przebieg
 
-1. **Start:** przeczytaj SPEC.md, PLAN.md (łącznie z „Decyzje właściciela") i
-   `<docs.conventions>`. Sprawdź `git status` (czyste drzewo) i
-   `git branch --show-current` (branch lane'a). `git fetch origin`; jeśli `origin/main`
+1. **Start:** przeczytaj SPEC.md, PLAN.md (łącznie z „Decyzje właściciela" /
+   `## Owner decisions`) i `<docs.conventions>`. Sprawdź `git status` (czyste drzewo)
+   i `git branch --show-current` (branch lane'a). `git fetch origin`; jeśli `origin/main`
    ma commity, których branch nie ma — `git merge origin/main` (nie rebase: branch bywa
    już wypchnięty, a force-push jest zablokowany). Konflikt → eskalacja.
    Jeśli PLAN ma już odhaczone kroki (wznowienie pracy) — ufaj im i kontynuuj od
    pierwszego nieodhaczonego.
 2. **Krok po kroku, po kolei:** implementacja + testy kroku → **pętla samokorekty**
-   (niżej) → zielone → odhacz checkbox w PLAN.md → commit kroku (`<typ>: <komunikat>`,
-   format z `<docs.conventions>`; pliki kroku + PLAN.md) → następny krok.
+   (niżej) → zielone → odhacz checkbox w PLAN.md → commit kroku (`<typ>: <komunikat>`
+   po angielsku, format z `<docs.conventions>`; pliki kroku + PLAN.md) → następny krok.
 3. **Odstępstwa:** drobne i konieczne (inna nazwa pliku, mały helper) → wykonaj
    i dopisz do `## Deviations` z uzasadnieniem. Zmieniające zakres, architekturę lub
    schemat danych → eskalacja; nie kontynuuj na własną rękę.
@@ -72,9 +85,9 @@ gdy mówią to komendy weryfikacyjne — nigdy dlatego, że „wygląda dobrze".
 
 ## Pętla samokorekty (obowiązkowa dla każdego kroku)
 
-Komendy bierzesz z sekcji „Weryfikacja automatyczna" danego kroku planu — uruchamiasz
-dokładnie te, nie przybliżenia (do szybkiej iteracji na jednej warstwie służy
-`<verify.command>` z zakresem z `verify.scopes`).
+Komendy bierzesz z sekcji „Weryfikacja automatyczna" (`Automatic verification:`) danego
+kroku planu — uruchamiasz dokładnie te, nie przybliżenia (do szybkiej iteracji na jednej
+warstwie służy `<verify.command>` z zakresem z `verify.scopes`).
 
 ```
 1. Uruchom WSZYSTKIE komendy weryfikacyjne kroku.

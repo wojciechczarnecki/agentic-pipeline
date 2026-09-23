@@ -16,10 +16,9 @@ a finding which:
 1. points at `shop/shipping.py` (a line number is welcome but not required);
 2. says that an order of exactly 100.00 (10000 cents) is charged shipping although the
    SPEC makes it free, because the comparison is `>` where it must be `>=`;
-3. carries a weight above a nit: `blocker`, `worth fixing`, the skill's Polish label for
-   worth fixing (it starts `warto popraw`), "should fix", "major" or an equivalent label
-   are all acceptable; the wording of the label does not matter, only that the finding is
-   not filed as a cosmetic nit.
+3. carries a weight above a nit: `blocker`, `worth-fixing`, "should fix", "major" or an
+   equivalent label are all acceptable; the wording of the label does not matter, only
+   that the finding is not filed as a cosmetic nit.
 
 Suggesting a boundary test for 10000 cents alongside the fix is welcome but not required.
 

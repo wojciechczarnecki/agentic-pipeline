@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -12,12 +13,12 @@ TEXT = SKILL.read_text()
 GENERATED = {
     ".claude/settings.json": "settings.json",
     ".claude/workflow.json": "workflow.example.json",
-    "CLAUDE.md": "CLAUDE.md",
-    "docs/PROJECT.md": "docs/PROJECT.md",
-    "docs/ROADMAP.md": "docs/ROADMAP.md",
-    "docs/BACKLOG.md": "docs/BACKLOG.md",
-    "docs/DECISIONS.md": "docs/DECISIONS.md",
-    "docs/CONVENTIONS.md": "docs/CONVENTIONS.md",
+    "CLAUDE.md": "CLAUDE.{language}.md",
+    "docs/PROJECT.md": "docs/PROJECT.{language}.md",
+    "docs/ROADMAP.md": "docs/ROADMAP.{language}.md",
+    "docs/BACKLOG.md": "docs/BACKLOG.{language}.md",
+    "docs/DECISIONS.md": "docs/DECISIONS.{language}.md",
+    "docs/CONVENTIONS.md": "docs/CONVENTIONS.{language}.md",
     "scripts/git-hooks/pre-push": "pre-push",
     ".github/workflows/ci.yml": "github/workflows/ci-placeholder.yml",
     ".github/workflows/security.yml": "github/workflows/security-python.yml",
@@ -61,9 +62,11 @@ def test_configurable_values_are_substituted_into_the_templates():
 
 
 @pytest.mark.parametrize("generated, template", sorted(GENERATED.items()))
-def test_generated_file_list_matches_templates(generated, template):
+@pytest.mark.parametrize("language", ["en", "pl"])
+def test_generated_file_list_matches_templates(generated, template, language):
     assert generated in TEXT, generated
-    assert (TEMPLATES / template).is_file(), template
+    source = template.format(language=language)
+    assert (TEMPLATES / source).is_file(), source
 
 
 def test_the_git_hook_template_is_executable_and_its_setup_is_printed():
@@ -153,3 +156,64 @@ def test_the_non_interactive_mode_forbids_asking_in_prose(number):
 # out (SPEC 005, AC7).
 def test_init_does_not_write_protected_branches():
     assert "protectedBranches" in step(4)
+
+
+def questions() -> list[str]:
+    asking = step(2)
+    return re.findall(r"\n   (\d)\. (.*(?:\n      .*)*)", asking)
+
+
+# SPEC 006, AC10: the language comes first, because it decides every document init writes;
+# `en` is the recommended default.
+def test_the_language_is_the_first_question():
+    found = questions()
+    assert 1 <= len(found) <= 4, found
+    number, first = found[0]
+    assert number == "1"
+    for token in ["`language`", "`en`", "`pl`", "(Recommended)"]:
+        assert token in first, token
+
+
+# SPEC 006, AC12: unattended, the argument names the language or it is `en`, without a
+# `TODO:` marker — the prompt's own language does not count.
+def test_unattended_language_comes_from_the_argument():
+    body = " ".join(step(3).split())
+    for token in ["argument", "`en`", "`pl`", "`language`"]:
+        assert token in body, token
+
+
+# SPEC 006, AC11: every document is copied from the template of the chosen language.
+def test_templates_are_picked_by_language():
+    generating = step(4)
+    assert "templates/CLAUDE.<language>.md" in generating
+    assert "templates/docs/<NAZWA>.<language>.md" in generating
+    assert "templates/CLAUDE.md" not in generating
+
+
+# A re-run keeps the project's language unless the owner changes it: the question
+# recommends the supported value `.claude/workflow.json` already holds, and unattended that
+# value is the fallback before `en` — otherwise a Polish project would get English documents.
+def test_a_re_run_keeps_the_configured_language():
+    _, first = questions()[0]
+    first = " ".join(first.split())
+    assert "`.claude/workflow.json`" in first
+    assert "istniejącą wartość" in first
+    body = " ".join(step(3).split())
+    fallback = body[body.index("Wyjątek — `language`") :]
+    assert fallback.index("`.claude/workflow.json`") < fallback.index("ustawiasz `en`")
+    assert "istniejąca wartość" in " ".join(step(4).split())
+
+
+# The unattended TODO example must not carry Polish into an English project's config.
+def test_the_todo_example_is_not_tied_to_one_language():
+    body = " ".join(step(3).split())
+    assert "TODO: <verify command>" in body
+    assert "komenda pełnej weryfikacji" not in body
+
+
+# SPEC 006, AC13: a re-run with another language changes the key, not the documents.
+def test_a_language_change_leaves_documents_alone():
+    rerun = " ".join(step(6).split())
+    assert "`language`" in rerun
+    assert "istniejących dokumentów nie tłumaczysz ani nie podmieniasz" in rerun
+    assert "że istniejące dokumenty zostały w dotychczasowym języku" in " ".join(step(7).split())

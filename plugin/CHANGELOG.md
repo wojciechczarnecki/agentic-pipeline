@@ -2,6 +2,51 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.5.0
+
+Language made explicit: `language` decides what the pipeline writes into the repository,
+commits and PR titles are English everywhere, and the conversation follows the session.
+Skills and agents stay Polish until 0.6.0.
+
+**consumer impact:** a consumer without `language` in `.claude/workflow.json` now gets
+English specs, plans and PR descriptions — add `"language": "pl"` to keep Polish. A value
+other than `en` or `pl` warns and falls back to `en`. `/pipeline:init` asks for the language
+first and generates `CLAUDE.md` and `docs/*` in it. Commit messages, PR titles and branch
+names are English whatever `language` says. Final-review findings use the severity token
+`worth-fixing`. Existing specs and documents are not translated, and specs in either
+language keep working.
+
+### Added
+
+- A language contract in the README: what follows `language` (every file the pipeline
+  writes, PR descriptions), what is always English (commit messages, PR titles, branch
+  names, `RESULT` and metric keys, severity tokens) and what follows the Claude Code
+  session (questions, escalations, summaries). Every stage skill carries it as one
+  identical `## Język` block; the stage contract gains a language bullet.
+- SPEC and PLAN templates per language (`templates/{SPEC,PLAN}.{en,pl}.md`); `idea` and
+  `plan` carry both inline, pinned byte for byte to those files, and pick one by
+  `language`. PLAN is written in the current `language`, also over a SPEC in another one.
+- A section map in the README (key → Polish → English); stages name sections by both
+  headings and accept either. `plan-review` checks the plan's language.
+- `/pipeline:init` templates per language (`CLAUDE.{en,pl}.md`, `docs/*.{en,pl}.md`); the
+  language is the first question, unattended it comes from the argument, the existing
+  `language` or `en`; a re-run recommends the configured language, and a re-run with
+  another language changes only the key.
+- Eval case `init-writes-the-chosen-language`.
+
+### Changed
+
+- `language` accepts `en` and `pl` only; the default is `en` (was `pl`).
+- `workflow_metrics.py` reads `.claude/workflow.json` section by section, like the hooks: a
+  faulty key warns and falls back to its default instead of stopping the report.
+- Severities are the tokens `blocker` / `worth-fixing` / `nit` (final review) and
+  `blocker` / `major` / `minor` (plan review), written as code in every language; the ship
+  gate's options use them.
+- `final-review` opens the PR with an English conventional-commit title and a body in
+  `language`; `ship` asks the owner in the session language.
+- `init-without-questions` also requires English documents and `"language": "en"`; the
+  final-review eval criteria use the tokens.
+
 ## 0.4.0
 
 The guard guards itself and the release channel: it protects configurable release-channel

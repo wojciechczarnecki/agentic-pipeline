@@ -192,8 +192,12 @@ def render(rows: list[tuple[str, dict[str, str]]]) -> str:
     return "\n".join(lines)
 
 
+# Section-wise, like the hooks: a key that fails validation (a `language` outside the
+# supported ones) only warns and falls back to its default instead of stopping the report.
 def configured_specs_dir(start: Path) -> Path:
-    config = workflow_config.load(start)
+    config, problems = workflow_config.load_sections(start)
+    for problem in problems:
+        print(f"workflow.json: {problem}", file=sys.stderr)
     root = config.root or workflow_config.project_root(start)
     return root / (config.get("docs.specsDir") or "specs")
 

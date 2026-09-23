@@ -15,4 +15,7 @@ execution:
   prompt: |
     Jesteś w pustym katalogu z `git init` i bez żadnych plików. Uruchom `/pipeline:init`.
     Nie odpowiem na żadne pytanie — pracujesz bez mojego udziału, więc dokończ zadanie sam
-    i na koniec wypisz, co powstało i co zostało do uzupełnienia.
+    i na koniec wypisz, co powstało i co zostało do uzupełnienia. Pokaż też pierwsze pięć
+    linii `CLAUDE.md` i każdego pliku w `docs/` oraz wartość `language` zapisaną
+    w `.claude/workflow.json` (albo, gdy `.claude/` nie dało się zapisać, wartość w treści
+    wypisanej do wklejenia).

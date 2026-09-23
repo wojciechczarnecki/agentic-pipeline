@@ -10,18 +10,20 @@ TEMPLATES = PLUGIN / "templates"
 sys.path.insert(0, str(PLUGIN / "bin"))
 
 import workflow_config  # noqa: E402
+from test_readme import POLISH  # noqa: E402
 
-BASE_FILES = [
-    "pre-push",
-    "settings.json",
-    "workflow.example.json",
-    "CLAUDE.md",
-    "docs/PROJECT.md",
-    "docs/ROADMAP.md",
-    "docs/BACKLOG.md",
-    "docs/DECISIONS.md",
-    "docs/CONVENTIONS.md",
+SHARED_FILES = ["pre-push", "settings.json", "workflow.example.json"]
+LANGUAGES = ("en", "pl")
+DOCUMENTS = [
+    "CLAUDE",
+    "docs/PROJECT",
+    "docs/ROADMAP",
+    "docs/BACKLOG",
+    "docs/DECISIONS",
+    "docs/CONVENTIONS",
 ]
+LANGUAGE_FILES = [f"{document}.{language}.md" for document in DOCUMENTS for language in LANGUAGES]
+BASE_FILES = SHARED_FILES + LANGUAGE_FILES
 
 
 @pytest.mark.parametrize("relative", BASE_FILES)
@@ -82,15 +84,68 @@ def test_workflow_example_covers_every_key_and_validates(tmp_path):
     assert config.get("docs.specsDir") == "specs"
 
 
-def test_backlog_template_carries_priorities_and_triggers():
-    text = (TEMPLATES / "docs" / "BACKLOG.md").read_text()
+@pytest.mark.parametrize("language, trigger", [("en", "Trigger"), ("pl", "Wyzwalacz")])
+def test_backlog_template_carries_priorities_and_triggers(language, trigger):
+    text = (TEMPLATES / "docs" / f"BACKLOG.{language}.md").read_text()
     assert "P1" in text and "P2" in text and "P3" in text
-    assert "Wyzwalacz" in text
+    assert trigger in text
 
 
-def test_documents_leave_the_project_specific_parts_open():
-    for relative in ["CLAUDE.md", "docs/PROJECT.md", "docs/CONVENTIONS.md"]:
+@pytest.mark.parametrize("language", LANGUAGES)
+def test_documents_leave_the_project_specific_parts_open(language):
+    for document in ["CLAUDE", "docs/PROJECT", "docs/CONVENTIONS"]:
+        relative = f"{document}.{language}.md"
         assert "TODO" in (TEMPLATES / relative).read_text(), relative
+
+
+def heading_levels(text: str) -> list[str]:
+    levels, fenced = [], False
+    for line in text.splitlines():
+        if line.startswith("```"):
+            fenced = not fenced
+        elif not fenced and line.startswith("#"):
+            levels.append(line.split(" ", 1)[0])
+    return levels
+
+
+# `init` copies the template for the `language` it was given (SPEC 006, AC11): the two
+# languages are one document, so a section or a placeholder added to one has to reach the
+# other.
+@pytest.mark.parametrize("document", DOCUMENTS)
+def test_language_twins_share_their_structure(document):
+    english = (TEMPLATES / f"{document}.en.md").read_text()
+    polish = (TEMPLATES / f"{document}.pl.md").read_text()
+    assert heading_levels(english) == heading_levels(polish)
+    assert english.count("TODO") == polish.count("TODO")
+
+
+@pytest.mark.parametrize("document", DOCUMENTS)
+def test_english_init_templates_have_no_polish(document):
+    text = (TEMPLATES / f"{document}.en.md").read_text()
+    # Unstripped: the English templates carry no Polish even in code.
+    found = sorted(POLISH & set(text))
+    assert not found, (document, found)
+
+
+# SPEC 006, AC14: commit messages, PR titles and branch names are English for every
+# consumer, so the conventions state it instead of leaving it open; the documentation follows
+# `language`, and the conversation is the session's.
+@pytest.mark.parametrize(
+    "language, heading, commits, session",
+    [
+        ("en", "## Language", "Commit messages", "session"),
+        ("pl", "## Język", "Komunikaty", "sesji"),
+    ],
+)
+def test_conventions_state_the_language_rules(language, heading, commits, session):
+    text = (TEMPLATES / "docs" / f"CONVENTIONS.{language}.md").read_text()
+    rules = text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
+    commit_line = next(line for line in rules.splitlines() if line.startswith(f"- {commits}"))
+    assert "TODO" not in commit_line
+    assert "PR" in commit_line
+    assert "`language`" in rules
+    assert f'`language: "{language}"`' in rules
+    assert session in rules
 
 
 GITHUB = TEMPLATES / "github"

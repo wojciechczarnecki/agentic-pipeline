@@ -9,12 +9,25 @@ argument-hint: <numer lub slug speca>
 Rola: koordynator, nie wykonawca. NIE planujesz, NIE implementujesz i NIE recenzujesz sam —
 każdy etap robi osobny subagent ze świeżym kontekstem (daje to samo, co nowa sesja po
 `/clear`). Twój kontekst ma zostać lekki: czytasz frontmatter SPEC.md, „Streszczenie dla
-właściciela" z PLAN.md i bloki RESULT od subagentów — nie diff, nie kod.
+właściciela" (`## Owner summary`) z PLAN.md i bloki RESULT od subagentów — nie diff, nie
+kod.
 
 ## Konfiguracja projektu
 
 - Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
 - `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
+
+## Język
+
+- Pliki, które zapisujesz w repozytorium (SPEC, PLAN — każda sekcja, także wpisy decyzji,
+  review log, deviations i raport końcowego review), oraz treść PR piszesz w języku
+  z `language` w `.claude/workflow.json`; brak klucza albo wartość spoza `en`/`pl` = `en`.
+  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji w README
+  pluginu).
+- Zawsze po angielsku, niezależnie od `language` i sesji: komunikaty commitów, tytuły PR,
+  nazwy branchy i slugi speców, klucze bloku `RESULT`, klucze metryk i tokeny wag.
+- Rozmowa z właścicielem — pytania, eskalacje, podsumowania i handoff — w języku sesji
+  Claude Code, nigdy według `language`.
 
 ## Stan
 
@@ -65,9 +78,12 @@ Obowiązuje każdego agenta uruchomionego przez `/pipeline:ship`:
 - Realizujesz wczytany skill etapu. Nie możesz pytać właściciela (`AskUserQuestion` jest
   niedostępne). Wszędzie, gdzie skill każe zapytać, poczekać albo zrobić STOP — kończysz
   pracę blokiem `RESULT: ESCALATE`.
-- Decyzje właściciela z SPEC.md i PLAN.md → `## Decyzje właściciela` są wiążące; nie
-  eskaluj ponownie kwestii już rozstrzygniętej.
+- Decyzje właściciela z SPEC.md i PLAN.md → `## Decyzje właściciela` (`## Owner decisions`)
+  są wiążące; nie eskaluj ponownie kwestii już rozstrzygniętej.
 - Stan zapisujesz w plikach speca i w commitach, nigdy tylko w odpowiedzi.
+- Język: pliki speca i treść PR w `language`; commity, tytuł PR i klucze bloku RESULT
+  po angielsku; treść ESCALATION i SUMMARY orkiestrator pokazuje właścicielowi w języku
+  sesji.
 - Metryki etapu wpisujesz sam do płaskiego bloku `metrics:` we frontmatterze SPEC.md:
   liczniki to liczby całkowite, znaczniki czasu `%Y-%m-%dT%H:%M`, `escalations` od startu.
   Licznik `escalations` zwiększa wyłącznie orkiestrator — agent etapu go nie zmienia.
@@ -86,10 +102,11 @@ SUMMARY: <≤ 10 linii; dla reviewer/report — tabela znalezisk: id | waga | je
 - Brak bloku RESULT albo `STATUS` niezgodny z plikiem → uruchom etap ponownie raz; drugi
   raz → eskaluj sam, opisując, co agent zwrócił.
 - **ESCALATE** → `AskUserQuestion`: pytanie z `ESCALATION`, opcje od agenta, rekomendowana
-  pierwsza z dopiskiem „(Recommended)". Odpowiedź (data, etap, pytanie, decyzja) dopisz
-  do PLAN.md → `## Decyzje właściciela`, a gdy PLAN.md jeszcze nie istnieje — do SPEC.md →
-  `## Decyzje właściciela`. Zwiększ `metrics.escalations`, zacommituj
-  (`docs: record owner decision for NNN`) i uruchom NOWEGO agenta tego samego etapu.
+  pierwsza z dopiskiem „(Recommended)" — zadane w języku sesji, niezależnie od języka,
+  w którym agent je napisał. Odpowiedź (data, etap, pytanie, decyzja) dopisz w języku
+  z `language` do PLAN.md → `## Decyzje właściciela` (`## Owner decisions`), a gdy PLAN.md
+  jeszcze nie istnieje — do tej samej sekcji SPEC.md. Zwiększ `metrics.escalations`,
+  zacommituj (`docs: record owner decision for NNN`) i uruchom NOWEGO agenta tego samego etapu.
 - Ten sam etap eskaluje po raz trzeci → STOP. Opisz właścicielowi sytuację i poproś
   o przejęcie sterowania.
 
@@ -108,14 +125,17 @@ SUMMARY: <≤ 10 linii; dla reviewer/report — tabela znalezisk: id | waga | je
 ## Bramka: końcowe review
 
 1. `reviewer` w trybie `report` → raport w PLAN.md → `## Final review`.
-2. Pokaż właścicielowi tabelę znalezisk z SUMMARY i zadaj `AskUserQuestion`:
-   „Przyjmij blockery i »warto poprawić«, odrzuć nity (Recommended)" / „Przyjmij wszystkie"
-   / „Wybiorę pojedynczo" / „Tylko blockery". Przy „Wybiorę pojedynczo" poproś o listę id.
-3. Decyzje (przyjęte i odrzucone id) zapisz w `## Decyzje właściciela`, zacommituj.
+2. Pokaż właścicielowi tabelę znalezisk z SUMMARY i zadaj `AskUserQuestion` — oba
+   w języku sesji, tokeny wag bez tłumaczenia:
+   „Przyjmij `blocker` i `worth-fixing`, odrzuć `nit` (Recommended)" / „Przyjmij
+   wszystkie" / „Wybiorę pojedynczo" / „Tylko `blocker`". Przy „Wybiorę pojedynczo" poproś
+   o listę id.
+3. Decyzje (przyjęte i odrzucone id) zapisz w `## Decyzje właściciela`
+   (`## Owner decisions`) w języku z `language`, zacommituj.
 4. `reviewer` w trybie `apply` → poprawki, push, PR, zielone CI, dopiero wtedy `done`.
 
-Brak znalezisk w raporcie → bramkę pomiń: zapisz „brak znalezisk" w decyzjach i przejdź
-do `apply`.
+Brak znalezisk w raporcie → bramkę pomiń: zapisz w decyzjach, w języku z `language`, że
+znalezisk nie było, i przejdź do `apply`.
 
 ## Zamknięcie
 
@@ -129,7 +149,8 @@ do `apply`.
    ponownie z tym zadaniem. Sam nie edytujesz plików speca ani dokumentów.
 4. Podsumowanie dla właściciela: link PR, status CI, link do artefaktów wizualnych, ręczne
    scenariusze do sprawdzenia przed merge'em (z PLAN.md → „Weryfikacja end-to-end →
-   Ręczna"), metryki speca.
+   Ręczna" / `### Manual (performed by the owner)` w `## End-to-end verification`),
+   metryki speca.
 
 ## Guardraile
 

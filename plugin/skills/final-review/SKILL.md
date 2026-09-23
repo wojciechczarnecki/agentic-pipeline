@@ -18,6 +18,18 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
 - Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
 - `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
 
+## Język
+
+- Pliki, które zapisujesz w repozytorium (SPEC, PLAN — każda sekcja, także wpisy decyzji,
+  review log, deviations i raport końcowego review), oraz treść PR piszesz w języku
+  z `language` w `.claude/workflow.json`; brak klucza albo wartość spoza `en`/`pl` = `en`.
+  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji w README
+  pluginu).
+- Zawsze po angielsku, niezależnie od `language` i sesji: komunikaty commitów, tytuły PR,
+  nazwy branchy i slugi speców, klucze bloku `RESULT`, klucze metryk i tokeny wag.
+- Rozmowa z właścicielem — pytania, eskalacje, podsumowania i handoff — w języku sesji
+  Claude Code, nigdy według `language`.
+
 ## Wejście / wyjście
 
 - Wejście: `<docs.specsDir>/NNN-<slug>/` ze statusem `implemented`; branch feature'a.
@@ -48,7 +60,8 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
      w PLAN.md wpisu o `<verify.command> <zakres UI>` oraz o obejrzanych artefaktach
      wizualnych i scenariuszu przeglądowym wymaganych przez `<docs.conventions>`.
    Format znaleziska od perspektywy:
-   `[blocker|warto poprawić|nit] plik:linia — scenariusz (wejście → złe zachowanie) — poprawka`.
+   `[blocker|worth-fixing|nit] plik:linia — scenariusz (wejście → złe zachowanie) — poprawka`.
+   Wagi to tokeny pisane jako kod w każdym języku, jak klucze metryk.
 3. **Scal i zweryfikuj.** Duplikaty połącz. KAŻDE znalezisko sprawdź sam w kodzie —
    fałszywe odrzuć z jednozdaniowym powodem. Ustal wagę końcową wg realnego ryzyka.
 4. **Zapisz raport** w `## Final review` w PLAN.md: data; macierz AC → dowód; znaleziska
@@ -62,14 +75,16 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
    Zacommituj (`docs: add final review of NNN <slug>`).
 5. **Decyzje:**
    - sesja samodzielna → pokaż tabelę znalezisk i zapytaj właściciela (`AskUserQuestion`,
-     rekomendacja: przyjąć blockery i „warto poprawić", odrzucić nity); decyzje zapisz
-     w PLAN.md → `## Decyzje właściciela` i przejdź do trybu apply;
+     w języku sesji; rekomendacja: przyjąć `blocker` i `worth-fixing`, odrzucić `nit`);
+     decyzje zapisz w PLAN.md → `## Decyzje właściciela` (`## Owner decisions`) i przejdź
+     do trybu apply;
    - `/pipeline:ship` → zakończ blokiem RESULT z tabelą znalezisk; decyzje zbierze
      orkestrator.
 
 ## Tryb apply
 
-1. **Decyzje** weź z PLAN.md → `## Decyzje właściciela` (wpis dotyczący końcowego review).
+1. **Decyzje** weź z PLAN.md → `## Decyzje właściciela` (`## Owner decisions`; wpis
+   dotyczący końcowego review).
    Brak wpisu → eskalacja, nie zgaduj.
 2. **Poprawki:** wprowadź przyjęte, ponów pełną weryfikację (`<verify.command>`), dopisz
    do raportu, co poprawiono (id → zmiana). W bloku `metrics:`: `findings_accepted`,
@@ -83,8 +98,10 @@ z pytaniem właściciela pomiędzy; w `/pipeline:ship` każdy tryb to osobne uru
      `docs: record final review of NNN <slug>`), `git push`;
    - PR już istnieje (`gh pr view --json url`, np. przy wznowieniu po eskalacji) → nie
      twórz drugiego; inaczej
-     `gh pr create --base main --title "<typ>: <komunikat po squashu>" --body-file <plik>`
-     — plik treści w scratchpadzie; treść: cel (ze SPEC), najważniejsze zmiany, wynik
+     `gh pr create --base main --title "<typ>: <angielski komunikat po squashu>" --body-file <plik>`
+     — tytuł PR po angielsku w formacie commita (typ + tryb rozkazujący), bo po squashu
+     staje się komunikatem commita; treść PR w języku z `language`, plik treści
+     w scratchpadzie; treść: cel (ze SPEC), najważniejsze zmiany, wynik
      weryfikacji, metryki speca, scenariusze ręczne do sprawdzenia przed merge'em; stopka
      zgodnie z instrukcjami sesji.
 4. **Czekaj na CI** — zawsze; w repozytorium bez ochrony brancha jesteś jedyną bramką:

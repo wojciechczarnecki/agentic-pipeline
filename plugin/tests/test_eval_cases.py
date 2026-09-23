@@ -51,11 +51,11 @@ def scaffold(name: str, workspace: Path) -> Path:
     return workspace
 
 
-def incorrect_paragraph(name: str) -> str:
+def incorrect_paragraph(name: str, prefix: str = "The response is incorrect when") -> str:
     text = (EVALS / name / "graders" / "criteria.md").read_text()
     paragraphs = re.split(r"\n\s*\n", text)
-    found = [p for p in paragraphs if p.startswith("The response is incorrect when")]
-    assert found, f"{name}: no paragraph starting 'The response is incorrect when'"
+    found = [p for p in paragraphs if p.startswith(prefix)]
+    assert found, f"{name}: no paragraph starting '{prefix}'"
     return " ".join(found)
 
 
@@ -117,6 +117,49 @@ def test_criteria_name_the_wrong_behaviour(name):
 
 def test_every_new_case_names_its_wrong_behaviour():
     assert set(WRONG_BEHAVIOUR) == set(NEW_CASES)
+
+
+# SPEC 006, AC16: the language init writes is the argument's, or `en` — never the prompt's.
+# `init-without-questions` keeps its Polish prompt and files, so its paragraph is Polish.
+INIT_LANGUAGE_CASES = {
+    "init-writes-the-chosen-language": (
+        "The response is incorrect when",
+        ["English", '"en"', "TODO", "question"],
+    ),
+    "init-without-questions": ("Odpowiedź jest niepoprawna, gdy", ['"pl"', "TODO", "po polsku"]),
+}
+
+
+@pytest.mark.parametrize("name", sorted(INIT_LANGUAGE_CASES))
+def test_init_language_cases_name_the_wrong_behaviour(name):
+    prefix, tokens = INIT_LANGUAGE_CASES[name]
+    paragraph = " ".join(incorrect_paragraph(name, prefix).split())
+    missing = [token for token in tokens if token not in paragraph]
+    assert not missing, (name, missing)
+
+
+def test_the_new_init_case_is_english():
+    case = EVALS / "init-writes-the-chosen-language"
+    for path in sorted(case.rglob("*")):
+        if path.is_file():
+            letters = POLISH & set(path.read_text())
+            assert not letters, (str(path.relative_to(EVALS)), sorted(letters))
+    manifest = (case / "case.yaml").read_text()
+    assert "name: init-writes-the-chosen-language\n" in manifest
+    assert "language: pl" in manifest
+    assert "scaffold_script" not in manifest
+    assert (case / "graders" / "criteria.md").read_text().startswith("---\ntype: llm\n")
+
+
+# SPEC 006, AC9: severities are the English tokens in every language, so the graders judge
+# the token the skill now writes.
+@pytest.mark.parametrize(
+    "name", ["final-review-finds-planted-defect", "final-review-ignores-false-positive"]
+)
+def test_final_review_criteria_use_the_tokens(name):
+    criteria = (EVALS / name / "graders" / "criteria.md").read_text()
+    assert "`worth-fixing`" in criteria
+    assert "warto" not in criteria
 
 
 # implement-escalates-on-failing-test

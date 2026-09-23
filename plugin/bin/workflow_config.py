@@ -30,6 +30,9 @@ SCHEMA: dict[str, object] = {
 }
 
 
+LANGUAGES = ("en", "pl")
+
+
 class ConfigError(Exception):
     pass
 
@@ -49,7 +52,7 @@ def defaults() -> dict:
             "specsDir": "specs",
         },
         "gitHooksDir": "scripts/git-hooks",
-        "language": "pl",
+        "language": "en",
     }
 
 
@@ -152,6 +155,8 @@ def validate(raw: dict, schema: dict | None = None, prefix: str = "") -> None:
             raise ConfigError(f"`{dotted}` has to be {expected.__name__}")
         elif expected is list:
             check_list(dotted, value)
+        elif dotted == "language" and value not in LANGUAGES:
+            raise ConfigError(f"`language` has to be one of: {', '.join(LANGUAGES)}")
 
 
 def check_list(dotted: str, value: list) -> None:

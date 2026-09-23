@@ -28,5 +28,5 @@
   },
   "gitHooksDir": "scripts/git-hooks",
   "protectedBranches": ["stable"],
-  "language": "pl"
+  "language": "en"
 }

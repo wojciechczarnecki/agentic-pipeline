@@ -60,7 +60,7 @@ the others keep configuring the rules — a typo in one key does not disarm the 
 | `migrations` | no section | `{ "command": <program>, "localHosts": [...] }`; no section = the migration module is inactive |
 | `gitHooksDir` | `"scripts/git-hooks"` | the git hooks directory (an existing hook is protected from shell edits; named in the enable instruction) |
 | `protectedBranches` | absent | extra branch names the guard treats exactly like `main`/`master` (which stay protected whatever the list says); exact names, no patterns; binds agent sessions only — the `pre-push` hook and `/pipeline:init` do not read or write it |
-| `language` | `"pl"` | the language of the documents the skills generate and write |
+| `language` | `"en"` | the language of every file the pipeline writes into the repository and of PR descriptions — supported `en`, `pl`; any other value warns and falls back to `en` (see the language contract below) |
 
 Full example: `templates/workflow.example.json`.
 
@@ -154,6 +154,77 @@ records the decision in the owner decisions section of PLAN.md.
   decisions — instead of working around it by changing the test or the test data,
 - a conflict on `git merge origin/main`.
 
+### Language contract
+
+`language` in `.claude/workflow.json` (`en` or `pl`) decides the language of what the
+pipeline leaves in the repository; it does not decide the language the agent talks in.
+
+- **Follows `language`:** every file the pipeline writes into the repository — SPEC, PLAN
+  (every section, including the review log, deviations, the final review and
+  owner-decision entries), the documents `/pipeline:init` generates — and PR descriptions.
+  A missing key or a value other than `en`/`pl` means `en`.
+- **Always English, regardless of `language` and the session:** commit messages,
+  PR titles, branch names and spec slugs, the `RESULT` block keys, metric keys and
+  severity tokens.
+- **Follows the Claude Code session language, never `language`:** questions to the owner,
+  escalations shown to the owner, stage summaries and handoffs in the terminal.
+
+PLAN follows the current `language` even when its SPEC was written in another one; nothing
+already written is translated.
+
+### Section map
+
+Stages name a section by both literals and accept either when reading, so a spec written
+before a language change, or before 0.5.0, still reads correctly. The SPEC and PLAN
+templates (`templates/SPEC.<language>.md`, `templates/PLAN.<language>.md`) carry exactly
+these literals; the H1 lines (`# SPEC NNN — `, `# PLAN NNN — `) are shared by both
+languages. `idea` and `plan` carry both templates inline, pinned to these files byte for
+byte by a test: a stage subagent cannot read a file outside the working directory without a
+permission prompt, so nothing is read from the plugin at run time.
+
+| key | document | Polish | English |
+|---|---|---|---|
+| `goal` | SPEC | `## Cel` | `## Goal` |
+| `context` | SPEC | `## Kontekst` | `## Context` |
+| `read-context` | SPEC | `## Przeczytany kontekst` | `## Read context` |
+| `scope` | SPEC | `## Zakres` | `## Scope` |
+| `out-of-scope` | SPEC | `## Poza zakresem` | `## Out of scope` |
+| `requirements` | SPEC | `## Wymagania i kryteria akceptacji` | `## Requirements and acceptance criteria` |
+| `decisions` | SPEC | `## Decyzje i odrzucone alternatywy` | `## Decisions and rejected alternatives` |
+| `owner-decisions` | SPEC | `## Decyzje właściciela` | `## Owner decisions` |
+| `open-questions` | SPEC | `## Pytania otwarte (nieblokujące)` | `## Open questions (non-blocking)` |
+| `assumption` | SPEC | `(założenie)` | `(assumption)` |
+| `owner-summary` | PLAN | `## Streszczenie dla właściciela` | `## Owner summary` |
+| `summary-approach` | PLAN | `**Podejście:**` | `**Approach:**` |
+| `summary-risks` | PLAN | `**Główne ryzyka:**` | `**Main risks:**` |
+| `summary-dependency` | PLAN | `**Nowa zależność:**` | `**New dependency:**` |
+| `summary-migration` | PLAN | `**Migracja danych:**` | `**Data migration:**` |
+| `summary-manual` | PLAN | `**Scenariusze ręczne dla właściciela:**` | `**Manual scenarios for the owner:**` |
+| `approach` | PLAN | `## Podejście` | `## Approach` |
+| `ac-matrix` | PLAN | `## Macierz AC → kroki` | `## AC → steps matrix` |
+| `steps` | PLAN | `## Kroki` | `## Steps` |
+| `step-verification` | PLAN | `Weryfikacja automatyczna:` | `Automatic verification:` |
+| `risks` | PLAN | `## Ryzyka i pułapki` | `## Risks and traps` |
+| `e2e` | PLAN | `## Weryfikacja end-to-end` | `## End-to-end verification` |
+| `e2e-automatic` | PLAN | `### Automatyczna (wykonuje /pipeline:implement)` | `### Automatic (performed by /pipeline:implement)` |
+| `e2e-manual` | PLAN | `### Ręczna (wykonuje właściciel)` | `### Manual (performed by the owner)` |
+| `definition-of-done` | PLAN | `## Definition of Done` | `## Definition of Done` |
+| `owner-decisions` | PLAN | `## Decyzje właściciela` | `## Owner decisions` |
+| `review-log` | PLAN | `## Review log` | `## Review log` |
+| `deviations` | PLAN | `## Deviations` | `## Deviations` |
+| `final-review` | PLAN | `## Final review` | `## Final review` |
+
+Finding severities are fixed English tokens, written as code in every language, like metric
+keys:
+
+| token | stage |
+|---|---|
+| `blocker` | plan-review, final-review |
+| `major` | plan-review |
+| `minor` | plan-review |
+| `worth-fixing` | final-review |
+| `nit` | final-review |
+
 ## Workflow metrics
 
 Every spec carries a flat `metrics:` block in its `SPEC.md` frontmatter; every stage writes
@@ -185,8 +256,10 @@ caught before code, and escalations per spec:
 workflow_metrics.py [specs-directory]
 ```
 
-Without an argument the directory comes from `docs.specsDir`. The script is called by name:
-Claude Code appends an enabled plugin's `bin/` to the session's `PATH`, in consumers too.
+Without an argument the directory comes from `docs.specsDir`; a faulty key in
+`.claude/workflow.json` only warns and falls back to its default, as in the hooks. The
+script is called by name: Claude Code appends an enabled plugin's `bin/` to the session's
+`PATH`, in consumers too.
 Not through `${CLAUDE_PLUGIN_ROOT}` — skill text gets that variable substituted, but
 `permissions` rules do not, so a call by absolute path matches no `allow` rule (and the
 Bash tool's shell does not have the variable at all).

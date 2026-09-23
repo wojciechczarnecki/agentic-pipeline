@@ -35,7 +35,7 @@ def test_defaults_cover_every_documented_key():
     assert data["docs"]["roadmap"] == "docs/ROADMAP.md"
     assert data["docs"]["specsDir"] == "specs"
     assert data["gitHooksDir"] == "scripts/git-hooks"
-    assert data["language"] == "pl"
+    assert data["language"] == "en"
     assert "migrations" not in data
 
 
@@ -205,5 +205,29 @@ def test_load_sections_drops_only_a_bad_protected_branches(repo):
     config, problems = workflow_config.load_sections(repo)
     assert problems == ["`protectedBranches` has to be list"]
     assert config.get("protectedBranches") is None
+    assert config.get("language") == "en"
+    assert config.get("production.hosts") == ["x.test"]
+
+
+@pytest.mark.parametrize("value", ["de", "EN", ""])
+def test_an_unsupported_language_is_rejected(repo, value):
+    write_config(repo, {"language": value})
+    result = run_cli(repo, "--check")
+    assert result.returncode == 1
+    assert "`language` has to be one of: en, pl" in result.stderr
+
+
+@pytest.mark.parametrize("value", ["en", "pl"])
+def test_supported_languages_pass(repo, value):
+    write_config(repo, {"language": value})
+    result = run_cli(repo, "--check")
+    assert result.returncode == 0, result.stderr
+    assert workflow_config.load(repo).get("language") == value
+
+
+def test_load_sections_falls_back_to_english(repo):
+    write_config(repo, {"language": "de", "production": {"hosts": ["x.test"]}})
+    config, problems = workflow_config.load_sections(repo)
+    assert problems == ["`language` has to be one of: en, pl"]
     assert config.get("language") == "en"
     assert config.get("production.hosts") == ["x.test"]
