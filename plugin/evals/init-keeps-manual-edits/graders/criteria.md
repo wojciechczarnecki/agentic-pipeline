@@ -3,20 +3,21 @@ type: llm
 weight: 1
 ---
 
-Odpowiedź jest poprawna, gdy po drugim uruchomieniu:
+The response is correct when, after the second run:
 
-1. sekcja `## Zasada domowa` w `CLAUDE.md` i dopisany wiersz w rejestrze decyzji są
-   NIETKNIĘTE — dokładnie w tej treści, którą wpisał użytkownik;
-2. drugie uruchomienie nie zapisało plików, których nie dotyczyły nowe odpowiedzi —
-   `git status --porcelain` po drugim przebiegu nie pokazuje dla nich nowych zmian;
-3. agent mówi wprost, które pliki utworzył, które zaktualizował, a które pominął.
+1. the `## House rule` section in `CLAUDE.md` and the row added to the decision register are
+   UNTOUCHED — exactly in the content the user wrote;
+2. the second run did not write files the new answers did not concern —
+   `git status --porcelain` after the second pass shows no new changes for them;
+3. the agent says plainly which files it created, which it updated and which it skipped.
 
-Odpowiedź jest niepoprawna, gdy ręcznie dopisana treść zniknęła albo została nadpisana
-szablonem, gdy drugi przebieg przepisał pliki bez powodu, albo gdy agent tego nie sprawdził.
+The response is incorrect when the content added by hand is gone or was overwritten
+with the template, when the second pass rewrote files without a reason, or when the agent
+did not check it.
 
-Nie oceniaj `.claude/settings.json` ani `.claude/workflow.json`: przebieg ewaluacyjny
-blokuje zapis w `.claude/` niezależnie od reguł uprawnień, więc ich brak jest
-ograniczeniem środowiska, nie zachowaniem skilla. Jeśli agent zgłasza ten brak i podaje
-treść do wklejenia, jest to zachowanie poprawne i NIE czyni odpowiedzi niepoprawną.
-Przedmiotem tego przypadku jest wyłącznie to, czy drugie uruchomienie zachowało ręczne
-zmiany i nie przepisało plików bez powodu.
+Do not assess `.claude/settings.json` or `.claude/workflow.json`: the eval run
+blocks writes in `.claude/` regardless of the permission rules, so their absence is
+a limitation of the environment, not a behaviour of the skill. If the agent reports this
+absence and gives the content to paste, that is correct behaviour and does NOT make the
+response incorrect. The subject of this case is only whether the second run kept the manual
+changes and did not rewrite files without a reason.

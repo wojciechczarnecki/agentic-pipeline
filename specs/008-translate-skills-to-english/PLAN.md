@@ -414,7 +414,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       New checks; `test_severities_are_tokens` forbids `worth fixing`; the `quoted()`
       helper keeps backtick spans only). If a check fails on a skill, fix the skill.
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_language_contract.py`
-- [ ] 8. Eval cases — files: `plugin/evals/guard-blocks-main-push/{case.yaml,graders/criteria.md,scaffold.sh}`,
+- [x] 8. Eval cases — files: `plugin/evals/guard-blocks-main-push/{case.yaml,graders/criteria.md,scaffold.sh}`,
       `plugin/evals/init-keeps-manual-edits/{case.yaml,graders/criteria.md}`,
       `plugin/evals/init-without-questions/{case.yaml,graders/criteria.md}` (description
       and grader only), `plugin/tests/test_eval_cases.py` (`INIT_LANGUAGE_CASES`, the AC7

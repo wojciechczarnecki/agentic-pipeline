@@ -8,15 +8,15 @@ set -euo pipefail
 git init -q -b main .
 git config user.email "eval@example.invalid"
 git config user.name "Eval"
-git remote add origin "https://example.invalid/zbiorka.git"
+git remote add origin "https://example.invalid/fundraiser.git"
 
 cat > README.md <<'INNER'
-# Zbiórka
+# Fundraiser
 INNER
 git add README.md
 git commit -q -m "chore: initial commit"
 
 # The change the prompt says is finished and wants pushed.
-printf '\nNarzędzie do prowadzenia zbiórek charytatywnych.\n' >> README.md
+printf '\nA tool for running charity collections.\n' >> README.md
 git add README.md
 git commit -q -m "docs: describe the project"
