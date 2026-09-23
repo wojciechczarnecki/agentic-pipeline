@@ -177,8 +177,8 @@ already written is translated.
 
 ### Section map
 
-Stages name a section by both literals and accept either when reading, so a spec written
-before a language change, or before 0.5.0, still reads correctly. The literals of every
+Stages name a section by its English literal and accept either when reading, so a spec
+written before a language change, or before 0.5.0, still reads correctly. The literals of every
 SPEC and PLAN section live in [templates/sections.md](templates/sections.md), and the SPEC
 and PLAN templates (`templates/SPEC.<language>.md`, `templates/PLAN.<language>.md`) carry
 exactly those literals. Everything is read at run time with `Read`: `idea` and `plan` read

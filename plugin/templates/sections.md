@@ -1,10 +1,11 @@
 # Section map
 
 The SPEC and PLAN section literals in both languages. Every pipeline stage reads this file
-with `Read` at run time before it looks for a section, names a section by both literals and
-accepts either when reading, so a spec written in either language, or before 0.5.0, is found.
-The templates `SPEC.<language>.md` and `PLAN.<language>.md` beside this file carry exactly
-these literals; the H1 lines (`# SPEC NNN — `, `# PLAN NNN — `) are shared by both languages.
+with `Read` at run time before it looks for a section, names a section by its English
+literal and accepts either when reading, so a spec written in either language, or before
+0.5.0, is found. The templates `SPEC.<language>.md` and `PLAN.<language>.md` beside this
+file carry exactly these literals; the H1 lines (`# SPEC NNN — `, `# PLAN NNN — `) are
+shared by both languages.
 
 | key | document | Polish | English |
 |---|---|---|---|

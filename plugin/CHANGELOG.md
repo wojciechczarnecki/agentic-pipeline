@@ -8,7 +8,7 @@ Stages read their templates and the section map at run time: `idea` and `plan` r
 SPEC or PLAN template for the current `language`, and every stage reads
 `templates/sections.md` with `Read` from the plugin's directory, instead of carrying both
 languages inline. The command guard warns once per session when no settings file allows
-that read.
+that read. Skills, agents, tests and eval graders are translated into English, one to one.
 
 **consumer impact:** add `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)` (for
 this plugin's own marketplace: `Read(~/.claude/plugins/cache/wcz-tools/pipeline/**)`) to
@@ -17,7 +17,8 @@ this plugin's own marketplace: `Read(~/.claude/plugins/cache/wcz-tools/pipeline/
 the absolute clone rule `Read(//<clone>/plugin/**)`. Without it every stage stops on its
 first read — under `/pipeline:ship` with an escalation naming the file and the rule — and
 the guard prints a notice with the exact rule once per session. `/pipeline:init` writes the
-rule for new projects.
+rule for new projects. The translation needs no configuration change: a
+`"language": "pl"` consumer keeps Polish specs, plans and documents.
 
 ### Added
 
@@ -40,6 +41,9 @@ rule for new projects.
 
 ### Changed
 
+- Skills, agents, tests and eval graders are English, translated one to one: a stage names
+  a SPEC or PLAN section by its English heading and takes the Polish twin from
+  `templates/sections.md`; Polish lives only there and in the `*.pl.md` templates.
 - `idea` and `plan` read `templates/{SPEC,PLAN}.<language>.md` with `Read` (`en` for a
   missing or unsupported value); every stage skill carries one identical `## Section map`
   block.

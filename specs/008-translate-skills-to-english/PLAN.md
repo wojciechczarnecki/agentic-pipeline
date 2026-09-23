@@ -438,7 +438,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       `test_the_checks_catch_a_planted_letter` in the new module (a file, a comment, a
       docstring and a function name each carrying `ą`).
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_english_only.py tests/test_documents.py && (cd plugin && python3 -m pytest -q -p no:cacheprovider tests/test_english_only.py)`
-- [ ] 11. Documents — files: `CONTRIBUTING.md`, `docs/CONVENTIONS.md`, `docs/DECISIONS.md`,
+- [x] 11. Documents — files: `CONTRIBUTING.md`, `docs/CONVENTIONS.md`, `docs/DECISIONS.md`,
       `docs/ROADMAP.md`, `plugin/CHANGELOG.md` (0.6.0 `### Changed` bullet, consumer-impact
       sentence), `plugin/README.md` (Section map sentence), `plugin/templates/sections.md`
       (intro sentence only), `tests/test_documents.py` (`test_contributing_covers_the_workflow`

@@ -349,6 +349,17 @@ def test_install_guide_documents_the_read_rule():
 
 # SPEC 007, AC14: existing consumers learn from the release notes that the stages now need
 # the Read rule, and what happens without it.
+def test_the_changelog_records_the_translation():
+    manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
+    assert manifest["version"] == "0.6.0"
+    section = CHANGELOG.split("## 0.6.0", 1)[1].split("\n## ", 1)[0]
+    changed = section.split("### Changed", 1)[1].split("\n### ", 1)[0]
+    assert "English" in changed
+    assert "one to one" in changed
+    impact = section.split("**consumer impact:**", 1)[1].split("\n### ", 1)[0]
+    assert '"language": "pl"' in impact
+
+
 def test_the_changelog_names_the_read_rule():
     manifest = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())
     section = CHANGELOG.split(f"## {manifest['version']}", 1)[1].split("\n## ", 1)[0]

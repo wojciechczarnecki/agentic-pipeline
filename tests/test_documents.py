@@ -185,9 +185,34 @@ def test_contributing_covers_the_workflow():
         "squash",
         "`plugin`",
         "Polish",
-        "Stage 8",
+        "sections.md",
     ]:
         assert token in text, token
+
+
+def markdown_section(text: str, heading: str) -> str:
+    return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
+
+
+# SPEC 008, AC9: the documents say where Polish lives now that the skills are English.
+def test_conventions_state_english_skills():
+    language = markdown_section(read("docs/CONVENTIONS.md"), "## Language")
+    for token in ["*.pl.md", "sections.md", "skills", "agents", "test_english_only.py"]:
+        assert token in language, token
+    assert "until translated" not in language
+
+
+def test_decisions_record_the_translation():
+    rows = [line for line in read("docs/DECISIONS.md").splitlines() if "SPEC 008" in line]
+    assert any("2026-09-17" in row and "2026-09-21" in row for row in rows), rows
+
+
+def test_roadmap_ticks_the_translation():
+    items = re.split(r"\n(?=- \[)", read("docs/ROADMAP.md"))
+    item = [item for item in items if "translated into English" in item]
+    assert len(item) == 1, item
+    assert item[0].startswith("- [x]")
+    assert "specs/008-translate-skills-to-english/SPEC.md" in item[0]
 
 
 def test_security_policy():
