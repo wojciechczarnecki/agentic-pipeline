@@ -293,7 +293,7 @@ negative check needs it removable per case).
       value). Keep `test_the_marketplace_ref_is_the_stable_channel` green.
       Automatic verification: `uv run pytest -q plugin/tests/test_init_templates.py plugin/tests/test_init_skill.py plugin/tests/test_no_domain_references.py`
 
-- [ ] 4. **Guard notice** — files: `plugin/bin/guard.py`,
+- [x] 4. **Guard notice** — files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard_read_rule.py` (new).
       Per Approach → The guard notice. Tests first, then the code. Test list:
       `test_no_rule_warns_once_without_blocking` (exit 0 twice; first stdout is one JSON
