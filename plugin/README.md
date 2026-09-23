@@ -154,6 +154,75 @@ records the decision in the owner decisions section of PLAN.md.
   decisions — instead of working around it by changing the test or the test data,
 - a conflict on `git merge origin/main`.
 
+### Language contract
+
+`language` in `.claude/workflow.json` (`en` or `pl`) decides the language of what the
+pipeline leaves in the repository; it does not decide the language the agent talks in.
+
+- **Follows `language`:** every file the pipeline writes into the repository — SPEC, PLAN
+  (every section, including the review log, deviations, the final review and
+  owner-decision entries), the documents `/pipeline:init` generates — and PR descriptions.
+  A missing key or a value other than `en`/`pl` means `en`.
+- **Always English, regardless of `language` and the session:** commit messages,
+  PR titles, branch names and spec slugs, the `RESULT` block keys, metric keys and
+  severity tokens.
+- **Follows the Claude Code session language, never `language`:** questions to the owner,
+  escalations shown to the owner, stage summaries and handoffs in the terminal.
+
+PLAN follows the current `language` even when its SPEC was written in another one; nothing
+already written is translated.
+
+### Section map
+
+Stages name a section by both literals and accept either when reading, so a spec written
+before a language change, or before 0.5.0, still reads correctly. The SPEC and PLAN
+templates (`templates/SPEC.<language>.md`, `templates/PLAN.<language>.md`) carry exactly
+these literals; the H1 lines (`# SPEC NNN — `, `# PLAN NNN — `) are shared by both
+languages.
+
+| key | document | Polish | English |
+|---|---|---|---|
+| `goal` | SPEC | `## Cel` | `## Goal` |
+| `context` | SPEC | `## Kontekst` | `## Context` |
+| `read-context` | SPEC | `## Przeczytany kontekst` | `## Read context` |
+| `scope` | SPEC | `## Zakres` | `## Scope` |
+| `out-of-scope` | SPEC | `## Poza zakresem` | `## Out of scope` |
+| `requirements` | SPEC | `## Wymagania i kryteria akceptacji` | `## Requirements and acceptance criteria` |
+| `decisions` | SPEC | `## Decyzje i odrzucone alternatywy` | `## Decisions and rejected alternatives` |
+| `owner-decisions` | SPEC | `## Decyzje właściciela` | `## Owner decisions` |
+| `open-questions` | SPEC | `## Pytania otwarte (nieblokujące)` | `## Open questions (non-blocking)` |
+| `assumption` | SPEC | `(założenie)` | `(assumption)` |
+| `owner-summary` | PLAN | `## Streszczenie dla właściciela` | `## Owner summary` |
+| `summary-approach` | PLAN | `**Podejście:**` | `**Approach:**` |
+| `summary-risks` | PLAN | `**Główne ryzyka:**` | `**Main risks:**` |
+| `summary-dependency` | PLAN | `**Nowa zależność:**` | `**New dependency:**` |
+| `summary-migration` | PLAN | `**Migracja danych:**` | `**Data migration:**` |
+| `summary-manual` | PLAN | `**Scenariusze ręczne dla właściciela:**` | `**Manual scenarios for the owner:**` |
+| `approach` | PLAN | `## Podejście` | `## Approach` |
+| `ac-matrix` | PLAN | `## Macierz AC → kroki` | `## AC → steps matrix` |
+| `steps` | PLAN | `## Kroki` | `## Steps` |
+| `step-verification` | PLAN | `Weryfikacja automatyczna:` | `Automatic verification:` |
+| `risks` | PLAN | `## Ryzyka i pułapki` | `## Risks and traps` |
+| `e2e` | PLAN | `## Weryfikacja end-to-end` | `## End-to-end verification` |
+| `e2e-automatic` | PLAN | `### Automatyczna (wykonuje /pipeline:implement)` | `### Automatic (performed by /pipeline:implement)` |
+| `e2e-manual` | PLAN | `### Ręczna (wykonuje właściciel)` | `### Manual (performed by the owner)` |
+| `definition-of-done` | PLAN | `## Definition of Done` | `## Definition of Done` |
+| `owner-decisions` | PLAN | `## Decyzje właściciela` | `## Owner decisions` |
+| `review-log` | PLAN | `## Review log` | `## Review log` |
+| `deviations` | PLAN | `## Deviations` | `## Deviations` |
+| `final-review` | PLAN | `## Final review` | `## Final review` |
+
+Finding severities are fixed English tokens, written as code in every language, like metric
+keys:
+
+| token | stage | older label read as this token |
+|---|---|---|
+| `blocker` | plan-review, final-review | — |
+| `major` | plan-review | — |
+| `minor` | plan-review | — |
+| `worth-fixing` | final-review | `warto poprawić` |
+| `nit` | final-review | — |
+
 ## Workflow metrics
 
 Every spec carries a flat `metrics:` block in its `SPEC.md` frontmatter; every stage writes

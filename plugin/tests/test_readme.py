@@ -215,9 +215,77 @@ def test_no_polish_outside_code(document):
     assert not found, (document, found)
 
 
-def test_readme_has_no_polish_even_in_code():
-    found = sorted(POLISH & set((PLUGIN / "README.md").read_text()))
-    assert not found, found
+def section(text: str, heading: str) -> str:
+    return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0].split("\n### ", 1)[0]
+
+
+# The section map quotes the Polish literals verbatim (docs/DECISIONS.md, 2026-09-21); they
+# are the only Polish the README may carry, and only inside code spans.
+def test_readme_polish_only_in_the_section_map():
+    mapped = section(README, "### Section map")
+    outside = README.replace(mapped, "")
+    assert not sorted(POLISH & set(outside))
+    assert not sorted(POLISH & set(strip_code(mapped)))
+
+
+def section_map() -> list[tuple[str, str, str, str]]:
+    rows = []
+    for line in section(README, "### Section map").splitlines():
+        if not line.startswith("| `"):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if len(cells) != 4:
+            continue
+        key, document, polish, english = cells
+        rows.append((key.strip("`"), document, polish[1:-1], english[1:-1]))
+    return rows
+
+
+def test_the_language_contract_names_three_groups():
+    contract = section(README, "### Language contract")
+    groups = [
+        "Follows `language`",
+        "Always English",
+        "Follows the Claude Code session language",
+    ]
+    positions = [contract.index(group) for group in groups]
+    assert positions == sorted(positions)
+    for token in [
+        "SPEC",
+        "PLAN",
+        "PR descriptions",
+        "commit messages",
+        "PR titles",
+        "branch names",
+        "RESULT",
+        "metric keys",
+        "severity tokens",
+        "questions",
+        "escalations",
+    ]:
+        assert token in contract, token
+
+
+def test_the_section_map_is_well_formed():
+    rows = section_map()
+    assert {document for _, document, _, _ in rows} == {"SPEC", "PLAN"}
+    for document in ("SPEC", "PLAN"):
+        keys = [key for key, doc, _, _ in rows if doc == document]
+        assert len(keys) == len(set(keys)), document
+    for line in section(README, "### Section map").splitlines():
+        if line.startswith("| `") and line.count("|") == 5:
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            for cell in cells[2:]:
+                assert re.fullmatch(r"`[^`]+`", cell), line
+    for _, _, _, english in rows:
+        assert not POLISH & set(english), english
+    severities = {}
+    for line in section(README, "### Section map").splitlines():
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if line.startswith("| `") and len(cells) == 3:
+            severities[cells[0].strip("`")] = cells[2]
+    assert set(severities) == {"blocker", "major", "minor", "worth-fixing", "nit"}
+    assert "`warto poprawić`" in severities["worth-fixing"]
 
 
 HEADINGS = [
@@ -230,6 +298,8 @@ HEADINGS = [
     "### Spec statuses",
     "### The `RESULT` contract",
     "### Escalation triggers",
+    "### Language contract",
+    "### Section map",
     "## Workflow metrics",
     "### Checking metrics (`--check`)",
     "## CHANGELOG",

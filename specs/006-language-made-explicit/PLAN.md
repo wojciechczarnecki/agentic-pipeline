@@ -418,7 +418,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       `test_every_config_key_is_documented_with_its_default` goes red with the default.
       Automatic verification: `uv run pytest -q plugin/tests/test_workflow_config.py plugin/tests/test_readme.py plugin/tests/test_init_templates.py plugin/tests/test_guard.py`
 
-- [ ] 2. **README: language contract, section map, severity tokens** — files:
+- [x] 2. **README: language contract, section map, severity tokens** — files:
       `plugin/README.md`, `plugin/tests/test_readme.py`.
       Write `### Language contract` and `### Section map` per Approach. Tests:
       `HEADINGS` gains both (after `### Escalation triggers`, before `## Workflow metrics`);
