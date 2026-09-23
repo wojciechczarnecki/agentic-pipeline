@@ -1,11 +1,13 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-09-23"
   - "spec-ready — 2026-09-23"
+  - "plan-draft — 2026-09-23"
 metrics:
   started_at: 2026-09-23T15:42
   escalations: 0
+  plan_steps: 12
 ---
 
 # SPEC 008 — Skills, agents and tests translated into English
