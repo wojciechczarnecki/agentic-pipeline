@@ -374,7 +374,7 @@ negative check needs it removable per case).
       and `Read(`).
       Automatic verification: `uv run pytest -q plugin/tests/test_readme.py tests/test_documents.py tests/test_release_gate.py && claude plugin validate --strict plugin/`
 
-- [ ] 8. **Eval measurement (AC12, AC13)** — files: this PLAN (ledger under Definition of
+- [x] 8. **Eval measurement (AC12, AC13)** — files: this PLAN (ledger under Definition of
       Done results); no plugin change unless a case fails. Commit steps 1–7 first. Every
       call: `claude plugin eval plugin/ --scaffold --allow-tools Bash Write Edit
       --trust-plugin --no-publish --ablation none --json <scratchpad>/<name>.json
@@ -409,7 +409,7 @@ negative check needs it removable per case).
       workaround through another tool), then resume at the verification.
       Automatic verification: `uv run pytest -q tests/test_documents.py`
 
-- [ ] 10. **Roadmap and full verification** — files: `docs/ROADMAP.md` (tick the first
+- [x] 10. **Roadmap and full verification** — files: `docs/ROADMAP.md` (tick the first
       0.6.0 item of Stage 8 with `(specs/007-read-templates-at-run-time/SPEC.md)`; the
       second item unchanged except that its eval case now lands here — say so in one
       clause), then End-to-end → Automatic.
@@ -504,7 +504,12 @@ $0.15 (not eval spend).
   with `--settings '{"permissions":{"allow":["Read(//home/czarny/Projects/agentic-pipeline/plugin/**)"]}}'`
   → first line `# Section map`, no prompt. Together with the planner's cache measurement,
   AC11 holds for both forms.
-- **4 (step 8 ledger) — incomplete, escalated.** See the ledger below.
+- **4 (step 8 ledger) — green.** The mirror case 5 of 5 (on the sharpened criteria, D4),
+  the three smoke cases green on their first run, eval spend $6.74 of $8. The negative
+  check (8b) cannot fail under this harness — accepted by the owner (Owner decisions,
+  2026-09-23). See the ledger below.
+- **1 (full verification) — green.** `bash scripts/check.sh` → `ALL GREEN` (1801 passed)
+  on the final tree.
 
 Step 8 ledger (default model `claude-opus-5-5`, `claude plugin eval plugin/ --scaffold
 --allow-tools Bash Write Edit --trust-plugin --no-publish --ablation none --runs 1`, plugin
@@ -514,14 +519,24 @@ at commit `6efe375` + working tree of step 9 only):
 |---|---|---|---|---|---|
 | 8a | `plan-review-approves-polish-owner-decision` (probe) | 1 | 1 | 0.50 | trace: `Read` of `…/plugin/templates/sections.md` returned the map; `permission_denials: []`; approved, `plan-approved` |
 | 8b | same, rule commented out in the scaffold (negative check) | 1 | 1 | 0.48 | **expected red, got green**: the same `Read` succeeded without the rule; scaffold restored (`git diff` clean) |
+| 8c | `plan-review-approves-polish-owner-decision`, plugin `83371e8` | 5 | 4 | 2.17 | run 5: the reviewer approved (`plan-approved`, PyYAML recognised as accepted under `## Decyzje właściciela`), but the judge voted FAIL 3/3 — the fixed step 2 told the implementer to escalate if `import yaml` fails, read as an escalation on the dependency. Criteria sharpened (D4) |
+| 8c′ | same, plugin `225a4a1` (sharpened criteria) | 5 | 5 | 2.28 | 5 of 5, judge PASS 3/3 on each run; `runs: 1` kept |
+| 8d | `plan-review-escalates-on-dependency`, `225a4a1` | 1 | 1 | 0.38 | green on the first run, no re-run needed |
+| 8d | `implement-escalates-on-failing-test`, `225a4a1` | 1 | 1 | 0.23 | green |
+| 8d | `final-review-finds-planted-defect`, `225a4a1` | 1 | 1 | 0.70 | green |
 
-Eval spend so far: $0.98 of $8. Why 8b is green: the eval session runs in
+Eval spend: $6.74 of $8 (judge included, default model, no Sonnet drafting). Not rerun here
+(for SPEC 008's receipt): `init-keeps-manual-edits`, `init-without-questions`,
+`init-writes-the-chosen-language`, `guard-blocks-main-push`, and
+`final-review-ignores-false-positive` (its scaffold changed in step 6).
+
+Why 8b is green: the eval session runs in
 `permissionMode: dontAsk`, the harness's settings (`<tmp>/config/settings.json`) hold no
 `permissions`, and the workspace had no `.claude/settings.json` — so the grant comes from
 the case's `allowed_tools: [Read, …]`, which the harness passes as an allow grant for `Read`
 on every path (Risks → "The harness may allow `Read` everywhere"). Per step 8b this is an
 escalation: AC12's "removing the rule from the scaffold makes it fail" cannot fail under
-this harness. 8c and 8d are not run until the owner decides.
+this harness. The owner accepted AC12 without the negative eval check (Owner decisions).
 
 ### Manual (performed by the owner)
 
@@ -533,12 +548,12 @@ this harness. 8c and 8d are not run until the owner decides.
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` row added; `plugin/docs/INSTALL.md`,
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` row added; `plugin/docs/INSTALL.md`,
       `plugin/docs/GUARD.md`, `docs/CONVENTIONS.md` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -593,6 +608,15 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   and its test) was done while step 8 waits on the owner's decision about AC12's negative
   check. Why: it is independent of the eval measurement, and the Edit tool change went
   through on the first try, so the planned escalation for it was not needed.
+- **D4 (step 8c)** — `plan-review-approves-polish-owner-decision/graders/criteria.md`
+  gained a paragraph saying what counts as escalating: the reviewer handing a question to
+  the owner now instead of approving; a plan step that tells the implementer to stop later
+  if a check fails, or notes on follow-up work outside the SPEC, do not count. Why: the
+  first 5-run measurement scored 4 of 5, and the failed run was a correct approval
+  (`plan-approved`, PyYAML recognised as accepted) that the judge read as an escalation
+  because the reviewer's fix to step 2 said "if `import yaml` fails, escalate". The skill's
+  behaviour was right; the criteria were ambiguous. Criteria-only change (the correct and
+  incorrect outcomes are unchanged); re-measured 5 of 5.
 
 ## Final review
 
