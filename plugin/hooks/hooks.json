@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/guard"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/guard\""
           }
         ]
       },
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/notify-attention.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/notify-attention.sh\""
           }
         ]
       }
@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/format-file.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/format-file.sh\""
           }
         ]
       }
@@ -36,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/notify-attention.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/notify-attention.sh\""
           }
         ]
       }
