@@ -113,3 +113,20 @@ def test_final_review_keeps_the_other_guardrails():
         line for line in section("final-review", "Guardrails").splitlines() if line.startswith("- ")
     ]
     assert len(bullets) == 4
+
+
+# R1: idea neither chains into ship nor approves its own assumptions (0.6.0 canary).
+def test_idea_guardrails_end_the_stage_at_the_handoff():
+    guardrails = collapse(section("idea", "Guardrails"))
+    for phrase in ["You end the stage at the handoff", "never by `idea`", "GATE 1 is the owner's"]:
+        assert phrase in guardrails, phrase
+
+
+def test_idea_guardrails_keep_assumptions_for_the_owner():
+    guardrails = collapse(section("idea", "Guardrails"))
+    for phrase in [
+        "You do not remove the `(assumption)` suffix or set `spec-ready` before the owner has "
+        "answered on every such item",
+        "including in a session without `AskUserQuestion`, leaves the SPEC `spec-draft`",
+    ]:
+        assert phrase in guardrails, phrase

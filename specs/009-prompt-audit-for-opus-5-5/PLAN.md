@@ -159,7 +159,7 @@ the step's files plus PLAN.md, per `plugin/skills/implement/SKILL.md`.
       four bullets. Commit: `refactor: drop the thoroughness line from final-review (S3)`.
       files: `plugin/skills/final-review/SKILL.md`, `plugin/tests/test_prompt_audit.py`
       Automatic verification: `uv run pytest plugin/tests/test_prompt_audit.py plugin/tests/test_stage_skills.py -q`
-- [ ] 6. **R1 — `idea` does not chain or approve itself.** In
+- [x] 6. **R1 — `idea` does not chain or approve itself.** In
       `plugin/skills/idea/SKILL.md` → `## Guardrails`, right after the bullet "A SPEC with
       status `spec-ready` may not contain blocking questions …", insert the two audit
       bullets verbatim: "You end the stage at the handoff — `/pipeline:ship` and the later

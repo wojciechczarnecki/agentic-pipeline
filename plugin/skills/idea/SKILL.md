@@ -135,6 +135,11 @@ template from memory).
 - A SPEC with status `spec-ready` may not contain blocking questions or
   unapproved `(assumption)` items (or their Polish twin from the section map) — the
   `## Open questions (non-blocking)` section is only for non-blocking matters.
+- You end the stage at the handoff — `/pipeline:ship` and the later stages are started by
+  the owner, never by `idea`, because GATE 1 is the owner's.
+- You do not remove the `(assumption)` suffix or set `spec-ready` before the owner has
+  answered on every such item — no answer, including in a session without
+  `AskUserQuestion`, leaves the SPEC `spec-draft`.
 - A SPEC with status `spec-ready` has in the `## Read context` section
   an item for `<docs.roadmap>`, `<docs.project>`, `<docs.decisions>` and every domain
   document from the map in `CLAUDE.md` (definition in step 1).
