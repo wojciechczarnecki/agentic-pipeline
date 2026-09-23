@@ -766,6 +766,10 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
   block to its file byte for byte. AC5's "no inline template" reads as "inline, pinned to
   the template files". Nothing is read at runtime; consumers need no settings change.
 
+- 2026-09-23 · final review (gate 2) · Question: which final-review findings to fix?
+  · Decision: **accept all** — F1, F2, F3, F4 (worth-fixing) and F5, F6, F7, F8, F9, F10,
+  F11, F12, F13 (nits). Rejected: none.
+
 ## Review log
 
 ### 2026-09-23 — /pipeline:plan-review
