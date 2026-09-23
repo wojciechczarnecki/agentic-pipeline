@@ -770,3 +770,18 @@ Owner decision: accept all ten findings (F1–F10), reject none. Fixes:
 - F10 — `plugin/README.md` → Section map paragraph re-wrapped at ≤ 92 columns.
 
 `bash scripts/check.sh` → `ALL GREEN` (1887 passed). No new backlog item: nothing was deferred.
+
+Eval receipt (AC8): `bash scripts/eval.sh --max-cost-usd 5` on `2728624`, default model —
+9/9 cases green, `plan-review-approves-polish-owner-decision` and `init-without-questions`
+included, $3.88; fingerprint equals `plugin/` at HEAD; `plugin/evals/last-run.json`
+committed in `a2c9290` as the last change under `plugin/`.
+
+Canary (AC10), 2026-09-23, headless in a throwaway clone of the Polish consumer with no
+remote, plugin from a clean clone of `a2c9290`: `Plugin "pipeline" from --plugin-dir
+overrides installed version`, `Found 3 plugins` as in a plain session; a Polish feature
+request invoked `pipeline:idea` first; `idea` and the planner read `templates/sections.md`
+and `SPEC.pl.md` / `PLAN.pl.md` from the clone without a prompt; the SPEC and PLAN were
+written in Polish under the Polish headings; `workflow_metrics.py --check` passed in every
+stage. Not observed: `/pipeline:plan` triggered directly by a Polish request (the plan ran
+under `ship`; the owner waived the re-run). The prompt let `idea` chain into `ship` —
+recorded in `docs/BACKLOG.md` and in the canary procedure in `docs/CONVENTIONS.md`.

@@ -136,6 +136,12 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   refuses file edits nobody can approve, so the stage needs
   `--permission-mode acceptEdits` and the consumer's rules through
   `--settings <consumer>/.claude/settings.json` (an untrusted clone ignores its own).
+  The canary exercises one stage, not the pipeline: pass `--max-budget-usd 2` and
+  `--disallowedTools Agent`, so the stage cannot start `/pipeline:ship` or stage subagents,
+  and keep the prompt to the plain request, with nothing like "take the recommended
+  options" or "see it through". On the 0.6.0 canary (2026-09-23) such a prompt led `idea`
+  to approve its own assumptions and run the whole pipeline, spending about twice the eval
+  suite.
 - The owner tags a clean `main` with `claude plugin tag plugin --push` (`pipeline--vX.Y.Z`).
 - The owner — never an agent — then moves the release channel to the new tag:
   `git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'`. The `^{commit}` is
