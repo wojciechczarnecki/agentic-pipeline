@@ -118,7 +118,7 @@ PR titles and branch names are English regardless; the conversation in the termi
 Polish consumer's plans to English, since today only `idea` names `language`. Each one
 goes through the pre-release canary on a Polish consumer before `stable` moves.
 
-- [ ] 0.5.0: language made explicit, skills still Polish — every stage writes its
+- [x] 0.5.0: language made explicit, skills still Polish — every stage writes its
       artefacts and PR bodies in `language`, commits and PR titles in English, and talks
       to the owner in the session language; spec and plan always in the current
       `language`; `SPEC`/`PLAN` templates per language (`*.en.md`, `*.pl.md`) with a

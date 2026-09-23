@@ -566,7 +566,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       three smoke JSONs show 1 of 1 passed (or the follow-up 5-run measurement ≥ 4 of 5),
       the ledger total ≤ $10, and `uv run pytest -q plugin/tests/test_eval_cases.py`
 
-- [ ] 11. **Documentation and release 0.5.0** — files: `plugin/.claude-plugin/plugin.json`,
+- [x] 11. **Documentation and release 0.5.0** — files: `plugin/.claude-plugin/plugin.json`,
       `plugin/CHANGELOG.md`, `docs/DECISIONS.md`, `docs/CONVENTIONS.md`, `CONTRIBUTING.md`,
       `docs/ROADMAP.md` (tick 0.5.0), `docs/BACKLOG.md` (P3 row).
       Per Approach → Documentation and release.

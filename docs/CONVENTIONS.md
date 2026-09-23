@@ -11,8 +11,12 @@ this document holds the details.
 - `plugin/README.md`, `plugin/docs/` and `plugin/CHANGELOG.md` are in English; they quote
   the Polish literals the skills produce (such as `## Decyzje właściciela`) verbatim in
   code spans.
-- Plugin skills, agents and templates are in Polish until translated (`docs/ROADMAP.md`,
-  Stage 8); a translation is a behaviour change and ships as a release.
+- Plugin skills and agents are in Polish until translated in 0.6.0 (`docs/ROADMAP.md`,
+  Stage 8); a translation is a behaviour change and ships as a release. Templates exist per
+  language (`*.en.md`, `*.pl.md` — SPEC, PLAN and the `init` documents), and the Polish ones
+  survive 0.6.0.
+- Commit messages, PR titles and branch names are English for every consumer, whatever its
+  `language` — a plugin rule since 0.5.0 (`plugin/README.md`, language contract).
 - No mixing of languages within one document.
 
 ## Code style

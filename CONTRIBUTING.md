@@ -44,6 +44,7 @@ git config core.hooksPath scripts/git-hooks    # once per clone: the pre-push ru
 
 ## Language
 
-Documents and code are English. The plugin's skills, agents and templates are still in
-Polish until Stage 8 of the [roadmap](docs/ROADMAP.md) translates them; a pull request that
-touches them keeps them in Polish for now.
+Documents and code are English. The plugin's skills and agents are still in Polish until
+Stage 8 of the [roadmap](docs/ROADMAP.md) translates them; a pull request that touches them
+keeps them in Polish for now. Templates come in both languages (`*.en.md`, `*.pl.md`): a
+change to one reaches its twin in the same pull request.
