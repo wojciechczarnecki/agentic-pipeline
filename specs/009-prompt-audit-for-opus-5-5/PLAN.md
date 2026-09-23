@@ -217,7 +217,7 @@ uv run pytest plugin/tests -q
       "do NOT ask and do NOT block", "do NOT rebuild", "READ the template's", "BOTH jobs",
       "stays ALWAYS", "ASK before", "you NEVER overwrite", "NEW answers".
       Automatic verification: the P1 block above with `F=plugin/skills/init/SKILL.md`, plus `uv run pytest plugin/tests/test_init_skill.py -q`
-- [ ] 13. **P1 `ship`** — `plugin/skills/ship/SKILL.md`: "do NOT plan, do NOT implement
+- [x] 13. **P1 `ship`** — `plugin/skills/ship/SKILL.md`: "do NOT plan, do NOT implement
       and do NOT review", "contains ONLY:", "a NEW agent". The stage contract fence stays
       untouched.
       Automatic verification: the P1 block above with `F=plugin/skills/ship/SKILL.md`, plus `uv run pytest plugin/tests/test_stage_contract.py -q`

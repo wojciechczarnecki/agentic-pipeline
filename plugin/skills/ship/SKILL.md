@@ -6,7 +6,7 @@ argument-hint: <spec number or slug>
 
 # /pipeline:ship — from SPEC to PR
 
-Role: coordinator, not executor. You do NOT plan, do NOT implement and do NOT review
+Role: coordinator, not executor. You do not plan, do not implement and do not review
 yourself — every stage is done by a separate subagent with a fresh context (it gives the
 same as a new session after `/clear`). Your context has to stay light: you read the SPEC.md
 frontmatter, `## Owner summary` from PLAN.md and the RESULT blocks from the subagents — not
@@ -83,7 +83,7 @@ a session they are visible under prefixed names: `pipeline:planner`,
 `subagent_type`. If the session does not know the prefixed name, use the bare agent name
 (`planner` etc.).
 
-The prompt contains ONLY: the spec number and path, the mode (for `reviewer`), the working
+The prompt contains only: the spec number and path, the mode (for `reviewer`), the working
 directory and a reminder of the contract below. Do not pass the history of this conversation
 or your own hypotheses — a fresh context is part of the method.
 
@@ -126,7 +126,7 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
   stage, question, decision) in the language from `language` to PLAN.md →
   `## Owner decisions`, and when PLAN.md does not exist yet — to the same section of
   SPEC.md. Increment `metrics.escalations`, commit (`docs: record owner decision for NNN`)
-  and start a NEW agent of the same stage.
+  and start a new agent of the same stage.
 - The same stage escalates for the third time → STOP. Describe the situation to the owner
   and ask them to take over.
 
