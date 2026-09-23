@@ -535,7 +535,7 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       `shipping.py`.
       Automatic verification: `uv run pytest -q plugin/tests/test_eval_cases.py && claude plugin validate --strict plugin/`
 
-- [ ] 10. **Eval measurement of the two `init` language cases** — files: this PLAN
+- [x] 10. **Eval measurement of the two `init` language cases** — files: this PLAN
       (`### Results` → eval ledger), and the two cases' `case.yaml`/criteria only if the
       policy requires a change.
       Commit steps 1–9 first (the ledger names the commit). Policy
@@ -696,6 +696,26 @@ so 3b repeats probe 3 in a trusted one: the result does not change — `cat` of 
 outside the working directory asks for approval, and a headless stage subagent cannot give
 it. `plugin/templates/settings.json` has no rule that covers it. Per step 5: **escalated**,
 the skills still carry their inline templates (step 5 not started beyond the probe).
+Owner decision C (below): templates stay inline, pinned to the files — deviation D1.
+
+**Step 10 eval ledger (2026-09-23, Claude Code 2.1.280, default model, all calls with
+`--scaffold --allow-tools Bash Write Edit --trust-plugin --no-publish --ablation none`,
+measured on commit `3ec7522`).** No drafting calls on `--model sonnet` were made.
+
+| # | date | case | model | runs | passed | `--max-cost-usd` | cost (USD) | running total |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 2026-09-23 | `init-writes-the-chosen-language` (measurement) | default | 5 | 5 | 3 | 1.9944 | 1.9944 |
+| 2 | 2026-09-23 | `init-without-questions` (measurement) | default | 5 | 5 | 3 | 1.8174 | 3.8118 |
+| 3 | 2026-09-23 | `init-keeps-manual-edits` (smoke) | default | 1 | 1 | 1 | 0.4618 | 4.2736 |
+| 4 | 2026-09-23 | `final-review-finds-planted-defect` (smoke) | default | 1 | 1 | 1 | 0.5864 | 4.8600 |
+| 5 | 2026-09-23 | `final-review-ignores-false-positive` (smoke) | default | 1 | 1 | 1 | 0.8196 | 5.6796 |
+
+Both measured cases 5 of 5 → they keep `runs: 1` (policy); the three smoke runs passed, so
+no follow-up measurement; total $5.68 of the $10 budget. Every grader verdict was three
+PASS votes. Spot check of the final messages: the `pl` case reports `CLAUDE.md` "from the
+Polish template" and prints `.claude/workflow.json` for pasting (the eval blocks
+`.claude/` writes); `init-without-questions` answers in Polish and reports `CLAUDE.md`
+"z szablonu angielskiego" — the prompt's language did not leak into the documents.
 
 ## Definition of Done
 
