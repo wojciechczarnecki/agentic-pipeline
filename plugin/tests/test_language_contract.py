@@ -133,10 +133,10 @@ def test_a_failed_read_stops_the_stage():
 
 
 def test_plan_writes_in_the_current_language():
-    step = section(skill_text("plan"), "## Kroki").split("\n5. ", 1)[1].split("\n6. ", 1)[0]
+    step = section(skill_text("plan"), "## Steps").split("\n5. ", 1)[1].split("\n6. ", 1)[0]
     assert "`language`" in step
     assert "SPEC" in step
-    assert "nie tłumaczysz" in step
+    assert "do not translate" in step
 
 
 def numbered_step(block: str, number: int) -> str:

@@ -376,7 +376,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       the `## Gate: final review` section read in `test_severities_are_tokens`),
       `plugin/tests/test_readme.py` (the comment "while the ship skill is Polish").
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_stage_contract.py plugin/tests/test_language_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_readme.py plugin/tests/test_plugin_structure.py && grep -cP '[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]' plugin/skills/ship/SKILL.md plugin/agents/*.md` (the grep prints `0` for each file)
-- [ ] 3. `idea` and `plan`, the rest — files: `plugin/skills/idea/SKILL.md`,
+- [x] 3. `idea` and `plan`, the rest — files: `plugin/skills/idea/SKILL.md`,
       `plugin/skills/plan/SKILL.md` (frontmatter, intro, `## Input / output`, `## Steps`
       — plan step 5 keeps "the current `language`", "SPEC" and "do not translate", step 8
       keeps the closing-step tokens —, `## Guardrails`, `## Handoff`);
