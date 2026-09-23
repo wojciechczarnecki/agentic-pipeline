@@ -209,7 +209,7 @@ uv run pytest plugin/tests -q
       perspective", "Check EVERY finding". Not in the audit's line list, but AC1 covers every
       skill; the finding (P1) is the same.
       Automatic verification: the P1 block above with `F=plugin/skills/final-review/SKILL.md`
-- [ ] 11. **P1 `idea`** — `plugin/skills/idea/SKILL.md`: "is NOT to write", "IN FULL",
+- [x] 11. **P1 `idea`** — `plugin/skills/idea/SKILL.md`: "is NOT to write", "IN FULL",
       "ALWAYS recommend", "option LABEL", "on WHY you", "VERIFY in the code", "SEPARATELY",
       "Do NOT design".
       Automatic verification: the P1 block above with `F=plugin/skills/idea/SKILL.md`
