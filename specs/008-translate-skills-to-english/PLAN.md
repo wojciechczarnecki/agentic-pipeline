@@ -578,6 +578,8 @@ Results (2026-09-23, branch head before the closing commit):
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-23 · final review (gate) · Which findings to fix? · Accept all: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10. Rejected: none.
+
 ## Review log
 
 ### 2026-09-23 — /pipeline:plan-review
