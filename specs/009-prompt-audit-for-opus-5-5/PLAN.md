@@ -205,7 +205,7 @@ uv run pytest plugin/tests -q
       commands AGAIN". (`FULL`/`FIRST` and `NOT` are gone after steps 3–4.) The AC1 grep
       above skips nothing inside the fence, so it also checks the loop.
       Automatic verification: the P1 block above with `F=plugin/skills/implement/SKILL.md`
-- [ ] 10. **P1 `final-review`** — `plugin/skills/final-review/SKILL.md`: "ITS OWN
+- [x] 10. **P1 `final-review`** — `plugin/skills/final-review/SKILL.md`: "ITS OWN
       perspective", "Check EVERY finding". Not in the audit's line list, but AC1 covers every
       skill; the finding (P1) is the same.
       Automatic verification: the P1 block above with `F=plugin/skills/final-review/SKILL.md`

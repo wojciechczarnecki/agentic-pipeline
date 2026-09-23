@@ -59,7 +59,7 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    `git diff --stat origin/main...HEAD` (the full diff and the full versions of the files
    are read by the perspectives).
 2. **Three perspectives — in parallel**, as separate subagents (the `Agent` tool, all
-   three in one message). Each gets: the spec path, the diff command, ITS OWN
+   three in one message). Each gets: the spec path, the diff command, its own
    perspective and the finding format. It does not get the others' conclusions or your
    hypotheses.
    - **Compliance with the SPEC/PLAN:** for every AC the evidence — the file/test that
@@ -80,7 +80,7 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    The finding format from a perspective:
    `[blocker|worth-fixing|nit] file:line — scenario (input → wrong behaviour) — fix`.
    Severities are tokens written as code in every language, like metric keys.
-3. **Merge and verify.** Merge duplicates. Check EVERY finding yourself in the code —
+3. **Merge and verify.** Merge duplicates. Check every finding yourself in the code —
    reject the false ones with a one-sentence reason. Set the final severity by the real
    risk.
 4. **Write the report** in `## Final review` in PLAN.md: the date; the AC → evidence matrix;
