@@ -496,3 +496,10 @@ def test_repository_settings_leave_stable_and_detaching_to_the_guard():
 def test_decisions_record_run_time_reads():
     rows = [line for line in read("docs/DECISIONS.md").splitlines() if line.startswith("| ")]
     assert any("templates/sections.md" in row and "Read(" in row for row in rows)
+
+
+# SPEC 007, AC6: sessions here run the released plugin from the install cache, and its stages
+# read their templates from there with Read; a stage subagent cannot answer the prompt.
+def test_repository_settings_allow_reading_the_installed_plugin():
+    settings = json.loads(read(".claude/settings.json"))
+    assert "Read(~/.claude/plugins/cache/wcz-tools/pipeline/**)" in settings["permissions"]["allow"]

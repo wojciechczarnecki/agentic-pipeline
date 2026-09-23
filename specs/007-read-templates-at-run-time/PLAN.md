@@ -400,7 +400,7 @@ negative check needs it removable per case).
       twice for a product reason → escalate with the transcript excerpt.
       Automatic verification: `python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('summary') or list(d))" <scratchpad>/<name>.json` for each call, and the ledger in this PLAN lists all four cases green with total spend ≤ 8.00
 
-- [ ] 9. **This repository's settings** — files: `.claude/settings.json` (add
+- [x] 9. **This repository's settings** — files: `.claude/settings.json` (add
       `"Read(~/.claude/plugins/cache/wcz-tools/pipeline/**)"` to `permissions.allow`),
       `tests/test_documents.py` (`test_repository_settings_allow_reading_the_installed_plugin`).
       Write the test first. The file is behind `Edit(**/.claude/settings*.json)` (`ask`) and
@@ -435,9 +435,8 @@ negative check needs it removable per case).
   guard prints only to stderr today — keep it so. JSON on stdout is ignored on exit code
   2, hence the stderr fallback.
 - **Warn-once scope.** The marker is per `session_id`; a subagent shares its parent's
-  session id (assumed; measured in End-to-end → Automatic, item 2b — if the ids differ,
-  a subagent gets its own notice in its model's context and the owner still gets one from
-  the main session's first Bash call; record which holds and correct this bullet), so under `/pipeline:ship` the orchestrator's first
+  session id (measured in End-to-end → Automatic, item 2b: the ids are equal), so under
+  `/pipeline:ship` the orchestrator's first
   Bash call usually takes the notice. The stage skills' stop rule is the second line of
   defence, so a subagent that never saw the notice still stops on the failed read instead
   of stalling (a refused read is returned, not prompted, in headless runs — measured).
@@ -486,6 +485,43 @@ negative check needs it removable per case).
    green, total ≤ $8.
 
 Results (filled in by /pipeline:implement):
+
+Claude Code 2.1.280, 2026-09-23, from this repository, `claude -p --model haiku`; spend
+$0.15 (not eval spend).
+
+- **2 (AC7, AC8) — green.** `claude --plugin-dir plugin -p … stream-json`: a
+  `system`/`informational` event `PreToolUse:Bash says: pipeline guard: no Read allow rule
+  covers this plugin's directory (/home/czarny/Projects/agentic-pipeline/plugin) … Add
+  "Read(//home/czarny/Projects/agentic-pipeline/plugin/**)" …`, and the final `result`
+  quotes the same notice verbatim — the owner channel and the model channel both carry it.
+- **2b (warn-once scope) — the ids are equal.** A probe `PreToolUse: Bash` hook logged
+  `a829e699-…` for the main session's `date +%s` and the same `a829e699-…` for the
+  `general-purpose` subagent's `echo sub`: a subagent shares its parent's `session_id`, so
+  one marker covers the whole `/pipeline:ship` run. Risk bullet corrected.
+- **3 (AC11, clone half) — green.** Scratch consumer, `--plugin-dir <repo>/plugin`, a
+  `general-purpose` subagent asked to `Read` `<repo>/plugin/templates/sections.md`: without
+  settings → `REFUSED` (no permission for `/home/czarny/Projects/agentic-pipeline/plugin/`);
+  with `--settings '{"permissions":{"allow":["Read(//home/czarny/Projects/agentic-pipeline/plugin/**)"]}}'`
+  → first line `# Section map`, no prompt. Together with the planner's cache measurement,
+  AC11 holds for both forms.
+- **4 (step 8 ledger) — incomplete, escalated.** See the ledger below.
+
+Step 8 ledger (default model `claude-opus-5-5`, `claude plugin eval plugin/ --scaffold
+--allow-tools Bash Write Edit --trust-plugin --no-publish --ablation none --runs 1`, plugin
+at commit `6efe375` + working tree of step 9 only):
+
+| # | Case | Runs | Passed | Cost (USD) | Note |
+|---|---|---|---|---|---|
+| 8a | `plan-review-approves-polish-owner-decision` (probe) | 1 | 1 | 0.50 | trace: `Read` of `…/plugin/templates/sections.md` returned the map; `permission_denials: []`; approved, `plan-approved` |
+| 8b | same, rule commented out in the scaffold (negative check) | 1 | 1 | 0.48 | **expected red, got green**: the same `Read` succeeded without the rule; scaffold restored (`git diff` clean) |
+
+Eval spend so far: $0.98 of $8. Why 8b is green: the eval session runs in
+`permissionMode: dontAsk`, the harness's settings (`<tmp>/config/settings.json`) hold no
+`permissions`, and the workspace had no `.claude/settings.json` — so the grant comes from
+the case's `allowed_tools: [Read, …]`, which the harness passes as an allow grant for `Read`
+on every path (Risks → "The harness may allow `Read` everywhere"). Per step 8b this is an
+escalation: AC12's "removing the rule from the scaffold makes it fail" cannot fail under
+this harness. 8c and 8d are not run until the owner decides.
 
 ### Manual (performed by the owner)
 
@@ -551,6 +587,10 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   after the reason (as planned); the Risks section assumed the notice only adds stdout. The
   test now models a consumer set up as documented, which keeps its subject — the refusal
   text — deterministic on a fresh machine. Assertion and README block unchanged.
+- **D3 (step 9 before step 8 closed)** — step 9 (one allow rule in `.claude/settings.json`
+  and its test) was done while step 8 waits on the owner's decision about AC12's negative
+  check. Why: it is independent of the eval measurement, and the Edit tool change went
+  through on the first try, so the planned escalation for it was not needed.
 
 ## Final review
 

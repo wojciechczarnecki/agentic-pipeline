@@ -37,6 +37,7 @@
       "Bash(chmod +x *)",
       "Bash(date *)",
       "Bash(workflow_metrics.py *)",
+      "Read(~/.claude/plugins/cache/wcz-tools/pipeline/**)",
       "WebSearch"
     ],
     "ask": [
