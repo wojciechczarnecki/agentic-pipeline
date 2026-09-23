@@ -938,3 +938,38 @@ nothing out of scope on the branch.
 - `test_language_twins_share_their_structure` compares only heading levels, not the names
   of the `init` document headings — rejected: AC11 asks only for no Polish and unchanged
   Polish templates, and no stage reads the `init` documents by heading.
+
+### 2026-09-23 — /pipeline:final-review (apply)
+
+Owner decision (gate 2): all thirteen findings accepted, none rejected. Applied in
+`fix: address final review of 006 language-made-explicit`:
+
+- **F1** — `init` question 1 recommends the supported `language` already in
+  `.claude/workflow.json`; unattended, the fallback order is argument → existing
+  `language` → `en` (steps 2–4); `test_a_re_run_keeps_the_configured_language`; CHANGELOG.
+- **F2** — `configured_specs_dir` reads the config through `load_sections` and prints the
+  problems as `workflow.json: …` warnings; `test_a_faulty_key_warns_and_the_report_goes_on`,
+  `test_an_unsupported_language_warns_and_does_not_stop_the_report` (`EN`, `polski`),
+  `test_an_unreadable_config_is_reported` (invalid JSON still exits 1); README and
+  CHANGELOG say so. The former `test_a_broken_config_is_reported` (exit 1 on an unknown
+  key) was replaced: an unknown key now warns, matching the hooks and the README.
+- **F3** — `test_sections_are_named_by_both_headings` searches the prose outside fences;
+  checked by mutation (removing `` (`## Read context`) `` from `idea` now fails).
+- **F4** — the AC13 test asserts the no-translation sentence in step 6 and the step 7
+  notice.
+- **F5** — `ENGLISH_HEADINGS` and `MAP_SNAPSHOT` pin the English SPEC/PLAN headings and
+  every literal pair of the section map.
+- **F6** — `workflow.example.json` shows `"language": "en"`.
+- **F7** — the unattended TODO example is `"TODO: <verify command>"`, its description in
+  `language`; `test_the_todo_example_is_not_tied_to_one_language`.
+- **F8** — the eval criteria line reflowed to ≤ 100 characters.
+- **F9** — `ship` records "no findings" in `language`, not a Polish literal.
+- **F10** — Owner summary → Main risks points to decision C / D1.
+- **F11** — `test_the_lists_cover_every_stage_and_agent` derives the stage skills (minus
+  `init`) and agents from the tree.
+- **F12** — the English template checks (`test_templates_language.py`,
+  `test_init_templates.py`) run on the unstripped text; `strip_code` asserts balanced
+  fences.
+- **F13** — `section_map` asserts 3 (severity) or 4 (map) cells per row.
+
+`bash scripts/check.sh` green (1723 passed).

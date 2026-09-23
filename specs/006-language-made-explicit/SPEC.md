@@ -19,6 +19,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 4
   final_review_nits: 9
+  findings_accepted: 13
+  findings_rejected: 0
 ---
 
 # SPEC 006 — Language made explicit
