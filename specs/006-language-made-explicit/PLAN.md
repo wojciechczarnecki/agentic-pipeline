@@ -675,9 +675,34 @@ _(filled in by /pipeline:implement: the step 5 permission probe, the step 10 eva
 — date, step, case, model, runs, passed, `--max-cost-usd`, cost, running total — and the
 end-to-end outputs above)_
 
-**Implementation progress (2026-09-23, /pipeline:implement):** steps 1–4 committed green;
-self-correction iterations so far: 1 (step 2 — `PR titles` wrapped across a README line,
-the README bullet rewrapped).
+**Implementation progress (2026-09-23, /pipeline:implement):** steps 1–11 committed green;
+self-correction iterations: 2 (step 2 — `PR titles` wrapped across a README line, the README
+bullet rewrapped; step 6 — a Python string literal in the new test closed early on the
+`"` of a `„…"` quote, fixed with single quotes).
+
+**End-to-end verification (2026-09-23, after step 11):**
+
+1. Throwaway repository, `.claude/workflow.json` = `{"language": "de"}`:
+   `workflow_config.py --check` → exit 1, stderr
+   `workflow.json: \`language\` has to be one of: en, pl`; `guard.py` on `ls` → exit 0,
+   stderr `pipeline guard: \`language\` has to be one of: en, pl; that section falls back to
+   the defaults`. (The JSON files were written with Write — this session's guard refuses a
+   shell write to `.claude/workflow.json`.)
+2. `{"language": "pl"}` and `{}` → `--check` exit 0 both.
+3. `grep '^#' plugin/templates/PLAN.pl.md` equals the Polish PLAN snapshot (diff empty);
+   `grep '^#' plugin/templates/PLAN.en.md` lists `# PLAN NNN — <feature name>`,
+   `## Owner summary`, `## Approach`, `## AC → steps matrix`, `## Steps`,
+   `## Risks and traps`, `## End-to-end verification`,
+   `### Automatic (performed by /pipeline:implement)`, `### Manual (performed by the owner)`,
+   `## Definition of Done`, `## Owner decisions`, `## Review log`, `## Deviations`,
+   `## Final review` — AC6's list.
+4. `claude plugin validate --strict plugin/` and `claude plugin validate --strict .` →
+   `Validation passed` both.
+5. Eval ledger above: both `init` language cases 5 of 5, three smoke runs 1 of 1, $5.68.
+6. Step 5 permission probe recorded above: the absolute-path `cat`s were **refused** (not
+   "ran without a prompt" as this item expected); resolved by owner decision C —
+   templates inline, nothing read at run time (deviation D1).
+7. `bash scripts/check.sh` → ALL GREEN (1714 passed).
 
 **Step 5 permission probe (2026-09-23, Claude Code 2.1.280, `--model haiku`, `-p`,
 `--output-format json`).** Consumer: `git init` under the scratchpad,
@@ -719,12 +744,12 @@ Polish template" and prints `.claude/workflow.json` for pasting (the eval blocks
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/CONVENTIONS.md`,
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/CONVENTIONS.md`,
       `docs/BACKLOG.md`, `CONTRIBUTING.md` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
