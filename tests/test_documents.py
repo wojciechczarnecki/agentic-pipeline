@@ -319,6 +319,12 @@ def test_readme_guard_block_matches_the_guard(tmp_path):
         subprocess.run(command, cwd=repo, check=True)
     (repo / ".claude").mkdir()
     (repo / ".claude" / "workflow.json").write_text("{}")
+    # A consumer set up as documented: the Read rule for the plugin keeps the guard's
+    # once-per-session notice (SPEC 007) out of the refusal the README quotes.
+    plugin = str(ROOT / "plugin").lstrip("/")
+    (repo / ".claude" / "settings.json").write_text(
+        json.dumps({"permissions": {"allow": [f"Read(//{plugin}/**)"]}})
+    )
     payload = {
         "tool_input": {"command": block[0].removeprefix("$ ")},
         "cwd": str(repo),
@@ -423,6 +429,13 @@ def test_release_procedure_runs_the_canary_before_the_tag():
         assert token in bullet, token
 
 
+# SPEC 007, AC15: a canary loads the plugin from a clone, which the cache rule does not
+# cover, so the procedure names the absolute clone rule.
+def test_the_canary_names_the_clone_read_rule():
+    releases = section(CONVENTIONS, "## Releases")
+    assert "Read(//" in releases
+
+
 def test_claude_md_lists_the_canary():
     commands = [body for info, body in fenced_blocks(read("CLAUDE.md")) if info == "bash"]
     lines = "\n".join(commands[0]).splitlines()
@@ -477,3 +490,16 @@ def test_repository_settings_leave_stable_and_detaching_to_the_guard():
     assert settings["permissions"]["deny"] == ["Bash(gh pr merge*)", "Bash(claude plugin enable*)"]
     workflow = json.loads(read(".claude/workflow.json"))
     assert workflow["protectedBranches"] == ["stable"]
+
+
+# SPEC 007, AC16: the run-time reads reverse the inline-template decision in the register.
+def test_decisions_record_run_time_reads():
+    rows = [line for line in read("docs/DECISIONS.md").splitlines() if line.startswith("| ")]
+    assert any("templates/sections.md" in row and "Read(" in row for row in rows)
+
+
+# SPEC 007, AC6: sessions here run the released plugin from the install cache, and its stages
+# read their templates from there with Read; a stage subagent cannot answer the prompt.
+def test_repository_settings_allow_reading_the_installed_plugin():
+    settings = json.loads(read(".claude/settings.json"))
+    assert "Read(~/.claude/plugins/cache/wcz-tools/pipeline/**)" in settings["permissions"]["allow"]

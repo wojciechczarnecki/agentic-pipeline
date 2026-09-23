@@ -20,6 +20,12 @@ git remote add origin "$PWD/.origin.git"
 
 mkdir -p .claude docs app tests
 
+# The stages read the plugin's templates and section map with Read; under `claude plugin
+# eval` the plugin loads from this clone, outside the workspace, so the consumer allows it
+# with the absolute clone rule (SPEC 007).
+plugin_dir="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)}"
+printf '{"permissions": {"allow": ["Read(//%s/**)"]}}\n' "${plugin_dir#/}" >.claude/settings.json
+
 # Written before the session starts: an eval run blocks writes to .claude/, and without the
 # file the guard prints its "no workflow.json" notice into every Bash call.
 cat > .claude/workflow.json <<'EOF'

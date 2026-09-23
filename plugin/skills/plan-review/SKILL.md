@@ -21,12 +21,27 @@ właściciel wchodzi tylko wtedy, gdy decyzja nie należy do Ciebie (krok 5).
 - Pliki, które zapisujesz w repozytorium (SPEC, PLAN — każda sekcja, także wpisy decyzji,
   review log, deviations i raport końcowego review), oraz treść PR piszesz w języku
   z `language` w `.claude/workflow.json`; brak klucza albo wartość spoza `en`/`pl` = `en`.
-  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji w README
-  pluginu).
+  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji — sekcja
+  „Mapa sekcji").
 - Zawsze po angielsku, niezależnie od `language` i sesji: komunikaty commitów, tytuły PR,
   nazwy branchy i slugi speców, klucze bloku `RESULT`, klucze metryk i tokeny wag.
 - Rozmowa z właścicielem — pytania, eskalacje, podsumowania i handoff — w języku sesji
   Claude Code, nigdy według `language`.
+
+## Mapa sekcji
+
+- Zanim poszukasz sekcji w SPEC albo PLAN, wczytaj narzędziem `Read` mapę sekcji
+  `${CLAUDE_PLUGIN_ROOT}/templates/sections.md` (klucz → nagłówek polski → angielski).
+  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek.
+- Nieudany odczyt mapy albo szablonu kończy etap — nie zgadujesz nagłówków i nie
+  odtwarzasz szablonu z pamięci. Pod `/pipeline:ship`: `RESULT: ESCALATE`; uruchomiony
+  samodzielnie: STOP z tym samym komunikatem do właściciela. Komunikat podaje ścieżkę
+  pliku i regułę do dopisania w `permissions.allow` (`.claude/settings.json` projektu
+  albo ustawień użytkownika): `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)`,
+  a dla klonu z `--plugin-dir` — `Read(//<ścieżka katalogu pluginu bez początkowego />/**)`;
+  `<marketplace>` odczytujesz z rozwiniętej ścieżki `${CLAUDE_PLUGIN_ROOT}`
+  (`…/plugins/cache/<marketplace>/pipeline/<wersja>`); gdy strażnik pokazał już
+  ostrzeżenie z gotową regułą, podajesz tę regułę.
 
 ## Wejście / wyjście
 

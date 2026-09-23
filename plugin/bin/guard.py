@@ -386,12 +386,37 @@ def main() -> int:
     cwd = Path(payload.get("cwd") or os.getcwd())
     env = dict(os.environ)
     config = read_config(cwd, env, warn=True)
+    session_id = payload.get("session_id")
+    notice = None
     if not config.found and not config.unreadable:
-        warn_once(payload.get("session_id"))
+        warn_once(session_id)
+    else:
+        # Only a pipeline project reads the templates: with a `--scope user` install every
+        # other project would get the notice too, and `/pipeline:init` writes the rule.
+        notice = read_rule_notice(session_id, env, config, cwd)
     reason = evaluate(command, cwd, env, config)
     if reason is None:
+        if notice:
+            # One JSON object on stdout: `systemMessage` is shown to the owner and
+            # `additionalContext` reaches the model of the session or subagent that made the
+            # call (measured, PLAN 007). No permissionDecision: the normal flow is untouched.
+            print(
+                json.dumps(
+                    {
+                        "systemMessage": notice,
+                        "hookSpecificOutput": {
+                            "hookEventName": "PreToolUse",
+                            "additionalContext": notice,
+                        },
+                    }
+                )
+            )
         return 0
-    print(f"Blocked by the pipeline guard: {reason}", file=sys.stderr)
+    # JSON output is ignored on exit code 2, so the notice rides along with the reason.
+    message = f"Blocked by the pipeline guard: {reason}"
+    if notice:
+        message = f"{message}\n{notice}"
+    print(message, file=sys.stderr)
     return 2
 
 
@@ -415,20 +440,144 @@ def read_config(cwd: Path, env: dict[str, str], warn: bool = False) -> workflow_
     return config
 
 
+def marker_path(session_id: str | None, marker: str) -> Path:
+    name = re.sub(r"[^A-Za-z0-9_.-]", "", session_id or "") or "session"
+    return Path(tempfile.gettempdir()) / f"pipeline-guard-{os.getuid()}" / f"{name}.{marker}"
+
+
 # The marker lives in a per-user directory and is created exclusively, so a symlink or a
 # file planted by someone else neither silences the warning nor gets written through.
-def warn_once(session_id: str | None) -> None:
-    name = re.sub(r"[^A-Za-z0-9_.-]", "", session_id or "") or "session"
-    directory = Path(tempfile.gettempdir()) / f"pipeline-guard-{os.getuid()}"
+def first_in_session(session_id: str | None, marker: str) -> bool:
+    path = marker_path(session_id, marker)
     try:
-        directory.mkdir(mode=0o700, exist_ok=True)
+        path.parent.mkdir(mode=0o700, exist_ok=True)
         flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW
-        os.close(os.open(directory / f"{name}.warned", flags, 0o600))
+        os.close(os.open(path, flags, 0o600))
     except FileExistsError:
-        return
+        return False
     except OSError:
         pass
-    print(NO_CONFIG, file=sys.stderr)
+    return True
+
+
+def warn_once(session_id: str | None) -> None:
+    if first_in_session(session_id, "warned"):
+        print(NO_CONFIG, file=sys.stderr)
+
+
+# The directory `${CLAUDE_PLUGIN_ROOT}` expands to in the skills — the path a stage reads
+# templates from — or, outside Claude Code, the plugin this guard runs from.
+def plugin_dir(env: dict[str, str]) -> Path:
+    raw = env.get("CLAUDE_PLUGIN_ROOT")
+    if raw:
+        return Path(os.path.abspath(os.path.expanduser(raw)))
+    return Path(__file__).resolve().parents[1]
+
+
+def home_dir(env: dict[str, str]) -> Path:
+    return Path(env.get("HOME") or Path.home())
+
+
+def settings_files(env: dict[str, str], project: Path) -> list[Path]:
+    config_dir = Path(env.get("CLAUDE_CONFIG_DIR") or home_dir(env) / ".claude")
+    return [
+        config_dir / "settings.json",
+        project / ".claude" / "settings.json",
+        project / ".claude" / "settings.local.json",
+    ]
+
+
+def allow_rules(path: Path) -> list[str]:
+    settings = read_json(path)
+    permissions = settings.get("permissions") if isinstance(settings, dict) else None
+    allowed = permissions.get("allow") if isinstance(permissions, dict) else None
+    if not isinstance(allowed, list):
+        return []
+    return [rule for rule in allowed if isinstance(rule, str)]
+
+
+def glob_regex(pattern: str) -> re.Pattern[str]:
+    parts = []
+    for piece in re.split(r"(\*\*|\*|\?)", pattern):
+        parts.append({"**": ".*", "*": "[^/]*", "?": "[^/]"}.get(piece, re.escape(piece)))
+    return re.compile("".join(parts))
+
+
+# Only the forms whose base is certain count: `~/…` (home) and `//…` (absolute). Claude Code
+# reads `/…` as relative to the settings file, and `./…` or a bare path as relative to the
+# working directory, so those — like rules given through --settings or managed policy — are
+# not seen, and the notice may then be false (docs/GUARD.md, known limits).
+def rule_covers(rule: str, target: Path, env: dict[str, str] | None = None) -> bool:
+    rule = rule.strip()
+    if rule == "Read":
+        return True
+    match = re.fullmatch(r"Read\((.+)\)", rule)
+    if not match:
+        return False
+    spec = match.group(1)
+    if spec.startswith("~/"):
+        base = str(home_dir(env or dict(os.environ))).rstrip("/")
+        pattern = f"{base}/{spec[2:]}"
+    elif spec.startswith("//"):
+        pattern = spec[1:]
+    else:
+        return False
+    regex = glob_regex(pattern)
+    candidates = {target, Path(os.path.realpath(target))}
+    return any(regex.fullmatch(str(path / "templates" / "sections.md")) for path in candidates)
+
+
+def cache_rule(target: Path, cache: Path) -> tuple[str, str] | None:
+    try:
+        parts = target.relative_to(cache).parts
+    except ValueError:
+        return None
+    if len(parts) < 3:
+        return None
+    return parts[0], parts[1]
+
+
+def suggested_rule(target: Path, env: dict[str, str]) -> str:
+    home = home_dir(env)
+    found = cache_rule(target, home / ".claude" / "plugins" / "cache")
+    if found:
+        return f"Read(~/.claude/plugins/cache/{found[0]}/{found[1]}/**)"
+    config_dir = env.get("CLAUDE_CONFIG_DIR")
+    if config_dir:
+        config = Path(os.path.abspath(os.path.expanduser(config_dir)))
+        found = cache_rule(target, config / "plugins" / "cache")
+        if found:
+            base = str(config).lstrip("/")
+            return f"Read(//{base}/plugins/cache/{found[0]}/{found[1]}/**)"
+    return f"Read(//{str(target).lstrip('/')}/**)"
+
+
+READ_RULE = (
+    "pipeline guard: no Read allow rule covers this plugin's directory ({target}), so stages "
+    "that read its templates and section map will stop — a stage agent cannot answer the "
+    'permission prompt. Add "{rule}" to permissions.allow in .claude/settings.json (or '
+    "~/.claude/settings.json). A stage subagent's read will be refused; if a read of a "
+    "template or the section map fails, escalate naming this rule."
+)
+
+
+# Fail-open like the configuration: nothing in this path may block or break the call.
+def read_rule_notice(
+    session_id: str | None, env: dict[str, str], config: workflow_config.Config, cwd: Path
+) -> str | None:
+    try:
+        if marker_path(session_id, "read-rule").exists():
+            return None
+        target = plugin_dir(env)
+        project = Path(env.get("CLAUDE_PROJECT_DIR") or config.root or cwd)
+        for path in settings_files(env, project):
+            if any(rule_covers(rule, target, env) for rule in allow_rules(path)):
+                return None
+        if not first_in_session(session_id, "read-rule"):
+            return None
+        return READ_RULE.format(target=target, rule=suggested_rule(target, env))
+    except Exception:
+        return None
 
 
 def evaluate(

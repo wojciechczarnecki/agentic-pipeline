@@ -95,7 +95,10 @@ ONLY Alembic's verbs and the variables `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`;
 `migrations.command` and `migrations.localHosts` are configurable, so a project on another
 migration tool is not protected — the guard's silence is not protection. Fail-open is
 deliberate: a missing `.claude/workflow.json`, a validation error and a missing `python3`
-end with a warning on stderr and exit code 0.
+end with a warning on stderr and exit code 0. Once per session, in a project with
+`.claude/workflow.json`, the guard also checks that a settings file allows `Read` on the
+plugin's own directory (see the section map below) and, when none does, prints a notice naming the exact rule to add — as `systemMessage` for the
+owner and `additionalContext` for the model, never blocking the call.
 
 What the guard defends against, the three layers behind it (guard, `pre-push`, GitHub
 rulesets), the commands it stops that a string `deny` rule lets through, and its known
@@ -175,44 +178,23 @@ already written is translated.
 ### Section map
 
 Stages name a section by both literals and accept either when reading, so a spec written
-before a language change, or before 0.5.0, still reads correctly. The SPEC and PLAN
-templates (`templates/SPEC.<language>.md`, `templates/PLAN.<language>.md`) carry exactly
-these literals; the H1 lines (`# SPEC NNN — `, `# PLAN NNN — `) are shared by both
-languages. `idea` and `plan` carry both templates inline, pinned to these files byte for
-byte by a test: a stage subagent cannot read a file outside the working directory without a
-permission prompt, so nothing is read from the plugin at run time.
+before a language change, or before 0.5.0, still reads correctly. The literals of every
+SPEC and PLAN section live in [templates/sections.md](templates/sections.md), and the SPEC
+and PLAN templates (`templates/SPEC.<language>.md`, `templates/PLAN.<language>.md`) carry
+exactly those literals. Everything is read at run time with `Read`: `idea` and `plan` read
+the one template for the current `language`, and every stage reads the section map before
+it looks for a section.
 
-| key | document | Polish | English |
-|---|---|---|---|
-| `goal` | SPEC | `## Cel` | `## Goal` |
-| `context` | SPEC | `## Kontekst` | `## Context` |
-| `read-context` | SPEC | `## Przeczytany kontekst` | `## Read context` |
-| `scope` | SPEC | `## Zakres` | `## Scope` |
-| `out-of-scope` | SPEC | `## Poza zakresem` | `## Out of scope` |
-| `requirements` | SPEC | `## Wymagania i kryteria akceptacji` | `## Requirements and acceptance criteria` |
-| `decisions` | SPEC | `## Decyzje i odrzucone alternatywy` | `## Decisions and rejected alternatives` |
-| `owner-decisions` | SPEC | `## Decyzje właściciela` | `## Owner decisions` |
-| `open-questions` | SPEC | `## Pytania otwarte (nieblokujące)` | `## Open questions (non-blocking)` |
-| `assumption` | SPEC | `(założenie)` | `(assumption)` |
-| `owner-summary` | PLAN | `## Streszczenie dla właściciela` | `## Owner summary` |
-| `summary-approach` | PLAN | `**Podejście:**` | `**Approach:**` |
-| `summary-risks` | PLAN | `**Główne ryzyka:**` | `**Main risks:**` |
-| `summary-dependency` | PLAN | `**Nowa zależność:**` | `**New dependency:**` |
-| `summary-migration` | PLAN | `**Migracja danych:**` | `**Data migration:**` |
-| `summary-manual` | PLAN | `**Scenariusze ręczne dla właściciela:**` | `**Manual scenarios for the owner:**` |
-| `approach` | PLAN | `## Podejście` | `## Approach` |
-| `ac-matrix` | PLAN | `## Macierz AC → kroki` | `## AC → steps matrix` |
-| `steps` | PLAN | `## Kroki` | `## Steps` |
-| `step-verification` | PLAN | `Weryfikacja automatyczna:` | `Automatic verification:` |
-| `risks` | PLAN | `## Ryzyka i pułapki` | `## Risks and traps` |
-| `e2e` | PLAN | `## Weryfikacja end-to-end` | `## End-to-end verification` |
-| `e2e-automatic` | PLAN | `### Automatyczna (wykonuje /pipeline:implement)` | `### Automatic (performed by /pipeline:implement)` |
-| `e2e-manual` | PLAN | `### Ręczna (wykonuje właściciel)` | `### Manual (performed by the owner)` |
-| `definition-of-done` | PLAN | `## Definition of Done` | `## Definition of Done` |
-| `owner-decisions` | PLAN | `## Decyzje właściciela` | `## Owner decisions` |
-| `review-log` | PLAN | `## Review log` | `## Review log` |
-| `deviations` | PLAN | `## Deviations` | `## Deviations` |
-| `final-review` | PLAN | `## Final review` | `## Final review` |
+A stage subagent cannot answer a permission prompt, so a consumer needs an allow rule for
+the plugin's directory in `permissions.allow`:
+`Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)` for the install, and for a
+`--plugin-dir` clone the absolute form `Read(//<clone>/plugin/**)` (`//` is absolute, a
+single `/` is relative to the settings file). A read that fails stops the stage: under
+`/pipeline:ship` with `RESULT: ESCALATE` naming the file and the rule to add, and in an
+interactive `idea` or `plan` with the same message to the owner. The command guard warns
+once per session when no user, project or project-local settings file holds such a rule.
+
+### Severity tokens
 
 Finding severities are fixed English tokens, written as code in every language, like metric
 keys:

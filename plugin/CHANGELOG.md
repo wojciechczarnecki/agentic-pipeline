@@ -2,6 +2,55 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.6.0
+
+Stages read their templates and the section map at run time: `idea` and `plan` read the one
+SPEC or PLAN template for the current `language`, and every stage reads
+`templates/sections.md` with `Read` from the plugin's directory, instead of carrying both
+languages inline. The command guard warns once per session when no settings file allows
+that read.
+
+**consumer impact:** add `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)` (for
+this plugin's own marketplace: `Read(~/.claude/plugins/cache/wcz-tools/pipeline/**)`) to
+`permissions.allow` in the project's `.claude/settings.json`, or in
+`~/.claude/settings.json` for every project on the machine; a `--plugin-dir` session needs
+the absolute clone rule `Read(//<clone>/plugin/**)`. Without it every stage stops on its
+first read — under `/pipeline:ship` with an escalation naming the file and the rule — and
+the guard prints a notice with the exact rule once per session. `/pipeline:init` writes the
+rule for new projects.
+
+### Added
+
+- `templates/sections.md`: the section map (key → Polish → English), read by every stage
+  with `Read` before it looks for a section; a failed read of the map or a template ends the
+  stage (`RESULT: ESCALATE` under `/pipeline:ship`, a stop with the same message when run
+  on its own), naming the file and the allow rule to add.
+- A once-per-session guard notice, in a project with `.claude/workflow.json`, when no
+  user, project or project-local settings file holds a `Read` allow rule covering the
+  plugin's directory: one JSON object on stdout, as `systemMessage` for the owner and
+  `additionalContext` for the model, never blocking; on a refused call it follows the
+  reason on stderr. It names the exact rule — the version-free cache form, or the absolute
+  `//` form for a clone.
+- `templates/settings.json` allows `Read(~/.claude/plugins/cache/TODO-marketplace/pipeline/**)`,
+  and `/pipeline:init` fills the marketplace name into the rule and `extraKnownMarketplaces`
+  alike.
+- Eval case `plan-review-approves-polish-owner-decision`: a Polish consumer whose
+  `## Decyzje właściciela` accepts a new dependency, approved without escalating; every
+  stage eval scaffold writes the clone `Read` rule.
+
+### Changed
+
+- `idea` and `plan` read `templates/{SPEC,PLAN}.<language>.md` with `Read` (`en` for a
+  missing or unsupported value); every stage skill carries one identical `## Mapa sekcji`
+  block.
+- The install guide documents the rule, project versus user settings and the clone rule;
+  the canary procedure includes the clone rule.
+
+### Removed
+
+- The inline SPEC and PLAN templates in `idea` and `plan`, and the section-map table in the
+  README (the README links to `templates/sections.md` and carries no Polish).
+
 ## 0.5.0
 
 Language made explicit: `language` decides what the pipeline writes into the repository,

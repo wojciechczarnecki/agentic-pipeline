@@ -27,12 +27,27 @@ Luka w SPEC wraca potem jako eskalacja — tańsza jest tutaj.
 - Pliki, które zapisujesz w repozytorium (SPEC, PLAN — każda sekcja, także wpisy decyzji,
   review log, deviations i raport końcowego review), oraz treść PR piszesz w języku
   z `language` w `.claude/workflow.json`; brak klucza albo wartość spoza `en`/`pl` = `en`.
-  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji w README
-  pluginu).
+  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji — sekcja
+  „Mapa sekcji").
 - Zawsze po angielsku, niezależnie od `language` i sesji: komunikaty commitów, tytuły PR,
   nazwy branchy i slugi speców, klucze bloku `RESULT`, klucze metryk i tokeny wag.
 - Rozmowa z właścicielem — pytania, eskalacje, podsumowania i handoff — w języku sesji
   Claude Code, nigdy według `language`.
+
+## Mapa sekcji
+
+- Zanim poszukasz sekcji w SPEC albo PLAN, wczytaj narzędziem `Read` mapę sekcji
+  `${CLAUDE_PLUGIN_ROOT}/templates/sections.md` (klucz → nagłówek polski → angielski).
+  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek.
+- Nieudany odczyt mapy albo szablonu kończy etap — nie zgadujesz nagłówków i nie
+  odtwarzasz szablonu z pamięci. Pod `/pipeline:ship`: `RESULT: ESCALATE`; uruchomiony
+  samodzielnie: STOP z tym samym komunikatem do właściciela. Komunikat podaje ścieżkę
+  pliku i regułę do dopisania w `permissions.allow` (`.claude/settings.json` projektu
+  albo ustawień użytkownika): `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)`,
+  a dla klonu z `--plugin-dir` — `Read(//<ścieżka katalogu pluginu bez początkowego />/**)`;
+  `<marketplace>` odczytujesz z rozwiniętej ścieżki `${CLAUDE_PLUGIN_ROOT}`
+  (`…/plugins/cache/<marketplace>/pipeline/<wersja>`); gdy strażnik pokazał już
+  ostrzeżenie z gotową regułą, podajesz tę regułę.
 
 ## Wejście / wyjście
 
@@ -81,7 +96,7 @@ Luka w SPEC wraca potem jako eskalacja — tańsza jest tutaj.
    - zapytaj wprost o to, co później byłoby eskalacją: czy feature wymaga nowej
      zależności lub migracji danych — i czy właściciel akceptuje je z góry.
    Iteruj, aż znikną luki blokujące.
-4. **Spisz SPEC.md** według bloku szablonu dla `language` (sekcja „Szablon SPEC.md";
+4. **Spisz SPEC.md** według szablonu wczytanego dla `language` (sekcja „Szablon SPEC.md";
    utwórz katalog `<docs.specsDir>/NNN-<slug>/`), w języku z `language`. Zanim zapiszesz
    pierwszy plik — utwórz branch lane'a:
    `git switch main && git pull --ff-only && git switch -c feat/NNN-<slug>`;
@@ -101,121 +116,14 @@ Luka w SPEC wraca potem jako eskalacja — tańsza jest tutaj.
 
 ## Szablon SPEC.md
 
-Blok wybierasz według `language`: `pl` → „Polski (`pl`)"; `en`, brak klucza albo wartość
-spoza `en`/`pl` → „Angielski (`en`)". Szablonu nie tłumaczysz i nie łączysz bloków —
-SPEC ma dokładnie nagłówki i frontmatter wybranego bloku. Bloki są wierną kopią
-`templates/SPEC.pl.md` i `templates/SPEC.en.md` pluginu (pilnuje tego test); nie czytasz
-tych plików w trakcie pracy.
+Szablon wczytujesz narzędziem `Read` — jeden plik, wybrany według `language`:
 
-### Polski (`pl`)
+- `pl` → `${CLAUDE_PLUGIN_ROOT}/templates/SPEC.pl.md`;
+- `en`, brak klucza albo inna wartość → `${CLAUDE_PLUGIN_ROOT}/templates/SPEC.en.md`.
 
-```markdown
----
-status: spec-draft
-stage_history:
-  - "spec-draft — YYYY-MM-DD"
----
-
-# SPEC NNN — <nazwa feature'a>
-
-## Cel
-
-<1–3 zdania: jaki problem użytkownika rozwiązujemy i po czym poznamy, że działa>
-
-## Kontekst
-
-<powiązane feature'y/specy; stan istniejącego kodu w tym obszarze (ścieżki plików);
-pozycja w roadmapie i wiążące decyzje trafiają do „Przeczytany kontekst">
-
-## Przeczytany kontekst
-
-- `<docs.roadmap>` — <co wynika dla feature'a albo dlaczego nie dotyczy>
-- `<docs.project>` — <co wynika dla feature'a albo dlaczego nie dotyczy>
-- `<docs.decisions>` — <co wynika dla feature'a albo dlaczego nie dotyczy>
-- `<dokument domenowy z mapy w CLAUDE.md>` — <co wynika dla feature'a albo dlaczego nie
-  dotyczy> (jedna pozycja na dokument domenowy w rozumieniu kroku 1)
-
-## Zakres
-
-- <konkretna pozycja>
-
-## Poza zakresem
-
-- <co świadomie odpuszczamy + gdzie to trafia (backlog z priorytetem i wyzwalaczem / przyszły spec)>
-
-## Wymagania i kryteria akceptacji
-
-- [ ] AC1: <sprawdzalne kryterium — obserwowalne zachowanie, nie implementacja>
-- [ ] AC2: <…> (założenie)   <- dopisek przy AC niepotwierdzonych przez właściciela/kod
-
-## Decyzje i odrzucone alternatywy
-
-| Decyzja | Odrzucone alternatywy | Uzasadnienie |
-|---------|-----------------------|--------------|
-
-## Decyzje właściciela
-
-- <zgody udzielone z góry, np. „nowa zależność X — zaakceptowana"; lub „brak">
-
-## Pytania otwarte (nieblokujące)
-
-- <lub „brak">
-```
-
-### Angielski (`en`)
-
-```markdown
----
-status: spec-draft
-stage_history:
-  - "spec-draft — YYYY-MM-DD"
----
-
-# SPEC NNN — <feature name>
-
-## Goal
-
-<1–3 sentences: which user problem we solve and how we will know it works>
-
-## Context
-
-<related features/specs; the state of the existing code in this area (file paths);
-the place in the roadmap and binding decisions go to "Read context">
-
-## Read context
-
-- `<docs.roadmap>` — <what follows for the feature, or why it does not apply>
-- `<docs.project>` — <what follows for the feature, or why it does not apply>
-- `<docs.decisions>` — <what follows for the feature, or why it does not apply>
-- `<domain document from the map in CLAUDE.md>` — <what follows for the feature, or why it
-  does not apply> (one item per domain document as defined in step 1)
-
-## Scope
-
-- <a concrete item>
-
-## Out of scope
-
-- <what we deliberately leave out + where it goes (backlog with priority and trigger / a future spec)>
-
-## Requirements and acceptance criteria
-
-- [ ] AC1: <a checkable criterion — observable behaviour, not implementation>
-- [ ] AC2: <…> (assumption)   <- marker on ACs not confirmed by the owner/code
-
-## Decisions and rejected alternatives
-
-| Decision | Rejected alternatives | Rationale |
-|----------|-----------------------|-----------|
-
-## Owner decisions
-
-- <approvals given up front, e.g. "new dependency X — accepted"; or "none">
-
-## Open questions (non-blocking)
-
-- <or "none">
-```
+Wczytujesz tylko ten jeden plik. Szablonu nie tłumaczysz i nie łączysz z drugim — SPEC ma
+dokładnie jego nagłówki i frontmatter. Nieudany odczyt szablonu → postępujesz według
+sekcji „Mapa sekcji" (stop z komunikatem; szablonu nie odtwarzasz z pamięci).
 
 ## Guardraile
 

@@ -102,6 +102,21 @@ Each layer covers ground the one before it cannot, and each has its own way arou
   A branch in `protectedBranches` besides `main`/`master` has no no-bypass ruleset behind
   it, so for it a write is refused also under `branches/<branch>` (rename, protection)
   and when a `branch` field names it (a `contents` commit, `merge-upstream`).
+- **The read-rule notice.** Stages read the plugin's templates and section map with
+  `Read` at run time, and a stage subagent cannot answer a permission prompt. On the first
+  Bash call of a session in a project with `.claude/workflow.json` (a project without it
+  runs no stages and gets only the missing-configuration warning) the guard looks for a
+  `Read` allow rule covering the plugin's own directory (`${CLAUDE_PLUGIN_ROOT}`) in `~/.claude/settings.json` (or
+  `$CLAUDE_CONFIG_DIR/settings.json`), `.claude/settings.json` and
+  `.claude/settings.local.json`. When none covers it, the call still runs, and the guard
+  prints one JSON object on stdout carrying the same notice as `systemMessage` (shown to
+  the owner) and `additionalContext` (read by the model of the session or subagent that
+  made the call); the notice names the exact rule to add —
+  `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)` for the install cache, the
+  absolute `Read(//<clone>/plugin/**)` for a `--plugin-dir` clone. On a refused call the
+  notice follows the reason on stderr, because JSON is ignored with exit code 2. A marker
+  per session keeps it to one notice. The notice informs; a stage stops only when its read
+  actually fails, and then escalates naming the rule.
 - **Bypassed by:** a session without the plugin (nothing reports its absence), the Edit
   and Write tools, a person at the terminal, and everything in [Known
   limits](#known-limits).
@@ -239,6 +254,11 @@ layers behind it do not depend on it.
   (`{ B=x; } | cat`), `coproc`, arithmetic assignments and anything else it does not
   parse — may hide an assignment from it. A push refspec built from a variable is then
   judged by the value the guard last saw; write the branch out when it matters.
+- **The read-rule notice sees three settings files and two rule forms.** A rule given
+  only through `claude --settings` or managed policy is not seen, and neither is a rule in
+  the settings-relative `/…` form or the working-directory-relative `./…` and bare forms —
+  only `Read`, `Read(~/…)` and `Read(//…)` count. The notice may then be false; the stages
+  read without a prompt all the same.
 - **Removing an alias is refused too.** `git config --unset alias.p` counts as an alias
   write; the owner removes aliases by hand.
 - **Variables come from the hook's environment.** The guard resolves `$NAME` from the

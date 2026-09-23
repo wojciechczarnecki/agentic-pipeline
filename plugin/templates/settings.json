@@ -25,6 +25,7 @@
       "Bash(chmod +x *)",
       "Bash(date *)",
       "Bash(workflow_metrics.py *)",
+      "Read(~/.claude/plugins/cache/TODO-marketplace/pipeline/**)",
       "WebSearch"
     ],
     "ask": [

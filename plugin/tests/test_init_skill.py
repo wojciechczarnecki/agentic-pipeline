@@ -217,3 +217,18 @@ def test_a_language_change_leaves_documents_alone():
     assert "`language`" in rerun
     assert "istniejących dokumentów nie tłumaczysz ani nie podmieniasz" in rerun
     assert "że istniejące dokumenty zostały w dotychczasowym języku" in " ".join(step(7).split())
+
+
+# SPEC 007, AC6: the marketplace name init derives goes into the `Read` rule as well as the
+# marketplace key — one value, so the rule names the cache directory the plugin runs from.
+def test_init_fills_the_read_rule_with_the_marketplace():
+    block = " ".join(settings_bullet(step(4)).split())
+    sentences = block.split(". ")
+    derivation = [sentence for sentence in sentences if "CLAUDE_PLUGIN_ROOT" in sentence]
+    assert derivation
+    assert any(
+        "Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)" in sentence
+        and "extraKnownMarketplaces" in sentence
+        and "ta sama wartość" in sentence
+        for sentence in derivation
+    ), derivation
