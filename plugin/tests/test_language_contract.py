@@ -38,14 +38,14 @@ def bullets(block: str) -> list[str]:
 # block, so a stage cannot drift from the others: files in `language`, commits and PR titles
 # in English, the conversation in the session language.
 def test_the_language_block_is_identical_everywhere():
-    blocks = {name: section(skill_text(name), "## Język") for name in STAGE_SKILLS}
+    blocks = {name: section(skill_text(name), "## Language") for name in STAGE_SKILLS}
     assert len(set(blocks.values())) == 1, sorted(blocks)
     items = bullets(next(iter(blocks.values())))
     assert len(items) == 3
     assert "`language`" in items[0]
-    for token in ["commit", "PR", "angielsku"]:
+    for token in ["commit", "PR", "English"]:
         assert token in items[1], token
-    assert "sesji" in items[2]
+    assert "session" in items[2]
 
 
 # The lists above are the parametrisation of every check here; a new stage skill or agent
@@ -58,9 +58,9 @@ def test_the_lists_cover_every_stage_and_agent():
 
 @pytest.mark.parametrize("agent", AGENTS)
 def test_every_agent_states_its_language_part(agent):
-    contract = section(agent_text(agent), "## Kontrakt agenta etapu")
+    contract = section(agent_text(agent), "## Stage agent contract")
     assert "`language`" in contract
-    assert "angielsku" in contract
+    assert "English" in contract
 
 
 TEMPLATE_READS = {"idea": "SPEC", "plan": "PLAN"}
@@ -81,14 +81,14 @@ def template_headings(document: str) -> set[str]:
 def test_idea_and_plan_read_their_template(skill):
     document = TEMPLATE_READS[skill]
     text = skill_text(skill)
-    choice = section(text, f"## Szablon {document}.md")
+    choice = section(text, f"## {document}.md template")
     root = "${CLAUDE_PLUGIN_ROOT}/templates"
     assert f"{root}/{document}.pl.md" in choice
     assert "`Read`" in choice
     assert "`language`" in choice
     english = [line for line in choice.splitlines() if f"{root}/{document}.en.md" in line]
     assert len(english) == 1
-    for phrase in ["brak klucza", "inna wartość"]:
+    for phrase in ["a missing key", "any other value"]:
         assert phrase in english[0], phrase
     assert "```markdown" not in text and "````markdown" not in text
     own = {line for line in text.splitlines() if line.startswith("## ")}
@@ -98,7 +98,7 @@ def test_idea_and_plan_read_their_template(skill):
 
 
 def mapping_block(name: str) -> str:
-    return section(skill_text(name), "## Mapa sekcji")
+    return section(skill_text(name), "## Section map")
 
 
 # Every stage reads the section map from the plugin at run time (SPEC 007, AC4), through one
@@ -109,13 +109,15 @@ def test_every_stage_reads_the_section_map():
     block = blocks[STAGE_SKILLS[0]]
     assert MAP_PATH in block
     assert "`Read`" in block
+    assert "either" in block
+    assert "Before you look for a section" in block
     for name in STAGE_SKILLS:
-        assert "mapa sekcji w README" not in skill_text(name), name
+        assert "section map in the README" not in skill_text(name), name
 
 
 # A failed read ends the stage with the file and the rule to add (SPEC 007, AC5): a stage that
-# guessed the headings would miss `## Decyzje właściciela` and escalate on an accepted
-# dependency.
+# guessed the headings would miss the Polish owner-decisions heading and escalate on an
+# accepted dependency.
 def test_a_failed_read_stops_the_stage():
     block = mapping_block(STAGE_SKILLS[0])
     for token in [
@@ -127,15 +129,15 @@ def test_a_failed_read_stops_the_stage():
     ]:
         assert token in block, token
     for skill, document in TEMPLATE_READS.items():
-        choice = normalise(section(skill_text(skill), f"## Szablon {document}.md"))
-        assert "„Mapa sekcji" in choice, skill
+        choice = normalise(section(skill_text(skill), f"## {document}.md template"))
+        assert '"Section map"' in choice, skill
 
 
 def test_plan_writes_in_the_current_language():
-    step = section(skill_text("plan"), "## Kroki").split("\n5. ", 1)[1].split("\n6. ", 1)[0]
+    step = section(skill_text("plan"), "## Steps").split("\n5. ", 1)[1].split("\n6. ", 1)[0]
     assert "`language`" in step
     assert "SPEC" in step
-    assert "nie tłumaczysz" in step
+    assert "do not translate" in step
 
 
 def numbered_step(block: str, number: int) -> str:
@@ -144,22 +146,22 @@ def numbered_step(block: str, number: int) -> str:
 
 
 def test_plan_review_checks_the_language():
-    step = numbered_step(section(skill_text("plan-review"), "## Kroki"), 3)
+    step = numbered_step(section(skill_text("plan-review"), "## Steps"), 3)
     assert any("`language`" in item for item in bullets(step.replace("\n   ", "\n")))
 
 
 def test_final_review_titles_the_pr_in_english():
-    step = numbered_step(section(skill_text("final-review"), "## Tryb apply"), 3)
+    step = numbered_step(section(skill_text("final-review"), "## Apply mode"), 3)
     pr = [item for item in bullets(step.replace("\n   ", "\n")) if "gh pr create" in item]
     assert len(pr) == 1
-    for token in ["--title", "angielsk", "`language`"]:
+    for token in ["--title", "English", "`language`"]:
         assert token in pr[0], token
 
 
 def test_ship_talks_to_the_owner_in_the_session_language():
     text = skill_text("ship")
-    for heading in ["## Bramka: końcowe review", "## Protokół wyniku"]:
-        assert "sesji" in section(text, heading), heading
+    for heading in ["## Gate: final review", "## Result protocol"]:
+        assert "session" in section(text, heading), heading
 
 
 def test_severities_are_tokens():
@@ -167,10 +169,10 @@ def test_severities_are_tokens():
     plan_review = skill_text("plan-review")
     for token in ["`blocker`", "`major`", "`minor`"]:
         assert token in plan_review, token
-    assert "`worth-fixing`" in section(skill_text("ship"), "## Bramka: końcowe review")
+    assert "`worth-fixing`" in section(skill_text("ship"), "## Gate: final review")
     texts = [skill_text(name) for name in STAGE_SKILLS] + [agent_text(name) for name in AGENTS]
     for text in texts:
-        assert "warto poprawić" not in text
+        assert "worth fixing" not in text
 
 
 def normalise(text: str) -> str:
@@ -194,36 +196,58 @@ def without_fences(text: str) -> str:
 
 
 def quoted(text: str) -> list[str]:
-    flat = normalise(without_fences(text))
-    return re.findall(r"`([^`]+)`", flat) + re.findall(r"„([^\"”]+)[\"”]", flat)
+    return re.findall(r"`([^`]+)`", normalise(without_fences(text)))
 
 
-# A stage names a section by both literals (templates/sections.md, SPEC 006 AC7), so
-# a spec written in either language, or before 0.5.0, is found. The check covers every map
-# row whose literals differ: a Polish heading quoted in a skill or agent brings its English
-# twin into the same file.
-@pytest.mark.parametrize(
-    "path",
-    [f"skills/{name}/SKILL.md" for name in STAGE_SKILLS] + [f"agents/{name}.md" for name in AGENTS],
-)
-def test_sections_are_named_by_both_headings(path):
-    text = (PLUGIN / path).read_text()
-    spans = quoted(text)
-    # Outside fences only: an English heading quoted inside a code example would satisfy the
-    # check whatever the prose says.
-    flat = normalise(without_fences(text))
-    missing = []
+FILES = [f"skills/{name}/SKILL.md" for name in STAGE_SKILLS + sorted(NOT_STAGES)] + [
+    f"agents/{name}.md" for name in AGENTS
+]
+# Heading-like spans that are not SPEC/PLAN sections: frontmatter keys and the init
+# scaffold's placeholder marker.
+OTHER_HEADINGS: set[str] = {"metrics:", "status:", "TODO:"}
+
+
+# A stage names a section by its English heading only (SPEC 008): the Polish twin comes from
+# templates/sections.md, which every stage reads before it looks for a section. A Polish
+# heading without a Polish letter (`Cel`, `Kroki`) would slip past the letter check, so the
+# heading text is matched as a whole word, with case.
+@pytest.mark.parametrize("path", FILES)
+def test_no_polish_heading_is_named(path):
+    flat = normalise((PLUGIN / path).read_text())
+    named = []
     for _, _, polish, english in section_map():
         if polish == english:
             continue
         name = heading_text(polish)
-        if any(name in span for span in spans) and heading_text(english) not in flat:
-            missing.append((polish, english))
-    assert not missing, (path, missing)
+        if re.search(rf"(?<!\w){re.escape(name)}(?!\w)", flat):
+            named.append(polish)
+    assert not named, (path, named)
 
 
-def test_the_both_headings_check_sees_wrapped_quotes():
-    text = 'czytasz „Streszczenie dla\nwłaściciela" z planu'
-    assert any("Streszczenie dla właściciela" in span for span in quoted(text))
-    assert heading_text("Weryfikacja automatyczna:") == "Weryfikacja automatyczna"
-    assert heading_text("**Podejście:**") == "Podejście"
+def heading_like(span: str) -> bool:
+    return (
+        span.startswith(("#", "**"))
+        or span.endswith(":")
+        or (span.startswith("(") and span.endswith(")"))
+    )
+
+
+# Every quoted heading or map literal (`## …`, `**…:**`, `…:`, `(…)`) is the English literal
+# of a map row, so a stage cannot name a section the templates do not have.
+@pytest.mark.parametrize("path", FILES)
+def test_quoted_headings_are_english_map_literals(path):
+    english = {row[3] for row in section_map()} | OTHER_HEADINGS
+    spans = quoted((PLUGIN / path).read_text())
+    unknown = [span for span in spans if heading_like(span) and span not in english]
+    assert not unknown, (path, unknown)
+
+
+def test_the_heading_checks_see_wrapped_spans():
+    text = "you read `## Owner\nsummary` from the plan"
+    assert "## Owner summary" in quoted(text)
+    assert heading_text("Automatic verification:") == "Automatic verification"
+    assert heading_text("**Approach:**") == "Approach"
+    assert heading_text("## Read context") == "Read context"
+    for span in ["## Goal", "**Approach:**", "Automatic verification:", "(assumption)"]:
+        assert heading_like(span), span
+    assert not heading_like("git diff origin/main...HEAD")

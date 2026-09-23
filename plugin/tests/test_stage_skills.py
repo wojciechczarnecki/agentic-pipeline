@@ -21,7 +21,7 @@ def section(name: str, heading: str) -> str:
 
 
 def test_the_configuration_block_is_two_bullets_everywhere():
-    blocks = {name: section(name, "Konfiguracja projektu") for name in STAGE_SKILLS}
+    blocks = {name: section(name, "Project configuration") for name in STAGE_SKILLS}
     for name, block in blocks.items():
         bullets = [line for line in block.splitlines() if line.startswith("- ")]
         assert len(bullets) == 2, f"{name}: the configuration block must be two bullets"
@@ -35,7 +35,7 @@ def test_the_configuration_block_is_two_bullets_everywhere():
 
 @pytest.mark.parametrize("name", STAGE_SKILLS)
 def test_the_configuration_block_keeps_the_fallback(name):
-    block = section(name, "Konfiguracja projektu")
+    block = section(name, "Project configuration")
     for token in [".claude/workflow.json", "README", "/pipeline:init"]:
         assert token in block, f"{name}: the configuration block must name {token}"
 
@@ -69,20 +69,20 @@ def test_the_visual_sentence_is_one_imperative_sentence(name):
         f"`<docs.conventions>`, found {len(carrying)}"
     )
     sentence = carrying[0]
-    assert "rozważ" not in sentence.lower()
-    assert "warto" not in sentence.lower()
+    assert "consider" not in sentence.lower()
+    assert "worth" not in sentence.lower()
 
 
 @pytest.mark.parametrize("name", STAGE_SKILLS)
 def test_no_stage_skill_enumerates_views(name):
-    for forbidden in ["widok szeroki", "widok wąski", "szeroki i wąski"]:
+    for forbidden in ["wide view", "narrow view", "wide and narrow"]:
         assert forbidden not in skill_text(name)
 
 
 @pytest.mark.parametrize("name", ["planner", "plan-reviewer", "implementer", "reviewer"])
 def test_no_agent_enumerates_views(name):
     text = (PLUGIN / "agents" / f"{name}.md").read_text()
-    for forbidden in ["widok szeroki", "widok wąski", "szeroki i wąski"]:
+    for forbidden in ["wide view", "narrow view", "wide and narrow"]:
         assert forbidden not in text
 
 
@@ -93,11 +93,11 @@ CLOSING_STEPS = {
         ["plan_review_blockers", "plan_review_majors", "plan_changes"],
     ),
     "implement": (
-        "5. **Finał",
+        "5. **Finish",
         ["implement_steps", "implement_iterations", "deviations"],
     ),
     "final-review": (
-        "4. **Zapisz raport",
+        "4. **Write the report",
         ["final_review_blockers", "final_review_worth_fixing", "final_review_nits"],
     ),
 }
@@ -121,7 +121,7 @@ def closing_step(name: str) -> str:
 
 
 def apply_closing_step() -> str:
-    text = skill_text("final-review").split("## Tryb apply", 1)[1]
+    text = skill_text("final-review").split("## Apply mode", 1)[1]
     lines = text.splitlines()
     start = next(i for i, line in enumerate(lines) if line.startswith("5. "))
     end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("6. ")), len(lines))
@@ -162,14 +162,12 @@ def test_apply_mode_gates_done_on_the_checker():
 
 @pytest.mark.parametrize("name", STAGE_SKILLS)
 def test_no_stage_skill_sends_metrics_rules_to_the_readme(name):
-    # The skills are written in Polish, so the guard has to reject `metryk`/`metryki` as
-    # well — otherwise the sentence this spec removed walks straight back in.
     for line in skill_text(name).splitlines():
         lowered = line.lower()
-        sends_to_readme = "readme" in lowered and ("metric" in lowered or "metryk" in lowered)
+        sends_to_readme = "readme" in lowered and "metric" in lowered
         assert not sends_to_readme, f"{name}: {line}"
     if name == "ship":
-        assert "Metryki workflow" not in skill_text(name)
+        assert "Workflow metrics" not in skill_text(name)
 
 
 # A workflow name belongs to the project that runs it; the PR checks carry the run links.

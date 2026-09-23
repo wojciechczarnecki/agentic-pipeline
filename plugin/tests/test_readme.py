@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from test_english_only import POLISH_LETTERS as POLISH
 
 PLUGIN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN / "bin"))
@@ -184,9 +185,6 @@ def test_the_changelog_names_the_consumer_impact():
     assert "**consumer impact:**" in section
 
 
-POLISH = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
-
-
 def strip_code(text: str) -> str:
     kept, fenced = [], False
     for line in text.splitlines():
@@ -200,8 +198,8 @@ def strip_code(text: str) -> str:
     return re.sub(r"`[^`\n]*`", "", "\n".join(kept))
 
 
-# Quoted literals the Polish skills produce (`## Decyzje właściciela`) stay verbatim inside
-# code spans; everything around them is English.
+# Polish literals quoted from the section map stay verbatim inside code spans; everything
+# around them is English.
 @pytest.mark.parametrize(
     "document",
     [
@@ -312,7 +310,7 @@ def result_fields(block: str) -> list[str]:
 
 
 # The field names are the contract the orchestrator parses; the placeholders after them only
-# describe the values, so the README gives them in English while the ship skill is Polish.
+# describe the values, so only the field names have to match.
 def test_the_result_block_matches_the_contract():
     ship = (PLUGIN / "skills" / "ship" / "SKILL.md").read_text()
     assert result_fields(result_block(README)) == result_fields(result_block(ship))
@@ -344,6 +342,17 @@ def test_install_guide_documents_the_read_rule():
         "--plugin-dir",
     ]:
         assert token in guide, token
+
+
+# SPEC 008, AC9: the 0.6.0 release notes record the English skills and tell a Polish
+# consumer what stays in Polish for them.
+def test_the_changelog_records_the_translation():
+    section = CHANGELOG.split("## 0.6.0", 1)[1].split("\n## ", 1)[0]
+    changed = section.split("### Changed", 1)[1].split("\n### ", 1)[0]
+    assert "English" in changed
+    assert "one to one" in changed
+    impact = section.split("**consumer impact:**", 1)[1].split("\n### ", 1)[0]
+    assert '"language": "pl"' in impact
 
 
 # SPEC 007, AC14: existing consumers learn from the release notes that the stages now need

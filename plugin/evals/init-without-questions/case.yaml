@@ -1,6 +1,6 @@
 schema_version: "1.0"
 name: init-without-questions
-description: Init bez możliwości zadania pytania kończy się sukcesem i zostawia znaczniki TODO.
+description: Init without a way to ask a question finishes with success and leaves TODO markers.
 runs: 1
 execution:
   # /pipeline:init writes a dozen files, and a real run of it overruns the default

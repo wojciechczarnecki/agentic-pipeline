@@ -145,7 +145,7 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
       missing map would silently miss `## Decyzje właściciela`. Lands before the
       translation, so the skills can drop the Polish headings when they are translated
       (`specs/007-read-templates-at-run-time/SPEC.md`)
-- [ ] 0.6.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
+- [x] 0.6.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
       is, since 0.3.4), with an eval case on `"language": "pl"`: a Polish SPEC whose
       `## Decyzje właściciela` accepts a new dependency, and `plan-review` approves the plan
       without escalating (the mirror of `plan-review-escalates-on-dependency`) — it fails if
@@ -153,6 +153,7 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
       grants `Read` itself, so it does not prove the rule — PLAN 007 → Owner decisions;
       this item re-runs it on the translated skills); Polish survives only in the
       `*.pl.md` templates — SPEC, PLAN and the `init` documents — and in the section map
+      (`specs/008-translate-skills-to-english/SPEC.md`)
 
 ## Stage 6 — A better pipeline
 

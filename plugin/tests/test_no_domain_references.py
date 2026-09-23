@@ -15,7 +15,7 @@ CASE_INSENSITIVE = [
     "scripts/check" + r"\.sh",
 ]
 # The data-protection acronym is matched only with word boundaries and with case, because
-# case-insensitively those four letters hit ordinary Polish words (for example "środowisko").
+# case-insensitively those four letters hit ordinary words of other languages.
 CASE_SENSITIVE = [r"\b" + "RO" + "DO" + r"\b"]
 
 SKILL_PATHS = ["scripts/check" + r"\.sh", "docs/ROAD" + r"MAP\.md"]
@@ -59,7 +59,7 @@ def test_skills_have_no_hardcoded_paths(path):
 def test_the_exempt_skill_only_documents_generated_files():
     text = (PLUGIN / "skills" / "init" / "SKILL.md").read_text()
     assert not re.search(SKILL_PATHS[0], text)
-    generated = text.split("**Wygeneruj pliki**", 1)[1].split("\n5.", 1)[0]
+    generated = text.split("**Generate the files**", 1)[1].split("\n5.", 1)[0]
     for line in text.splitlines():
         if re.search(SKILL_PATHS[1], line):
             assert line in generated, line

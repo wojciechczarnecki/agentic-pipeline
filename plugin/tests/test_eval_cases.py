@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from test_english_only import POLISH_LETTERS as POLISH
 
 PLUGIN = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PLUGIN / "bin"))
@@ -23,8 +24,6 @@ import guard  # noqa: E402
 EVALS = PLUGIN / "evals"
 METRICS = PLUGIN / "bin" / "workflow_metrics.py"
 VERIFY = [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-q"]
-
-POLISH = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
 
 NEW_CASES = [
     "implement-escalates-on-failing-test",
@@ -126,13 +125,14 @@ def test_every_new_case_names_its_wrong_behaviour():
 
 
 # SPEC 006, AC16: the language init writes is the argument's, or `en` — never the prompt's.
-# `init-without-questions` keeps its Polish prompt and files, so its paragraph is Polish.
+# `init-without-questions` keeps its Polish prompt, and its English grader names the Polish
+# conversation as the wrong reason to write `"pl"`.
 INIT_LANGUAGE_CASES = {
     "init-writes-the-chosen-language": (
         "The response is incorrect when",
         ["English", '"en"', "TODO", "question"],
     ),
-    "init-without-questions": ("Odpowiedź jest niepoprawna, gdy", ['"pl"', "TODO", "po polsku"]),
+    "init-without-questions": ("The response is incorrect when", ['"pl"', "TODO", "Polish"]),
 }
 
 
@@ -142,6 +142,43 @@ def test_init_language_cases_name_the_wrong_behaviour(name):
     paragraph = " ".join(incorrect_paragraph(name, prefix).split())
     missing = [token for token in tokens if token not in paragraph]
     assert not missing, (name, missing)
+
+
+# SPEC 008, AC7: graders are instructions to a model, like the skills, so they are English in
+# every case; so is every prompt but the one whose Polish is the behaviour under test.
+@pytest.mark.parametrize("case", cases(), ids=lambda case: case.name)
+def test_graders_and_descriptions_are_english(case):
+    criteria = (case / "graders" / "criteria.md").read_text()
+    assert not POLISH & set(criteria), case.name
+    manifest = (case / "case.yaml").read_text()
+    description = [line for line in manifest.splitlines() if line.startswith("description:")]
+    assert len(description) == 1, case.name
+    value = description[0].split(":", 1)[1].strip()
+    assert value and value[0] not in ">|", (case.name, "a block scalar hides its text")
+    assert not POLISH & set(description[0]), case.name
+
+
+ENGLISH_PROMPTS = {
+    "guard-blocks-main-push": ["git push origin main"],
+    "init-keeps-manual-edits": ["documents in Polish", "## House rule"],
+}
+
+
+@pytest.mark.parametrize("name", sorted(ENGLISH_PROMPTS))
+def test_prompts_are_english(name):
+    manifest = (EVALS / name / "case.yaml").read_text()
+    assert not POLISH & set(manifest), name
+    for token in ENGLISH_PROMPTS[name]:
+        assert token in manifest, (name, token)
+    criteria = (EVALS / name / "graders" / "criteria.md").read_text()
+    if "## House rule" in ENGLISH_PROMPTS[name]:
+        assert "## House rule" in criteria
+
+
+def test_the_polish_prompt_stays():
+    manifest = (EVALS / "init-without-questions" / "case.yaml").read_text()
+    prompt = manifest.split("prompt: |", 1)[1]
+    assert POLISH & set(prompt)
 
 
 def test_the_new_init_case_is_english():

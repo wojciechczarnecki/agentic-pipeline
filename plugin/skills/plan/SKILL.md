@@ -1,126 +1,129 @@
 ---
 name: plan
-description: Etap 2 pipeline'u — techniczny plan implementacji feature'a na podstawie SPEC.md (status spec-ready). Tworzy PLAN.md z krokami i dokładnymi komendami weryfikacyjnymi.
-argument-hint: <numer lub slug speca, np. 001>
+description: Pipeline stage 2 — a technical implementation plan for a feature based on SPEC.md (status spec-ready). Writes PLAN.md with steps and exact verification commands.
+argument-hint: <spec number or slug, e.g. 001>
 ---
 
-# /pipeline:plan — SPEC → plan implementacji
+# /pipeline:plan — SPEC → implementation plan
 
-Rola: architekt. SPEC mówi CO i PO CO — Ty decydujesz JAK. Wynik to plan, który inny
-agent wykona w świeżej sesji bez zgadywania: każdy krok ma zdefiniowany sygnał
-zwrotny (dokładne komendy weryfikacyjne), bo to na nich `/pipeline:implement` opiera
-pętlę samokorekty.
+Role: architect. The SPEC says WHAT and WHY — you decide HOW. The result is a plan that
+another agent will carry out in a fresh session without guessing: every step has a defined
+feedback signal (exact verification commands), because `/pipeline:implement` builds its
+self-correction loop on them.
 
-Plan ma dwóch czytelników: **agentów** kolejnych etapów (cała treść — szczegółowa,
-jednoznaczna) i **właściciela** (tylko „Streszczenie dla właściciela" /
-`## Owner summary` — czyta je przy eskalacji i przy raporcie z końcowego review, nie
-zatwierdza całego planu).
+The plan has two readers: the **agents** of the later stages (the whole content — detailed,
+unambiguous) and the **owner** (only `## Owner summary` — they read it on escalation and
+with the final review report; they do not approve the whole plan).
 
-## Konfiguracja projektu
+## Project configuration
 
-- Przeczytaj `.claude/workflow.json`; brak pliku = domyślne z README pluginu → `/pipeline:init`.
-- `<verify.command>`, `<docs.specsDir>` itd. = wartości z tej konfiguracji (klucze w README).
+- Read `.claude/workflow.json`; no file = the defaults from the plugin README → `/pipeline:init`.
+- `<verify.command>`, `<docs.specsDir>` etc. = values from this configuration (keys in the README).
 
-## Język
+## Language
 
-- Pliki, które zapisujesz w repozytorium (SPEC, PLAN — każda sekcja, także wpisy decyzji,
-  review log, deviations i raport końcowego review), oraz treść PR piszesz w języku
-  z `language` w `.claude/workflow.json`; brak klucza albo wartość spoza `en`/`pl` = `en`.
-  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek (mapa sekcji — sekcja
-  „Mapa sekcji").
-- Zawsze po angielsku, niezależnie od `language` i sesji: komunikaty commitów, tytuły PR,
-  nazwy branchy i slugi speców, klucze bloku `RESULT`, klucze metryk i tokeny wag.
-- Rozmowa z właścicielem — pytania, eskalacje, podsumowania i handoff — w języku sesji
-  Claude Code, nigdy według `language`.
+- Files you write into the repository (SPEC, PLAN — every section, including decision
+  entries, the review log, deviations and the final review report) and the PR description
+  are written in the language from `language` in `.claude/workflow.json`; a missing key or
+  a value other than `en`/`pl` = `en`. You name a section by its English heading and accept
+  either heading from the section map (the "Section map" section).
+- Always in English, regardless of `language` and the session: commit messages, PR titles,
+  branch names and spec slugs, the `RESULT` block keys, metric keys and severity tokens.
+- The conversation with the owner — questions, escalations, summaries and the handoff — in
+  the Claude Code session language, never by `language`.
 
-## Mapa sekcji
+## Section map
 
-- Zanim poszukasz sekcji w SPEC albo PLAN, wczytaj narzędziem `Read` mapę sekcji
-  `${CLAUDE_PLUGIN_ROOT}/templates/sections.md` (klucz → nagłówek polski → angielski).
-  Sekcję wskazujesz oboma nagłówkami i przyjmujesz którykolwiek.
-- Nieudany odczyt mapy albo szablonu kończy etap — nie zgadujesz nagłówków i nie
-  odtwarzasz szablonu z pamięci. Pod `/pipeline:ship`: `RESULT: ESCALATE`; uruchomiony
-  samodzielnie: STOP z tym samym komunikatem do właściciela. Komunikat podaje ścieżkę
-  pliku i regułę do dopisania w `permissions.allow` (`.claude/settings.json` projektu
-  albo ustawień użytkownika): `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)`,
-  a dla klonu z `--plugin-dir` — `Read(//<ścieżka katalogu pluginu bez początkowego />/**)`;
-  `<marketplace>` odczytujesz z rozwiniętej ścieżki `${CLAUDE_PLUGIN_ROOT}`
-  (`…/plugins/cache/<marketplace>/pipeline/<wersja>`); gdy strażnik pokazał już
-  ostrzeżenie z gotową regułą, podajesz tę regułę.
+- Before you look for a section in a SPEC or PLAN, load the section map
+  `${CLAUDE_PLUGIN_ROOT}/templates/sections.md` with the `Read` tool (key → Polish heading →
+  English heading). You name a section by its English heading and accept either heading
+  the map gives.
+- A failed read of the map or a template ends the stage — you do not guess headings and do
+  not rebuild a template from memory. Under `/pipeline:ship`: `RESULT: ESCALATE`; run on
+  its own: STOP with the same message to the owner. The message gives the file path and
+  the rule to add to `permissions.allow` (the project's `.claude/settings.json` or the user
+  settings): `Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)`, and for a
+  `--plugin-dir` clone — `Read(//<plugin directory path without the leading />/**)`; you
+  read `<marketplace>` from the expanded path `${CLAUDE_PLUGIN_ROOT}`
+  (`…/plugins/cache/<marketplace>/pipeline/<version>`); when the guard has already shown a
+  warning with a ready rule, you give that rule.
 
-## Wejście / wyjście
+## Input / output
 
-- Wejście: `<docs.specsDir>/NNN-<slug>/SPEC.md` ze statusem `spec-ready`.
-- Wyjście: `<docs.specsDir>/NNN-<slug>/PLAN.md` zacommitowany na branchu lane'a;
-  status speca → `plan-draft`.
+- Input: `<docs.specsDir>/NNN-<slug>/SPEC.md` with status `spec-ready`.
+- Output: `<docs.specsDir>/NNN-<slug>/PLAN.md` committed on the lane branch;
+  spec status → `plan-draft`.
 
-## Kroki
+## Steps
 
-1. **Znajdź spec.** Argument wskazuje numer/slug; bez argumentu wylistuj
-   `<docs.specsDir>/*/SPEC.md` ze statusem `spec-ready` i zapytaj właściciela, który brać.
-2. **Precondition:** `status: spec-ready`. Inny status → STOP; wyjaśnij, którego etapu
-   pipeline'u brakuje. Sprawdź branch (`git branch --show-current`): pracujesz na branchu
-   lane'a `feat/NNN-<slug>`; jeśli nie istnieje (spec wszedł historycznie na `main`) —
-   utwórz go: `git switch main && git pull --ff-only && git switch -c feat/NNN-<slug>`
-   (przy pracy równoległej: worktree w katalogu z `worktree.dir`).
-3. **Zbierz kontekst:** SPEC w całości (łącznie z „Decyzje właściciela" /
-   `## Owner decisions`); `<docs.conventions>`; `<docs.decisions>`; dokumenty domenowe
-   z mapy dokumentów w `CLAUDE.md` projektu (według warunków w mapie); kod obszaru — pliki, które plan będzie zmieniać, czytaj W CAŁOŚCI
-   (bez limit/offset). Wynotuj istniejące wzorce do reużycia z konkretnymi ścieżkami
-   (np. paginacja w konkretnym module API, wspólne fixtures testowe, obsługa błędów
-   w kliencie API).
-4. **Zaprojektuj podejście:** minimalne, zgodne z konwencjami, pokrywające WSZYSTKIE
-   AC. Tam, gdzie istnieje realny wybór, rozważ ≥2 warianty; do planu wpisz wybrany
-   + jedno zdanie dlaczego.
-5. **Spisz PLAN.md** według szablonu wczytanego dla bieżącego `language` (sekcja
-   „Szablon PLAN.md"), w języku z `language` — także wtedy, gdy SPEC.md jest w innym języku (np.
-   napisany przed zmianą `language`); SPEC-a nie tłumaczysz i nie zmieniasz. Kroki małe
-   (≤ ~1 h pracy) i domknięte: każdy ma sekcję „Weryfikacja automatyczna"
-   (`Automatic verification:`) z DOKŁADNYMI komendami (ścieżki testów,
-   nie ogólnik „dodaj testy") — to jest kontrakt dla pętli samokorekty
-   `/pipeline:implement`. Kolejność bez zależności „w przód"; migracja danych zawsze
-   jako osobny krok. Weryfikację end-to-end rozdziel na automatyczną (wykona agent)
-   i ręczną (wykona właściciel) — do ręcznej trafia tylko to, czego nie da się
-   zautomatyzować. Gdy `verify.scopes` ma zakres UI, a zmiana dotyka interfejsu — zaplanuj
-   w weryfikacji automatycznej `<verify.command> <zakres UI>` oraz OBEJRZENIE artefaktów
-   wizualnych i aktualizację scenariusza przeglądowego wymaganych przez `<docs.conventions>`.
-6. **Macierz AC → kroki:** każde AC musi mieć kroki, które je realizują, i test, który
-   je dowodzi. AC niemożliwe do pokrycia → eskalacja (luka w SPEC); nie łataj SPEC
-   samodzielnie.
-7. **Streszczenie dla właściciela** (`## Owner summary`) wypełnij na końcu, gdy plan
-   jest gotowy. Flagi „nowa zależność" i „migracja danych" muszą być prawdziwe — od nich
-   zależy, czy recenzja planu może go zatwierdzić bez właściciela.
-8. **Zamknięcie etapu:** w SPEC.md `status: plan-draft` + wpis w `stage_history`; w bloku
-   `metrics:` ustaw `started_at` i `escalations: 0` (jeśli brak; `date +%Y-%m-%dT%H:%M`)
-   oraz `plan_steps`.
-   Płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
-   sukcesu `workflow_metrics.py --check <spec-dir>`.
-   Czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
-   STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz wartości, której nie zmierzyłeś.
-   Zacommituj (`docs: add PLAN NNN <slug>`). NIE implementuj niczego.
+1. **Find the spec.** The argument gives the number/slug; without an argument list
+   `<docs.specsDir>/*/SPEC.md` with status `spec-ready` and ask the owner which one to take.
+2. **Precondition:** `status: spec-ready`. Any other status → STOP; explain which pipeline
+   stage is missing. Check the branch (`git branch --show-current`): you work on the lane
+   branch `feat/NNN-<slug>`; if it does not exist (e.g. the SPEC was committed to `main`) —
+   create it: `git switch main && git pull --ff-only && git switch -c feat/NNN-<slug>`
+   (in parallel work: a worktree in the directory from `worktree.dir`).
+3. **Gather context:** the SPEC in full (including `## Owner decisions`);
+   `<docs.conventions>`; `<docs.decisions>`; domain documents
+   from the document map in the project's `CLAUDE.md` (under the conditions in the map); the
+   code of the area — read the files the plan will change IN FULL (no limit/offset). Note
+   the existing patterns to reuse with concrete paths (e.g. pagination in a specific API
+   module, shared test fixtures, error handling in the API client).
+4. **Design the approach:** minimal, following the conventions, covering ALL
+   ACs. Where a real choice exists, consider ≥2 variants; write the chosen one into the plan
+   + one sentence on why.
+5. **Write PLAN.md** from the template loaded for the current `language` (the
+   "PLAN.md template" section), in the language from `language` — also when SPEC.md is in
+   another language (e.g. written before `language` changed); you do not translate or change
+   the SPEC. Steps small (≤ ~1 h of work) and closed: each has an `Automatic verification:`
+   section with EXACT commands (test paths,
+   not a vague "add tests") — this is the contract for the self-correction loop of
+   `/pipeline:implement`. An order without "forward" dependencies; a data migration always
+   as a separate step. Split the end-to-end verification into automatic (done by the agent)
+   and manual (done by the owner) — only what cannot be
+   automated goes into the manual one. When `verify.scopes` has a UI scope and the change
+   touches the interface — plan in the automatic verification `<verify.command> <UI scope>`
+   and LOOKING AT the visual artifacts and updating the review scenario required by
+   `<docs.conventions>`.
+6. **AC → steps matrix:** every AC must have steps that deliver it and a test that
+   proves it. An AC impossible to cover → escalation (a gap in the SPEC); do not patch the
+   SPEC yourself.
+7. **Fill in `## Owner summary`** at the end, when the plan
+   is ready. The "new dependency" and "data migration" flags must be true — on them
+   depends whether the plan review can approve it without the owner.
+8. **Closing the stage:** in SPEC.md `status: plan-draft` + an entry in `stage_history`; in
+   the `metrics:` block set `started_at` and `escalations: 0` (if missing;
+   `date +%Y-%m-%dT%H:%M`) and `plan_steps`.
+   The flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
+   success `workflow_metrics.py --check <spec-dir>`.
+   A red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
+   STOP with a question) with the names of the missing keys; you do not invent a value you
+   did not measure. Commit (`docs: add PLAN NNN <slug>`). Do NOT implement anything.
 
-## Szablon PLAN.md
+## PLAN.md template
 
-Szablon wczytujesz narzędziem `Read` — jeden plik, wybrany według bieżącego `language`,
-nie według języka SPEC:
+You load the template with the `Read` tool — one file, chosen by the current `language`,
+not by the language of the SPEC:
 
 - `pl` → `${CLAUDE_PLUGIN_ROOT}/templates/PLAN.pl.md`;
-- `en`, brak klucza albo inna wartość → `${CLAUDE_PLUGIN_ROOT}/templates/PLAN.en.md`.
+- `en`, a missing key or any other value → `${CLAUDE_PLUGIN_ROOT}/templates/PLAN.en.md`.
 
-Wczytujesz tylko ten jeden plik. Szablonu nie tłumaczysz i nie łączysz z drugim — PLAN ma
-dokładnie jego nagłówki. Nieudany odczyt szablonu → postępujesz według sekcji „Mapa
-sekcji" (stop z komunikatem; szablonu nie odtwarzasz z pamięci).
+You load only that one file. You do not translate the template or merge it with the other
+one — the PLAN has exactly its headings. A failed read of the template → you follow the
+"Section map" section (stop with the message; you do not rebuild the template from memory).
 
-## Guardraile
+## Guardrails
 
-- Nie zmieniaj treści SPEC (poza polem `status`, `stage_history` i blokiem `metrics`).
-- Nie dodawaj zakresu ponad SPEC (gold-plating) — pomysły „przy okazji" zapisuj
-  jako propozycje do `<docs.backlog>` w podsumowaniu etapu, nie jako kroki planu.
-- Kod w planie tylko tam, gdzie precyzja tego wymaga (sygnatury, kształt schematu) —
-  plan to nie implementacja.
+- Do not change the content of the SPEC (apart from the `status` field, `stage_history` and
+  the `metrics` block).
+- Do not add scope beyond the SPEC (gold-plating) — write "while at it" ideas
+  as proposals for `<docs.backlog>` in the stage summary, not as plan steps.
+- Code in the plan only where precision requires it (signatures, the shape of a schema) —
+  the plan is not the implementation.
 
 ## Handoff
 
-- **Uruchomiony samodzielnie:** plan gotowy (status `plan-draft`); następny etap to
-  `/pipeline:plan-review NNN` po `/clear` — recenzent ma ocenić plan świeżym okiem.
-- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT z kontraktu agenta etapu.
+- **Run on its own:** the plan is ready (status `plan-draft`); the next stage is
+  `/pipeline:plan-review NNN` after `/clear` — the reviewer is to assess the plan with a
+  fresh eye.
+- **Under `/pipeline:ship`:** end with the RESULT block from the stage agent contract.

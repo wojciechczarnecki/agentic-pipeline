@@ -8,13 +8,15 @@ this document holds the details.
 - Project documents (`docs/`, `specs/`, `CLAUDE.md`, root `README.md`) follow
   `language: "en"` in `.claude/workflow.json`; code, identifiers, comments and commit
   messages are English regardless of it.
-- `plugin/README.md`, `plugin/docs/` and `plugin/CHANGELOG.md` are in English; they quote
-  the Polish literals the skills produce (such as `## Decyzje właściciela`) verbatim in
-  code spans.
-- Plugin skills and agents are in Polish until translated in 0.6.0 (`docs/ROADMAP.md`,
-  Stage 8); a translation is a behaviour change and ships as a release. Templates exist per
-  language (`*.en.md`, `*.pl.md` — SPEC, PLAN and the `init` documents), and the Polish ones
-  survive 0.6.0.
+- `plugin/README.md`, `plugin/docs/`, `plugin/CHANGELOG.md`, the plugin's skills and
+  agents, its tests and its eval graders are in English. Polish lives only in the `*.pl.md`
+  templates, the section map `plugin/templates/sections.md` and the Polish eval fixture,
+  enforced by `plugin/tests/test_english_only.py`; `plugin/CHANGELOG.md` may quote a Polish
+  literal inside a code span. A stage names a section by its English heading and takes the
+  Polish twin from the map.
+- A change to the skills' wording is a behaviour change and ships as a release. Templates
+  exist per language (`*.en.md`, `*.pl.md` — SPEC, PLAN and the `init` documents), and a
+  change to one reaches its twin.
 - Commit messages, PR titles and branch names are English for every consumer, whatever its
   `language` — a plugin rule since 0.5.0 (`plugin/README.md`, language contract).
 - No mixing of languages within one document.
@@ -134,6 +136,12 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   refuses file edits nobody can approve, so the stage needs
   `--permission-mode acceptEdits` and the consumer's rules through
   `--settings <consumer>/.claude/settings.json` (an untrusted clone ignores its own).
+  The canary exercises one stage, not the pipeline: pass `--max-budget-usd 2` and
+  `--disallowedTools Agent`, so the stage cannot start `/pipeline:ship` or stage subagents,
+  and keep the prompt to the plain request, with nothing like "take the recommended
+  options" or "see it through". On the 0.6.0 canary (2026-09-23) such a prompt led `idea`
+  to approve its own assumptions and run the whole pipeline, spending about twice the eval
+  suite.
 - The owner tags a clean `main` with `claude plugin tag plugin --push` (`pipeline--vX.Y.Z`).
 - The owner — never an agent — then moves the release channel to the new tag:
   `git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'`. The `^{commit}` is

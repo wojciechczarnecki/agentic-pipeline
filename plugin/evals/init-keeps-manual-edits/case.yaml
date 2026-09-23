@@ -1,6 +1,6 @@
 schema_version: "1.0"
 name: init-keeps-manual-edits
-description: Powtórzony /pipeline:init zachowuje treść dopisaną ręcznie i nie rusza reszty.
+description: A repeated /pipeline:init keeps the content added by hand and leaves the rest alone.
 runs: 1
 execution:
   # /pipeline:init writes a dozen files, and a real run of it overruns the default
@@ -13,13 +13,13 @@ execution:
   max_turns: 80
   allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
   prompt: |
-    Jesteś w pustym katalogu przygotowanym pod nowy projekt (`git init` już wykonany).
-    Wykonaj po kolei:
-    1. uruchom `/pipeline:init` dla projektu „Zbiórka" — narzędzie do prowadzenia zbiórek
-       charytatywnych, stack nieznany, brak produkcji, dokumenty po polsku;
-    2. dopisz na końcu `CLAUDE.md` sekcję `## Zasada domowa` z jednym zdaniem od siebie
-       i dopisz do rejestru decyzji jeden wiersz z dzisiejszą datą;
-    3. zapamiętaj `git status --porcelain` i uruchom `/pipeline:init` po raz drugi
-       z tymi samymi odpowiedziami;
-    4. pokaż `git status --porcelain`, zawartość sekcji `## Zasada domowa` i ostatni
-       wiersz rejestru decyzji.
+    You are in an empty directory prepared for a new project (`git init` already done).
+    Do the following in order:
+    1. run `/pipeline:init` for the project "Fundraiser" — a tool for running charity
+       collections, stack unknown, no production, documents in Polish;
+    2. append at the end of `CLAUDE.md` a section `## House rule` with one sentence of
+       your own and add one row with today's date to the decision register;
+    3. note `git status --porcelain` and run `/pipeline:init` a second time
+       with the same answers;
+    4. show `git status --porcelain`, the content of the `## House rule` section and the
+       last row of the decision register.
