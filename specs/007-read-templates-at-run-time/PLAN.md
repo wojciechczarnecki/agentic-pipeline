@@ -544,6 +544,8 @@ this harness. 8c and 8d are not run until the owner decides.
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-23 · implement (step 8b) · AC12's negative check cannot fail: `claude plugin eval` grants `Read` on every path when `Read` is in the case's `allowed_tools`, so dropping the scaffold rule still passes. Decision: accept AC12 without the negative eval check — the headless measurements (clone without the rule is refused, with it reads; the planner's cache measurement) prove the dependency on the rule; the rule stays in the scaffolds; continue with 8c, 8d and step 10.
+
 ## Review log
 
 ### 2026-09-23 — /pipeline:plan-review
