@@ -193,7 +193,7 @@ sed -e 's/`[^`]*`//g' "$F" | grep -oE '\b[A-Z]{3,}\b' | sort -u | grep -vxE 'STO
 uv run pytest plugin/tests -q
 ```
 
-- [ ] 7. **P1 `plan`** — `plugin/skills/plan/SKILL.md`: "WHAT and WHY — you decide HOW",
+- [x] 7. **P1 `plan`** — `plugin/skills/plan/SKILL.md`: "WHAT and WHY — you decide HOW",
       "IN FULL", "covering ALL", "EXACT commands", "LOOKING AT", "Do NOT implement".
       Automatic verification: the P1 block above with `F=plugin/skills/plan/SKILL.md`
 - [ ] 8. **P1 `plan-review`** — `plugin/skills/plan-review/SKILL.md`: "the SPEC ALONE",
