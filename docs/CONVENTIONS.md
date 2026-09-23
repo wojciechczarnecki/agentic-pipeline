@@ -120,6 +120,15 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   untouched (measured 2026-09-22 in a sandbox, `docs/DECISIONS.md`). The way back is a
   session without `--plugin-dir`. A canary that misbehaves stops the release: fix,
   merge, canary again.
+  An agent may run the canary for the owner, headless, in a throwaway clone of the
+  consumer with no remote (commits stay in the clone). Two traps, measured on the 0.5.0
+  canary (2026-09-23): a `claude` started from inside another Claude Code session
+  inherits that session's `PATH`, including the `bin/` of the plugin it loaded, so
+  `command -v workflow_metrics.py` points at the installed copy until the plugin cache
+  entries are stripped from `PATH` (`env PATH=<filtered> claude …`); and `claude -p`
+  refuses file edits nobody can approve, so the stage needs
+  `--permission-mode acceptEdits` and the consumer's rules through
+  `--settings <consumer>/.claude/settings.json` (an untrusted clone ignores its own).
 - The owner tags a clean `main` with `claude plugin tag plugin --push` (`pipeline--vX.Y.Z`).
 - The owner — never an agent — then moves the release channel to the new tag:
   `git push origin 'pipeline--vX.Y.Z^{commit}:refs/heads/stable'`. The `^{commit}` is
