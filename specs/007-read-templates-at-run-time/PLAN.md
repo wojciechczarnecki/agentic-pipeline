@@ -256,7 +256,7 @@ negative check needs it removable per case).
       importing `POLISH` from `test_readme`.
       Automatic verification: `uv run pytest -q plugin/tests/test_templates_language.py plugin/tests/test_readme.py plugin/tests/test_language_contract.py plugin/tests/test_init_templates.py plugin/tests/test_no_domain_references.py`
 
-- [ ] 2. **Stage skills read the map and their template** — files:
+- [x] 2. **Stage skills read the map and their template** — files:
       `plugin/skills/{idea,plan,plan-review,implement,final-review,ship}/SKILL.md`,
       `plugin/tests/test_language_contract.py`.
       Per Approach → The stage skills. Replace

@@ -63,33 +63,72 @@ def test_every_agent_states_its_language_part(agent):
     assert "angielsku" in contract
 
 
-TEMPLATE_BLOCKS = {"idea": ("SPEC", "```"), "plan": ("PLAN", "````")}
-BLOCK_HEADINGS = {"pl": "### Polski (`pl`)", "en": "### Angielski (`en`)"}
+TEMPLATE_READS = {"idea": "SPEC", "plan": "PLAN"}
+MAP_PATH = "${CLAUDE_PLUGIN_ROOT}/templates/sections.md"
 
 
-def inline_template(text: str, heading: str, fence: str) -> str:
-    assert f"\n{heading}\n" in text, heading
-    after = text.split(f"\n{heading}\n", 1)[1].lstrip("\n")
-    opening = f"{fence}markdown\n"
-    assert after.startswith(opening), heading
-    return after[len(opening) :].split(f"\n{fence}\n", 1)[0] + "\n"
+def template_headings(document: str) -> set[str]:
+    headings = set()
+    for language in ("pl", "en"):
+        text = (PLUGIN / "templates" / f"{document}.{language}.md").read_text()
+        headings |= {line for line in text.splitlines() if re.match(r"#+ ", line)}
+    return headings
 
 
-# A headless stage subagent cannot read a file outside the working directory without a
-# permission prompt (PLAN 006, step 5 probe), so `idea` and `plan` carry both templates
-# inline; the files under `templates/` stay the tested source and each block is pinned to
-# its file byte for byte (owner decision, SPEC 006 AC5).
-@pytest.mark.parametrize("skill", sorted(TEMPLATE_BLOCKS))
-@pytest.mark.parametrize("language", sorted(BLOCK_HEADINGS))
-def test_idea_and_plan_carry_their_templates_pinned_to_the_files(skill, language):
-    document, fence = TEMPLATE_BLOCKS[skill]
+# `idea` and `plan` read the one template for the current `language` at run time (SPEC 007,
+# AC3) instead of carrying both inline; the files under `templates/` are the only copy.
+@pytest.mark.parametrize("skill", sorted(TEMPLATE_READS))
+def test_idea_and_plan_read_their_template(skill):
+    document = TEMPLATE_READS[skill]
     text = skill_text(skill)
-    template = (PLUGIN / "templates" / f"{document}.{language}.md").read_text()
-    assert inline_template(text, BLOCK_HEADINGS[language], fence) == template
-    assert text.count(f"{fence}markdown\n") == 2
-    choice = section(text, f"## Szablon {document}.md").split("\n### ", 1)[0]
+    choice = section(text, f"## Szablon {document}.md")
+    root = "${CLAUDE_PLUGIN_ROOT}/templates"
+    assert f"{root}/{document}.pl.md" in choice
+    assert "`Read`" in choice
     assert "`language`" in choice
-    assert f"templates/{document}.pl.md" in choice and f"templates/{document}.en.md" in choice
+    english = [line for line in choice.splitlines() if f"{root}/{document}.en.md" in line]
+    assert len(english) == 1
+    for phrase in ["brak klucza", "inna wartość"]:
+        assert phrase in english[0], phrase
+    assert "```markdown" not in text and "````markdown" not in text
+    own = {line for line in text.splitlines() if line.startswith("## ")}
+    lines = set(text.splitlines())
+    leaked = sorted((template_headings(document) - own) & lines)
+    assert not leaked, leaked
+
+
+def mapping_block(name: str) -> str:
+    return section(skill_text(name), "## Mapa sekcji")
+
+
+# Every stage reads the section map from the plugin at run time (SPEC 007, AC4), through one
+# block shared by all six skills.
+def test_every_stage_reads_the_section_map():
+    blocks = {name: mapping_block(name) for name in STAGE_SKILLS}
+    assert len(set(blocks.values())) == 1, sorted(blocks)
+    block = blocks[STAGE_SKILLS[0]]
+    assert MAP_PATH in block
+    assert "`Read`" in block
+    for name in STAGE_SKILLS:
+        assert "mapa sekcji w README" not in skill_text(name), name
+
+
+# A failed read ends the stage with the file and the rule to add (SPEC 007, AC5): a stage that
+# guessed the headings would miss `## Decyzje właściciela` and escalate on an accepted
+# dependency.
+def test_a_failed_read_stops_the_stage():
+    block = mapping_block(STAGE_SKILLS[0])
+    for token in [
+        "RESULT: ESCALATE",
+        "STOP",
+        "Read(~/.claude/plugins/cache/<marketplace>/pipeline/**)",
+        "Read(//",
+        "permissions.allow",
+    ]:
+        assert token in block, token
+    for skill, document in TEMPLATE_READS.items():
+        choice = normalise(section(skill_text(skill), f"## Szablon {document}.md"))
+        assert "„Mapa sekcji" in choice, skill
 
 
 def test_plan_writes_in_the_current_language():
@@ -159,7 +198,7 @@ def quoted(text: str) -> list[str]:
     return re.findall(r"`([^`]+)`", flat) + re.findall(r"„([^\"”]+)[\"”]", flat)
 
 
-# A stage names a section by both literals (plugin/README.md → Section map, SPEC 006 AC7), so
+# A stage names a section by both literals (templates/sections.md, SPEC 006 AC7), so
 # a spec written in either language, or before 0.5.0, is found. The check covers every map
 # row whose literals differ: a Polish heading quoted in a skill or agent brings its English
 # twin into the same file.
@@ -170,8 +209,8 @@ def quoted(text: str) -> list[str]:
 def test_sections_are_named_by_both_headings(path):
     text = (PLUGIN / path).read_text()
     spans = quoted(text)
-    # Outside fences only: the inline English template of `idea` and `plan` holds every
-    # English heading and would satisfy the check whatever the prose says.
+    # Outside fences only: an English heading quoted inside a code example would satisfy the
+    # check whatever the prose says.
     flat = normalise(without_fences(text))
     missing = []
     for _, _, polish, english in section_map():
