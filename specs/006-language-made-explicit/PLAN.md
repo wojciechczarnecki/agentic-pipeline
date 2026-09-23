@@ -841,4 +841,95 @@ needs an owner decision the SPEC does not already give.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-09-23 — /pipeline:final-review (report)
+
+Three independent perspectives (SPEC/PLAN compliance, quality, tests), each finding checked
+in the code. `bash scripts/check.sh` green (1714 passed). The Polish SPEC/PLAN templates are
+byte-identical to the inline blocks on `origin/main`; the Polish `init` templates are pure
+renames except `CONVENTIONS.pl.md` → `## Język` (AC14).
+
+**AC → evidence**
+
+| AC | Evidence | Status |
+|---|---|---|
+| AC1 | `plugin/README.md` → `### Language contract`, three groups; `test_readme.py` | met |
+| AC2 | identical `## Język` block in the 6 stage skills, contract bullet in `ship` and the 4 agents; `test_language_contract.py` (`test_the_language_block_is_identical_everywhere`, `test_every_agent_states_its_language_part`) | met |
+| AC3 | `plan/SKILL.md` step 5 (SPEC not translated); `plan-review` checklist item "język" (`major`, fixed in place); `test_plan_writes_in_the_current_language`, `test_plan_review_checks_the_language` | met |
+| AC4 | `final-review` apply step 3 (English conventional-commit title, body in `language`); `ship` gate in the session language | met |
+| AC5 | template files exist; inline blocks pinned byte for byte (`test_idea_and_plan_carry_their_templates_pinned_to_the_files`) | met as amended by owner decision C (D1) |
+| AC6 | `SPEC.en.md` / `PLAN.en.md` headings equal the AC6 list; Polish verbatim | met (see F5) |
+| AC7 | README `### Section map`; both headings in skills; `test_sections_are_named_by_both_headings` | met (test weak, F3) |
+| AC8 | `test_templates_language.py` parity, frontmatter, map rows, no Polish | met |
+| AC9 | tokens in `final-review`, `plan-review`, `ship` gate, README, eval criteria; legacy `warto poprawić` read rule; `test_severities_are_tokens`, `test_final_review_criteria_use_the_tokens` | met |
+| AC10 | `init/SKILL.md:36` language first, `en` recommended, 4 questions; `test_the_language_is_the_first_question` | met |
+| AC11 | `init` step 4 picks `CLAUDE.<language>.md`, `docs/<NAZWA>.<language>.md`; `test_init_templates.py` | met |
+| AC12 | `init/SKILL.md:56` argument or `en`, no `TODO:`; eval ledger 5/5 | met (see F1) |
+| AC13 | `init` steps 6–7 | met (see F1, test weak F4) |
+| AC14 | `templates/docs/CONVENTIONS.{pl,en}.md` language section | met |
+| AC15 | `workflow_config.py` `LANGUAGES`, default `en`, exact warning; `test_workflow_config.py`; README row | met (see F2) |
+| AC16 | `plugin/evals/init-writes-the-chosen-language/`, `init-without-questions` criterion 5; ledger 5/5 both | met |
+| AC17 | hard-coded `POLISH_SNAPSHOT`, `test_polish_templates_match_the_snapshot`, matches `origin/main` | met |
+| AC18 | canary checklist in "After gate 2" | pending apply |
+| AC19 | ROADMAP Stage 8 rewritten and 0.5.0 ticked; 4 DECISIONS rows; CONVENTIONS | met |
+| AC20 | `plugin.json` 0.5.0; CHANGELOG `## 0.5.0` names the three consumer impacts | met |
+| AC21 | stdlib only, `test_no_domain_references` green, check.sh green; eval receipt as last commit | pending apply |
+
+Plan steps 1–11 ticked with reason; D1 justified by the probe and owner decision C;
+nothing out of scope on the branch.
+
+**Findings**
+
+- **F1 `worth-fixing`** — `plugin/skills/init/SKILL.md:36`, `:56`. A re-run in a project
+  with `"language": "pl"`: interactively the question still recommends `en`, so accepting
+  the recommendation flips the project to English (the AC13 path, unintended); unattended,
+  the fallback is `en` whatever the key says, so a missing document is generated from the
+  English template inside a Polish project ("no mixing of languages"). Fix: when
+  `.claude/workflow.json` already has a supported `language`, recommend it and use it as the
+  unattended fallback; `en` only when the key is missing; a test on steps 2–3.
+- **F2 `worth-fixing`** — `plugin/bin/workflow_metrics.py:196` (`configured_specs_dir` uses
+  the strict `workflow_config.load`). A consumer with a string `language` valid before
+  0.5.0 (`"EN"`, `"polski"`) → `workflow_metrics.py` without arguments exits 1 with
+  `` `language` has to be one of: en, pl `` instead of the promised "warns and falls back to
+  `en`" (README configuration table, CHANGELOG 0.5.0). Fix: read the config through
+  `load_sections` there and print the problems as warnings, as `--format-for` does; a test.
+- **F3 `worth-fixing`** — `plugin/tests/test_language_contract.py:165`. `flat =
+  normalise(text)` searches the whole skill, including the inline English template, which
+  holds every English heading → for `idea` and `plan` the both-headings check can never
+  fail (removing `` (`## Read context`) `` from idea's prose stays green). Fix:
+  `flat = normalise(without_fences(text))` (all current twins sit outside fences).
+- **F4 `worth-fixing`** — `plugin/tests/test_init_skill.py:194`. The AC13 test asserts only
+  `` `language` `` in step 6; deleting "istniejących dokumentów nie tłumaczysz…" and the
+  step 7 notice keeps it green. Fix: assert the no-translation sentence in step 6 and the
+  "dotychczasowym języku" bullet in step 7.
+- **F5 `nit`** — `plugin/tests/test_templates_language.py:13`. No snapshot pins the English
+  SPEC/PLAN headings or the non-heading map literals (`**Główne ryzyka:**`,
+  `Weryfikacja automatyczna:`): a coordinated rename in template, inline block and map
+  stays green although specs 001–005 would stop matching. Fix: an `ENGLISH_SNAPSHOT` and a
+  pinned list of literal pairs.
+- **F6 `nit`** — `plugin/templates/workflow.example.json:31` still shows `"language": "pl"`
+  while the default is `en`. Fix: `"en"`.
+- **F7 `nit`** — `plugin/skills/init/SKILL.md:54-55`. The unattended TODO example is Polish
+  (`"TODO: komenda pełnej weryfikacji"`) → likely copied verbatim into an `en` project's
+  `workflow.json`. Fix: `"TODO: <verify command>"` or "TODO text in `language`".
+- **F8 `nit`** — `plugin/evals/final-review-ignores-false-positive/graders/criteria.md:27`
+  is 103 characters (limit 100). Fix: reflow.
+- **F9 `nit`** — `plugin/skills/ship/SKILL.md:137` dictates the Polish literal „brak
+  znalezisk" for PLAN.md regardless of `language`. Fix: "record that there are no findings,
+  in `language`".
+- **F10 `nit`** — this PLAN, Owner summary → "Main risks" still describes stages `cat`ing
+  templates at run time, superseded by D1. Fix: half a sentence pointing to decision C.
+- **F11 `nit`** — `plugin/tests/test_language_contract.py:8-9`. `STAGE_SKILLS` / `AGENTS`
+  hard-coded → a new stage skill or agent without the language block passes. Fix: derive
+  from `skills/*/SKILL.md` (minus `init`) and `agents/*.md` and assert equality.
+- **F12 `nit`** — `plugin/tests/test_readme.py:190` `strip_code` toggles on fences, so an
+  unclosed fence hides the rest of an English template from the Polish-letter check. Fix:
+  check the English templates without stripping code (they have no Polish even in code),
+  or assert balanced fences.
+- **F13 `nit`** — `plugin/tests/test_readme.py` `section_map` silently skips a map row
+  without exactly 4 cells, dropping it from every parity check. Fix: assert the cell count.
+
+**Rejected**
+
+- `test_language_twins_share_their_structure` compares only heading levels, not the names
+  of the `init` document headings — rejected: AC11 asks only for no Polish and unchanged
+  Polish templates, and no stage reads the `init` documents by heading.

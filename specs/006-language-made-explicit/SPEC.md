@@ -16,6 +16,9 @@ metrics:
   implement_steps: 11
   implement_iterations: 2
   deviations: 1
+  final_review_blockers: 0
+  final_review_worth_fixing: 4
+  final_review_nits: 9
 ---
 
 # SPEC 006 — Language made explicit
