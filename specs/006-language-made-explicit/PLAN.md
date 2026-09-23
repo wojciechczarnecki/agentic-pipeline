@@ -675,6 +675,28 @@ _(filled in by /pipeline:implement: the step 5 permission probe, the step 10 eva
 — date, step, case, model, runs, passed, `--max-cost-usd`, cost, running total — and the
 end-to-end outputs above)_
 
+**Implementation progress (2026-09-23, /pipeline:implement):** steps 1–4 committed green;
+self-correction iterations so far: 1 (step 2 — `PR titles` wrapped across a README line,
+the README bullet rewrapped).
+
+**Step 5 permission probe (2026-09-23, Claude Code 2.1.280, `--model haiku`, `-p`,
+`--output-format json`).** Consumer: `git init` under the scratchpad,
+`.claude/settings.json` = `plugin/templates/settings.json` without the marketplace entry,
+`.claude/workflow.json` = `{"language": "en"}`, `claude --plugin-dir <repo>/plugin`:
+
+| # | command | outcome |
+|---|---|---|
+| 1 | `cat "${CLAUDE_PLUGIN_ROOT}/templates/PLAN.en.md" \| head -3` | refused — `permission_denials` holds it (and a follow-up `echo "$CLAUDE_PLUGIN_ROOT"`); the variable is not resolved in the Bash tool, as expected |
+| 2 | `cat "<repo>/plugin/templates/PLAN.en.md" \| head -3` (the `--plugin-dir` path) | refused — `permission_denials`, the model reports it needs approval |
+| 3 | `cat "~/.claude/plugins/cache/wcz-tools/pipeline/0.4.0/templates/CLAUDE.md" \| head -3` (the installed cache) | refused — `permission_denials`, the model asks for approval |
+| 3b | the same as 3, run from this repository (a trusted workspace, its own `.claude/settings.json`) | refused — `permission_denials` |
+
+The probe consumer was an untrusted workspace (Claude Code ignored its `permissions.allow`),
+so 3b repeats probe 3 in a trusted one: the result does not change — `cat` of a file
+outside the working directory asks for approval, and a headless stage subagent cannot give
+it. `plugin/templates/settings.json` has no rule that covers it. Per step 5: **escalated**,
+the skills still carry their inline templates (step 5 not started beyond the probe).
+
 ## Definition of Done
 
 - [ ] all steps ticked
