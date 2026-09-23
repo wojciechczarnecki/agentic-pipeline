@@ -973,3 +973,7 @@ Owner decision (gate 2): all thirteen findings accepted, none rejected. Applied 
 - **F13** — `section_map` asserts 3 (severity) or 4 (map) cells per row.
 
 `bash scripts/check.sh` green (1723 passed).
+
+Eval receipt (AC21): `bash scripts/eval.sh` on `15ad2f2`, default model — 8/8 cases green,
+fingerprint `32a10ed…` equals `plugin/` at HEAD; `plugin/evals/last-run.json` committed as
+the last change under `plugin/`. `bash scripts/check.sh` green (1725 passed).
