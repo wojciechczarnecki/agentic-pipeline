@@ -18,8 +18,9 @@
 - **Main risks:** a Polish consumer silently changing (guarded by the verbatim move, the
   snapshot test and the canary); a stage subagent stalling on a permission prompt when it
   `cat`s a template from the plugin cache — measured in step 5 before any skill depends on
-  it, escalation if it prompts; eval spend — two cases measured 5 times each under a $8
-  ceiling (the `docs/CONVENTIONS.md` policy for a new case), then the owner-approved
+  it, escalation if it prompts; eval spend — two cases measured 5 times each plus one smoke run of
+  each of the three existing cases the change touches, under a $10 ceiling (the
+  `docs/CONVENTIONS.md` policy for a new case), then the owner-approved
   receipt after gate 2; `plugin/README.md` may now carry Polish, but only inside code spans
   of the section map, and the test that forbade it is narrowed to exactly that.
 - **New dependency:** no.
@@ -267,7 +268,13 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
   - `test_sections_are_named_by_both_headings` (AC7): for every map row whose two literals
     differ, in every stage skill and agent file, if the Polish heading text (the literal
     without leading `#`s) occurs inside a code span or a `„…"` quote, the English heading
-    text occurs in the same file.
+    text occurs in the same file. Before matching, both the file and the literals are
+    normalised: whitespace runs (line wraps included — `ship` wraps "Streszczenie dla
+    właściciela" across lines, `implement` wraps "Decyzje właściciela") collapse to one
+    space, and the literal's `#`, `**` and trailing `:` are stripped
+    (`Weryfikacja automatyczna:` → `Weryfikacja automatyczna`, `**Podejście:**` →
+    `Podejście`); without it the test passes vacuously for exactly the twins step 6
+    promises.
 
 ### `/pipeline:init` (AC10–AC14)
 
@@ -461,7 +468,11 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       — once as written (the variable is not set in the Bash tool's shell, so expect it to
       fail to resolve) and once with the absolute path the skill would carry after
       substitution (`<repo>/plugin/templates/PLAN.en.md` — outside the consumer's working
-      directory, like a cache install). Record both outcomes under Results. If the absolute
+      directory, like a cache install), and a third time with the real cache path of the
+      plugin installed on this machine
+      (`ls -d ~/.claude/plugins/cache/*/pipeline/*/templates/CLAUDE.md | tail -1` — the file
+      consumers actually read from; the `--plugin-dir` path alone may be treated
+      differently). Record all three outcomes under Results. If either absolute
       `cat` is refused or waits for approval → **escalate** (options: an allow rule in
       `templates/settings.json` plus a consumer-impact line; templates under
       `skills/<name>/`; keeping inline templates) — do not work around it.
@@ -497,8 +508,9 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       and `git diff -M --name-status origin/main -- plugin/templates/` shows `R100` for
       `CLAUDE.pl.md`, `PROJECT.pl.md`, `ROADMAP.pl.md`, `BACKLOG.pl.md`, `DECISIONS.pl.md`
       and a rename with changes only for `CONVENTIONS.pl.md`
-      (`git diff -M origin/main -- plugin/templates/docs/CONVENTIONS.pl.md` touches only its
-      `## Język` section).
+      (`git diff -M origin/main -- plugin/templates/docs/CONVENTIONS.md plugin/templates/docs/CONVENTIONS.pl.md`
+      — both paths, or git cannot pair the rename and shows a whole new file — touches only
+      its `## Język` section).
 
 - [ ] 8. **`init` skill: the language first, per-language templates, re-run** — files:
       `plugin/skills/init/SKILL.md`, `plugin/tests/test_init_skill.py`.
@@ -531,16 +543,28 @@ Two new subsections under `## Pipeline mechanics`, after `### Escalation trigger
       condition this spec tightens, are measured with 5 runs on the default model; 5 of 5
       → `runs: 1`, 4 of 5 → `runs: 3`, below that sharper criteria (or a skill fix inside
       this plan's scope when the transcript shows the skill at fault) and a new
-      measurement. Budget for this step: **$8 in total**, every call with
+      measurement. Every call with
       `--max-cost-usd`; optional drafting on `--model sonnet --runs 1 --max-cost-usd 1`,
       at most two calls. Measurement calls:
       `claude plugin eval plugin/ --scaffold --allow-tools Bash Write Edit --trust-plugin --no-publish --ablation none --case init-writes-the-chosen-language --runs 5 --max-cost-usd 3 --json <scratchpad>/eval/measure-init-language.json`
       `claude plugin eval plugin/ --scaffold --allow-tools Bash Write Edit --trust-plugin --no-publish --ablation none --case init-without-questions --runs 5 --max-cost-usd 3 --json <scratchpad>/eval/measure-init-without-questions.json`
+      Then one smoke run each of the three existing cases whose skill or criteria this
+      plan changes — `init-keeps-manual-edits` (init rewritten in step 8; its prompt says
+      "dokumenty po polsku", which step 3 of init now reads as a language),
+      `final-review-finds-planted-defect` and `final-review-ignores-false-positive`
+      (severity tokens in the skill and in the criteria, step 6 and 9) — so a regression
+      surfaces here, inside this plan's budget, not first in the receipt after gate 2:
+      `claude plugin eval plugin/ --scaffold --allow-tools Bash Write Edit --trust-plugin --no-publish --ablation none --case <name> --runs 1 --max-cost-usd 1 --json <scratchpad>/eval/smoke-<name>.json`
+      (three calls). A smoke failure makes that case "an existing one that fails in any
+      run": it gets the 5-run measurement of the policy, and the fix stays inside this
+      plan's scope (skill text or criteria), otherwise escalate.
+      Budget for this step, smoke runs included: **$10 in total**.
       A ledger row per call (date, case, model, runs, passed, `--max-cost-usd`, cost from
       the JSON, running total). The budget would be exceeded, or a case stays below 4 of 5
       after one criteria revision → **escalate** with the ledger.
       Automatic verification: both measurement JSONs show 5 runs each with ≥ 4 passed, the
-      ledger total ≤ $8, and `uv run pytest -q plugin/tests/test_eval_cases.py`
+      three smoke JSONs show 1 of 1 passed (or the follow-up 5-run measurement ≥ 4 of 5),
+      the ledger total ≤ $10, and `uv run pytest -q plugin/tests/test_eval_cases.py`
 
 - [ ] 11. **Documentation and release 0.5.0** — files: `plugin/.claude-plugin/plugin.json`,
       `plugin/CHANGELOG.md`, `docs/DECISIONS.md`, `docs/CONVENTIONS.md`, `CONTRIBUTING.md`,
@@ -632,8 +656,10 @@ After step 11:
    eyeball recorded under Results; the tests assert it).
 4. `claude plugin validate --strict plugin/` and `claude plugin validate --strict .` → pass.
 5. The eval ledger of step 10: `init-writes-the-chosen-language` and
-   `init-without-questions` each 5 runs, ≥ 4 passed, total ≤ $8.
-6. The step 5 permission probe recorded (the absolute-path `cat` ran without a prompt).
+   `init-without-questions` each 5 runs, ≥ 4 passed; the three smoke runs passed (or
+   their follow-up measurement ≥ 4 of 5); total ≤ $10.
+6. The step 5 permission probe recorded (both absolute-path `cat`s — `--plugin-dir` and
+   cache — ran without a prompt).
 7. `bash scripts/check.sh` → ALL GREEN.
 
 Record the outputs under Results below.
@@ -664,7 +690,63 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-09-23 — /pipeline:plan-review
+
+Findings (severity counted before the fixes: 0 `blocker`, 1 `major`, 3 `minor`):
+
+- **R1 `major` — step 10 left three affected existing eval cases unexercised.** Steps 6,
+  8 and 9 change the init skill (`init-keeps-manual-edits`, whose prompt says "dokumenty
+  po polsku" — now read by init as a language) and the final-review severity format and
+  criteria (`final-review-finds-planted-defect`, `final-review-ignores-false-positive`).
+  Only the two init language cases were measured, so a regression in these three would
+  first show in the receipt after gate 2 — rework after the owner's decisions, and a
+  5-run policy measurement with no budget. Changed: step 10 adds one smoke run of each
+  (`--runs 1 --max-cost-usd 1`), a failing smoke goes through the policy measurement;
+  the step budget rises from $8 to $10; owner summary and end-to-end item 5 follow.
+- **R2 `minor` — step 7's rename proof could not work.**
+  `git diff -M origin/main -- plugin/templates/docs/CONVENTIONS.pl.md` names only the new
+  path, so git cannot pair the rename and shows the whole file as added. Changed: the
+  command names both the old and the new path.
+- **R3 `minor` — `test_sections_are_named_by_both_headings` would pass vacuously for
+  the twins it is meant to prove.** Skill quotes wrap across lines (`ship`: "Streszczenie
+  dla / właściciela"; `implement`: "Decyzje / właściciela"), and the map's literal rows
+  carry markup (`Weryfikacja automatyczna:` with a colon, `**Podejście:**`) that the
+  skills' quotes never contain. Changed: the test normalises whitespace and strips `#`,
+  `**` and a trailing `:` before matching.
+- **R4 `minor` — the step 5 permission probe measured only the `--plugin-dir` path.**
+  Consumers read templates from `~/.claude/plugins/cache/<marketplace>/pipeline/<ver>/`,
+  which Claude Code may treat differently. Changed: a third probe `cat`s a template under
+  the installed cache path (present on this machine, 0.3.4 has `templates/CLAUDE.md`);
+  either absolute path prompting → escalate. End-to-end item 6 follows.
+
+Checked and found correct (later stages need not redo it):
+
+- Coverage: every AC1–AC21 has steps and a proving test or a recorded check; the matrix
+  matches the step list; AC18 and the receipt part of AC21 are correctly after gate 2.
+- Facts against the code: the inline templates sit at `idea/SKILL.md` 89–140 (```` ``` ````)
+  and `plan/SKILL.md` 73–139 (```` ```` ````), and the `awk` extractions in step 3 pick
+  exactly those blocks (no other `markdown` fence, no inner triple fence in the SPEC
+  block); the Polish snapshot lists every heading of both templates; `workflow_config`
+  `validate`/`load_sections` and the existing `({"language": 7}, …)` case support the
+  AC15 design; `test_readme_has_no_polish_even_in_code` exists and narrowing it is needed
+  for AC7; the contract identity test, the "no README in the contract" rule, the
+  configuration-block test (unaffected by a new `## Język` section), the closing-step
+  prefixes and the init `step(n)` helper (indented questions do not match `\n1. `) all
+  hold under the planned edits; `test_no_domain_references` does not scan templates for
+  `docs/ROADMAP.md`, and the new init text must keep `docs/ROADMAP.md` inside step 4
+  (existing test, named in step 8).
+- Conventions and decisions: no runtime or dev dependency, no data migration (the
+  default flip is accepted in the SPEC's owner decisions); the README keeps Polish only
+  in code spans (2026-09-21 row); skills stay Polish (2026-09-17/21 rows); eval policy of
+  2026-09-22 followed; tests before code in steps 1–3.
+- Order: no forward dependency — the map parser (step 2) precedes the template tests
+  (step 3), the templates exist before the skills stop carrying them (step 5), the
+  `init` template renames (step 7) keep `test_init_skill.py` green until step 8.
+- Language of this plan: English, matching `"language": "en"`.
+- Owner summary: dependency and migration flags true; one manual scenario (the canary).
+
+The plan is ready: no blocker remains, the fixes stay inside the plan, and nothing in it
+needs an owner decision the SPEC does not already give.
 
 ## Deviations
 
