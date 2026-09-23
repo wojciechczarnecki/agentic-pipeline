@@ -130,6 +130,17 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
 - [ ] 0.6.0: skills, agents and tests translated into English (`plugin/CHANGELOG.md` already
       is, since 0.3.4), with an eval case on `"language": "pl"`; Polish survives only in the
       `*.pl.md` templates — SPEC, PLAN and the `init` documents
+- [ ] 0.6.0: `idea` and `plan` read their template with `Read` instead of carrying both
+      languages inline (0.5.0 owner decision C) — one source, one language in context, and
+      the precondition for Polish living only in `*.pl.md`. A skill gets no free read of its
+      own plugin's files (headless probe, 2026-09-23: refused from the skill's directory,
+      the install cache and a `--plugin-dir` clone); the narrow allow rule
+      `Read(~/.claude/plugins/cache/wcz-tools/pipeline/**)` lets the read through and
+      nothing else. It needs the rule in `plugin/templates/settings.json` and the owner's
+      user settings, a consumer-impact line for existing consumers, a guard warning when the
+      rule is missing (a stage subagent cannot answer the prompt and would stall), and a
+      separate rule for a `--plugin-dir` canary (`specs/006-language-made-explicit/PLAN.md`,
+      deviation D1)
 
 ## Stage 6 — A better pipeline
 
