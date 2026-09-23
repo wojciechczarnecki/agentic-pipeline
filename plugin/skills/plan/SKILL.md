@@ -60,7 +60,7 @@ with the final review report; they do not approve the whole plan).
    `<docs.specsDir>/*/SPEC.md` with status `spec-ready` and ask the owner which one to take.
 2. **Precondition:** `status: spec-ready`. Any other status → STOP; explain which pipeline
    stage is missing. Check the branch (`git branch --show-current`): you work on the lane
-   branch `feat/NNN-<slug>`; if it does not exist (the spec historically landed on `main`) —
+   branch `feat/NNN-<slug>`; if it does not exist (e.g. the SPEC was committed to `main`) —
    create it: `git switch main && git pull --ff-only && git switch -c feat/NNN-<slug>`
    (in parallel work: a worktree in the directory from `worktree.dir`).
 3. **Gather context:** the SPEC in full (including `## Owner decisions`);

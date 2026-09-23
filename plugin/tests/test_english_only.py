@@ -23,6 +23,9 @@ ALLOWLIST = [
     "tests/test_templates_language.py",
     "tests/test_eval_cases.py",
     "tests/test_init_templates.py",
+    # Released entries quote the Polish literals of their time, inside code spans only
+    # (test_readme.py, test_no_polish_outside_code).
+    "CHANGELOG.md",
 ]
 # Generated eval reports quote past runs, which may be Polish.
 SKIPPED = ("evals/results/",)

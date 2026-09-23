@@ -95,7 +95,7 @@ Nothing outside these prefixes — no source files, no tool configuration and no
      session's list of marketplaces. When the path has another shape or the url is unknown —
      leave `TODO:` at that value (in both places) and name it on the list of values to fill
      in from step 7.
-     This is the only generated file whose write needs the owner's consent; when a
+     Like every file in `.claude/` (step 3), its write needs the owner's consent; when a
      non-interactive session does not get it, put the file on the list to add by hand
      (with its content) and finish with success — the rest of the scaffold stands anyway;
    - `.claude/workflow.json` — from `templates/workflow.example.json`, trimmed to this

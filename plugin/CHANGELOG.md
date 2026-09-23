@@ -75,7 +75,7 @@ language keep working.
   writes, PR descriptions), what is always English (commit messages, PR titles, branch
   names, `RESULT` and metric keys, severity tokens) and what follows the Claude Code
   session (questions, escalations, summaries). Every stage skill carries it as one
-  identical language block; the stage contract gains a language bullet.
+  identical `## Język` block; the stage contract gains a language bullet.
 - SPEC and PLAN templates per language (`templates/{SPEC,PLAN}.{en,pl}.md`); `idea` and
   `plan` carry both inline, pinned byte for byte to those files, and pick one by
   `language`. PLAN is written in the current `language`, also over a SPEC in another one.

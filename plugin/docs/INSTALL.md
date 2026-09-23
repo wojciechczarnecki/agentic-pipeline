@@ -4,7 +4,7 @@ The short version is in the [plugin README](../README.md#installation). This gui
 the release channel, the install scope, the project settings, updating, the one-time
 migration, verification, opting a repository out and the known traps.
 
-From 0.4.0 the command guard refuses `claude plugin uninstall`, `disable` and
+The command guard refuses `claude plugin uninstall`, `disable` and
 `marketplace remove` aimed at this plugin or its marketplace inside an agent session, and
 shell edits of the plugin's files and install state: the owner runs those commands from
 this guide in a terminal, outside an agent session.
@@ -77,8 +77,8 @@ the plugin comes from:
 
 ## Reading the plugin's templates
 
-From 0.6.0 the stages read the SPEC and PLAN templates and the section map from the plugin's
-own directory with `Read` at run time. A stage subagent under `/pipeline:ship` cannot answer
+The stages read the SPEC and PLAN templates and the section map from the plugin's own
+directory with `Read` at run time. A stage subagent under `/pipeline:ship` cannot answer
 a permission prompt, so the project allows that directory up front in `permissions.allow`
 of `.claude/settings.json` — `/pipeline:init` writes it, with the marketplace name of the
 install:

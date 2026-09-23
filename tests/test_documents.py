@@ -191,7 +191,7 @@ def markdown_section(text: str, heading: str) -> str:
     return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
 
 
-# SPEC 008, AC9: the documents say where Polish lives now that the skills are English.
+# SPEC 008, AC9: the documents say where Polish lives.
 def test_conventions_state_english_skills():
     language = markdown_section(read("docs/CONVENTIONS.md"), "## Language")
     for token in ["*.pl.md", "sections.md", "skills", "agents", "test_english_only.py"]:
