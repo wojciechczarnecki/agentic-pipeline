@@ -196,7 +196,7 @@ uv run pytest plugin/tests -q
 - [x] 7. **P1 `plan`** — `plugin/skills/plan/SKILL.md`: "WHAT and WHY — you decide HOW",
       "IN FULL", "covering ALL", "EXACT commands", "LOOKING AT", "Do NOT implement".
       Automatic verification: the P1 block above with `F=plugin/skills/plan/SKILL.md`
-- [ ] 8. **P1 `plan-review`** — `plugin/skills/plan-review/SKILL.md`: "the SPEC ALONE",
+- [x] 8. **P1 `plan-review`** — `plugin/skills/plan-review/SKILL.md`: "the SPEC ALONE",
       "EXACT commands", "(do NOT set `plan-approved`)". (`FIND` and `IMPORTANT` are gone
       after steps 1–2; `OK` is a verdict token and stays.)
       Automatic verification: the P1 block above with `F=plugin/skills/plan-review/SKILL.md`

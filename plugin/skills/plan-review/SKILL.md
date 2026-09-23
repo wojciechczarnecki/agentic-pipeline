@@ -54,7 +54,7 @@ implementation — the owner steps in only when the decision is not yours (step 
 ## Steps
 
 1. **Find the spec**; precondition `status: plan-draft` (otherwise STOP and explain).
-2. **Anti-anchoring:** first read the SPEC ALONE (without opening the plan) and note
+2. **Anti-anchoring:** first read the SPEC alone (without opening the plan) and note
    3–5 points on how you would tackle it yourself. Only then open PLAN.md and compare —
    the differences are the first leads.
 3. **Go through the checklist** (end every point with a verdict OK / problem + what to do
@@ -74,7 +74,7 @@ implementation — the owner steps in only when the decision is not yours (step 
      change touches the interface — require `<verify.command> <UI scope>` and the visual
      artifacts and the review scenario required by `<docs.conventions>`.
    - **testability:** every step has an `Automatic verification:` section
-     with EXACT commands (test paths) that
+     with exact commands (test paths) that
      `/pipeline:implement` will run in the self-correction loop — not a vague "add tests";
    - **summary:** `## Owner summary` consistent with the plan
      — especially the new dependency and data migration flags;
@@ -87,7 +87,7 @@ implementation — the owner steps in only when the decision is not yours (step 
 4. **Make the fixes directly in PLAN.md.** In `## Review log` record: the date,
    the findings with their severity, what was changed and why, and what was checked and
    found correct (so that the later stages do not repeat that work).
-5. **The approval decision.** Escalate (do NOT set `plan-approved`) when:
+5. **The approval decision.** Escalate (do not set `plan-approved`) when:
    - a blocker remains that you cannot fix in the plan itself;
    - the problem lies in the SPEC (a gap, a contradiction, an AC impossible to cover) — you
      do not fix the SPEC;
