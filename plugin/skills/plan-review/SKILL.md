@@ -1,15 +1,15 @@
 ---
 name: plan-review
-description: Etap 3 pipeline'u — adwersaryjny review PLAN.md (status plan-draft) świeżym okiem; poprawia plan w miejscu i sam ustawia plan-approved, chyba że trafi na wyzwalacz eskalacji.
-argument-hint: <numer lub slug speca>
+description: Pipeline stage 3 — an adversarial review of PLAN.md (status plan-draft) with a fresh eye; fixes the plan in place and sets plan-approved itself, unless it hits an escalation trigger.
+argument-hint: <spec number or slug>
 ---
 
-# /pipeline:plan-review — krytyka, poprawa i zatwierdzenie planu
+# /pipeline:plan-review — critique, fix and approval of the plan
 
-Rola: recenzent, którego zadaniem jest ZNALEZIENIE problemów, zanim staną się kodem.
-Wyjdź z założenia, że plan ma luki — Twoim sukcesem jest ich wskazanie, nie
-przyklepanie planu. Po recenzji to Ty decydujesz, czy plan jest gotowy do implementacji —
-właściciel wchodzi tylko wtedy, gdy decyzja nie należy do Ciebie (krok 5).
+Role: a reviewer whose task is to FIND the problems before they become code.
+Assume the plan has gaps — your success is pointing them out, not
+rubber-stamping the plan. After the review it is you who decides whether the plan is ready
+for implementation — the owner steps in only when the decision is not yours (step 5).
 
 ## Project configuration
 
@@ -44,81 +44,85 @@ właściciel wchodzi tylko wtedy, gdy decyzja nie należy do Ciebie (krok 5).
   (`…/plugins/cache/<marketplace>/pipeline/<version>`); when the guard has already shown a
   warning with a ready rule, you give that rule.
 
-## Wejście / wyjście
+## Input / output
 
-- Wejście: `<docs.specsDir>/NNN-<slug>/PLAN.md` + SPEC.md ze statusem `plan-draft`.
-- Wyjście: poprawiony PLAN.md z sekcją `## Review log`; status speca → `plan-approved`
-  albo eskalacja; zmiany zacommitowane.
+- Input: `<docs.specsDir>/NNN-<slug>/PLAN.md` + SPEC.md with status `plan-draft`.
+- Output: a fixed PLAN.md with a `## Review log` section; spec status → `plan-approved`
+  or an escalation; changes committed.
 
-## Kroki
+## Steps
 
-1. **Znajdź spec**; precondition `status: plan-draft` (inaczej STOP i wyjaśnij).
-2. **Anty-anchoring:** najpierw przeczytaj SAM SPEC (bez otwierania planu) i zanotuj
-   3–5 punktów, jak sam byś to ugryzł. Dopiero potem otwórz PLAN.md i porównaj —
-   rozbieżności to pierwsze tropy.
-3. **Przejdź checklistę** (każdy punkt zakończ werdyktem OK / problem + co z tym):
-   - **pokrycie:** każde AC ze SPEC ma kroki i test dowodzący; macierz zgadza się z listą kroków;
-   - **zgodność:** `<docs.conventions>` (wzorce kodu, teksty dla użytkownika, testy)
-     i `<docs.decisions>` (plan nie łamie decyzji);
-   - **minimalność:** czy istnieje prostsza droga; czy pominięto coś reużywalnego z kodu; czy zakres nie wykracza poza SPEC;
-   - **wykonalność:** kolejność kroków bez zależności „w przód", migracje uwzględnione,
-     ryzyka nieprzemilczane (różnice bazy testowej i produkcyjnej, strefy czasowe,
-     autoryzacja, długości pól);
-   - **weryfikacja E2E:** rozdzielona na automatyczną (agent) i ręczną (właściciel);
-     część automatyczna realna do wykonania na uruchomionej aplikacji; do ręcznej nie
-     trafia nic, co da się zautomatyzować. Gdy `verify.scopes` ma zakres UI, a zmiana
-     dotyka interfejsu — wymagaj `<verify.command> <zakres UI>` oraz artefaktów wizualnych
-     i scenariusza przeglądowego wymaganych przez `<docs.conventions>`.
-   - **testowalność:** każdy krok ma sekcję „Weryfikacja automatyczna"
-     (`Automatic verification:`) z DOKŁADNYMI komendami (ścieżki testów), które
-     `/pipeline:implement` uruchomi w pętli samokorekty — nie ogólnik „dodaj testy";
-   - **streszczenie:** „Streszczenie dla właściciela" (`## Owner summary`) zgodne z planem
-     — zwłaszcza flagi nowej zależności i migracji danych;
-   - **język:** PLAN (każda sekcja, także Review log) w bieżącym `language`; niezgodność
-     poprawiasz w miejscu (tłumaczysz plan, SPEC-a nie ruszasz) — waga `major`.
-   Każdy problem ma wagę — token pisany jako kod w każdym języku: `blocker` (plan
-   doprowadzi do złego wyniku albo nie pokrywa AC), `major` (istotna luka poprawialna
-   w planie), `minor`.
-4. **Wprowadź poprawki bezpośrednio w PLAN.md.** W `## Review log` zapisz: datę,
-   znaleziska z wagą, co zmieniono i dlaczego, oraz co sprawdzono i uznano za poprawne
-   (żeby kolejne etapy nie powtarzały tej pracy).
-5. **Decyzja o zatwierdzeniu.** Eskaluj (NIE ustawiaj `plan-approved`), gdy:
-   - został blocker, którego nie umiesz naprawić w samym planie;
-   - problem leży w SPEC (luka, sprzeczność, AC niemożliwe do pokrycia) — SPEC nie
-     poprawiasz;
-   - plan wprowadza nową zależność (lub podbicie major) albo migrację danych, a SPEC/PLAN →
-     „Decyzje właściciela" (`## Owner decisions`) jej nie akceptuje.
-   W pozostałych przypadkach ustaw sam `status: plan-approved` + wpis w `stage_history`,
-   a w Review log jednym zdaniem uzasadnij, dlaczego plan jest gotowy.
-   Eskalacja w sesji samodzielnej: `AskUserQuestion` z opcjami i rekomendacją (pierwsza,
-   „(Recommended)"), decyzja dopisana do PLAN.md → `## Decyzje właściciela`
-   (`## Owner decisions`), potem
-   dokończ krok 5.
-6. **Zamknięcie etapu:** w bloku `metrics:` SPEC.md ustaw `plan_review_blockers`,
-   `plan_review_majors` (liczone przed poprawkami) i `plan_changes` (liczba zmian
-   wprowadzonych w planie).
-   Płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
-   sukcesu `workflow_metrics.py --check <spec-dir>`.
-   Czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
-   STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz wartości, której nie zmierzyłeś.
-   Zacommituj (`docs: review PLAN NNN <slug>`).
+1. **Find the spec**; precondition `status: plan-draft` (otherwise STOP and explain).
+2. **Anti-anchoring:** first read the SPEC ALONE (without opening the plan) and note
+   3–5 points on how you would tackle it yourself. Only then open PLAN.md and compare —
+   the differences are the first leads.
+3. **Go through the checklist** (end every point with a verdict OK / problem + what to do
+   about it):
+   - **coverage:** every AC from the SPEC has steps and a proving test; the matrix matches
+     the list of steps;
+   - **compliance:** `<docs.conventions>` (code patterns, user-facing texts, tests)
+     and `<docs.decisions>` (the plan does not break a decision);
+   - **minimality:** is there a simpler way; was something reusable in the code missed; does
+     the scope not go beyond the SPEC;
+   - **feasibility:** the order of steps without "forward" dependencies, migrations
+     accounted for, risks not passed over in silence (differences between the test and the
+     production database, time zones, authorisation, field lengths);
+   - **E2E verification:** split into automatic (agent) and manual (owner);
+     the automatic part realistically executable on the running application; nothing that
+     can be automated goes into the manual one. When `verify.scopes` has a UI scope and the
+     change touches the interface — require `<verify.command> <UI scope>` and the visual
+     artifacts and the review scenario required by `<docs.conventions>`.
+   - **testability:** every step has an `Automatic verification:` section
+     with EXACT commands (test paths) that
+     `/pipeline:implement` will run in the self-correction loop — not a vague "add tests";
+   - **summary:** `## Owner summary` consistent with the plan
+     — especially the new dependency and data migration flags;
+   - **language:** the PLAN (every section, the Review log included) in the current
+     `language`; a mismatch you fix in place (you translate the plan, you leave the SPEC
+     alone) — severity `major`.
+   Every problem has a severity — a token written as code in every language: `blocker` (the
+   plan will lead to a wrong result or does not cover an AC), `major` (a significant gap
+   fixable in the plan), `minor`.
+4. **Make the fixes directly in PLAN.md.** In `## Review log` record: the date,
+   the findings with their severity, what was changed and why, and what was checked and
+   found correct (so that the later stages do not repeat that work).
+5. **The approval decision.** Escalate (do NOT set `plan-approved`) when:
+   - a blocker remains that you cannot fix in the plan itself;
+   - the problem lies in the SPEC (a gap, a contradiction, an AC impossible to cover) — you
+     do not fix the SPEC;
+   - the plan introduces a new dependency (or a major bump) or a data migration, and
+     SPEC/PLAN → `## Owner decisions` does not accept it.
+   In the remaining cases set `status: plan-approved` yourself + an entry in
+   `stage_history`, and in the Review log justify in one sentence why the plan is ready.
+   Escalation in a session on its own: `AskUserQuestion` with options and a recommendation
+   (the first, "(Recommended)"), the decision appended to PLAN.md → `## Owner decisions`,
+   then finish step 5.
+6. **Closing the stage:** in the `metrics:` block of SPEC.md set `plan_review_blockers`,
+   `plan_review_majors` (counted before the fixes) and `plan_changes` (the number of changes
+   made in the plan).
+   The flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
+   success `workflow_metrics.py --check <spec-dir>`.
+   A red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
+   STOP with a question) with the names of the missing keys; you do not invent a value you
+   did not measure. Commit (`docs: review PLAN NNN <slug>`).
 
-## WAŻNE — konsekwencja statusu
+## IMPORTANT — what the status triggers
 
-`plan-approved` uruchamia regułę zgód: od tej chwili `/pipeline:implement` edytuje
-pliki w zakresie planu bez pytania. Dlatego wyzwalacze eskalacji z kroku 5 są bezwzględne —
-nie zatwierdzaj planu z niezaakceptowaną zależnością lub migracją, nawet jeśli wydaje się
-oczywista.
+`plan-approved` triggers the approval rule: from that moment `/pipeline:implement` edits
+the files within the plan's scope without asking. That is why the escalation triggers of
+step 5 are absolute — do not approve a plan with an unaccepted dependency or migration, even
+if it seems obvious.
 
-## Guardraile
+## Guardrails
 
-- Nie poprawiaj SPEC — problem w SPEC to eskalacja; za zgodą właściciela status może
-  wrócić do `spec-draft`.
-- Nie przepisuj planu od zera dla stylu — poprawiaj to, co ma znaczenie.
-- Znaleziska formułuj konkretnie: „krok 3 nie pokrywa AC2, bo …", nie „plan mógłby być lepszy".
+- Do not fix the SPEC — a problem in the SPEC is an escalation; with the owner's consent the
+  status may go back to `spec-draft`.
+- Do not rewrite the plan from scratch for style — fix what matters.
+- Phrase findings concretely: "step 3 does not cover AC2, because …", not "the plan could be
+  better".
 
 ## Handoff
 
-- **Uruchomiony samodzielnie:** podsumuj znaleziska i zmiany; następny etap to
-  `/pipeline:implement NNN` po `/clear`.
-- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT z kontraktu agenta etapu.
+- **Run on its own:** summarise the findings and the changes; the next stage is
+  `/pipeline:implement NNN` after `/clear`.
+- **Under `/pipeline:ship`:** end with the RESULT block from the stage agent contract.

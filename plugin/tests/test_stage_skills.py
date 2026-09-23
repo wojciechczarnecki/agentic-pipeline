@@ -69,20 +69,20 @@ def test_the_visual_sentence_is_one_imperative_sentence(name):
         f"`<docs.conventions>`, found {len(carrying)}"
     )
     sentence = carrying[0]
-    assert "rozważ" not in sentence.lower()
-    assert "warto" not in sentence.lower()
+    assert "consider" not in sentence.lower()
+    assert "worth" not in sentence.lower()
 
 
 @pytest.mark.parametrize("name", STAGE_SKILLS)
 def test_no_stage_skill_enumerates_views(name):
-    for forbidden in ["widok szeroki", "widok wąski", "szeroki i wąski"]:
+    for forbidden in ["wide view", "narrow view", "wide and narrow"]:
         assert forbidden not in skill_text(name)
 
 
 @pytest.mark.parametrize("name", ["planner", "plan-reviewer", "implementer", "reviewer"])
 def test_no_agent_enumerates_views(name):
     text = (PLUGIN / "agents" / f"{name}.md").read_text()
-    for forbidden in ["widok szeroki", "widok wąski", "szeroki i wąski"]:
+    for forbidden in ["wide view", "narrow view", "wide and narrow"]:
         assert forbidden not in text
 
 
@@ -93,7 +93,7 @@ CLOSING_STEPS = {
         ["plan_review_blockers", "plan_review_majors", "plan_changes"],
     ),
     "implement": (
-        "5. **Finał",
+        "5. **Finish",
         ["implement_steps", "implement_iterations", "deviations"],
     ),
     "final-review": (

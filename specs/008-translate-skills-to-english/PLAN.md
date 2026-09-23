@@ -383,7 +383,7 @@ End-to-end → Automatic; every `OTHER` goes into `## Deviations` with its reaso
       `plugin/tests/test_language_contract.py` (`## Steps`, `do not translate`),
       `plugin/tests/test_stage_skills.py` (if a pinned token moved).
       Automatic verification: `uv run pytest -q -p no:cacheprovider plugin/tests/test_language_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_no_domain_references.py && grep -cP '[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]' plugin/skills/idea/SKILL.md plugin/skills/plan/SKILL.md` (prints `0` twice)
-- [ ] 4. `plan-review` and `implement` — files: `plugin/skills/plan-review/SKILL.md`,
+- [x] 4. `plan-review` and `implement` — files: `plugin/skills/plan-review/SKILL.md`,
       `plugin/skills/implement/SKILL.md` (whole files, the fenced self-correction loop
       included; the visual sentence stays one imperative sentence without "consider" /
       "worth"); `plugin/tests/test_stage_skills.py` (visual sentence words, views,

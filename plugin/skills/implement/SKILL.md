@@ -1,14 +1,14 @@
 ---
 name: implement
-description: Etap 4 pipeline'u — implementacja feature'a według zatwierdzonego PLAN.md (status plan-approved), krok po kroku, w pętli samokorekty z weryfikacją end-to-end i commitem po każdym kroku.
-argument-hint: <numer lub slug speca>
+description: Pipeline stage 4 — implementing a feature from the approved PLAN.md (status plan-approved), step by step, in the self-correction loop with end-to-end verification and a commit after every step.
+argument-hint: <spec number or slug>
 ---
 
-# /pipeline:implement — realizacja zatwierdzonego planu
+# /pipeline:implement — carrying out the approved plan
 
-Rola: wykonawca planu. Plan przeszedł review i jest zatwierdzony — realizujesz go
-wiernie i weryfikowalnie, nie ulepszasz po drodze. Kod uznajesz za poprawny dopiero,
-gdy mówią to komendy weryfikacyjne — nigdy dlatego, że „wygląda dobrze".
+Role: the plan's executor. The plan has been reviewed and approved — you carry it out
+faithfully and verifiably, you do not improve it along the way. You consider the code
+correct only when the verification commands say so — never because it "looks good".
 
 ## Project configuration
 
@@ -43,101 +43,104 @@ gdy mówią to komendy weryfikacyjne — nigdy dlatego, że „wygląda dobrze".
   (`…/plugins/cache/<marketplace>/pipeline/<version>`); when the guard has already shown a
   warning with a ready rule, you give that rule.
 
-## Wejście / wyjście
+## Input / output
 
-- Wejście: `<docs.specsDir>/NNN-<slug>/` ze statusem `plan-approved`.
-- Wyjście: implementacja zacommitowana krok po kroku i wypchnięta na branch
-  `feat/NNN-<slug>`, odhaczony i uzupełniony PLAN.md, status speca → `implemented`.
+- Input: `<docs.specsDir>/NNN-<slug>/` with status `plan-approved`.
+- Output: the implementation committed step by step and pushed to the branch
+  `feat/NNN-<slug>`, PLAN.md ticked and filled in, spec status → `implemented`.
 
-## Zasady nadrzędne
+## Overriding rules
 
-- Precondition: `status: plan-approved` — inaczej STOP, bez wyjątków
-  (brak zatwierdzonego planu = brak zgody na edycje).
-- Git: commitujesz sam, wyłącznie na branchu lane'a — po każdym zielonym kroku, tylko
-  pliki tego kroku (`git add <pliki>`, nigdy `git add -A` w ciemno). `main`, merge PR
-  i przepisywanie opublikowanej historii są poza Twoim zasięgiem (egzekwuje strażnik
-  komend tego pluginu).
-- Pliki wskazane w SPEC/PLAN czytaj W CAŁOŚCI (bez limit/offset), zanim je zmienisz —
-  praca na fragmencie to praca na przestarzałym modelu kodu.
-- Edycje w zakresie planu — bez pytania. Eskalacja przed: dodaniem zależności lub
-  migracji, których plan nie przewiduje (albo których nie akceptują „Decyzje
-  właściciela" / `## Owner decisions`); usunięciem plików spoza zakresu planu.
-- Eskalacja w sesji samodzielnej: `AskUserQuestion` z opcjami i rekomendacją, decyzja
-  dopisana do PLAN.md → `## Decyzje właściciela` (`## Owner decisions`). W ramach
-  `/pipeline:ship`: blok RESULT.
+- Precondition: `status: plan-approved` — otherwise STOP, no exceptions
+  (no approved plan = no consent to edits).
+- Git: you commit yourself, only on the lane branch — after every green step, only
+  the files of that step (`git add <files>`, never `git add -A` blindly). `main`, merging
+  PRs and rewriting published history are out of your reach (enforced by this plugin's
+  command guard).
+- Read the files named in the SPEC/PLAN IN FULL (no limit/offset) before you change them —
+  working on a fragment is working on a stale model of the code.
+- Edits within the plan's scope — without asking. Escalation before: adding a dependency or
+  a migration the plan does not provide for (or that `## Owner decisions` does not
+  accept); deleting files outside the plan's scope.
+- Escalation in a session on its own: `AskUserQuestion` with options and a recommendation,
+  the decision appended to PLAN.md → `## Owner decisions`. Under
+  `/pipeline:ship`: the RESULT block.
 
-## Przebieg
+## Procedure
 
-1. **Start:** przeczytaj SPEC.md, PLAN.md (łącznie z „Decyzje właściciela" /
-   `## Owner decisions`) i `<docs.conventions>`. Sprawdź `git status` (czyste drzewo)
-   i `git branch --show-current` (branch lane'a). `git fetch origin`; jeśli `origin/main`
-   ma commity, których branch nie ma — `git merge origin/main` (nie rebase: branch bywa
-   już wypchnięty, a force-push jest zablokowany). Konflikt → eskalacja.
-   Jeśli PLAN ma już odhaczone kroki (wznowienie pracy) — ufaj im i kontynuuj od
-   pierwszego nieodhaczonego.
-2. **Krok po kroku, po kolei:** implementacja + testy kroku → **pętla samokorekty**
-   (niżej) → zielone → odhacz checkbox w PLAN.md → commit kroku (`<typ>: <komunikat>`
-   po angielsku, format z `<docs.conventions>`; pliki kroku + PLAN.md) → następny krok.
-3. **Odstępstwa:** drobne i konieczne (inna nazwa pliku, mały helper) → wykonaj
-   i dopisz do `## Deviations` z uzasadnieniem. Zmieniające zakres, architekturę lub
-   schemat danych → eskalacja; nie kontynuuj na własną rękę.
-4. **Ekran:** gdy `verify.scopes` ma zakres UI, a zmiana dotyka interfejsu — uruchom
-   `<verify.command> <zakres UI>` i OBEJRZYJ artefakty wizualne wymagane przez
-   `<docs.conventions>`; bez tego krok nie jest zielony, a wynik zapisz w PLAN.md.
-5. **Finał — Definition of Done z planu:**
-   - `<verify.command>` w całości zielony;
-   - weryfikacja end-to-end z planu (sekcja automatyczna) wykonana NAPRAWDĘ,
-     wynik zapisany w PLAN.md; pozycje ręczne zostawiasz właścicielowi — wypisz je;
-   - `<docs.roadmap>` zaktualizowana (checkboxy!), `<docs.decisions>` i dokumenty
-     domenowe z mapy w `CLAUDE.md`, jeśli dotyczy;
-   - `status: implemented` + wpis w `stage_history`; w bloku `metrics:` SPEC.md:
-     `implement_steps`, `implement_iterations` (suma iteracji pętli ponad pierwszą próbę,
-     po wszystkich krokach), `deviations`;
-   - płaski blok `metrics:`: liczniki całkowite, czasy `%Y-%m-%dT%H:%M`; przed zgłoszeniem
-     sukcesu `workflow_metrics.py --check <spec-dir>`;
-     czerwień, której nie naprawisz z własnych artefaktów = `RESULT: ESCALATE` (samodzielnie:
-     STOP z pytaniem) z nazwami brakujących kluczy; nie wymyślasz niezmierzonej wartości;
-   - commit domykający, potem `git push -u origin feat/NNN-<slug>`.
+1. **Start:** read SPEC.md, PLAN.md (including `## Owner decisions`)
+   and `<docs.conventions>`. Check `git status` (a clean tree)
+   and `git branch --show-current` (the lane branch). `git fetch origin`; if `origin/main`
+   has commits the branch does not have — `git merge origin/main` (not rebase: the branch
+   may already be pushed, and force-push is blocked). A conflict → escalation.
+   If the PLAN already has ticked steps (resuming work) — trust them and continue from
+   the first unticked one.
+2. **Step by step, in order:** the step's implementation + tests → **the self-correction
+   loop** (below) → green → tick the checkbox in PLAN.md → commit the step
+   (`<type>: <message>` in English, the format from `<docs.conventions>`; the step's files +
+   PLAN.md) → the next step.
+3. **Deviations:** minor and necessary (a different file name, a small helper) → do it
+   and add it to `## Deviations` with a rationale. Ones that change the scope, the
+   architecture or the data schema → escalation; do not carry on on your own.
+4. **Screen:** when `verify.scopes` has a UI scope and the change touches the interface —
+   run `<verify.command> <UI scope>` and LOOK AT the visual artifacts required by
+   `<docs.conventions>`; without it the step is not green, and record the result in PLAN.md.
+5. **Finish — the plan's Definition of Done:**
+   - `<verify.command>` fully green;
+   - the plan's end-to-end verification (the automatic section) REALLY performed,
+     the result recorded in PLAN.md; the manual items you leave to the owner — list them;
+   - `<docs.roadmap>` updated (checkboxes!), `<docs.decisions>` and the domain documents
+     from the map in `CLAUDE.md`, if applicable;
+   - `status: implemented` + an entry in `stage_history`; in the `metrics:` block of
+     SPEC.md: `implement_steps`, `implement_iterations` (the sum of loop iterations beyond
+     the first attempt, over all steps), `deviations`;
+   - the flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
+     success `workflow_metrics.py --check <spec-dir>`;
+     a red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
+     STOP with a question) with the names of the missing keys; you do not invent an
+     unmeasured value;
+   - the closing commit, then `git push -u origin feat/NNN-<slug>`.
 
-## Pętla samokorekty (obowiązkowa dla każdego kroku)
+## Self-correction loop (mandatory for every step)
 
-Komendy bierzesz z sekcji „Weryfikacja automatyczna" (`Automatic verification:`) danego
-kroku planu — uruchamiasz dokładnie te, nie przybliżenia (do szybkiej iteracji na jednej
-warstwie służy `<verify.command>` z zakresem z `verify.scopes`).
+You take the commands from the `Automatic verification:` section of the given
+plan step — you run exactly those, not approximations (for fast iteration on one
+layer there is `<verify.command>` with a scope from `verify.scopes`).
 
 ```
-1. Uruchom WSZYSTKIE komendy weryfikacyjne kroku.
-2. Wszystko zielone → koniec pętli, krok gotowy.
-3. Coś czerwone:
-   a. przeczytaj PEŁNY output błędu — nie skanuj; przy wielu błędach zacznij od
-      PIERWSZEGO (kolejne bywają kaskadą pierwszego);
-   b. ustal przyczynę: bug implementacji / złe założenie / niezgodność z planem /
-      wada produktu, którą test słusznie wykrył;
-   c. niezgodność z planem → eskalacja (Expected / Found / Why it matters);
-   d. wada produktu (także w kodzie sprzed tego speca) → napraw produkt, jeśli poprawka
-      mieści się w zakresie planu i decyzjach właściciela; w przeciwnym razie eskalacja.
-      NIGDY nie dopasowuj testu do wady — żadnej zmiany danych testowych, asercji,
-      selektorów, timeoutów ani widoków tylko po to, żeby błąd przestał być widoczny;
-   e. bug → napraw i wróć do 1. — uruchom PONOWNIE WSZYSTKIE komendy
-      (fix potrafi zepsuć to, co już przechodziło).
-4. Czwarta iteracja na tym samym błędzie → eskalacja: co próbowałeś (lista prób
-   z wynikami), hipoteza przyczyny, czego potrzebujesz. Nie zgaduj dalej.
+1. Run ALL the step's verification commands.
+2. Everything green → end of the loop, the step is done.
+3. Something red:
+   a. read the FULL error output — do not skim; with many errors start from
+      the FIRST (the next ones are often a cascade of the first);
+   b. establish the cause: an implementation bug / a wrong assumption / a mismatch with
+      the plan / a product defect the test rightly found;
+   c. a mismatch with the plan → escalation (Expected / Found / Why it matters);
+   d. a product defect (also in code from before this spec) → fix the product, if the fix
+      fits within the plan's scope and the owner decisions; otherwise escalation.
+      NEVER fit the test to the defect — no change of test data, assertions,
+      selectors, timeouts or views just so that the error stops being visible;
+   e. a bug → fix it and go back to 1. — run ALL the commands AGAIN
+      (a fix can break what already passed).
+4. The fourth iteration on the same error → escalation: what you tried (a list of attempts
+   with results), a hypothesis of the cause, what you need. Do not guess any further.
 ```
 
-**Bramka:** NIE przechodzisz do następnego kroku z czerwoną weryfikacją bieżącego.
-Bez wyjątków, bez „to pewnie flaky", bez pomijania testów.
+**Gate:** you do NOT go on to the next step with the current one's verification red.
+No exceptions, no "it is probably flaky", no skipping tests.
 
-## Guardraile
+## Guardrails
 
-- Nie osłabiaj, nie pomijaj (`skip`) i nie zmieniaj istniejących testów ani ich danych,
-  żeby przeszły — konflikt z testem to eskalacja (chyba że plan wprost przewiduje zmianę
-  testu). Test czerwony przez wadę produktu to sygnał do naprawy produktu, nie testu.
-- Nie ruszaj plików niezwiązanych z planem — „przy okazji" (formatowanie, refaktory,
-  literówki poza zakresem) nie istnieje.
-- Sekrety i dane realnych użytkowników nigdy w kodzie, logach, commitach ani testach.
+- Do not weaken, skip (`skip`) or change existing tests or their data
+  to make them pass — a conflict with a test is an escalation (unless the plan explicitly
+  provides for changing the test). A test red because of a product defect is a signal to fix
+  the product, not the test.
+- Do not touch files unrelated to the plan — "while at it" (formatting, refactors,
+  typos outside the scope) does not exist.
+- Secrets and real users' data never in code, logs, commits or tests.
 
 ## Handoff
 
-- **Uruchomiony samodzielnie:** podsumuj, co zrobione, odstępstwa, wynik weryfikacji
-  i scenariusze ręczne; następny etap to `/pipeline:final-review NNN` po `/clear`.
-- **W ramach `/pipeline:ship`:** zakończ blokiem RESULT z kontraktu agenta etapu.
+- **Run on its own:** summarise what was done, the deviations, the verification result
+  and the manual scenarios; the next stage is `/pipeline:final-review NNN` after `/clear`.
+- **Under `/pipeline:ship`:** end with the RESULT block from the stage agent contract.

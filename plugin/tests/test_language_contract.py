@@ -145,7 +145,7 @@ def numbered_step(block: str, number: int) -> str:
 
 
 def test_plan_review_checks_the_language():
-    step = numbered_step(section(skill_text("plan-review"), "## Kroki"), 3)
+    step = numbered_step(section(skill_text("plan-review"), "## Steps"), 3)
     assert any("`language`" in item for item in bullets(step.replace("\n   ", "\n")))
 
 
