@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-09-24"
   - "spec-ready — 2026-09-24"
   - "plan-draft — 2026-09-24"
   - "plan-approved — 2026-09-24"
+  - "implemented — 2026-09-24"
 metrics:
   started_at: 2026-09-24T19:33
   escalations: 0
@@ -12,6 +13,9 @@ metrics:
   plan_review_blockers: 0
   plan_review_majors: 2
   plan_changes: 2
+  implement_steps: 9
+  implement_iterations: 5
+  deviations: 1
 ---
 
 # SPEC 012 — The chunked implementer

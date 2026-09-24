@@ -510,6 +510,13 @@ A fresh subagent compared the diff (spec directory left out) with AC1–AC16.
       Automatic verification: `uv run pytest plugin/tests/test_chunked_implementer.py plugin/tests/test_language_contract.py plugin/tests/test_prompt_style.py plugin/tests/test_stage_skills.py -q` → green.
 
 
+### Converge pass 2 — 2026-09-24
+
+A new fresh subagent read the diff after step 9: no `missing`, `partial` or `contradicts`
+gap. Three `unrequested` items, all **not gaps**: the no-`CHUNK:`-line rule in `ship` and
+the README (step 6 asks for it), the groups severities in `plan-review` (step 4), and the
+Polish mirror fixture's headings (step 1). No step added.
+
 ## Risks and traps
 
 - **Verbatim pins.** `## Project configuration`, `## Reading` and `## Section map` are
@@ -563,7 +570,16 @@ fixture and documents. There is no running application.
 5. Every AC row of this plan's matrix except AC15 has a red record in its fourth column,
    or `manual` for the 5-run half of AC11. A read of `## AC → steps matrix` confirms it.
 
-Record the results here when done.
+Results (2026-09-24):
+
+1. `bash scripts/check.sh` → `ALL GREEN` (2215 passed).
+2. `git diff origin/main -- plugin/.claude-plugin/plugin.json plugin/tests/test_prompt_style.py`
+   → empty (0 lines).
+3. The scaffold in a fresh scratch directory: `--check specs/001-order-tags` → exit 0;
+   `grep -c '^### Group '` → `2`.
+4. `python3 plugin/bin/workflow_metrics.py specs | head -1` → `implement_chunks` is column 10.
+5. Every matrix row has its fourth column filled: a red record for AC1–AC14 and AC16
+   (AC11 with `manual` for the 5-run half), and `n/a — kept behaviour` for AC15.
 
 ### Manual (performed by the owner)
 
@@ -582,12 +598,12 @@ Record the results here when done.
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` / domain documents from the map
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` / domain documents from the map
       in `CLAUDE.md`, if applicable
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
