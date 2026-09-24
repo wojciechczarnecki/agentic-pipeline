@@ -205,7 +205,7 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
 | AC5 | 5 | `plugin/tests/test_record_cost.py::test_a_second_run_replaces_the_keys_and_keeps_every_other_byte` | |
 | AC6 | 5 | `plugin/tests/test_record_cost.py::test_an_unknown_model_skips_its_stage_and_is_named`, `::test_a_stage_without_transcripts_warns`, `::test_no_transcripts_leaves_the_file_unchanged` | |
 | AC7 | 5 | `plugin/tests/test_record_cost.py::test_stdout_shows_tokens_by_type_model_and_cost` | |
-| AC8 | 3 | `plugin/tests/test_record_cost.py::test_the_rate_table_is_dated_and_frozen` | |
+| AC8 | 3 | `plugin/tests/test_record_cost.py::test_the_rate_table_is_dated_and_frozen` | `uv run pytest -q plugin/tests/test_record_cost.py -k frozen` → `AssertionError: assert '' == '2026-09-24'` (stub) |
 | AC9 | 1 | `plugin/tests/test_workflow_metrics.py::test_new_counters_are_known_and_never_required` | `uv run pytest -q plugin/tests/test_workflow_metrics.py -k new_counters` → `assert 'converge_gaps' in ['plan_steps', 'plan_review_blockers', …] = workflow_metrics.COUNTERS` |
 | AC10 | 1 | `plugin/tests/test_workflow_metrics.py::test_either_deviations_form_satisfies_the_check`, `::test_neither_deviations_form_names_both`; regression guard, green before by design and not the red record: `tests/test_spec_metrics.py::test_every_repository_spec_passes_the_check` (AC10: "still pass `--check`") | `uv run pytest -q plugin/tests/test_workflow_metrics.py -k either_deviations` → `AssertionError: assert ['014-e2e: status `implemented` requires metric keys that are missing: deviations', …] == []` |
 | AC11 | 8 | `plugin/tests/test_stage_skills.py::test_implement_records_the_split_metrics`, `plugin/tests/test_stage_contract.py::test_the_implementer_metrics_line` | |
@@ -259,7 +259,7 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
       - `test_report_has_columns_for_the_new_keys`: the header has every new key, and a
         missing value shows `-`.
       Automatic verification: `uv run pytest -q plugin/tests/test_workflow_metrics.py plugin/tests/test_readme.py`
-- [ ] 3. The rate table and the stage price (AC8, AC1 arithmetic). Files:
+- [x] 3. The rate table and the stage price (AC8, AC1 arithmetic). Files:
       `plugin/bin/workflow_metrics.py`, `plugin/tests/test_record_cost.py` (new).
       - Add `RATES_DATE = "2026-09-24"`, with a comment above `RATES` saying that existing
         rates are never changed and a new model is only added at its launch rates.

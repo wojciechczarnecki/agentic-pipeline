@@ -60,6 +60,57 @@ COUNTERS = [
 # specs that recorded the old key.
 DEVIATION_FORMS = ("deviations", ("deviations_minor", "deviations_major"))
 DEVIATIONS_DUE = ("implemented", "done")
+TOKEN_TYPES = ("input", "cache_write_5m", "cache_write_1h", "cache_read", "output")
+# API list rates of RATES_DATE in cents per million tokens, in TOKEN_TYPES order. Existing
+# rates are never changed, even when prices move: a cent here is a fixed unit, so costs from
+# different years stay comparable. A new model is only added, at its launch rates.
+RATES_DATE = "2026-09-24"
+RATES: dict[str, tuple[int, int, int, int, int]] = {
+    "claude-opus-5-5": (400, 500, 800, 20, 2000),
+    "claude-opus-5": (500, 625, 1000, 50, 2500),
+    "claude-sonnet-5": (200, 250, 400, 20, 1000),
+    "claude-haiku-4-5": (100, 125, 200, 10, 500),
+    "claude-fable-5-1": (1000, 1250, 2000, 25, 5000),
+}
+MODEL_DATE = re.compile(r"-\d{8}$")
+
+
+def _count(value: object) -> int:
+    return value if isinstance(value, int) and value > 0 else 0
+
+
+def usage_tokens(usage: dict) -> tuple[int, ...]:
+    split = usage.get("cache_creation")
+    if isinstance(split, dict):
+        write_5m = _count(split.get("ephemeral_5m_input_tokens"))
+        write_1h = _count(split.get("ephemeral_1h_input_tokens"))
+    else:
+        write_5m, write_1h = _count(usage.get("cache_creation_input_tokens")), 0
+    return (
+        _count(usage.get("input_tokens")),
+        write_5m,
+        write_1h,
+        _count(usage.get("cache_read_input_tokens")),
+        _count(usage.get("output_tokens")),
+    )
+
+
+def rate_for(model: str) -> tuple[int, ...] | None:
+    return RATES.get(MODEL_DATE.sub("", model))
+
+
+# Integer arithmetic and one rounding (half up) of the stage total: rounding per message or
+# per model would lose sub-cent amounts that add up.
+def stage_cents(tokens_by_model: dict[str, list[int]]) -> int | None:
+    numerator = 0
+    for model, tokens in tokens_by_model.items():
+        rates = rate_for(model)
+        if rates is None:
+            return None
+        numerator += sum(count * rate for count, rate in zip(tokens, rates, strict=True))
+    return (numerator + 500_000) // 1_000_000
+
+
 FRONTMATTER = re.compile(r"---\n(.*?)\n---", re.DOTALL)
 TIME_FORMAT = "%Y-%m-%dT%H:%M"
 TIMESTAMPS = ("started_at", "finished_at")
