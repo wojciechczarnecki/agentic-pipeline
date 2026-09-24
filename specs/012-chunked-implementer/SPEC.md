@@ -3,6 +3,9 @@ status: spec-ready
 stage_history:
   - "spec-draft — 2026-09-24"
   - "spec-ready — 2026-09-24"
+metrics:
+  started_at: 2026-09-24T19:33
+  escalations: 0
 ---
 
 # SPEC 012 — The chunked implementer
