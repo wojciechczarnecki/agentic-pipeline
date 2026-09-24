@@ -61,7 +61,8 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
 2. **Three perspectives — in parallel**, as separate subagents (the `Agent` tool, all
    three in one message). Each gets: the spec path, the diff command, its own
    perspective and the finding format. It does not get the others' conclusions or your
-   hypotheses.
+   hypotheses. The review always runs all three perspectives, for a small change as for a
+   large one: independence is the method, and three readers of a small diff cost little.
    - **Compliance with the SPEC/PLAN:** for every AC the evidence — the file/test that
      delivers it (the AC → evidence matrix); the plan's steps ticked with good reason;
      `## Deviations` justified; nothing outside the scope got into the branch.
@@ -85,7 +86,8 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    risk.
 4. **Write the report** in `## Final review` in PLAN.md: the date; the AC → evidence matrix;
    the findings with ids `F1…Fn` (severity, file:line, scenario, fix); the rejected ones
-   with a reason. In the `metrics:` block of SPEC.md: `final_review_blockers`,
+   with a reason. The report's length follows the findings: a review with none is the
+   matrix and one line. In the `metrics:` block of SPEC.md: `final_review_blockers`,
    `final_review_worth_fixing`, `final_review_nits`.
    The flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
    success `workflow_metrics.py --check <spec-dir>`.

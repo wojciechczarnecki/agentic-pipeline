@@ -168,7 +168,7 @@ and `docs:` for documents. Each commit holds the step's files plus PLAN.md, per
 | AC2 | 2 | `plugin/tests/test_test_first.py::test_implement_*` | `uv run pytest plugin/tests/test_test_first.py` → `AssertionError: implement: no section Test-first evidence` (7 failed, all on assertions) |
 | AC3 | 3 | `plugin/tests/test_test_first.py::test_plan_*`, `::test_plan_review_*` | `uv run pytest plugin/tests/test_test_first.py -k plan` → `AssertionError: assert 'writes and runs its proving test before the product change' in '**Write PLAN.md** …'` (3 failed, all on assertions) |
 | AC4 | 4 | `plugin/tests/test_converge.py` (all); `plugin/tests/test_stage_skills.py` (Finish prefix) | `uv run pytest plugin/tests/test_converge.py` → `AssertionError: implement: no section Converge pass` (10 failed, all on assertions; the Finish prefix raised `StopIteration`, not counted) |
-| AC5 | 5 | `plugin/tests/test_review_depth.py::test_depth_*`; the absence guard `::test_no_size_tiers_anywhere` is green before the change by design | |
+| AC5 | 5 | `plugin/tests/test_review_depth.py::test_depth_*`; the absence guard `::test_no_size_tiers_anywhere` is green before the change by design | `uv run pytest plugin/tests/test_review_depth.py` → `AssertionError: length follows the change` (4 `test_depth_*` failed on assertions; the guard passed, as designed) |
 | AC6 | 6 | `plugin/tests/test_review_depth.py::test_nit_cap_*` | |
 | AC7 | 7 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-escalates-on-never-red-test`, `::test_never_red_*`) | |
 | AC8 | 8 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-converge-finds-missing-ac`, `::test_converge_*`) | |
@@ -298,7 +298,7 @@ the red record comes from the `test_depth_*` tests.
       Files: `plugin/skills/implement/SKILL.md`, `plugin/tests/test_converge.py`,
       `plugin/tests/test_stage_skills.py`
       Automatic verification: `uv run pytest plugin/tests/test_converge.py plugin/tests/test_stage_skills.py plugin/tests/test_test_first.py plugin/tests/test_prompt_audit.py plugin/tests/test_prompt_style.py plugin/tests/test_language_contract.py plugin/tests/test_english_only.py -q`
-- [ ] 5. **AC5: proportional depth.** Test first: create
+- [x] 5. **AC5: proportional depth.** Test first: create
       `plugin/tests/test_review_depth.py` (header `# SPEC 010, AC5/AC6: …`) with these
       tests:
       - `test_depth_plan_follows_the_change`: `plan` step 5 contains "length follows the

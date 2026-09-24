@@ -58,7 +58,8 @@ implementation — the owner steps in only when the decision is not yours (step 
    3–5 points on how you would tackle it yourself. Only then open PLAN.md and compare —
    the differences are the first leads.
 3. **Go through the checklist** (end every point with a verdict OK / problem + what to do
-   about it):
+   about it; a point that does not apply gets a one-line verdict, so the review follows
+   the plan rather than the checklist):
    - **coverage:** every AC from the SPEC has steps and a proving test; the matrix matches
      the list of steps;
    - **compliance:** `<docs.conventions>` (code patterns, user-facing texts, tests)

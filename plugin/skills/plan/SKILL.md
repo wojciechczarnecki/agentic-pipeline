@@ -87,7 +87,9 @@ with the final review report; they do not approve the whole plan).
    automated goes into the manual one. When `verify.scopes` has a UI scope and the change
    touches the interface — plan in the automatic verification `<verify.command> <UI scope>`
    and looking at the visual artifacts and updating the review scenario required by
-   `<docs.conventions>`.
+   `<docs.conventions>`. The plan's length follows the change: each step and section says
+   something the implementer needs, and a template section that does not apply gets one
+   line `n/a — <reason>` instead of filler, because filler hides the steps that matter.
 6. **AC → steps matrix:** every AC must have steps that deliver it and a test that
    proves it. An AC impossible to cover → escalation (a gap in the SPEC); do not patch the
    SPEC yourself. The fourth column stays empty for `/pipeline:implement`, which records
