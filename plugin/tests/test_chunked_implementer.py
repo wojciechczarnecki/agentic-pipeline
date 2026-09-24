@@ -1,7 +1,11 @@
 import re
+import sys
 from pathlib import Path
 
 PLUGIN = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PLUGIN / "bin"))
+
+from workflow_config import SCHEMA  # noqa: E402
 
 
 # SPEC 012: the chunked implementer. The rules live in skill text, compared
@@ -55,7 +59,7 @@ def test_plan_review_checks_the_groups():
         "**groups:**",
         "exactly one group",
         "later group to finish",
-        "one group",
+        "a small plan is one group",
         "a plan without groups gets them",
         "in place",
     ]:
@@ -80,9 +84,22 @@ def test_implement_chunk_ends_at_the_group_boundary():
         "first unticked step",
         "green, ticked and committed",
         "`## Chunk notes`",
-        "push",
+        "push the branch (`git push -u origin feat/NNN-<slug>`",
         "`plan-approved`",
+        "you write no metric into SPEC.md",
         "never ends on a red or uncommitted step",
+    ]:
+        assert token in text, token
+
+
+# Final review F4: a chunk that died after its group's last commit leaves no note; the next
+# chunk writes it, so the running total and `implement_chunks` stay whole.
+def test_implement_chunk_writes_a_missing_note_first():
+    text = chunk()
+    for token in [
+        "a finished group other than the last one with no entry",
+        "carried over unchanged",
+        "iterations are unknown",
     ]:
         assert token in text, token
 
@@ -117,9 +134,9 @@ def test_implement_off_or_one_group_runs_one_context():
 
 # AC9: what a chunk note holds, and that the next chunk reads it.
 def test_implement_chunk_note_contents():
-    text = chunk()
+    text = chunk().split("The group ends when", 1)[1].split("Commit the note", 1)[0]
     for token in [
-        "the group",
+        "the group you carried out",
         "decisions taken within the plan's latitude",
         "traps",
         "running `implement_iterations` total",
@@ -129,8 +146,16 @@ def test_implement_chunk_note_contents():
 
 def test_implement_start_reads_the_chunk_notes():
     start = numbered(section("implement", "Procedure"), 1)
-    for token in ["`## Chunk notes`", "Chunk mode"]:
+    for token in ["`## Chunk notes`", "In chunk mode (the Chunk mode section)"]:
         assert token in start, token
+    assert "With chunking on" not in start
+
+
+# Final review F8: notes left by earlier chunks count even after the switch was turned off.
+def test_implement_finish_uses_the_notes_whenever_they_exist():
+    finish = numbered(section("implement", "Procedure"), 6)
+    assert "whenever `## Chunk notes` has entries" in finish
+    assert "in chunk mode, `implement_iterations`" not in finish
 
 
 # AC10: run on its own, a chunk hands off to a fresh session.
@@ -188,9 +213,11 @@ def test_ship_no_progress_is_a_missing_result():
     for token in [
         "`CHUNK: <group>/<groups>`",
         "same group as the previous chunk that returned",
+        "or that has no chunk line",
         "missing RESULT",
-        "escalat",
+        "the second time escalate yourself",
         "never with the escalated one",
+        "counted per chunk",
     ]:
         assert token in protocol, token
 
@@ -218,3 +245,46 @@ def test_implement_switch_matches_the_loader():
     text = chunk()
     for token in ["the literal `true`", "no other key", "counts as off"]:
         assert token in text, token
+    assert SCHEMA["implement"] == {"chunked": bool}
+
+
+# Final review F10: the loader warns about a dropped `implement` section on stderr only.
+def test_implement_names_an_ignored_implement_section():
+    text = chunk()
+    for token in ["an `implement` section the loader ignores", "stderr", "SUMMARY"]:
+        assert token in text, token
+
+
+# Final review F1: the fenced RESULT template itself carries the chunk line, so a chunk that
+# copies the block literally still reports its group.
+def fenced_result(text: str) -> list[str]:
+    block = text.split("```\nRESULT: DONE | ESCALATE\n", 1)[1].split("```", 1)[0]
+    return block.splitlines()
+
+
+def test_the_result_template_carries_the_chunk_line():
+    for text in [skill_text("ship"), (PLUGIN / "agents" / "implementer.md").read_text()]:
+        lines = fenced_result(text)
+        assert lines[0].startswith("STATUS:"), lines
+        assert lines[1].startswith("CHUNK: <group>/<groups>"), lines
+        assert "chunk mode" in lines[1], lines
+
+
+# Final review F6: the judge sees only the final message, and a chunk end is pushed.
+def test_the_group_boundary_grader_asks_for_the_final_message():
+    criteria = (
+        PLUGIN / "evals" / "implement-stops-at-group-boundary" / "graders" / "criteria.md"
+    ).read_text()
+    correct = collapse(criteria.split("The response is correct when", 1)[1])
+    correct = correct.split("The response is incorrect when", 1)[0]
+    assert "the PLAN it summarises" not in correct
+    assert "the branch was pushed" in correct
+
+
+# Final review F11: the English plan-review fixture mirrors the Polish one's groups.
+def test_the_english_plan_review_fixture_has_groups():
+    scaffold = (
+        PLUGIN / "evals" / "plan-review-escalates-on-dependency" / "scaffold.sh"
+    ).read_text()
+    assert "\n### Group 1 — " in scaffold
+    assert "\n## Chunk notes\n" in scaffold

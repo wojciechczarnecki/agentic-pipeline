@@ -316,7 +316,13 @@ def result_fields(block: str) -> list[str]:
 def test_the_result_block_matches_the_contract():
     ship = (PLUGIN / "skills" / "ship" / "SKILL.md").read_text()
     assert result_fields(result_block(README)) == result_fields(result_block(ship))
-    assert result_fields(result_block(README)) == ["STATUS", "METRICS", "ESCALATION", "SUMMARY"]
+    assert result_fields(result_block(README)) == [
+        "STATUS",
+        "CHUNK",
+        "METRICS",
+        "ESCALATION",
+        "SUMMARY",
+    ]
 
 
 def test_the_guard_section_links_guard_md():

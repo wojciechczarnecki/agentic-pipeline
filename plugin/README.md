@@ -150,6 +150,7 @@ Every stage agent launched by `/pipeline:ship` ends its reply with this block:
 ```
 RESULT: DONE | ESCALATE
 STATUS: <spec status after the stage>
+CHUNK: <group>/<groups> — only the implementer in chunk mode
 METRICS: <key=value; …>
 ESCALATION: <only with ESCALATE — problem; options (≤ 4); recommendation; why>
 SUMMARY: <≤ 10 lines; for reviewer/report — findings table: id | severity | one sentence>
@@ -164,7 +165,8 @@ In chunk mode the implementer adds a line `CHUNK: <group>/<groups>` right after 
 the group it carried out and the number of groups. `ship` reads `DONE` with
 `STATUS: plan-approved` as the end of a chunk and starts the next implementer with the same
 prompt; a chunk end that repeats the group of the previous chunk that returned `DONE`, or
-has no `CHUNK:` line, counts as a missing RESULT (one re-run, then an escalation).
+has no `CHUNK:` line, counts as a missing RESULT (one re-run per chunk, then an
+escalation).
 
 A stage agent cannot ask the owner: wherever a skill says to ask or to STOP, it ends with a
 `RESULT: ESCALATE` block. The orchestrator turns that into a question for the owner and

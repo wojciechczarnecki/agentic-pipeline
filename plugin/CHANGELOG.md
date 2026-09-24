@@ -52,12 +52,15 @@ until `"implement": {"chunked": true}` is set in `.claude/workflow.json`, and
   the group that holds the first unticked step, appends a chunk note (the group, decisions
   taken within the plan's latitude, traps for the next group, the running
   `implement_iterations` total), commits, pushes and ends at `plan-approved`; the chunk with
-  the last group runs the converge pass and the Definition of Done as before. Run on its
-  own, the skill stops at the group boundary and asks to be run again after `/clear`.
-- The implementer's RESULT carries a `CHUNK: <group>/<groups>` line in chunk mode, and
-  `/pipeline:ship` loops over the chunks: `DONE` with `STATUS: plan-approved` starts the
-  next implementer, and a chunk that repeats the group of the last `DONE` chunk counts as a
-  missing RESULT.
+  the last group runs the converge pass and the Definition of Done as before. A chunk that
+  finds a finished group without its note (the chunk before ended between its last commit
+  and its note) writes that note first. Run on its own, the skill stops at the group
+  boundary and asks to be run again after `/clear`.
+- The implementer's RESULT carries a `CHUNK: <group>/<groups>` line in chunk mode, shown in
+  the RESULT template every stage agent carries, and `/pipeline:ship` loops over the
+  chunks: `DONE` with `STATUS: plan-approved` starts the next implementer, and a chunk that
+  repeats the group of the last `DONE` chunk counts as a missing RESULT, with one re-run
+  per chunk.
 - `implement_chunks`, an optional metric key written by the final chunk, and a column in
   the metrics report.
 - The eval case `implement-stops-at-group-boundary`.

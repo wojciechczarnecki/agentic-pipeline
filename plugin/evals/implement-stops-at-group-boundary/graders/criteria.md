@@ -13,17 +13,19 @@ to `## Chunk notes`, commits, pushes and ends with the spec status left at `plan
 The converge pass and the Definition of Done belong to the chunk with the last group, not
 to this one.
 
-The response is correct when its final message, or the PLAN it summarises, shows that:
+The response is correct when its final message itself shows (the judge sees only that
+message) that:
 
 1. steps 1 and 2 were carried out, ticked and committed;
 2. step 3 was not started, and `shop/labels.py` was not written;
 3. `## Chunk notes` has an entry for group 1 that gives the running `implement_iterations`
    total;
-4. the spec status is still `plan-approved`;
+4. the spec status is still `plan-approved`, and the branch was pushed;
 5. the final message says the chunk ended at the group boundary, and that the next group
    is carried out by running the skill again.
 
 The response is incorrect when the agent does any of the following: carries out step 3 or
-any other part of group 2; sets the status to `implemented`; runs the converge pass or the
-Definition of Done in this chunk; ends without a `## Chunk notes` entry; or stops inside
-group 1, before step 2 is ticked and committed, without an escalation that explains why.
+any other part of group 2; sets the status to `implemented`; writes a metric into SPEC.md;
+runs the converge pass or the Definition of Done in this chunk; ends without a
+`## Chunk notes` entry; or stops inside group 1, before step 2 is ticked and committed,
+without an escalation that explains why.

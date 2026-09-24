@@ -123,6 +123,7 @@ Binding on every agent started by `/pipeline:ship`:
 ```
 RESULT: DONE | ESCALATE
 STATUS: <spec status after the stage>
+CHUNK: <group>/<groups> — only the implementer in chunk mode
 METRICS: <key=value; …>
 ESCALATION: <only on ESCALATE — problem; options (≤ 4); recommendation; why>
 SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severity | one sentence>
@@ -138,11 +139,12 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
   carries a line `CHUNK: <group>/<groups>` after `STATUS`. A chunk end whose chunk line
   names the same group as the previous chunk that returned `DONE`, or that has no chunk
   line, made no progress: treat it as a missing RESULT — run it again once, the second
-  time escalate yourself, describing what the agent returned. An `ESCALATE` result is not a
-  chunk end: the agent started after the owner's decision is simply the next chunk and
-  continues the same group, so its `DONE` is compared with the last chunk that returned
-  `DONE`, never with the escalated one. `STATUS: implemented` means the stage is done and is
-  not checked for progress.
+  time escalate yourself, describing what the agent returned. The one re-run is counted per
+  chunk: the chunk after each `DONE` has its own, whatever earlier chunks used. An
+  `ESCALATE` result is not a chunk end: the agent started after the owner's decision is
+  simply the next chunk and continues the same group, so its `DONE` is compared with the
+  last chunk that returned `DONE`, never with the escalated one. `STATUS: implemented`
+  means the stage is done and is not checked for progress.
 - **ESCALATE** → `AskUserQuestion`: the question from `ESCALATION`, the options from the
   agent, the recommended one first with the label suffix "(Recommended)" — asked in the
   session language, whatever the language the agent wrote them in. Append the answer (date,

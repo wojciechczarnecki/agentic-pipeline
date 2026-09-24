@@ -780,3 +780,34 @@ has a red record, `n/a` (AC15) or `manual` (AC11, 5-run half).
   plan puts it in Manual scenario 1 for the owner before tagging 0.8.0, and it stays there.
 
 Left out: 10 nit findings
+
+### Fixes (apply, 2026-09-24)
+
+Owner decision: all eleven findings accepted. Each fix came with a proving test that was
+red first; `bash scripts/check.sh`: ALL GREEN, 2221 passed.
+
+- **F1** — the fenced RESULT template carries `CHUNK: <group>/<groups> — only the
+  implementer in chunk mode` after `STATUS` in all five contract copies (`ship` and the four
+  agents) and in the README; `test_the_result_template_carries_the_chunk_line`,
+  `test_readme.py::test_the_result_block_matches_the_contract`.
+- **F2** — the chunk end pushes with `git push -u origin feat/NNN-<slug>`, as Procedure
+  step 6 does.
+- **F3** — `ship` Result protocol: the one re-run is counted per chunk; README says the same.
+- **F4** — Chunk mode: a finished group other than the last one with no note gets its
+  entry first, the running total carried over unchanged and its iterations marked unknown;
+  `test_implement_chunk_writes_a_missing_note_first`. No BACKLOG item needed.
+- **F5** — the loose pins tightened: `a small plan is one group`, `the group you carried
+  out` inside the note bullet, `you write no metric into SPEC.md`, `push the branch (…`,
+  `or that has no chunk line`, `the second time escalate yourself`, `counted per chunk`.
+- **F6** — the grader asks for what the final message itself shows, requires the push and
+  names writing a metric into SPEC.md as wrong; `metric` added to `WRONG_BEHAVIOUR`.
+- **F7** — Procedure step 1 says "In chunk mode (the Chunk mode section)".
+- **F8** — Procedure step 6 takes the running total and writes `implement_chunks`
+  whenever `## Chunk notes` has entries, also when chunking was turned off after them.
+- **F9** — `SCHEMA["implement"] == {"chunked": bool}` asserted beside the prose test.
+- **F10** — Chunk mode: an `implement` section the loader ignores is named in the summary
+  (Handoff or SUMMARY).
+- **F11** — the English plan-review fixture has `### Group 1 — Settings` and
+  `## Chunk notes`, like its Polish mirror.
+
+CHANGELOG `## 0.8.0` updated for F1, F3 and F4.

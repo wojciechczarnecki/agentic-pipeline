@@ -49,7 +49,13 @@ WRONG_BEHAVIOUR = {
         "tests/test_free_shipping.py",
     ],
     "implement-converge-finds-missing-ac": ["implemented", "AC2", "converge", "subagent"],
-    "implement-stops-at-group-boundary": ["implemented", "step 3", "Chunk notes", "converge"],
+    "implement-stops-at-group-boundary": [
+        "implemented",
+        "step 3",
+        "Chunk notes",
+        "converge",
+        "metric",
+    ],
 }
 
 
