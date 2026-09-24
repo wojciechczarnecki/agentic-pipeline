@@ -82,7 +82,11 @@ the code against the ACs and not against the plan. `implement` checks each gap i
 and rejects a false one with a one-sentence reason. For each real gap it appends a step at
 the end of `## Steps`, and carries it out like any other step: test-first evidence, the
 self-correction loop, a tick and a commit. An `unrequested` gap that no `## Deviations`
-entry covers gets a removal step. The usual escalation triggers apply to added steps. When
+entry covers gets a removal step. The usual escalation triggers apply to added steps. A
+step that delivers an AC of the SPEC stays within the SPEC's scope, so it is not a change
+of scope by itself; the trigger fires only for work beyond the SPEC, a dependency, a
+migration, or a change of architecture or schema. Without this sentence every `missing`
+gap would read as a scope change and escalate, and the pass would never close one. When
 the first pass added steps, a second pass runs with a fresh subagent. A real gap after the
 second pass is an escalation. There are at most two passes. The record goes into PLAN.md
 under `## Steps`, below the last step, as a level-3 heading "Converge pass N — <date>"
@@ -105,7 +109,9 @@ also summarises the converge passes, because the converge eval grades the final 
   - each perspective reports every finding with its severity;
   - the compliance perspective also checks that every AC row of the matrix has its red
     record or a `manual`/`n/a` mark. This is the "one place" named in the SPEC's decision
-    table, and it adds one clause.
+    table, and it adds one clause. A matrix with no fourth column (a plan carried out
+    before 0.7.0) is not a finding, so a consumer's spec in flight at the upgrade does
+    not collect false findings.
 - `final-review` step 3: after the merge and the checks, the report keeps at most five
   `nit` findings, the ones with the highest risk or maintenance cost. It states
   `Left out: N nit findings` in the report, with N = 0 included so the line is always
@@ -141,7 +147,9 @@ fixtures are covered in `plugin/tests/test_eval_cases.py`, which adds both cases
   (so no "TDD", "RED" or "NOT");
 - no Polish letter in skills or agents (`test_english_only.py`), so the skills name the
   column by position ("the fourth column") and quote the English heading only;
-- no backticked heading-like span that is not a map literal;
+- no backticked heading-like span that is not a map literal, so the procedure points to
+  the new sections in prose ("the test-first evidence section below"), never as a
+  backticked `## …` span;
 - no second sentence naming both `verify.scopes` and `<docs.conventions>`
   (`test_the_visual_sentence_is_one_imperative_sentence`);
 - no hard-coded path to the verification script or to the roadmap document
@@ -269,14 +277,17 @@ the red record comes from the `test_depth_*` tests.
         the second pass", plus "escalation" in the same sentence;
       - `test_converge_is_recorded_in_the_plan`: contains "Converge pass" and "PLAN.md";
       - `test_converge_keeps_the_escalation_triggers`: contains "dependency",
-        "migration" and "architecture";
+        "migration", "architecture" and "within the SPEC's scope";
       - `test_implement_handoff_reports_the_converge_passes`: `## Handoff` contains
         "converge".
 
       Also change `plugin/tests/test_stage_skills.py` `CLOSING_STEPS["implement"]` prefix
       to `"6. **Finish"`. Run
       `uv run pytest plugin/tests/test_converge.py plugin/tests/test_stage_skills.py -q`
-      and record red. Then add procedure step `5. **Converge pass:**` (one line pointing
+      and record red. The changed Finish prefix fails with `StopIteration` in
+      `closing_step`, not with an assertion, so it is not the red record; the red record
+      is the first failing assertion from `test_converge.py`. Then add procedure step
+      `5. **Converge pass:**` (one line pointing
       to the section), renumber Finish to `6.`, write `## Converge pass` after
       `## Test-first evidence`, with the content in Approach → "Content of the converge
       pass", and add to Handoff "Run on its own" that the summary lists the converge
@@ -340,7 +351,7 @@ the red record comes from the `test_depth_*` tests.
       - `final-review` step 2: each perspective reports every finding with its severity,
         because a reviewer told to report less finds less. The compliance bullet also
         checks that every AC row has its red record in the matrix's fourth column or a
-        `manual`/`n/a` mark.
+        `manual`/`n/a` mark; a matrix without the fourth column is not a finding.
       - Step 3: the cap, with its reason.
       - Step 4: the metric sentence.
       - Step 5 `/pipeline:ship` bullet: the RESULT SUMMARY carries the findings table and
@@ -366,8 +377,9 @@ the red record comes from the `test_depth_*` tests.
         `python3 -m unittest tests.test_free_shipping -q` exits 0 and
         `shipping_cost(10000)` prints `499`;
       - `test_never_red_a_correct_change_keeps_it_green`: rewrite `shop/shipping.py` with
-        the threshold at `10000` and `>=`, and the owner test still passes, so it cannot
-        prove AC1;
+        the threshold at `10000` and `>=`; the owner test still passes, so it cannot
+        prove AC1, and the full suite (`VERIFY`) stays green, so the case has no second
+        failure the agent could stop on instead;
       - `test_never_red_owner_decisions_freeze_the_test`;
       - `test_never_red_matrix_has_an_empty_red_cell_for_ac1`.
 
@@ -382,8 +394,10 @@ the red record comes from the `test_depth_*` tests.
         `FREE_FROM_CENTS = 20000`, `FLAT_RATE_CENTS = 499` and
         `shipping_cost(subtotal_cents)`, which returns 0 when
         `subtotal_cents > FREE_FROM_CENTS`, else the flat rate. There is an existing
-        `tests/test_shipping.py`, and `docs/`, `CLAUDE.md` and `.gitignore` as in the
-        pattern.
+        `tests/test_shipping.py` that asserts only values the spec does not change
+        (`shipping_cost(5000) == 499`, `shipping_cost(30000) == 0`), so it stays green
+        before and after the correct change, and `docs/`, `CLAUDE.md` and `.gitignore` as
+        in the pattern.
       - On `feat/001-free-shipping`: SPEC 001 "Free shipping from 100.00" (status
         `plan-approved`, `metrics` complete as in the pattern). Its ACs are:
         - AC1: an order of 100.00 or more ships free (`shipping_cost(10000) == 0`,
@@ -471,7 +485,9 @@ the red record comes from the `test_depth_*` tests.
         naming "converge" and "Red before the change", and `### Changed` naming "nit".
         Its consumer-impact text contains "no configuration change" and "subagent".
 
-      Extend `HEADINGS` with the new README heading. Run the tests and record red.
+      Extend `HEADINGS` with the new README heading, inserted between
+      `"### Escalation triggers"` and `"### Language contract"`, because
+      `test_the_readme_keeps_its_sections` checks the order. Run the tests and record red.
 
       Then add `### Implementation and review` to `plugin/README.md` after
       `### Escalation triggers`. It is three short paragraphs:
@@ -578,7 +594,8 @@ Record the results here when done.
    it and commit `plugin/evals/last-run.json` on the PR branch once the owner gives the
    command. The receipt must be green, with `cases_total: 11` and a fingerprint that
    matches `plugin/` at the branch head. A red case is first re-run alone with
-   `--case <name>` to tell flakiness from a regression. A regression is fixed on the
+   `--case <name> --max-cost-usd <remaining budget>` to tell flakiness from a regression
+   (every eval call carries `--max-cost-usd`, `docs/DECISIONS.md` 2026-09-22). A regression is fixed on the
    branch, and the full suite runs again for the receipt. A `--case` receipt is never
    committed. Stop and ask before any run beyond one full suite and one re-run, including
    a 5-run measurement from the eval cost policy.
@@ -598,7 +615,74 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+**2026-09-24, /pipeline:plan-review (under /pipeline:ship).** Anti-anchoring leads (read
+from the SPEC before the plan): template column first; each skill rule pinned by a pytest
+run red first; eval cases on the `implement-escalates-on-failing-test` pattern; the nit cap
+touching `final-review`, `reviewer` and `ship`; AC9 outside `/pipeline:implement`. The plan
+matches all five.
+
+Findings:
+
+- R1 `major`: Approach, converge: "the usual escalation triggers apply to added steps"
+  does not say that a step delivering a SPEC AC is not a change of scope. Read literally,
+  every `missing` gap is a scope change and escalates, so the pass closes no gap. Fixed: a
+  sentence in Approach → "Content of the converge pass", and step 4's
+  `test_converge_keeps_the_escalation_triggers` also pins "within the SPEC's scope".
+- R2 `major`: step 7, never-red fixture: the existing `tests/test_shipping.py` was
+  unspecified. If it asserted a value the spec changes (such as 15000 → 499), the correct
+  change would turn the suite red and give the agent a second, legitimate reason to stop,
+  so the case would score the setup. Fixed: its assertions are named (5000 → 499,
+  30000 → 0), and `test_never_red_a_correct_change_keeps_it_green` runs the full `VERIFY`
+  suite.
+- R3 `minor`: the compliance perspective's red-record clause would flag every
+  three-column matrix of a spec carried out before 0.7.0. Fixed in Approach and step 6: a
+  matrix without the fourth column is not a finding.
+- R4 `minor`: pointers from the procedure to the two new `implement` sections, if written
+  as a backticked `## …` span, fail `test_quoted_headings_are_english_map_literals`. The
+  plan warned only about the converge record's heading. Fixed in the constraints list.
+- R5 `minor`: step 4: the changed Finish prefix makes `closing_step` raise
+  `StopIteration`, not an assertion, so it cannot serve as the red record. Fixed: the step
+  says the red record comes from `test_converge.py`.
+- R6 `minor`: step 9: `HEADINGS` in `test_readme.py` is order-checked; the insertion point
+  is now named (between "Escalation triggers" and "Language contract").
+- R7 `minor`: manual E2E: the `--case` re-run lacked `--max-cost-usd`, which the
+  2026-09-22 decision requires on every eval call. Fixed.
+
+Checked and found sound (later stages need not repeat):
+
+- coverage: AC1–AC11 each map to steps and a proving test; the matrix matches steps 1–10;
+  AC9 is correctly outside `/pipeline:implement` (manual, on the owner's command, per the
+  owner decisions); AC11 is guarded by every step's neighbour tests and step 10's full
+  check.
+- compliance: no decision is broken. The DECISIONS rows for SPEC 010 already exist
+  (lines 50–51), so step 10's decisions test is green by design and the roadmap test
+  carries the red. Version stays 0.7.0 per SPEC 009's owner decision.
+- the pins the plan names exist as described: the loop fence and `**Gate:**` paragraph
+  (`test_prompt_audit.py`), 4 `final-review` guardrail bullets, `plan` step 5's language
+  tokens (`test_plan_writes_in_the_current_language`), the plan-review step 3 language
+  bullet, `CLOSING_STEPS["implement"]` prefix `5. **Finish` in `test_stage_skills.py`,
+  the section-map snapshot, and `test_templates_language.py` on the Polish allowlist.
+- the words tier, threshold and `size:` do not occur today in skills, agents or
+  templates, so `test_no_size_tiers_anywhere` is green before the change, as stated.
+- `test_prompt_style.py` allows `SUMMARY`, `METRICS`, `AC`, `SPEC`, `PLAN`; the planned
+  wording needs no allowlist change.
+- eval fixtures: `NEW_CASES`, `WRONG_BEHAVIOUR`, `STAGE_CASES`, `assert_ready_for_the_skill`
+  and `incorrect_paragraph` exist with the signatures the plan uses; the fixture name
+  `never_red` does not clash with the existing `free_shipping` fixture; the suite becomes
+  11 cases, matching `cases_total: 11`; `scripts/eval.sh` passes `--case` and
+  `--max-cost-usd` through `"$@"`. The existing `implement-escalates-on-failing-test`
+  fixture plan indeed has no matrix, so the kept-behaviour rule is needed; the two
+  final-review graders tolerate extra findings.
+- minimality: no new script, no metric key, no change to `workflow_metrics.py`, the
+  section map or the orchestrator's statuses. Feasibility: no forward dependencies
+  (steps 2 and 4 edit `implement` in order; steps 3, 5 and 6 layer on `plan` step 5 and
+  `final-review` step 2 without conflict). No dependency, no migration, flags in the
+  Owner summary are true.
+- testability: every step has an `Automatic verification:` line with exact test paths.
+- language: the PLAN is in English, per `language: en`.
+
+Decision: `plan-approved`. No blocker remains, the two majors were fixable in the plan and
+are fixed, and there is no new dependency or data migration.
 
 ## Deviations
 

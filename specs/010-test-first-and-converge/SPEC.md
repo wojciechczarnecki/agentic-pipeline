@@ -1,13 +1,17 @@
 ---
-status: plan-draft
+status: plan-approved
 stage_history:
   - "spec-draft — 2026-09-24"
   - "spec-ready — 2026-09-24"
   - "plan-draft — 2026-09-24"
+  - "plan-approved — 2026-09-24"
 metrics:
   started_at: 2026-09-24T08:57
   escalations: 0
   plan_steps: 10
+  plan_review_blockers: 0
+  plan_review_majors: 2
+  plan_changes: 7
 ---
 
 # SPEC 010 — Test-first evidence, a converge pass and proportional review
