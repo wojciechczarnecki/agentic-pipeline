@@ -57,7 +57,7 @@ correct only when the verification commands say so — never because it "looks g
   the files of that step (`git add <files>`, never `git add -A` blindly). `main`, merging
   PRs and rewriting published history are out of your reach (enforced by this plugin's
   command guard).
-- Read the files named in the SPEC/PLAN IN FULL (no limit/offset) before you change them —
+- Read the files named in the SPEC/PLAN in full (no limit/offset) before you change them —
   working on a fragment is working on a stale model of the code.
 - Edits within the plan's scope — without asking. Escalation before: adding a dependency or
   a migration the plan does not provide for (or that `## Owner decisions` does not
@@ -83,11 +83,11 @@ correct only when the verification commands say so — never because it "looks g
    and add it to `## Deviations` with a rationale. Ones that change the scope, the
    architecture or the data schema → escalation; do not carry on on your own.
 4. **Screen:** when `verify.scopes` has a UI scope and the change touches the interface —
-   run `<verify.command> <UI scope>` and LOOK AT the visual artifacts required by
+   run `<verify.command> <UI scope>` and look at the visual artifacts required by
    `<docs.conventions>`; without it the step is not green, and record the result in PLAN.md.
 5. **Finish — the plan's Definition of Done:**
    - `<verify.command>` fully green;
-   - the plan's end-to-end verification (the automatic section) REALLY performed,
+   - the plan's end-to-end verification (the automatic section) really performed,
      the result recorded in PLAN.md; the manual items you leave to the owner — list them;
    - `<docs.roadmap>` updated (checkboxes!), `<docs.decisions>` and the domain documents
      from the map in `CLAUDE.md`, if applicable;
@@ -108,26 +108,24 @@ plan step — you run exactly those, not approximations (for fast iteration on o
 layer there is `<verify.command>` with a scope from `verify.scopes`).
 
 ```
-1. Run ALL the step's verification commands.
+1. Run all the step's verification commands.
 2. Everything green → end of the loop, the step is done.
 3. Something red:
-   a. read the FULL error output — do not skim; with many errors start from
-      the FIRST (the next ones are often a cascade of the first);
-   b. establish the cause: an implementation bug / a wrong assumption / a mismatch with
+   a. establish the cause: an implementation bug / a wrong assumption / a mismatch with
       the plan / a product defect the test rightly found;
-   c. a mismatch with the plan → escalation (Expected / Found / Why it matters);
-   d. a product defect (also in code from before this spec) → fix the product, if the fix
+   b. a mismatch with the plan → escalation (Expected / Found / Why it matters);
+   c. a product defect (also in code from before this spec) → fix the product, if the fix
       fits within the plan's scope and the owner decisions; otherwise escalation.
-      NEVER fit the test to the defect — no change of test data, assertions,
+      Never fit the test to the defect — no change of test data, assertions,
       selectors, timeouts or views just so that the error stops being visible;
-   e. a bug → fix it and go back to 1. — run ALL the commands AGAIN
+   d. a bug → fix it and go back to 1. — run all the commands again
       (a fix can break what already passed).
 4. The fourth iteration on the same error → escalation: what you tried (a list of attempts
    with results), a hypothesis of the cause, what you need. Do not guess any further.
 ```
 
-**Gate:** you do NOT go on to the next step with the current one's verification red.
-No exceptions, no "it is probably flaky", no skipping tests.
+**Gate:** you go on to the next step only when the current one's verification is green. A
+test you suspect is flaky is still red, and a skipped test is not green.
 
 ## Guardrails
 

@@ -6,7 +6,7 @@ argument-hint: <spec number or slug, e.g. 001>
 
 # /pipeline:plan — SPEC → implementation plan
 
-Role: architect. The SPEC says WHAT and WHY — you decide HOW. The result is a plan that
+Role: architect. The SPEC says what and why — you decide how. The result is a plan that
 another agent will carry out in a fresh session without guessing: every step has a defined
 feedback signal (exact verification commands), because `/pipeline:implement` builds its
 self-correction loop on them.
@@ -66,24 +66,24 @@ with the final review report; they do not approve the whole plan).
 3. **Gather context:** the SPEC in full (including `## Owner decisions`);
    `<docs.conventions>`; `<docs.decisions>`; domain documents
    from the document map in the project's `CLAUDE.md` (under the conditions in the map); the
-   code of the area — read the files the plan will change IN FULL (no limit/offset). Note
+   code of the area — read the files the plan will change in full (no limit/offset). Note
    the existing patterns to reuse with concrete paths (e.g. pagination in a specific API
    module, shared test fixtures, error handling in the API client).
-4. **Design the approach:** minimal, following the conventions, covering ALL
+4. **Design the approach:** minimal, following the conventions, covering all
    ACs. Where a real choice exists, consider ≥2 variants; write the chosen one into the plan
    + one sentence on why.
 5. **Write PLAN.md** from the template loaded for the current `language` (the
    "PLAN.md template" section), in the language from `language` — also when SPEC.md is in
    another language (e.g. written before `language` changed); you do not translate or change
    the SPEC. Steps small (≤ ~1 h of work) and closed: each has an `Automatic verification:`
-   section with EXACT commands (test paths,
+   section with exact commands (test paths,
    not a vague "add tests") — this is the contract for the self-correction loop of
    `/pipeline:implement`. An order without "forward" dependencies; a data migration always
    as a separate step. Split the end-to-end verification into automatic (done by the agent)
    and manual (done by the owner) — only what cannot be
    automated goes into the manual one. When `verify.scopes` has a UI scope and the change
    touches the interface — plan in the automatic verification `<verify.command> <UI scope>`
-   and LOOKING AT the visual artifacts and updating the review scenario required by
+   and looking at the visual artifacts and updating the review scenario required by
    `<docs.conventions>`.
 6. **AC → steps matrix:** every AC must have steps that deliver it and a test that
    proves it. An AC impossible to cover → escalation (a gap in the SPEC); do not patch the
@@ -98,7 +98,7 @@ with the final review report; they do not approve the whole plan).
    success `workflow_metrics.py --check <spec-dir>`.
    A red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
    STOP with a question) with the names of the missing keys; you do not invent a value you
-   did not measure. Commit (`docs: add PLAN NNN <slug>`). Do NOT implement anything.
+   did not measure. Commit (`docs: add PLAN NNN <slug>`). Do not implement anything.
 
 ## PLAN.md template
 

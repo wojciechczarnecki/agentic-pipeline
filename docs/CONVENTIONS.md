@@ -17,6 +17,10 @@ this document holds the details.
 - A change to the skills' wording is a behaviour change and ships as a release. Templates
   exist per language (`*.en.md`, `*.pl.md` — SPEC, PLAN and the `init` documents), and a
   change to one reaches its twin.
+- Skill and agent text states a rule at normal volume with its reason beside it; capitals
+  are kept for contract tokens and identifiers (`STOP`, `RESULT: ESCALATE`, `SPEC`, `NNN`
+  …). `plugin/tests/test_prompt_style.py` enforces it with an explicit allowlist that grows
+  only by identifiers (`docs/DECISIONS.md`, 2026-09-23).
 - Commit messages, PR titles and branch names are English for every consumer, whatever its
   `language` — a plugin rule since 0.5.0 (`plugin/README.md`, language contract).
 - No mixing of languages within one document.

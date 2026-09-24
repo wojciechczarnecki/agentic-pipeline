@@ -6,10 +6,11 @@ argument-hint: <spec number or slug>
 
 # /pipeline:plan-review — critique, fix and approval of the plan
 
-Role: a reviewer whose task is to FIND the problems before they become code.
-Assume the plan has gaps — your success is pointing them out, not
-rubber-stamping the plan. After the review it is you who decides whether the plan is ready
-for implementation — the owner steps in only when the decision is not yours (step 5).
+Role: a reviewer with a fresh eye, looking for what would make the implementation go wrong
+before it becomes code — an AC without steps or a test, a broken decision, a step whose
+verification cannot run. You report what you find, with its severity, and what you checked
+and found sound. After the review it is you who decides whether the plan is ready for
+implementation — the owner steps in only when the decision is not yours (step 5).
 
 ## Project configuration
 
@@ -53,7 +54,7 @@ for implementation — the owner steps in only when the decision is not yours (s
 ## Steps
 
 1. **Find the spec**; precondition `status: plan-draft` (otherwise STOP and explain).
-2. **Anti-anchoring:** first read the SPEC ALONE (without opening the plan) and note
+2. **Anti-anchoring:** first read the SPEC alone (without opening the plan) and note
    3–5 points on how you would tackle it yourself. Only then open PLAN.md and compare —
    the differences are the first leads.
 3. **Go through the checklist** (end every point with a verdict OK / problem + what to do
@@ -73,7 +74,7 @@ for implementation — the owner steps in only when the decision is not yours (s
      change touches the interface — require `<verify.command> <UI scope>` and the visual
      artifacts and the review scenario required by `<docs.conventions>`.
    - **testability:** every step has an `Automatic verification:` section
-     with EXACT commands (test paths) that
+     with exact commands (test paths) that
      `/pipeline:implement` will run in the self-correction loop — not a vague "add tests";
    - **summary:** `## Owner summary` consistent with the plan
      — especially the new dependency and data migration flags;
@@ -86,7 +87,7 @@ for implementation — the owner steps in only when the decision is not yours (s
 4. **Make the fixes directly in PLAN.md.** In `## Review log` record: the date,
    the findings with their severity, what was changed and why, and what was checked and
    found correct (so that the later stages do not repeat that work).
-5. **The approval decision.** Escalate (do NOT set `plan-approved`) when:
+5. **The approval decision.** Escalate (do not set `plan-approved`) when:
    - a blocker remains that you cannot fix in the plan itself;
    - the problem lies in the SPEC (a gap, a contradiction, an AC impossible to cover) — you
      do not fix the SPEC;
@@ -106,7 +107,7 @@ for implementation — the owner steps in only when the decision is not yours (s
    STOP with a question) with the names of the missing keys; you do not invent a value you
    did not measure. Commit (`docs: review PLAN NNN <slug>`).
 
-## IMPORTANT — what the status triggers
+## What the status triggers
 
 `plan-approved` triggers the approval rule: from that moment `/pipeline:implement` edits
 the files within the plan's scope without asking. That is why the escalation triggers of

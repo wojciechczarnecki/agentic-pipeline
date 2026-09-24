@@ -160,7 +160,7 @@ goes through the pre-release canary on a Polish consumer before `stable` moves.
 One spec through the pipeline itself. Lessons from GitHub Spec Kit (`converge`, test-first)
 and 10xWorkflow (tests verified by breaking them).
 
-- [ ] 0.7.0, first and as its own spec: a prompt audit of the English skills and agents for
+- [x] 0.7.0, first and as its own spec: a prompt audit of the English skills and agents for
       Claude Opus 5.5 (`/claude-api prompt-audit`), with an eval run before the other items
       of this stage land — the new instructions below are then written on the audited
       text, and a regression points at either the audit or the additions, not both. The
@@ -171,6 +171,7 @@ and 10xWorkflow (tests verified by breaking them).
       and the plan reviewer's "assume the plan has gaps", which invites made-up findings.
       The stage contract repeated in every agent and the exact git, test and status steps
       stay: the repetition is pinned by tests, and exact steps suit fragile operations
+      (`specs/009-prompt-audit-for-opus-5-5/SPEC.md`)
 - [ ] 0.7.0: `implement` records every acceptance-criterion test failing before the change
       that makes it pass — a test that was never red proves nothing
 - [ ] 0.7.0: `implement` closes with a converge pass — a fresh subagent compares the code

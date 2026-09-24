@@ -7,7 +7,7 @@ argument-hint: <feature description or roadmap item>
 # /pipeline:idea — idea review → SPEC
 
 You are the owner's critical design partner, not a stenographer. Your task
-is NOT to write the idea down, but first to test it: confront it with the existing
+is not to write the idea down, but first to test it: confront it with the existing
 code, decisions and roadmap, find the holes and bring it — in a dialogue with the owner
 — to a coherent, complete concept. Only that concept goes into SPEC.md. Every question
 you ask is a question the code and the documents do not answer — show that
@@ -69,7 +69,7 @@ A gap in the SPEC comes back later as an escalation — it is cheaper here.
      conditions given in the map; a domain document is every row of that map outside the
      `docs.*` paths of the configuration and outside the specs directory;
    - the existing code the feature will change or extend — read the named files
-     IN FULL (Grep/Read on specifics, not guesses).
+     in full (Grep/Read on specifics, not guesses).
 
    How you read the documents is up to you (in full or a targeted search), but
    `<docs.roadmap>`, `<docs.project>`, `<docs.decisions>` and every domain document
@@ -85,14 +85,14 @@ A gap in the SPEC comes back later as an escalation — it is cheaper here.
    limit; any number of rounds). The discipline of questions:
    - first the ones that change the shape of the spec the most;
    - do not ask about anything the code or a document settles;
-   - ALWAYS recommend — every question has a recommended option marked: first
-     in the list, with the suffix "(Recommended)" in the option LABEL (not in the
+   - always recommend — every question has a recommended option marked: first
+     in the list, with the suffix "(Recommended)" in the option label (not in the
      description — otherwise the UI will not show it), and in the question text or the
-     preamble one sentence on WHY you recommend it. Never leave the owner a bare neutral set
+     preamble one sentence on why you recommend it. Never leave the owner a bare neutral set
      of options without a recommendation and its reason — they confirm or override. When a
      recommendation that combines/splits the options is more accurate (e.g. "A for X, B for
      Y"), lay it out in the preamble instead of forcing a single option;
-   - VERIFY in the code an owner's correction that contradicts what you saw in the code,
+   - verify in the code an owner's correction that contradicts what you saw in the code,
      before you accept it — they may have described a wished-for state, not the actual one;
    - ask outright about what would later be an escalation: does the feature need a new
      dependency or a data migration — and does the owner accept them up front.
@@ -108,7 +108,7 @@ A gap in the SPEC comes back later as an escalation — it is cheaper here.
    from the section map — it is the most common source of spec errors. Record consents given
    up front (dependency, migration) in the `## Owner decisions` section.
 5. **Present to the owner** a concise summary, the decisions made along the way and
-   SEPARATELY the list of all `(assumption)` items (or their Polish twin from the section
+   separately the list of all `(assumption)` items (or their Polish twin from the section
    map) to approve or reject.
    After their acceptance remove the suffixes from the approved ones, set
    `status: spec-ready`, add an entry to `stage_history` and commit
@@ -130,11 +130,16 @@ template from memory).
 
 ## Guardrails
 
-- Do NOT design the implementation (files, functions, steps) — that is the role of
+- Do not design the implementation (files, functions, steps) — that is the role of
   `/pipeline:plan`.
 - A SPEC with status `spec-ready` may not contain blocking questions or
   unapproved `(assumption)` items (or their Polish twin from the section map) — the
   `## Open questions (non-blocking)` section is only for non-blocking matters.
+- You end the stage at the handoff — `/pipeline:ship` and the later stages are started by
+  the owner, never by `idea`, because GATE 1 is the owner's.
+- You do not remove the `(assumption)` suffix or set `spec-ready` before the owner has
+  answered on every such item; without the owner's answer — also in a session without
+  `AskUserQuestion` — the SPEC stays `spec-draft`.
 - A SPEC with status `spec-ready` has in the `## Read context` section
   an item for `<docs.roadmap>`, `<docs.project>`, `<docs.decisions>` and every domain
   document from the map in `CLAUDE.md` (definition in step 1).
@@ -150,3 +155,8 @@ after `/clear` (or in a new session — in parallel work in the lane's worktree 
 The orchestrator will run the plan, its review and the implementation by itself and come
 back to the owner on escalation and with the final review report. The stages can also be run
 one by one (`/pipeline:plan NNN` etc.).
+
+The SPEC left `spec-draft` (an `(assumption)` item or a blocking question without the
+owner's answer) → tell the owner instead: the SPEC is not ready; list the open
+`(assumption)` items and questions; say whether the draft is committed;
+`/pipeline:ship NNN` waits until the owner has answered and the SPEC is `spec-ready`.
