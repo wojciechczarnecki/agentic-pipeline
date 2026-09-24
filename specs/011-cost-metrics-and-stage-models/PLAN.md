@@ -447,6 +447,30 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
       - Test first: `test_the_manifest_is_0_8_0` is red on 0.7.0.
       Automatic verification: `uv run pytest -q plugin/tests/test_release_0_8_0.py plugin/tests/test_readme.py tests/test_documents.py && bash scripts/check.sh`
 
+### Converge pass 1 — 2026-09-24
+
+A fresh subagent compared the diff (spec directory excluded) with AC1–AC20. It reported no
+`missing` and no `contradicts` gap. My verdicts on what it reported:
+
+- `[partial] AC3` — a lane of another repository under a shared default `worktree.dir`,
+  with a spec directory of the same full name `NNN-<slug>`, would be counted. Rejected: AC3
+  names another spec and the same number in another repository, and both are excluded and
+  tested; an identical number and slug in a shared worktree directory goes beyond the AC,
+  and the Approach (step 3 of the cost design) accepts the configured `worktree.dir` as
+  part of the repository.
+- `[unrequested] workflow_config.py stage_model()` — rejected: step 6 asks for this helper,
+  and the tests pin the per-stage fallback through it.
+- `[unrequested]` the `claude-opus-5` rate row — rejected: the Approach adds it for the
+  baseline (specs 001–010 ran on it).
+- `[unrequested]` `CLAUDE_CONFIG_DIR` as the default source — rejected: Approach, source
+  point 1, and step 5 ask for it.
+- `[unrequested]` `ship` waiting on `gh pr checks` after the cost commit — rejected: step 7
+  asks for it.
+- An observation on the cache-read rates of Opus 5.5 and Fable 5.1 — not a gap; the plan
+  review checked every row against the `/claude-api` model table.
+
+Real gaps: 0. No step added, so no second pass.
+
 ## Risks and traps
 
 - **The transcript format is not a contract.** Only the fields listed in the Approach are
@@ -513,6 +537,32 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
    `{"models": {"implement": "sonnet"}}` (exit 0) and with `{"models": {"implement":
    "gpt"}}` (exit 1 and the readable message).
 
+**Result (2026-09-24, /pipeline:implement):**
+
+1. `bash scripts/check.sh` → `ALL GREEN` (2143 tests).
+2. `--record-cost specs/010-test-first-and-converge`, default source and
+   `--transcripts ~/claude-transcripts-archive`, gave the same table and the same four
+   values; `--check` exited 0; the diff touched only the four `cost_*` lines, and the file
+   was restored with `git checkout`.
+
+   | stage | models | input | cache_write_5m | cache_write_1h | cache_read | output | cents |
+   |---|---|---|---|---|---|---|---|
+   | plan | claude-opus-5-5 | 60 | 169022 | 0 | 3205324 | 17746 | 184 |
+   | plan-review | claude-opus-5-5 | 50 | 105650 | 0 | 2245687 | 5522 | 109 |
+   | implement | claude-opus-5-5 | 130 | 179533 | 0 | 8460353 | 4135 | 267 |
+   | final-review | claude-opus-5-5 | 234 | 441198 | 0 | 8131599 | 6736 | 397 |
+
+   The final review counts both reviewer runs and the three perspectives. The implement
+   row's small output was checked against its transcript: 65 message ids, and the sum of
+   each id's largest `output_tokens` is 4135.
+3. `workflow_metrics.py specs`: the header has the seven new columns, the totals show `0`
+   for them, every spec row shows `-`, and no cost line is printed.
+4. `workflow_config.py --check` in a scratch repository: `{"models": {"implement":
+   "sonnet"}}` → exit 0; `{"models": {"implement": "gpt"}}` → exit 1 with
+   `` `models.implement` has to be one of: inherit, sonnet, opus, haiku, fable ``. The
+   configuration file was written with the Write tool: the installed guard refuses shell
+   writes to any `.claude/workflow.json`.
+
 ### Manual (performed by the owner)
 
 1. The 0.8.0 canary (`docs/CONVENTIONS.md`, Releases) in a consumer whose
@@ -523,12 +573,12 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` row added; `docs/CONVENTIONS.md`
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` row added; `docs/CONVENTIONS.md`
       metrics paragraph updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -591,7 +641,17 @@ finding above was fixed in the plan itself.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- Minor: helpers the plan does not name, to keep functions small — `find_agents`,
+  `read_lines`, `prompt_and_cwd` and `git_path` beside `stage_usage`; `usage_table` and
+  `default_transcripts` for `--record-cost`; `integer`, `per_unit` and `cost_lines` for the
+  report; `valid_entries` for the per-entry `models` loading. Behaviour is as the Approach
+  describes.
+- Metrics: this spec records `deviations: 1` and not the split keys or `converge_gaps` (it
+  would be `deviations_minor: 1`, `deviations_major: 0`, `converge_gaps: 0`). The session
+  runs the installed 0.7.0 plugin, whose `implement` skill names `deviations` and whose
+  `workflow_metrics.py --check` on `PATH` refuses the new keys as unknown; the final
+  review's `apply` gates `done` on that checker. The working-tree checker accepts both
+  forms.
 
 ## Final review
 
