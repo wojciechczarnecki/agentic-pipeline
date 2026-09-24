@@ -86,7 +86,9 @@ correct only when the verification commands say so — never because it "looks g
 4. **Screen:** when `verify.scopes` has a UI scope and the change touches the interface —
    run `<verify.command> <UI scope>` and look at the visual artifacts required by
    `<docs.conventions>`; without it the step is not green, and record the result in PLAN.md.
-5. **Finish — the plan's Definition of Done:**
+5. **Converge pass:** after the last planned step, before the Definition of Done — the
+   converge pass section below.
+6. **Finish — the plan's Definition of Done:**
    - `<verify.command>` fully green;
    - the plan's end-to-end verification (the automatic section) really performed,
      the result recorded in PLAN.md; the manual items you leave to the owner — list them;
@@ -130,6 +132,35 @@ to make it pass.
   `${CLAUDE_PLUGIN_ROOT}/templates/PLAN.<language>.md`, and mark the kept-behaviour rows
   yourself, quoting the AC's words. A plan with no matrix at all gets one the same way.
 
+## Converge pass
+
+A plan can miss an AC, and the implementer who carried it out shares the plan's blind
+spots. So before the Definition of Done a fresh reader compares the code with the SPEC.
+
+- Start a fresh subagent with `Agent`. Give it the path of SPEC.md, the diff command
+  `git diff origin/main...HEAD`, the four gap classes and the finding format
+  `` [missing|partial|contradicts|unrequested] AC<n> or file:line — what — evidence ``.
+  Give it not your reasoning, your hypotheses or PLAN.md: it judges the code against the
+  ACs, not against the plan. The classes: `missing` (an AC with no code), `partial` (an AC
+  delivered in part), `contradicts` (code that does the opposite of an AC), `unrequested`
+  (code no AC asks for).
+- When the subagent reports, check each gap in the code yourself and reject a false one
+  with a one-sentence reason; the subagent reads the diff cold and can be wrong.
+- For each real gap, the pass adds a step at the end of the steps list in PLAN.md and you
+  carry it out like any other step: test-first evidence, the self-correction loop, a tick
+  and a commit. A gap of the class `unrequested` that no `## Deviations` entry covers gets a
+  removal step.
+- The escalation triggers apply to added steps as to planned ones. A step that delivers an
+  AC of the SPEC stays within the SPEC's scope, so it is not a change of scope by itself;
+  escalate for work beyond the SPEC, a new dependency, a migration, or a change of
+  architecture or data schema.
+- When the first pass added steps, run a second pass with a new fresh subagent, because
+  one pass never checks the steps it added. There are at most two passes, which bounds the
+  cost: a real gap after the second pass is an escalation.
+- Record each pass in PLAN.md, below the last step, under a level-3 heading
+  Converge pass N — <date>, followed by the gaps with your verdicts and the added steps.
+  A resumed run then sees which pass ran. `implement_steps` counts the added steps.
+
 ## Self-correction loop (mandatory for every step)
 
 You take the commands from the `Automatic verification:` section of the given
@@ -168,6 +199,6 @@ test you suspect is flaky is still red, and a skipped test is not green.
 
 ## Handoff
 
-- **Run on its own:** summarise what was done, the deviations, the verification result
-  and the manual scenarios; the next stage is `/pipeline:final-review NNN` after `/clear`.
+- **Run on its own:** summarise what was done, the deviations, the converge passes with
+  their gaps and verdicts, the verification result and the manual scenarios; the next stage is `/pipeline:final-review NNN` after `/clear`.
 - **Under `/pipeline:ship`:** end with the RESULT block from the stage agent contract.

@@ -167,7 +167,7 @@ and `docs:` for documents. Each commit holds the step's files plus PLAN.md, per
 | AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_ac_matrix_has_the_red_column`; section map unchanged: `::test_the_section_map_matches_the_snapshot` | `uv run pytest plugin/tests/test_templates_language.py -k red_column` → `AssertionError: ('en', '… Red before the change …')` (the header line missing, both languages) |
 | AC2 | 2 | `plugin/tests/test_test_first.py::test_implement_*` | `uv run pytest plugin/tests/test_test_first.py` → `AssertionError: implement: no section Test-first evidence` (7 failed, all on assertions) |
 | AC3 | 3 | `plugin/tests/test_test_first.py::test_plan_*`, `::test_plan_review_*` | `uv run pytest plugin/tests/test_test_first.py -k plan` → `AssertionError: assert 'writes and runs its proving test before the product change' in '**Write PLAN.md** …'` (3 failed, all on assertions) |
-| AC4 | 4 | `plugin/tests/test_converge.py` (all); `plugin/tests/test_stage_skills.py` (Finish prefix) | |
+| AC4 | 4 | `plugin/tests/test_converge.py` (all); `plugin/tests/test_stage_skills.py` (Finish prefix) | `uv run pytest plugin/tests/test_converge.py` → `AssertionError: implement: no section Converge pass` (10 failed, all on assertions; the Finish prefix raised `StopIteration`, not counted) |
 | AC5 | 5 | `plugin/tests/test_review_depth.py::test_depth_*`; the absence guard `::test_no_size_tiers_anywhere` is green before the change by design | |
 | AC6 | 6 | `plugin/tests/test_review_depth.py::test_nit_cap_*` | |
 | AC7 | 7 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-escalates-on-never-red-test`, `::test_never_red_*`) | |
@@ -257,7 +257,7 @@ the red record comes from the `test_depth_*` tests.
       Files: `plugin/skills/plan/SKILL.md`, `plugin/skills/plan-review/SKILL.md`,
       `plugin/tests/test_test_first.py`
       Automatic verification: `uv run pytest plugin/tests/test_test_first.py plugin/tests/test_language_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_prompt_style.py plugin/tests/test_prompt_audit.py -q`
-- [ ] 4. **AC4: the converge pass in `implement`.** Test first: create
+- [x] 4. **AC4: the converge pass in `implement`.** Test first: create
       `plugin/tests/test_converge.py` (header `# SPEC 010, AC4: …`) with these tests:
       - `test_converge_section_sits_between_the_steps_and_the_finish`:
         `## Converge pass` exists; in `## Procedure` a line starts `5. **Converge pass`
