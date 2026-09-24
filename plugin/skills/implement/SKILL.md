@@ -117,11 +117,18 @@ to make it pass.
   error is not red, because such an error is red for any reason. When the symbol under
   test does not exist yet, add a stub first (a function that returns a placeholder value),
   so that the test reaches its assertion, and record that assertion failure.
-- A step is not green, and is not ticked while its AC has no red record, unless the row is
-  marked `manual` (the owner checks it by hand) or `n/a — <reason>`.
+- The step that makes an AC's proving test pass is not green and is not ticked while that
+  AC has no red record, unless the row is marked `manual` (the owner checks it by hand) or
+  `n/a — <reason>`. Earlier steps that deliver part of the same AC are ticked on their own
+  verification.
 - A proving test that is green before the change:
-  - when the step writes the test, rewrite it until it fails on the assertion — a test
-    that passes on the old code does not check the new behaviour;
+  - when the step writes the test and the test does not exercise the AC's behaviour,
+    rewrite it until it fails on the assertion — a test that passes on the old code does
+    not check the new behaviour;
+  - when the step writes the test and the test does exercise the AC's behaviour, the
+    behaviour already exists: that is a gap in the SPEC, so escalate
+    (Expected / Found / Why it matters) and leave the step unticked instead of bending the
+    test away from the AC;
   - when the test existed before, or the plan gives it verbatim, escalate
     (Expected / Found / Why it matters), leave the test unchanged and the step unticked —
     that test belongs to the owner or to the plan, and changing it is the owner's call.
@@ -137,19 +144,24 @@ to make it pass.
 A plan can miss an AC, and the implementer who carried it out shares the plan's blind
 spots. So before the Definition of Done a fresh reader compares the code with the SPEC.
 
+- An AC that the SPEC has and the plan leaves out is not a plan mismatch to escalate at
+  the start: carry out the planned steps and leave that AC to the converge pass.
 - Start a fresh subagent with `Agent`. Give it the path of SPEC.md, the diff command
-  `git diff origin/main...HEAD`, the four gap classes and the finding format
+  `git diff origin/main...HEAD -- . ':(exclude)<docs.specsDir>/NNN-<slug>'`, the four gap
+  classes and the finding format
   `` [missing|partial|contradicts|unrequested] AC<n> or file:line — what — evidence ``.
   Give it not your reasoning, your hypotheses or PLAN.md: it judges the code against the
-  ACs, not against the plan. The classes: `missing` (an AC with no code), `partial` (an AC
-  delivered in part), `contradicts` (code that does the opposite of an AC), `unrequested`
-  (code no AC asks for).
+  ACs, not against the plan. The diff leaves out the spec directory, because the
+  committed spec directory holds PLAN.md. The classes: `missing` (an AC with no code),
+  `partial` (an AC delivered in part), `contradicts` (code that does the opposite of an
+  AC), `unrequested` (code no AC asks for).
 - When the subagent reports, check each gap in the code yourself and reject a false one
   with a one-sentence reason; the subagent reads the diff cold and can be wrong.
 - For each real gap, the pass adds a step at the end of the steps list in PLAN.md and you
   carry it out like any other step: test-first evidence, the self-correction loop, a tick
-  and a commit. A gap of the class `unrequested` that no `## Deviations` entry covers gets a
-  removal step.
+  and a commit. An added step for an AC adds or updates that AC's row in the AC → steps
+  matrix, so its red record has a place. A gap of the class `unrequested` that no plan step
+  and no `## Deviations` entry covers gets a removal step; code a plan step asked for stays.
 - The escalation triggers apply to added steps as to planned ones. A step that delivers an
   AC of the SPEC stays within the SPEC's scope, so it is not a change of scope by itself;
   escalate for work beyond the SPEC, a new dependency, a migration, or a change of
@@ -160,6 +172,9 @@ spots. So before the Definition of Done a fresh reader compares the code with th
 - Record each pass in PLAN.md, below the last step, under a level-3 heading
   Converge pass N — <date>, followed by the gaps with your verdicts and the added steps.
   A resumed run then sees which pass ran. `implement_steps` counts the added steps.
+- A resumed run with two passes recorded carries out the steps the owner decided on and
+  then goes to the Definition of Done, without a third pass. A run with one recorded pass
+  that added steps still runs the second pass after them.
 
 ## Self-correction loop (mandatory for every step)
 

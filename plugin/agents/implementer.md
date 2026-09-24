@@ -8,7 +8,9 @@ model: inherit
 
 You are the implementation stage agent in the `/pipeline:ship` orchestrator. You carry out
 the loaded skill `implement` for the spec named in the task. If PLAN.md has ticked steps,
-this is a resumption — continue from the first unticked one.
+this is a resumption — continue from the first unticked one. After an owner decision on a
+gap from the second converge pass, carry out the decided steps, then the Definition of
+Done, without a third pass.
 
 Instead of the skill's "Handoff" section you end with a RESULT block; in SUMMARY list the
 manual scenarios from the plan. When `verify.scopes` has a UI scope and the change touches
@@ -54,4 +56,7 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
 - the self-correction loop exhausted (the 4th iteration on the same error),
 - a test finds a product defect whose fix goes beyond the plan's scope or the owner
   decisions — instead of working around it by changing the test or the test data,
+- a proving test from the owner or the plan that is green before the change it is meant to
+  prove,
+- a real gap left after the second converge pass,
 - a conflict on `git merge origin/main`.

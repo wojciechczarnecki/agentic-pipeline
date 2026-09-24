@@ -829,3 +829,42 @@ Rejected:
 - The helper duplication across the new test modules (`skill_text`, `section`,
   `collapse`) follows the existing test files, which have no shared `conftest`; the plan
   asked for copies, not imports.
+
+Fixed (apply, 2026-09-24; owner decision: F1–F10 accepted, F11–F15 rejected). Each fix
+came with a test seen red before the change; `bash scripts/check.sh`: 2024 passed, ALL
+GREEN.
+
+- **F1** → `implement` Converge pass: "`unrequested` … that no plan step and no
+  `## Deviations` entry covers gets a removal step; code a plan step asked for stays";
+  README and CHANGELOG match. Test: `test_converge.py::test_converge_removes_unrequested_code`.
+- **F2** → the subagent's diff command is
+  `git diff origin/main...HEAD -- . ':(exclude)<docs.specsDir>/NNN-<slug>'`, with the
+  reason (the spec directory holds PLAN.md); the withheld sentence is pinned with
+  "PLAN.md". Tests: `::test_converge_starts_a_fresh_subagent`,
+  `::test_converge_diff_leaves_out_the_spec_directory`.
+- **F3** → the "green before the change" rule has three branches: the step's test that
+  does not exercise the AC is rewritten; the step's test that does exercise it and passes
+  is a gap in the SPEC and escalated; a test from the owner or the plan is escalated
+  unchanged. Test: `test_test_first.py::test_implement_handles_a_test_green_before_the_change`.
+- **F4** → "The step that makes an AC's proving test pass is not green and is not ticked
+  while that AC has no red record …; earlier steps that deliver part of the same AC are
+  ticked on their own verification". Test: `::test_implement_gates_the_tick_on_red`.
+- **F5** → "An added step for an AC adds or updates that AC's row in the AC → steps
+  matrix". Test: `test_converge.py::test_converge_added_step_gets_a_matrix_row`.
+- **F6** → Converge pass: a resumed run with two passes recorded carries out the decided
+  steps and goes to the Definition of Done without a third pass; one recorded pass that
+  added steps still gets the second. Mirrored in `plugin/agents/implementer.md`. Tests:
+  `::test_converge_resumption_after_the_second_pass`,
+  `::test_implementer_agent_mirrors_the_converge_resumption`.
+- **F7** → two bullets in the escalation triggers of `ship`, the four agents (the contract
+  stays character-identical) and the README. Test:
+  `test_stage_contract.py::test_the_trigger_list_names_the_spec_010_escalations`.
+- **F8** → Converge pass opens with "An AC that the SPEC has and the plan leaves out is
+  not a plan mismatch to escalate at the start"; the grader is unchanged. Test:
+  `test_converge.py::test_converge_owns_an_ac_the_plan_left_out`.
+- **F9** → `test_test_first.py` pins each branch on its own sub-bullet, "Before that
+  change, run the AC's proving test.", "add a stub first", the new-behaviour sentence and
+  the order of procedure step 2.
+- **F10** → `test_review_depth.py` rejects any cap or severity filter in report step 2
+  (`PERSPECTIVE_FILTERS`, with a self-test on four filter sentences) and checks
+  `Left out: N nit findings` in steps 3, 4 and 5 separately.

@@ -44,10 +44,18 @@ def test_converge_starts_a_fresh_subagent():
         "fresh subagent",
         "`Agent`",
         "the path of SPEC.md",
-        "`git diff origin/main...HEAD`",
-        "not your reasoning",
+        "`git diff origin/main...HEAD -- . ':(exclude)<docs.specsDir>/NNN-<slug>'`",
+        "not your reasoning, your hypotheses or PLAN.md",
     ]:
         assert phrase in text, phrase
+
+
+# The committed spec directory holds PLAN.md, so a plain diff would hand the plan back to the
+# reader that must not see it (final review F2).
+def test_converge_diff_leaves_out_the_spec_directory():
+    assert any(
+        "spec directory" in sentence and "PLAN.md" in sentence for sentence in sentences(converge())
+    )
 
 
 def test_converge_names_the_four_classes():
@@ -68,11 +76,54 @@ def test_converge_adds_steps_with_evidence():
         assert phrase in text, phrase
 
 
+# Code a plan step asked for is not an AC, so the fresh reader reports it `unrequested`; only
+# code that neither a plan step nor a deviation covers is removed (final review F1).
 def test_converge_removes_unrequested_code():
     assert any(
-        all(token in sentence for token in ["`unrequested`", "`## Deviations`", "removal step"])
+        all(
+            token in sentence
+            for token in ["`unrequested`", "no plan step", "`## Deviations`", "removal step"]
+        )
         for sentence in sentences(converge())
     )
+
+
+# A step added for an AC the plan left out needs a matrix row for its red record (F5).
+def test_converge_added_step_gets_a_matrix_row():
+    assert any(
+        "added step" in sentence and "row in the AC → steps matrix" in sentence
+        for sentence in sentences(converge())
+    )
+
+
+# An AC missing from the plan is the converge pass's job, not a reason to stop early (F8).
+def test_converge_owns_an_ac_the_plan_left_out():
+    assert any(
+        "leaves out" in sentence and "not" in sentence and "escalat" in sentence
+        for sentence in sentences(converge())
+    )
+
+
+# A run resumed after an owner decision on a gap must know whether another pass is due (F6).
+def test_converge_resumption_after_the_second_pass():
+    text = converge()
+    assert any(
+        "two passes" in sentence
+        and "owner decided" in sentence
+        and "Definition of Done" in sentence
+        and "without a third pass" in sentence
+        for sentence in sentences(text)
+    )
+    assert any(
+        "one recorded pass" in sentence and "second pass" in sentence
+        for sentence in sentences(text)
+    )
+
+
+def test_implementer_agent_mirrors_the_converge_resumption():
+    agent = collapse((PLUGIN / "agents" / "implementer.md").read_text())
+    intro = agent.split("## Stage agent contract", 1)[0]
+    assert "converge" in intro and "without a third pass" in intro
 
 
 def test_converge_runs_at_most_two_passes():

@@ -87,11 +87,12 @@ def test_nit_cap_in_merge_and_verify():
         assert phrase in text, phrase
 
 
+# Checked step by step: the merge sets the count, the report carries it, the decision shows it
+# (final review F10).
 def test_nit_cap_states_the_count():
-    steps = " ".join(report_step(number) for number in (3, 4, 5))
-    assert "`Left out: N nit findings`" in steps
+    for number in (3, 4, 5):
+        assert "`Left out: N nit findings`" in report_step(number), number
     decisions = report_step(5)
-    assert "`Left out: N nit findings`" in decisions or "left-out sentence" in decisions
     assert "RESULT" in decisions and "SUMMARY" in decisions
 
 
@@ -100,11 +101,31 @@ def test_nit_cap_metric_counts_reported_nits():
 
 
 # A reviewer told to report less finds less, so the cap sits in the merge, not in the prompts.
+# Any cap or severity filter in the perspectives' step is rejected, not only the words the
+# merge step uses (final review F10).
+PERSPECTIVE_FILTERS = [
+    re.compile(r"\b(at most|no more than|up to|maximum|limit(ed)? to)\b", re.IGNORECASE),
+    re.compile(r"\b(\d+|one|two|three|four|five|six|ten)\s+`?(nit|blocker|worth-fixing)"),
+    re.compile(r"\b(only|just)\b[^.;]*\bfindings?\b", re.IGNORECASE),
+    re.compile(r"\b(skip|drop|omit|leave out|ignore)\b[^.;]*`?nit", re.IGNORECASE),
+]
+
+
 def test_nit_cap_leaves_the_perspectives_alone():
     text = report_step(2)
     assert "every finding with its severity" in text
-    assert "at most" not in text
-    assert "five" not in text
+    found = [pattern.pattern for pattern in PERSPECTIVE_FILTERS if pattern.search(text)]
+    assert not found, found
+
+
+def test_perspective_filter_patterns_catch_a_cap():
+    for sentence in [
+        "Report only `blocker` and `worth-fixing` findings.",
+        "Report no more than 5 `nit` findings.",
+        "Report at most five findings.",
+        "Skip `nit` findings.",
+    ]:
+        assert any(pattern.search(sentence) for pattern in PERSPECTIVE_FILTERS), sentence
 
 
 def test_nit_cap_reaches_reviewer_and_ship():

@@ -19,13 +19,18 @@ starts one or two extra subagent runs (the converge pass) before the Definition 
 - The PLAN templates' AC → steps matrix gains a fourth column, "Red before the change"
   (`Czerwony przed zmianą` in Polish). `implement` records there the command and the
   failing assertion line of each AC's proving test, run before the change; an import or
-  collection error does not count, a missing symbol gets a stub first, and a step is not
-  ticked without a red record or a `manual` / `n/a — <reason>` mark. A proving test green
-  before the change is rewritten when the step writes it and escalated when it came from
-  the owner or the plan.
+  collection error does not count, a missing symbol gets a stub first, and the step that
+  makes an AC's proving test pass is not ticked without a red record or a `manual` /
+  `n/a — <reason>` mark. A proving test green before the change is rewritten when the step
+  writes it and it does not exercise the AC, and escalated when it does exercise the AC (a
+  gap in the SPEC) or came from the owner or the plan.
 - `implement` closes with a converge pass: a fresh subagent compares the code with every
-  AC and reports `missing`, `partial`, `contradicts` or `unrequested` gaps; each real gap
-  becomes an added step, carried out test-first; at most two passes, then an escalation.
+  AC and reports `missing`, `partial`, `contradicts` or `unrequested` gaps; the subagent's
+  diff leaves out the spec directory, so it does not see the plan; each real gap becomes an
+  added step with its matrix row, carried out test-first; `unrequested` code that no plan
+  step and no deviation covers is removed; an AC the plan leaves out waits for the pass
+  instead of an early escalation; at most two passes, then an escalation, and the stage
+  agents' escalation triggers name both new escalations.
 - Eval cases `implement-escalates-on-never-red-test` and
   `implement-converge-finds-missing-ac`.
 
