@@ -682,4 +682,99 @@ no dependency or migration.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+2026-09-24 — three independent perspectives (SPEC/PLAN compliance, quality and
+maintainability, tests); every finding checked in the code. `bash scripts/check.sh`:
+ALL GREEN, 2215 passed. Version stays `0.8.0` (untagged), CHANGELOG, ROADMAP and DECISIONS
+updated; nothing outside the scope on the branch; D1 justified; every AC row of the matrix
+has a red record, `n/a` (AC15) or `manual` (AC11, 5-run half).
+
+### AC → evidence
+
+| AC | Evidence | Status |
+|----|----------|--------|
+| AC1 | `plugin/templates/sections.md`, `PLAN.{en,pl}.md`; `test_templates_language.py` snapshots | ok |
+| AC2 | `plan/SKILL.md` `## Step groups`; `test_chunked_implementer.py::test_plan_*` | ok |
+| AC3 | `plan-review/SKILL.md` checklist `**groups:**`; `::test_plan_review_checks_the_groups` | ok (the "small plan is one group" token is loose, F5) |
+| AC4 | `workflow_config.py` (`SCHEMA`, `defaults()`, bool check); `test_workflow_config.py::test_implement_*` | ok |
+| AC5 | `workflow.example.json`, README row, `init/SKILL.md`; `test_readme.py`, `test_init_skill.py`, `test_init_templates.py` | ok |
+| AC6 | `implement/SKILL.md` `## Chunk mode`, `agents/implementer.md`; `::test_implement_chunk_ends_at_the_group_boundary` | ok (loosely pinned, F5) |
+| AC7 | `implement/SKILL.md` `## Chunk mode`; `::test_implement_last_chunk_converges_and_finishes` | ok |
+| AC8 | `implement/SKILL.md` `## Chunk mode`; `::test_implement_off_or_one_group_runs_one_context` | ok |
+| AC9 | `implement/SKILL.md` Procedure step 1 + `## Chunk mode`; `::test_implement_chunk_note_contents`, `::test_implement_start_reads_the_chunk_notes` | ok (loosely pinned, F5) |
+| AC10 | `implement/SKILL.md` Handoff; `::test_implement_standalone_handoff_after_clear` | ok |
+| AC11 | `plugin/evals/implement-stops-at-group-boundary/`; `test_eval_cases.py` | deterministic half ok; 5-run half: manual scenario 1, not yet run |
+| AC12 | `ship/SKILL.md` state table + Result protocol; `::test_ship_*` | ok |
+| AC13 | `agents/implementer.md`, `ship/SKILL.md`, README `RESULT` contract; `::test_implementer_agent_reports_the_chunk`, `::test_ship_no_progress_is_a_missing_result`, `::test_readme_documents_the_chunk_line` | ok (F1, F3) |
+| AC14 | `workflow_metrics.py` `COUNTERS`; `test_workflow_metrics.py::test_implement_chunks_*`; `::test_implement_final_chunk_writes_the_metrics` | ok |
+| AC15 | `test_record_cost.py::test_three_implementer_chunks_add_up` | ok |
+| AC16 | `plugin/CHANGELOG.md` `## 0.8.0`, `docs/ROADMAP.md`, `docs/DECISIONS.md`; `test_release_0_8_0.py`, `tests/test_documents.py` | ok |
+
+### Findings
+
+- **F1** `worth-fixing` — `plugin/agents/implementer.md:49`, `plugin/skills/ship/SKILL.md:124`:
+  the fenced RESULT template of the stage agent contract has no `CHUNK:` line; the line is
+  required only in the implementer's intro prose. A chunk that copies the block literally
+  returns `DONE` / `plan-approved` without it → `ship` treats a real, committed group end
+  as no progress, re-runs it and may escalate for nothing. Fix: an optional line
+  `CHUNK: <group>/<groups>` (implementer in chunk mode only) in the fenced block of `ship`
+  and of `implementer.md`.
+- **F2** `worth-fixing` — `plugin/skills/implement/SKILL.md:219`: "push the branch" names no
+  upstream, while `ship` Start creates the lane branch locally (`git switch -c`) and nothing
+  before the first chunk pushes it → the first chunk's plain `git push` fails with "no
+  upstream branch". The eval scaffold pre-pushes with `-u`, so the case hides it. Fix: the
+  same command as Procedure step 6, `git push -u origin feat/NNN-<slug>`.
+- **F3** `worth-fixing` — `plugin/skills/ship/SKILL.md:133-145`: the chunk rule reuses the
+  per-stage budget "run it again once, the second time escalate" without saying what it
+  counts. A 4-group plan where chunk 1 and chunk 3 each return no RESULT once → one
+  orchestrator escalates (per stage), another re-runs (per chunk). Fix: state that the one
+  re-run is counted per chunk (per group after the last `DONE`).
+- **F4** `worth-fixing` — `plugin/skills/implement/SKILL.md:214-221`, PLAN `## Risks and
+  traps`: a chunk that dies after its group's last commit but before its note → the next
+  chunk starts the next group with no note, the running `implement_iterations` loses that
+  chunk's iterations and `implement_chunks` (entries + 1) comes out one short. The plan
+  accepted this with "proposal for the backlog below", but no such proposal exists and
+  `docs/BACKLOG.md` is unchanged. Fix: one sentence in Chunk mode (a chunk that finds a
+  finished earlier group without a note writes its entry first, iterations unknown = `0`,
+  said so), or at least a P3 BACKLOG item with a trigger.
+- **F5** `worth-fixing` — `plugin/tests/test_chunked_implementer.py:58,75-88,117-126,185-195`:
+  text pins that pass with the rule deleted: AC3 `"one group"` is a substring of `"exactly
+  one group"`; AC9 `"the group"` also matches "carry out the group that holds…"; AC6 never
+  asserts "you write no metric into SPEC.md", and `"push"` is a bare substring; the ship
+  rule "or that has no chunk line" is not asserted and `"escalat"` is a stem. Fix: assert
+  `"a small plan is one group"`, `"the group you carried out"` inside the note bullet,
+  `"you write no metric into SPEC.md"`, `"push the branch"`, `"or that has no chunk line"`
+  and `"the second time escalate yourself"`.
+- **F6** `worth-fixing` — `plugin/evals/implement-stops-at-group-boundary/graders/criteria.md:16-31`:
+  the grader does not check two things a chunk end requires — the branch was pushed, and no
+  metric was written into SPEC.md — and line 16 lets the judge rely on "the PLAN it
+  summarises", though the judge sees only the final message (BACKLOG P2). Fix: add "the
+  branch was pushed" to the correct list, "writes metrics into SPEC.md" to the incorrect
+  paragraph (and `metric` to `WRONG_BEHAVIOUR` in `test_eval_cases.py`), and ask for what the
+  final message itself shows.
+- **F7** `nit` — `plugin/skills/implement/SKILL.md:87-88`: Procedure step 1 says "With
+  chunking on, … carry out one group" without the more-than-one-group condition; with a
+  one-group plan a literal reader may write a note and stop. Fix: "In chunk mode (the Chunk
+  mode section)".
+- **F8** `nit` — `plugin/skills/implement/SKILL.md:114-116`: the running total is taken from
+  `## Chunk notes` only "in chunk mode"; the owner turning the switch off after chunk 1 →
+  the one-context finish drops chunk 1's iterations. Fix: use the notes' total and write
+  `implement_chunks` whenever `## Chunk notes` has entries.
+- **F9** `nit` — `plugin/tests/test_chunked_implementer.py:217-221`: the skill's prose copy of
+  the loader rule ("the literal `true`", "no other key") is not tied to
+  `SCHEMA["implement"]`; a new key in the schema lets the two drift silently. Fix: assert
+  `SCHEMA["implement"] == {"chunked": bool}` next to the prose test.
+- **F10** `nit` — `plugin/skills/implement/SKILL.md:205-208`: an `implement` section dropped
+  for an unknown key (e.g. `"model"`, confused with `models.implement`) warns only on stderr,
+  so chunking is silently off; `ship` names ignored `models` entries to the owner but not
+  this. Fix: the implementer names an ignored `implement` section in its SUMMARY/Handoff.
+- **F11** `nit` — `plugin/evals/plan-review-escalates-on-dependency/scaffold.sh`: the English
+  fixture's PLAN has no groups and no `## Chunk notes`, unlike its Polish mirror → the
+  reviewer adds groups as a fix, noise in the 0.8.0 receipt. Fix: add `### Group 1 — …` and
+  the placeholder.
+
+### Rejected
+
+- AC11's 5-run measurement not done (compliance, tests) — not a defect of the branch: the
+  plan puts it in Manual scenario 1 for the owner before tagging 0.8.0, and it stays there.
+
+Left out: 10 nit findings

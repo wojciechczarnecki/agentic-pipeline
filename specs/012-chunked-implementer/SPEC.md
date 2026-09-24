@@ -16,6 +16,9 @@ metrics:
   implement_steps: 9
   implement_iterations: 5
   deviations: 1
+  final_review_blockers: 0
+  final_review_worth_fixing: 6
+  final_review_nits: 5
 ---
 
 # SPEC 012 — The chunked implementer
