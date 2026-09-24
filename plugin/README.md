@@ -335,6 +335,39 @@ subagent cannot answer a permission prompt, so without it every `--check` stalls
 new projects. A rule written with `${CLAUDE_PLUGIN_ROOT}` does not work: Claude Code does
 not substitute permission rules.
 
+### Recording cost (`--record-cost`)
+
+```bash
+workflow_metrics.py --record-cost <spec-directory> [--transcripts <dir>]
+```
+
+Prices what the spec's four stage subagents spent and writes `cost_plan_cents`,
+`cost_plan_review_cents`, `cost_implement_cents` and `cost_final_review_cents` into its
+`metrics:` block. `/pipeline:ship` runs it in Closing, after the final review's `apply`.
+
+- **What counts.** A subagent whose type is `planner`, `plan-reviewer`, `implementer` or
+  `reviewer`, whose prompt names the spec directory (`NNN-<slug>`) and which ran inside this
+  repository — the main checkout, the spec's checkout or `worktree.dir` — plus every
+  subagent it started (the final review's perspectives, the converge pass). Report and
+  `apply` both count toward the final review, and a stage run again after an escalation
+  counts toward that stage. The `/pipeline:ship` orchestrator and the `idea` dialogue run in
+  the main session and are not counted.
+- **Source.** Claude Code's local transcripts: `~/.claude/projects` (or
+  `$CLAUDE_CONFIG_DIR/projects`), searched recursively so worktree lanes are found too;
+  `--transcripts <dir>` reads another directory, such as an archive. Each API message is
+  counted once, however many times it was logged or copied.
+- **Unit.** Cents at the API list rates of 2026-09-24, from a table in the script. Its rates
+  are never changed — a new model is only added at its launch rates — so a cent is a fixed
+  unit and costs from different years compare. Only the stage total is rounded.
+- **Output.** Stdout shows a table per stage: models, tokens by type (input, cache write
+  5 min, cache write 1 h, cache read, output) and cents. A second run replaces the keys;
+  every other byte of SPEC.md stays as it was.
+- **Warnings, never a stop.** No transcripts, a stage without transcripts, or a model missing
+  from the rate table leaves that key unwritten, names the reason on stderr and exits `0`,
+  because a missing cost must not stop the closing of a spec. Only a spec directory
+  without a readable SPEC.md exits `1`. Cost needs local transcripts: a spec run in the
+  cloud or on another machine has none here.
+
 ## CHANGELOG
 
 Full version history: [CHANGELOG.md](CHANGELOG.md).

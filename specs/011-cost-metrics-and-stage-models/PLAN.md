@@ -198,13 +198,13 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 3, 5 | `plugin/tests/test_record_cost.py::test_stage_cost_is_tokens_times_rates_rounded_once`, `::test_record_cost_writes_the_four_keys` | |
+| AC1 | 3, 5 | `plugin/tests/test_record_cost.py::test_stage_cost_is_tokens_times_rates_rounded_once`, `::test_record_cost_writes_the_four_keys` | `uv run pytest -q plugin/tests/test_record_cost.py -k writes_the_four_keys` → `AssertionError: assert {} == {'cost_plan_cents': 8, …, 'cost_final_review_cents': 5}` (stubbed `record_cost`) |
 | AC2 | 4 | `plugin/tests/test_record_cost.py::test_perspectives_and_both_reviewer_runs_count_toward_the_final_review`, `::test_a_rerun_after_an_escalation_counts_toward_its_stage` | `uv run pytest -q plugin/tests/test_record_cost.py -k perspectives` → `AssertionError: assert {} == {'final-review': {'claude-opus-5-5': [300, 0, 0, 0, 30]}}` (stub) |
 | AC3 | 4 | `plugin/tests/test_record_cost.py::test_other_specs_and_other_repositories_are_not_counted` | `uv run pytest -q plugin/tests/test_record_cost.py -k other_specs` → `AssertionError: assert {} == {'implement': {'claude-opus-5-5': [0, 0, 0, 0, 5]}}` (stub) |
-| AC4 | 4, 5 | `plugin/tests/test_record_cost.py::test_transcripts_option_reads_that_directory`, `::test_default_source_finds_worktree_lanes` | |
-| AC5 | 5 | `plugin/tests/test_record_cost.py::test_a_second_run_replaces_the_keys_and_keeps_every_other_byte` | |
-| AC6 | 5 | `plugin/tests/test_record_cost.py::test_an_unknown_model_skips_its_stage_and_is_named`, `::test_a_stage_without_transcripts_warns`, `::test_no_transcripts_leaves_the_file_unchanged` | |
-| AC7 | 5 | `plugin/tests/test_record_cost.py::test_stdout_shows_tokens_by_type_model_and_cost` | |
+| AC4 | 4, 5 | `plugin/tests/test_record_cost.py::test_transcripts_option_reads_that_directory`, `::test_default_source_finds_worktree_lanes` | `uv run pytest -q plugin/tests/test_record_cost.py -k default_source` → `AssertionError: assert {} == {'cost_plan_cents': 6, 'cost_implement_cents': 8}` (stubbed `record_cost`) |
+| AC5 | 5 | `plugin/tests/test_record_cost.py::test_a_second_run_replaces_the_keys_and_keeps_every_other_byte` | `uv run pytest -q plugin/tests/test_record_cost.py -k second_run` → `AssertionError: assert '---\nstatus:... x\n\nBody.\n' == '---\nstatus:... x\n\nBody.\n'` (the four `cost_*` lines expected, none written) (stubbed `record_cost`) |
+| AC6 | 5 | `plugin/tests/test_record_cost.py::test_an_unknown_model_skips_its_stage_and_is_named`, `::test_a_stage_without_transcripts_warns`, `::test_no_transcripts_leaves_the_file_unchanged` | `uv run pytest -q plugin/tests/test_record_cost.py -k unknown_model` → `AssertionError: assert 'claude-nope-9' in ''` (stubbed `record_cost`); the two no-transcripts tests pass on the stub, which writes nothing either |
+| AC7 | 5 | `plugin/tests/test_record_cost.py::test_stdout_shows_tokens_by_type_model_and_cost` | `uv run pytest -q plugin/tests/test_record_cost.py -k stdout_shows` → `AssertionError: assert 0 >= 3` (no table lines) (stubbed `record_cost`) |
 | AC8 | 3 | `plugin/tests/test_record_cost.py::test_the_rate_table_is_dated_and_frozen` | `uv run pytest -q plugin/tests/test_record_cost.py -k frozen` → `AssertionError: assert '' == '2026-09-24'` (stub) |
 | AC9 | 1 | `plugin/tests/test_workflow_metrics.py::test_new_counters_are_known_and_never_required` | `uv run pytest -q plugin/tests/test_workflow_metrics.py -k new_counters` → `assert 'converge_gaps' in ['plan_steps', 'plan_review_blockers', …] = workflow_metrics.COUNTERS` |
 | AC10 | 1 | `plugin/tests/test_workflow_metrics.py::test_either_deviations_form_satisfies_the_check`, `::test_neither_deviations_form_names_both`; regression guard, green before by design and not the red record: `tests/test_spec_metrics.py::test_every_repository_spec_passes_the_check` (AC10: "still pass `--check`") | `uv run pytest -q plugin/tests/test_workflow_metrics.py -k either_deviations` → `AssertionError: assert ['014-e2e: status `implemented` requires metric keys that are missing: deviations', …] == []` |
@@ -303,7 +303,7 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
       - `test_synthetic_lines_are_skipped`.
       - `test_worktree_lane_cwd_is_accepted`: `cwd` under `tmp_path/wt/011-x`.
       Automatic verification: `uv run pytest -q plugin/tests/test_record_cost.py`
-- [ ] 5. The `--record-cost` command (AC1 end to end, AC4 CLI, AC5, AC6, AC7). Files:
+- [x] 5. The `--record-cost` command (AC1 end to end, AC4 CLI, AC5, AC6, AC7). Files:
       `plugin/bin/workflow_metrics.py` (`record_cost`, `write_costs`, argparse
       `--record-cost` and `--transcripts`, the header usage comment),
       `plugin/tests/test_record_cost.py`, and a new README subsection

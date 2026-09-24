@@ -2,13 +2,18 @@
 # Summarises the `metrics:` blocks of <specs>/*/SPEC.md into a markdown table, so changes to
 # the agentic workflow are judged by numbers. Without an argument the spec directory comes
 # from .claude/workflow.json (`docs.specsDir`).
+# With --record-cost it prices the spec's stage subagents from Claude Code's transcripts and
+# writes the four `cost_*` keys into its SPEC.md.
 # Usage: python3 workflow_metrics.py [dir]
 #        python3 workflow_metrics.py --check <spec-dir>
-# Exit codes: 0 — report rendered, or --check found nothing wrong; 1 — --check found a
-# problem (every one named on stderr), an unreadable spec directory or a broken
-# workflow.json; 2 — argparse rejected the arguments.
+#        python3 workflow_metrics.py --record-cost <spec-dir> [--transcripts <dir>]
+# Exit codes: 0 — report rendered, --check found nothing wrong, or --record-cost finished
+# (missing transcripts and unknown models only warn); 1 — --check found a problem (every one
+# named on stderr), an unreadable spec directory or a broken workflow.json; 2 — argparse
+# rejected the arguments.
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -485,11 +490,123 @@ def configured_specs_dir(start: Path) -> Path:
     return root / (config.get("docs.specsDir") or "specs")
 
 
+# Claude Code keeps its transcripts under its configuration directory, which
+# CLAUDE_CONFIG_DIR moves.
+def default_transcripts() -> Path:
+    configured = os.environ.get("CLAUDE_CONFIG_DIR")
+    base = Path(configured) if configured else Path.home() / ".claude"
+    return base / "projects"
+
+
+# An exact line edit inside the `metrics:` block: an existing key has its value replaced, a
+# new one is appended after the block's last line, and every other byte stays as it was.
+def write_costs(text: str, values: dict[str, int]) -> str | None:
+    if not text.startswith("---\n"):
+        return None
+    close = text.find("\n---", 3)
+    if close < 0:
+        return None
+    lines = text[4 : close + 1].splitlines(keepends=True)
+    start = next(
+        (index for index, line in enumerate(lines) if line.rstrip("\n") == "metrics:"), None
+    )
+    if start is None:
+        lines.append("metrics:\n")
+        start = len(lines) - 1
+    end = start + 1
+    while end < len(lines) and lines[end].startswith(" "):
+        end += 1
+    block = lines[start + 1 : end]
+    indent = re.match(r" +", block[0]).group(0) if block else "  "
+    for key, value in values.items():
+        pattern = re.compile(rf"( +){re.escape(key)}:.*")
+        for index, line in enumerate(block):
+            match = pattern.fullmatch(line.rstrip("\n"))
+            if match:
+                block[index] = f"{match.group(1)}{key}: {value}\n"
+                break
+        else:
+            block.append(f"{indent}{key}: {value}\n")
+    lines[start + 1 : end] = block
+    return "---\n" + "".join(lines) + text[close + 1 :]
+
+
+def usage_table(stages: dict[str, dict[str, list[int]]], cents: dict[str, int | None]) -> str:
+    header = ["stage", "models", *TOKEN_TYPES, "cents"]
+    rows = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
+    for stage in COST_KEYS:
+        if stage not in stages:
+            continue
+        by_model = stages[stage]
+        totals = [sum(tokens[index] for tokens in by_model.values()) for index in range(5)]
+        cost = cents[stage]
+        cells = [stage, ", ".join(sorted(by_model)), *map(str, totals)]
+        cells.append("-" if cost is None else str(cost))
+        rows.append("| " + " | ".join(cells) + " |")
+    return "\n".join(rows)
+
+
+# A missing cost must never stop the closing of a spec, so everything except an unreadable
+# SPEC.md ends with a warning and exit code 0.
+def record_cost(spec_dir: Path, source: Path) -> int:
+    spec = spec_dir / "SPEC.md"
+    try:
+        text = spec.read_text()
+    except OSError as exc:
+        print(f"no readable SPEC.md in {spec_dir}: {exc}", file=sys.stderr)
+        return 1
+    stages = stage_usage(spec_dir, source) if source.is_dir() else {}
+    if not stages:
+        print(
+            f"no stage transcripts of {spec_dir.resolve().name} in {source}; "
+            "SPEC.md left unchanged",
+            file=sys.stderr,
+        )
+        return 0
+    cents: dict[str, int | None] = {}
+    values: dict[str, int] = {}
+    for stage, key in COST_KEYS.items():
+        if stage not in stages:
+            print(f"stage `{stage}`: no transcripts found, `{key}` not written", file=sys.stderr)
+            continue
+        unknown = sorted(model for model in stages[stage] if rate_for(model) is None)
+        cents[stage] = stage_cents(stages[stage])
+        if unknown:
+            print(
+                f"stage `{stage}`: no rate for model {', '.join(unknown)} in the rate table "
+                f"of {RATES_DATE}, `{key}` not written",
+                file=sys.stderr,
+            )
+        elif cents[stage] is not None:
+            values[key] = cents[stage]
+    print(usage_table(stages, cents))
+    if not values:
+        return 0
+    updated = write_costs(text, values)
+    if updated is None:
+        print(f"{spec} has no frontmatter; cost not written", file=sys.stderr)
+    elif updated != text:
+        spec.write_text(updated)
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Report or check workflow metrics.")
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--record-cost", action="store_true")
+    parser.add_argument("--transcripts")
     parser.add_argument("directory", nargs="?")
     args = parser.parse_args(argv[1:])
+
+    if args.record_cost:
+        if not args.directory:
+            print(
+                "usage: workflow_metrics.py --record-cost <spec-dir> [--transcripts <dir>]",
+                file=sys.stderr,
+            )
+            return 1
+        source = Path(args.transcripts) if args.transcripts else default_transcripts()
+        return record_cost(Path(args.directory), source)
 
     if args.check:
         if not args.directory:

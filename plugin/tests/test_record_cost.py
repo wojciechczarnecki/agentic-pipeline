@@ -1,6 +1,8 @@
 import importlib.util
 import json
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -139,7 +141,7 @@ def repo(tmp_path) -> Path:
     spec = root / "specs" / SPEC_NAME
     spec.mkdir(parents=True)
     (spec / "SPEC.md").write_text(
-        '---\nstatus: done\nstage_history:\n  - "done — 2026-09-24"\nmetrics:\n'
+        '---\nstatus: spec-ready\nstage_history:\n  - "done — 2026-09-24"\nmetrics:\n'
         "  started_at: 2026-09-24T10:00\n  escalations: 0\n---\n\n# SPEC 011 — x\n\nBody.\n"
     )
     return root
@@ -304,3 +306,320 @@ def test_worktree_lane_cwd_is_accepted(repo, tmp_path):
     )
     stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source)
     assert stages == {"implement": {OPUS: [0, 0, 10, 0, 0]}}
+
+
+SONNET = "claude-sonnet-5"
+HAIKU_DATED = "claude-haiku-4-5-20251001"
+
+
+# Hand-computed, cents per million tokens from the rate table:
+#   plan (Opus 5.5): 1000 × 400 + 2000 × 500 + 50 000 × 20 + 3000 × 2000
+#     = 400 000 + 1 000 000 + 1 000 000 + 6 000 000 = 8 400 000 → 8.4 → 8
+#   plan review (Sonnet 5): 2500 × 1000 = 2 500 000 → 2.5 → 3
+#   implement: Opus 5.5 10 000 × 800 (1 h write) = 8 000 000, Haiku 4.5 20 000 × 100
+#     = 2 000 000 → 10 000 000 → 10
+#   final review: reviewer on Opus 5, 1000 × 2500 = 2 500 000; its perspective on Opus 5.5,
+#     100 000 × 20 = 2 000 000 → 4 500 000 → 4.5 → 5
+EXPECTED = {
+    "cost_plan_cents": 8,
+    "cost_plan_review_cents": 3,
+    "cost_implement_cents": 10,
+    "cost_final_review_cents": 5,
+}
+
+
+def write_all_stages(source: Path, cwd: Path, slug: str = "slug", scale: int = 1) -> None:
+    write_agent(
+        source,
+        slug,
+        "s1",
+        "pl",
+        "pipeline:planner",
+        prompt(),
+        cwd,
+        [("a1", OPUS, usage(input_tokens=1000, write_5m=2000, read=50_000, output=3000 * scale))],
+    )
+    write_agent(
+        source,
+        slug,
+        "s1",
+        "pr",
+        "pipeline:plan-reviewer",
+        prompt(),
+        cwd,
+        [("a2", SONNET, usage(output=2500 * scale))],
+    )
+    write_agent(
+        source,
+        slug,
+        "s1",
+        "im",
+        "pipeline:implementer",
+        prompt(),
+        cwd,
+        [("a3", OPUS, usage(write_1h=10_000)), ("a4", HAIKU_DATED, usage(input_tokens=20_000))],
+    )
+    write_agent(
+        source,
+        slug,
+        "s1",
+        "rv",
+        "pipeline:reviewer",
+        prompt(),
+        cwd,
+        [("a5", "claude-opus-5", usage(output=1000))],
+    )
+    write_agent(
+        source,
+        slug,
+        "s1",
+        "pp",
+        "general-purpose",
+        "Review the diff.",
+        cwd,
+        [("a6", OPUS, usage(read=100_000))],
+        parent="rv",
+    )
+
+
+def run_record(spec: Path, *args: str, home: Path, env: dict | None = None):
+    environment = {key: value for key, value in os.environ.items() if key != "CLAUDE_CONFIG_DIR"}
+    environment["HOME"] = str(home)
+    environment.update(env or {})
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), "--record-cost", str(spec), *args],
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+
+def recorded(spec: Path) -> dict[str, str]:
+    return workflow_metrics.parse_metrics((spec / "SPEC.md").read_text())
+
+
+def cost_values(spec: Path) -> dict[str, int]:
+    return {key: int(value) for key, value in recorded(spec).items() if key.startswith("cost_")}
+
+
+def test_record_cost_writes_the_four_keys(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    spec = repo / "specs" / SPEC_NAME
+    result = run_record(spec, "--transcripts", str(source), home=tmp_path / "home")
+    assert result.returncode == 0, result.stderr
+    assert cost_values(spec) == EXPECTED
+
+
+def test_transcripts_option_reads_that_directory(repo, tmp_path):
+    archive = tmp_path / "archive" / "2026-09-24"
+    write_all_stages(archive, repo)
+    spec = repo / "specs" / SPEC_NAME
+    without = run_record(spec, home=tmp_path / "home")
+    assert without.returncode == 0
+    assert cost_values(spec) == {}
+    result = run_record(spec, "--transcripts", str(tmp_path / "archive"), home=tmp_path / "home")
+    assert result.returncode == 0, result.stderr
+    assert cost_values(spec) == EXPECTED
+
+
+def test_default_source_finds_worktree_lanes(repo, tmp_path):
+    home = tmp_path / "home"
+    projects = home / ".claude" / "projects"
+    lane = tmp_path / "wt" / "011-x"
+    lane.mkdir(parents=True)
+    write_agent(
+        projects,
+        "-repo",
+        "s1",
+        "pl",
+        "pipeline:planner",
+        prompt(),
+        repo,
+        [("a1", OPUS, usage(output=3000))],
+    )
+    write_agent(
+        projects,
+        "-wt-011-x",
+        "s2",
+        "im",
+        "pipeline:implementer",
+        prompt(),
+        lane,
+        [("a3", OPUS, usage(write_1h=10_000))],
+    )
+    spec = repo / "specs" / SPEC_NAME
+    result = run_record(spec, home=home)
+    assert result.returncode == 0, result.stderr
+    # 3000 × 2000 = 6 000 000 → 6; 10 000 × 800 = 8 000 000 → 8
+    assert cost_values(spec) == {"cost_plan_cents": 6, "cost_implement_cents": 8}
+
+
+def test_the_claude_config_dir_moves_the_default_source(repo, tmp_path):
+    config = tmp_path / "config"
+    write_all_stages(config / "projects", repo)
+    spec = repo / "specs" / SPEC_NAME
+    result = run_record(spec, home=tmp_path / "home", env={"CLAUDE_CONFIG_DIR": str(config)})
+    assert result.returncode == 0, result.stderr
+    assert cost_values(spec) == EXPECTED
+
+
+def test_a_second_run_replaces_the_keys_and_keeps_every_other_byte(repo, tmp_path):
+    spec = repo / "specs" / SPEC_NAME
+    original = (spec / "SPEC.md").read_text()
+    first = tmp_path / "first"
+    write_all_stages(first, repo)
+    assert run_record(spec, "--transcripts", str(first), home=tmp_path / "h").returncode == 0
+    second = tmp_path / "second"
+    write_all_stages(second, repo, scale=2)
+    assert run_record(spec, "--transcripts", str(second), home=tmp_path / "h").returncode == 0
+    # scale 2: plan 8 400 000 + 6 000 000 = 14 400 000 → 14; plan review 5 000 000 → 5
+    expected = original.replace(
+        "  escalations: 0\n",
+        "  escalations: 0\n"
+        "  cost_plan_cents: 14\n"
+        "  cost_plan_review_cents: 5\n"
+        "  cost_implement_cents: 10\n"
+        "  cost_final_review_cents: 5\n",
+    )
+    assert (spec / "SPEC.md").read_text() == expected
+
+
+def test_an_existing_value_is_replaced_in_place(repo, tmp_path):
+    spec = repo / "specs" / SPEC_NAME
+    text = (
+        (spec / "SPEC.md")
+        .read_text()
+        .replace("  started_at:", "  cost_plan_review_cents: 999\n  started_at:")
+    )
+    (spec / "SPEC.md").write_text(text)
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    assert run_record(spec, "--transcripts", str(source), home=tmp_path / "h").returncode == 0
+    after = (spec / "SPEC.md").read_text()
+    assert after.index("  cost_plan_review_cents: 3\n") < after.index("  started_at:")
+    assert after.count("cost_plan_review_cents") == 1
+
+
+def test_a_spec_without_a_metrics_block_gets_one(repo, tmp_path):
+    spec = repo / "specs" / SPEC_NAME
+    (spec / "SPEC.md").write_text("---\nstatus: spec-ready\n---\n\n# SPEC 011 — x\n")
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    assert run_record(spec, "--transcripts", str(source), home=tmp_path / "h").returncode == 0
+    assert (
+        (spec / "SPEC.md")
+        .read_text()
+        .startswith("---\nstatus: spec-ready\nmetrics:\n  cost_plan_cents: 8\n")
+    )
+    assert cost_values(spec) == EXPECTED
+
+
+def test_an_unknown_model_skips_its_stage_and_is_named(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "im2",
+        "pipeline:implementer",
+        prompt(),
+        repo,
+        [("a9", "claude-nope-9", usage(output=10))],
+    )
+    spec = repo / "specs" / SPEC_NAME
+    result = run_record(spec, "--transcripts", str(source), home=tmp_path / "h")
+    assert result.returncode == 0
+    assert "claude-nope-9" in result.stderr
+    assert cost_values(spec) == {
+        key: value for key, value in EXPECTED.items() if key != "cost_implement_cents"
+    }
+
+
+def test_a_stage_without_transcripts_warns(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "pl",
+        "pipeline:planner",
+        prompt(),
+        repo,
+        [("a1", OPUS, usage(output=3000))],
+    )
+    spec = repo / "specs" / SPEC_NAME
+    result = run_record(spec, "--transcripts", str(source), home=tmp_path / "h")
+    assert result.returncode == 0
+    assert cost_values(spec) == {"cost_plan_cents": 6}
+    for stage in ["plan-review", "implement", "final-review"]:
+        assert stage in result.stderr, stage
+
+
+@pytest.mark.parametrize("kind", ["empty", "missing"])
+def test_no_transcripts_leaves_the_file_unchanged(repo, tmp_path, kind):
+    source = tmp_path / "projects"
+    if kind == "empty":
+        source.mkdir()
+    spec = repo / "specs" / SPEC_NAME
+    before = (spec / "SPEC.md").read_bytes()
+    result = run_record(spec, "--transcripts", str(source), home=tmp_path / "h")
+    assert result.returncode == 0
+    assert result.stderr.strip()
+    assert (spec / "SPEC.md").read_bytes() == before
+
+
+def test_a_directory_without_a_spec_fails(tmp_path):
+    result = run_record(tmp_path, "--transcripts", str(tmp_path), home=tmp_path)
+    assert result.returncode == 1
+    assert "SPEC.md" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_stdout_shows_tokens_by_type_model_and_cost(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "im2",
+        "pipeline:implementer",
+        prompt(),
+        repo,
+        [("a9", "claude-nope-9", usage(output=10))],
+    )
+    spec = repo / "specs" / SPEC_NAME
+    result = run_record(spec, "--transcripts", str(source), home=tmp_path / "h")
+    lines = [line for line in result.stdout.splitlines() if line.startswith("|")]
+    assert len(lines) >= 3, result.stdout
+    header = [cell.strip() for cell in lines[0].strip("|").split("|")]
+    assert header == [
+        "stage",
+        "models",
+        "input",
+        "cache_write_5m",
+        "cache_write_1h",
+        "cache_read",
+        "output",
+        "cents",
+    ]
+    rows = {
+        cells[0]: cells
+        for cells in ([cell.strip() for cell in line.strip("|").split("|")] for line in lines[2:])
+    }
+    assert set(rows) == {"plan", "plan-review", "implement", "final-review"}
+    assert rows["plan"] == ["plan", OPUS, "1000", "2000", "0", "50000", "3000", "8"]
+    assert rows["plan-review"][1] == SONNET
+    assert HAIKU_DATED in rows["implement"][1] and "claude-nope-9" in rows["implement"][1]
+    assert rows["implement"][-1] == "-"
+    assert rows["final-review"][-1] == "5"
+
+
+def test_record_cost_output_passes_the_check(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    spec = repo / "specs" / SPEC_NAME
+    assert run_record(spec, "--transcripts", str(source), home=tmp_path / "h").returncode == 0
+    assert workflow_metrics.check(spec) == []

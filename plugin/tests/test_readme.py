@@ -283,6 +283,7 @@ HEADINGS = [
     "### Severity tokens",
     "## Workflow metrics",
     "### Checking metrics (`--check`)",
+    "### Recording cost (`--record-cost`)",
     "## CHANGELOG",
 ]
 
