@@ -210,9 +210,9 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
 | AC10 | 1 | `plugin/tests/test_workflow_metrics.py::test_either_deviations_form_satisfies_the_check`, `::test_neither_deviations_form_names_both`; regression guard, green before by design and not the red record: `tests/test_spec_metrics.py::test_every_repository_spec_passes_the_check` (AC10: "still pass `--check`") | `uv run pytest -q plugin/tests/test_workflow_metrics.py -k either_deviations` → `AssertionError: assert ['014-e2e: status `implemented` requires metric keys that are missing: deviations', …] == []` |
 | AC11 | 8 | `plugin/tests/test_stage_skills.py::test_implement_records_the_split_metrics`, `plugin/tests/test_stage_contract.py::test_the_implementer_metrics_line` | |
 | AC12 | 2 | `plugin/tests/test_workflow_metrics.py::test_report_shows_cost_per_finding_and_per_step`, `::test_cost_lines_are_hidden_without_data`, `::test_report_has_columns_for_the_new_keys` | `uv run pytest -q plugin/tests/test_workflow_metrics.py -k cost_per_finding` → `AssertionError: assert 'Plan review cost per significant finding: 80 cents (401/5)' in '| spec | lead_time_h | …'` (the columns test was already green: step 1 added the keys to `COUNTERS`, which the report iterates) |
-| AC13 | 7 | `plugin/tests/test_ship_cost_and_models.py::test_closing_records_cost_between_apply_and_notification`, `::test_the_guardrail_names_the_cost_exception` | |
+| AC13 | 7 | `plugin/tests/test_ship_cost_and_models.py::test_closing_records_cost_between_apply_and_notification`, `::test_the_guardrail_names_the_cost_exception` | `uv run pytest -q plugin/tests/test_ship_cost_and_models.py -k closing_records` → `AssertionError: assert 'workflow_metrics.py --record-cost <docs.specsDir>/NNN-<slug>' in '1. From the `reviewer/apply` RESULT …'` |
 | AC14 | 6 | `plugin/tests/test_workflow_config.py::test_models_accepts_every_stage_and_alias`, `::test_a_bad_models_entry_warns_and_only_that_stage_inherits`, `::test_models_errors_are_readable` | `uv run pytest -q plugin/tests/test_workflow_config.py -k models_accepts` → `AssertionError: workflow.json: unknown key `models`; …` / `assert 1 == 0` |
-| AC15 | 7 | `plugin/tests/test_ship_cost_and_models.py::test_ship_passes_the_model_only_when_not_inherit` | |
+| AC15 | 7 | `plugin/tests/test_ship_cost_and_models.py::test_ship_passes_the_model_only_when_not_inherit` | `uv run pytest -q plugin/tests/test_ship_cost_and_models.py -k passes_the_model` → `AssertionError: `models.<stage>`` (`assert '`models.<stage>`' in "The `Agent` tool …"`) |
 | AC16 | 6 | `plugin/tests/test_init_skill.py::test_init_writes_the_implement_model_guess`, `plugin/tests/test_readme.py::test_the_models_row_marks_the_guess_and_effort` | `uv run pytest -q plugin/tests/test_init_skill.py -k model_guess` → `assert '"models": {"implement": "sonnet"}' in …` |
 | AC17 | 7 | `plugin/tests/test_plugin_structure.py::test_no_agent_sets_effort_yet` | n/a — kept behaviour: "the agents … do not get `effort` in this release" |
 | AC18 | 9 | `plugin/tests/test_targeted_reading.py::test_the_reading_section_is_identical_in_four_skills`, `::test_the_reading_section_names_full_and_searched_documents` | |
@@ -363,7 +363,7 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
         `test_every_schema_key_reaches_the_table` turn green again once the example and
         the README row are in place.
       Automatic verification: `uv run pytest -q plugin/tests/test_workflow_config.py plugin/tests/test_init_templates.py plugin/tests/test_init_skill.py plugin/tests/test_readme.py plugin/tests/test_guard.py`
-- [ ] 7. `ship`: the model per stage and the cost in Closing, and the agents without
+- [x] 7. `ship`: the model per stage and the cost in Closing, and the agents without
       `effort` (AC13, AC15, AC17). Files: `plugin/skills/ship/SKILL.md`,
       `plugin/tests/test_ship_cost_and_models.py` (new),
       `plugin/tests/test_plugin_structure.py`.

@@ -85,7 +85,18 @@ a session they are visible under prefixed names: `pipeline:planner`,
 
 The prompt contains only: the spec number and path, the mode (for `reviewer`), the working
 directory and a reminder of the contract below. Do not pass the history of this conversation
-or your own hypotheses — a fresh context is part of the method.
+or your own hypotheses — a fresh context is part of the method. The path is written as
+`<docs.specsDir>/NNN-<slug>/SPEC.md`, because `--record-cost` in Closing attributes a stage
+agent to its spec by the spec directory named in its prompt; an agent started without it is
+left out of the cost.
+
+The model per stage comes from `models.<stage>` in `.claude/workflow.json`, with the stage
+keys `plan` → `planner`, `plan-review` → `plan-reviewer`, `implement` → `implementer` and
+`final-review` → `reviewer` (both `report` and `apply`). When the entry is `sonnet`, `opus`,
+`haiku` or `fable`, pass it to `Agent` as `model`. When it is `inherit`, missing, or any
+other value, pass no `model`: the agent then runs on the session model, and the guard has
+already warned about a bad value. The same holds for a stage run again under the Result
+protocol.
 
 You wait for the stage agent's result before you go on.
 
@@ -165,13 +176,23 @@ No findings in the report → skip the gate: record in the decisions, in the lan
 
 1. From the `reviewer/apply` RESULT take the PR link, the CI status and the link to the
    visual artifacts of the CI run.
-2. `PushNotification`: "PR NNN ready to merge: <title>" — only with green CI. A PR
+2. Record the cost of the stages, now that all of them have finished: run
+   `workflow_metrics.py --record-cost <docs.specsDir>/NNN-<slug>` by name, through `PATH`.
+   When `git status --porcelain` shows SPEC.md changed, `git add` that file, commit
+   `chore: record stage cost for NNN`, run `git push`, and wait for
+   `gh pr checks <number> --watch`, because the notification below promises green CI on the
+   PR's last commit. A red check after this metrics-only commit is re-run like the
+   reviewer's status commit (`gh run rerun <id> --failed`). A non-zero exit or a warning
+   goes into the summary for the owner and does not stop Closing: a missing cost must not
+   hold back a finished spec.
+3. `PushNotification`: "PR NNN ready to merge: <title>" — only with green CI. A PR
    with red CI does not get this notification; the reviewer then returns ESCALATE, which
    you handle through "Result protocol".
-3. Green CI with a test passed only after a retry (flaky) → check that the reviewer added
+4. Green CI with a test passed only after a retry (flaky) → check that the reviewer added
    it to `<docs.backlog>`; if not, run `reviewer` (`apply` mode)
-   again with that task. You do not edit spec files or documents yourself.
-4. Summary for the owner: the PR link, the CI status, the link to the visual artifacts, the
+   again with that task. You do not edit spec files or documents yourself, except for the
+   cost keys of step 2, which the `--record-cost` script writes.
+5. Summary for the owner: the PR link, the CI status, the link to the visual artifacts, the
    manual scenarios to check before the merge (from PLAN.md →
    `### Manual (performed by the owner)` in `## End-to-end verification`), the spec metrics.
 
