@@ -157,7 +157,47 @@ records the decision in the owner decisions section of PLAN.md.
 - an exhausted self-correction loop (the 4th iteration on the same error),
 - a test finds a product defect whose fix goes beyond the plan's scope or the owner's
   decisions — instead of working around it by changing the test or the test data,
+- a proving test from the owner or the plan that is green before the change it is meant to
+  prove,
+- a real gap left after the second converge pass,
 - a conflict on `git merge origin/main`.
+
+### Implementation and review
+
+**Test-first evidence.** The AC → steps matrix of a PLAN has a fourth column, "Red before
+the change". Before the change meant to make an AC's proving test pass, `implement` runs
+that test and records the command and the failing assertion line there. Only a failed
+assertion counts: an import, collection or syntax error is red for any reason, so a missing
+symbol gets a stub first. The step that makes an AC's proving test pass is not ticked while
+that AC has no red record, unless the row is marked `manual` or `n/a — <reason>` (for
+example `n/a — kept behaviour`). A proving test that is green before the change is
+rewritten when the step writes it and it does not exercise the AC; a test that does
+exercise the AC and still passes shows a gap in the SPEC and is escalated, as is a test
+that existed before or that the plan gives verbatim, which stays unchanged. `plan`
+orders each step so the proving test is written and run before the product change, and
+`plan-review` checks that order and the column.
+
+**The converge pass.** After the last planned step and before the Definition of Done,
+`implement` starts a fresh subagent with the SPEC path and a diff command that leaves out
+the spec directory, without its own reasoning or the plan; an AC the plan leaves out is
+left to this pass rather than escalated at the start. The subagent compares the code with
+every AC and reports gaps as `missing`, `partial`, `contradicts` or `unrequested`.
+`implement` checks each gap in the code, rejects false ones with a reason, and adds a step
+for each real one, carried out test-first in the self-correction loop, with its row in the
+AC → steps matrix; `unrequested` code that no plan step and no `## Deviations` entry covers
+gets a removal step. There are at most two passes, and a gap left after the second is an
+escalation; after the owner decides on it, the decided steps are carried out without a
+third pass. Each pass is recorded in PLAN.md, and the added steps count in
+`implement_steps`.
+
+**The final-review report.** The review always runs all three perspectives, for a small
+change as for a large one, and each perspective reports every finding with its severity.
+When the findings are merged, the report keeps at most five `nit` findings, the ones with
+the highest risk or maintenance cost; the rest are left out and counted in the sentence
+`Left out: N nit findings`, which also goes into the RESULT SUMMARY. `final_review_nits`
+counts the reported nits. The depth of the plan, its review and the report follows the
+change, with no spec-size classes: a section that does not apply gets one line
+`n/a — <reason>`, and small things keep the fast path.
 
 ### Language contract
 

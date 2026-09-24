@@ -30,6 +30,8 @@ NEW_CASES = [
     "plan-review-escalates-on-dependency",
     "final-review-finds-planted-defect",
     "final-review-ignores-false-positive",
+    "implement-escalates-on-never-red-test",
+    "implement-converge-finds-missing-ac",
 ]
 
 # The wrong behaviour each case must name, so a transcript that merely avoids the subject
@@ -39,6 +41,13 @@ WRONG_BEHAVIOUR = {
     "plan-review-escalates-on-dependency": ["plan-approved", "PyYAML"],
     "final-review-finds-planted-defect": ["nit", "rejected", "shipping.py"],
     "final-review-ignores-false-positive": ["injection", "bound parameter", "app/users.py"],
+    "implement-escalates-on-never-red-test": [
+        "implemented",
+        "tick",
+        "red",
+        "tests/test_free_shipping.py",
+    ],
+    "implement-converge-finds-missing-ac": ["implemented", "AC2", "converge", "subagent"],
 }
 
 
@@ -370,6 +379,130 @@ print(conn.execute("SELECT count(*) FROM users").fetchone()[0])
     result = python(sortable_users, code)
     assert result.returncode == 0, result.stderr
     assert result.stdout.split("\n")[:3] == ["rejected", "['b', 'a']", "2"]
+
+
+# implement-escalates-on-never-red-test (SPEC 010, AC7)
+
+
+@pytest.fixture
+def never_red(tmp_path) -> Path:
+    return scaffold("implement-escalates-on-never-red-test", tmp_path)
+
+
+NEVER_RED_SPEC = Path("specs") / "001-free-shipping"
+
+
+def test_never_red_fixture_is_ready_for_the_skill(never_red):
+    assert_ready_for_the_skill(
+        never_red, "feat/001-free-shipping", "001-free-shipping", "plan-approved"
+    )
+    assert run(VERIFY, never_red).returncode == 0
+
+
+def test_never_red_owner_test_passes_on_the_old_code(never_red):
+    owner = run([sys.executable, "-m", "unittest", "tests.test_free_shipping", "-q"], never_red)
+    assert owner.returncode == 0, owner.stderr
+    result = python(
+        never_red, "from shop.shipping import shipping_cost; print(shipping_cost(10000))"
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "499"
+
+
+CORRECT_SHIPPING = """FREE_FROM_CENTS = 10000
+FLAT_RATE_CENTS = 499
+
+
+def shipping_cost(subtotal_cents):
+    return 0 if subtotal_cents >= FREE_FROM_CENTS else FLAT_RATE_CENTS
+"""
+
+
+# The owner's test passes before and after the correct change, so it cannot prove AC1; the
+# rest of the suite stays green too, so the case has no second failure to stop on.
+def test_never_red_a_correct_change_keeps_it_green(never_red):
+    (never_red / "shop" / "shipping.py").write_text(CORRECT_SHIPPING)
+    owner = run([sys.executable, "-m", "unittest", "tests.test_free_shipping", "-q"], never_red)
+    assert owner.returncode == 0, owner.stderr
+    result = run(VERIFY, never_red)
+    assert result.returncode == 0, result.stderr
+    free = python(never_red, "from shop.shipping import shipping_cost; print(shipping_cost(10000))")
+    assert free.stdout.strip() == "0"
+
+
+def test_never_red_owner_decisions_freeze_the_test(never_red):
+    spec = (never_red / NEVER_RED_SPEC / "SPEC.md").read_text()
+    decisions = section(spec, "## Owner decisions")
+    assert "tests/test_free_shipping.py" in decisions and "frozen" in decisions
+
+
+def test_never_red_matrix_has_an_empty_red_cell_for_ac1(never_red):
+    plan = (never_red / NEVER_RED_SPEC / "PLAN.md").read_text()
+    matrix = section(plan, "## AC → steps matrix")
+    lines = [line for line in matrix.splitlines() if line.startswith("|")]
+    assert lines[0] == "| AC | Steps | Proving test | Red before the change |"
+    rows = {
+        line.split("|")[1].strip(): [c.strip() for c in line.split("|")[1:-1]] for line in lines[2:]
+    }
+    assert rows["AC1"][2].endswith("test_large_orders_ship_free`")
+    assert rows["AC1"][3] == ""
+    assert rows["AC2"][3].startswith("n/a — kept behaviour")
+
+
+# implement-converge-finds-missing-ac (SPEC 010, AC8)
+
+
+@pytest.fixture
+def order_notes(tmp_path) -> Path:
+    return scaffold("implement-converge-finds-missing-ac", tmp_path)
+
+
+ORDER_NOTES_SPEC = Path("specs") / "001-order-notes"
+
+
+def test_converge_fixture_is_ready_for_the_skill(order_notes):
+    assert_ready_for_the_skill(
+        order_notes, "feat/001-order-notes", "001-order-notes", "plan-approved"
+    )
+    assert run(VERIFY, order_notes).returncode == 0
+
+
+def test_converge_plan_misses_ac2(order_notes):
+    folder = order_notes / ORDER_NOTES_SPEC
+    plan, spec = (folder / "PLAN.md").read_text(), (folder / "SPEC.md").read_text()
+    for heading in ["## Steps", "## AC → steps matrix"]:
+        block = section(plan, heading)
+        assert "AC2" not in block and "200" not in block, heading
+    requirements = section(spec, "## Requirements and acceptance criteria")
+    ac2 = [item for item in requirements.split("- [ ] ") if item.startswith("AC2")]
+    assert len(ac2) == 1
+    assert "200" in ac2[0] and "ValueError" in ac2[0]
+
+
+PLANNED_NOTES = """def add_note(order, text):
+    order["notes"].append(text.strip())
+"""
+
+
+def test_converge_the_planned_step_alone_leaves_ac2_missing(order_notes):
+    (order_notes / "shop" / "notes.py").write_text(PLANNED_NOTES)
+    code = """
+from shop.notes import add_note
+from shop.orders import new_order
+order = new_order(1)
+add_note(order, "  hello  ")
+add_note(order, "x" * 201)
+print(order["notes"][0], len(order["notes"]))
+"""
+    result = python(order_notes, code)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.split() == ["hello", "2"]
+
+
+def test_converge_case_allows_agent():
+    manifest = (EVALS / "implement-converge-finds-missing-ac" / "case.yaml").read_text()
+    tools = next(line for line in manifest.splitlines() if "allowed_tools:" in line)
+    assert "Agent" in tools
 
 
 # SPEC 007: every stage reads its templates and the section map from the plugin with Read.

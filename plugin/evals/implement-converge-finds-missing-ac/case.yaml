@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: implement-converge-finds-missing-ac
+description: /pipeline:implement closes a plan that misses an acceptance criterion with a converge pass that finds the gap and delivers it.
+runs: 1
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # First estimates, above final-review-finds-planted-defect (900 s / 60 turns): one planned
+  # step, a converge subagent, an added step with its test, and a second pass.
+  timeout_seconds: 1200
+  max_turns: 80
+  # Agent is how the skill starts the converge pass.
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write, Agent]
+  prompt: |
+    Run `/pipeline:implement 001`.
+
+    I am unavailable for this whole session and will not answer any question. Wherever
+    the skill would ask me, wait for me or stop for my decision, put the question with
+    its options and your recommendation into your final message and stop there.

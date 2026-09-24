@@ -16,7 +16,8 @@ end with a RESULT block.
 
 METRICS of this stage:
 - `report`: `final_review_blockers`, `final_review_worth_fixing`, `final_review_nits`;
-  in SUMMARY the findings table `id | severity | one sentence`;
+  in SUMMARY the findings table `id | severity | one sentence` and the sentence stating how
+  many `nit` findings were left out (`Left out: N nit findings`);
 - `apply`: `findings_accepted`, `findings_rejected`; in SUMMARY the link to the open PR, the
   CI status (after `gh pr checks --watch`) and the link to the run with the visual
   artifacts.
@@ -58,4 +59,7 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
 - the self-correction loop exhausted (the 4th iteration on the same error),
 - a test finds a product defect whose fix goes beyond the plan's scope or the owner
   decisions — instead of working around it by changing the test or the test data,
+- a proving test from the owner or the plan that is green before the change it is meant to
+  prove,
+- a real gap left after the second converge pass,
 - a conflict on `git merge origin/main`.

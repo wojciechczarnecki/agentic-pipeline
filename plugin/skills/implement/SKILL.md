@@ -75,17 +75,20 @@ correct only when the verification commands say so — never because it "looks g
    may already be pushed, and force-push is blocked). A conflict → escalation.
    If the PLAN already has ticked steps (resuming work) — trust them and continue from
    the first unticked one.
-2. **Step by step, in order:** the step's implementation + tests → **the self-correction
-   loop** (below) → green → tick the checkbox in PLAN.md → commit the step
-   (`<type>: <message>` in English, the format from `<docs.conventions>`; the step's files +
-   PLAN.md) → the next step.
+2. **Step by step, in order:** the step's proving test first → its red record (the
+   test-first evidence section below) → the product change and the step's other tests →
+   **the self-correction loop** (below) → green → tick the checkbox in PLAN.md → commit the
+   step (`<type>: <message>` in English, the format from `<docs.conventions>`; the step's
+   files + PLAN.md) → the next step.
 3. **Deviations:** minor and necessary (a different file name, a small helper) → do it
    and add it to `## Deviations` with a rationale. Ones that change the scope, the
    architecture or the data schema → escalation; do not carry on on your own.
 4. **Screen:** when `verify.scopes` has a UI scope and the change touches the interface —
    run `<verify.command> <UI scope>` and look at the visual artifacts required by
    `<docs.conventions>`; without it the step is not green, and record the result in PLAN.md.
-5. **Finish — the plan's Definition of Done:**
+5. **Converge pass:** after the last planned step, before the Definition of Done — the
+   converge pass section below.
+6. **Finish — the plan's Definition of Done:**
    - `<verify.command>` fully green;
    - the plan's end-to-end verification (the automatic section) really performed,
      the result recorded in PLAN.md; the manual items you leave to the owner — list them;
@@ -100,6 +103,78 @@ correct only when the verification commands say so — never because it "looks g
      STOP with a question) with the names of the missing keys; you do not invent an
      unmeasured value;
    - the closing commit, then `git push -u origin feat/NNN-<slug>`.
+
+## Test-first evidence
+
+A test that was never red proves nothing: it may pass for a reason that has nothing to do
+with the change. So each AC's proving test is seen failing before the change that is meant
+to make it pass.
+
+- Before that change, run the AC's proving test. Record the command and the failing
+  assertion line in the fourth column of the AC → steps matrix, as
+  `` `<command>` → `<failing assertion line>` ``.
+- Red means a failed assertion about the AC's behaviour. An import, collection or syntax
+  error is not red, because such an error is red for any reason. When the symbol under
+  test does not exist yet, add a stub first (a function that returns a placeholder value),
+  so that the test reaches its assertion, and record that assertion failure.
+- The step that makes an AC's proving test pass is not green and is not ticked while that
+  AC has no red record, unless the row is marked `manual` (the owner checks it by hand) or
+  `n/a — <reason>`. Earlier steps that deliver part of the same AC are ticked on their own
+  verification.
+- A proving test that is green before the change:
+  - when the step writes the test and the test does not exercise the AC's behaviour,
+    rewrite it until it fails on the assertion — a test that passes on the old code does
+    not check the new behaviour;
+  - when the step writes the test and the test does exercise the AC's behaviour, the
+    behaviour already exists: that is a gap in the SPEC, so escalate
+    (Expected / Found / Why it matters) and leave the step unticked instead of bending the
+    test away from the AC;
+  - when the test existed before, or the plan gives it verbatim, escalate
+    (Expected / Found / Why it matters), leave the test unchanged and the step unticked —
+    that test belongs to the owner or to the plan, and changing it is the owner's call.
+- An AC whose own words require existing behaviour to stay as it is (a regression guard)
+  is green before the change by design; its row is marked `n/a — kept behaviour`. An AC
+  that asks for new behaviour never gets this mark.
+- A plan written before 0.7.0 has no fourth column: add it, with the heading taken from
+  `${CLAUDE_PLUGIN_ROOT}/templates/PLAN.<language>.md`, and mark the kept-behaviour rows
+  yourself, quoting the AC's words. A plan with no matrix at all gets one the same way.
+
+## Converge pass
+
+A plan can miss an AC, and the implementer who carried it out shares the plan's blind
+spots. So before the Definition of Done a fresh reader compares the code with the SPEC.
+
+- An AC that the SPEC has and the plan leaves out is not a plan mismatch to escalate at
+  the start: carry out the planned steps and leave that AC to the converge pass.
+- Start a fresh subagent with `Agent`. Give it the path of SPEC.md, the diff command
+  `git diff origin/main...HEAD -- . ':(exclude)<docs.specsDir>/NNN-<slug>'`, the four gap
+  classes and the finding format
+  `` [missing|partial|contradicts|unrequested] AC<n> or file:line — what — evidence ``.
+  Give it not your reasoning, your hypotheses or PLAN.md: it judges the code against the
+  ACs, not against the plan. The diff leaves out the spec directory, because the
+  committed spec directory holds PLAN.md. The classes: `missing` (an AC with no code),
+  `partial` (an AC delivered in part), `contradicts` (code that does the opposite of an
+  AC), `unrequested` (code no AC asks for).
+- When the subagent reports, check each gap in the code yourself and reject a false one
+  with a one-sentence reason; the subagent reads the diff cold and can be wrong.
+- For each real gap, the pass adds a step at the end of the steps list in PLAN.md and you
+  carry it out like any other step: test-first evidence, the self-correction loop, a tick
+  and a commit. An added step for an AC adds or updates that AC's row in the AC → steps
+  matrix, so its red record has a place. A gap of the class `unrequested` that no plan step
+  and no `## Deviations` entry covers gets a removal step; code a plan step asked for stays.
+- The escalation triggers apply to added steps as to planned ones. A step that delivers an
+  AC of the SPEC stays within the SPEC's scope, so it is not a change of scope by itself;
+  escalate for work beyond the SPEC, a new dependency, a migration, or a change of
+  architecture or data schema.
+- When the first pass added steps, run a second pass with a new fresh subagent, because
+  one pass never checks the steps it added. There are at most two passes, which bounds the
+  cost: a real gap after the second pass is an escalation.
+- Record each pass in PLAN.md, below the last step, under a level-3 heading
+  Converge pass N — <date>, followed by the gaps with your verdicts and the added steps.
+  A resumed run then sees which pass ran. `implement_steps` counts the added steps.
+- A resumed run with two passes recorded carries out the steps the owner decided on and
+  then goes to the Definition of Done, without a third pass. A run with one recorded pass
+  that added steps still runs the second pass after them.
 
 ## Self-correction loop (mandatory for every step)
 
@@ -139,6 +214,7 @@ test you suspect is flaky is still red, and a skipped test is not green.
 
 ## Handoff
 
-- **Run on its own:** summarise what was done, the deviations, the verification result
-  and the manual scenarios; the next stage is `/pipeline:final-review NNN` after `/clear`.
+- **Run on its own:** summarise what was done, the deviations, the converge passes with
+  their gaps and verdicts, the verification result and the manual scenarios; the next
+  stage is `/pipeline:final-review NNN` after `/clear`.
 - **Under `/pipeline:ship`:** end with the RESULT block from the stage agent contract.

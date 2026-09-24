@@ -14,8 +14,8 @@
 
 ## Macierz AC → kroki
 
-| AC | Kroki | Test dowodzący |
-|----|-------|----------------|
+| AC | Kroki | Test dowodzący | Czerwony przed zmianą |
+|----|-------|----------------|-----------------------|
 
 ## Kroki
 

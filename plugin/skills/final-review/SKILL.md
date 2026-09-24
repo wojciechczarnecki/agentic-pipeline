@@ -61,10 +61,16 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
 2. **Three perspectives — in parallel**, as separate subagents (the `Agent` tool, all
    three in one message). Each gets: the spec path, the diff command, its own
    perspective and the finding format. It does not get the others' conclusions or your
-   hypotheses.
+   hypotheses. The review always runs all three perspectives, for a small change as for a
+   large one: independence is the method, and three readers of a small diff cost little.
+   Each perspective reports every finding with its severity, because a reviewer told to
+   report less finds less.
    - **Compliance with the SPEC/PLAN:** for every AC the evidence — the file/test that
      delivers it (the AC → evidence matrix); the plan's steps ticked with good reason;
-     `## Deviations` justified; nothing outside the scope got into the branch.
+     `## Deviations` justified; nothing outside the scope got into the branch; every AC
+     row of the AC → steps matrix has its red record in the fourth column or a `manual` /
+     `n/a` mark (a matrix without the fourth column, from a plan carried out before 0.7.0,
+     is not a finding).
    - **Quality and maintainability:** the `/code-review` skill on the diff (bugs, edge
      cases, security); on top of that compliance with `<docs.conventions>` (code patterns,
      user-facing texts only through the mechanism named there, style and line length limit)
@@ -82,11 +88,17 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    Severities are tokens written as code in every language, like metric keys.
 3. **Merge and verify.** Merge duplicates. Check every finding yourself in the code —
    reject the false ones with a one-sentence reason. Set the final severity by the real
-   risk.
+   risk. Then the report keeps at most five `nit` findings, the ones with the highest risk
+   or maintenance cost; the rest are left out and only counted, in the sentence
+   `Left out: N nit findings` (also with N = 0, so the line is always there). A long list
+   of nits buries the findings that matter, and the count keeps the report honest.
 4. **Write the report** in `## Final review` in PLAN.md: the date; the AC → evidence matrix;
    the findings with ids `F1…Fn` (severity, file:line, scenario, fix); the rejected ones
-   with a reason. In the `metrics:` block of SPEC.md: `final_review_blockers`,
-   `final_review_worth_fixing`, `final_review_nits`.
+   with a reason; the `Left out: N nit findings` sentence. The report's length follows the
+   findings: a review with none is the matrix and one line. In the `metrics:` block of
+   SPEC.md: `final_review_blockers`, `final_review_worth_fixing`, `final_review_nits`;
+   `final_review_nits` counts the reported nits, not the left-out ones, so the `--check`
+   balance holds.
    The flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
    success `workflow_metrics.py --check <spec-dir>`.
    A red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
@@ -97,8 +109,9 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
      in the session language; recommendation: accept `blocker` and `worth-fixing`, reject
      `nit`); record the decisions in PLAN.md → `## Owner decisions` and go on
      to apply mode;
-   - `/pipeline:ship` → end with the RESULT block with the findings table; the decisions are
-     collected by the orchestrator.
+   - `/pipeline:ship` → end with the RESULT block; its SUMMARY carries the findings table
+     and the `Left out: N nit findings` sentence; the decisions are collected by the
+     orchestrator.
 
 ## Apply mode
 

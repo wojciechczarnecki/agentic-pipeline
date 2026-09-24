@@ -87,3 +87,17 @@ def test_ship_step_three_states_the_metrics_format():
     for token in ["started_at", "escalations", "metrics:", "%Y-%m-%dT%H:%M"]:
         assert token in step
     assert "README" not in step
+
+
+# SPEC 010 adds two escalations to `implement`; the binding list every stage agent reads must
+# name them too, in the skill and in the README (final review F7).
+NEW_TRIGGERS = ["green before the change", "second converge pass"]
+
+
+@pytest.mark.parametrize("trigger", NEW_TRIGGERS)
+def test_the_trigger_list_names_the_spec_010_escalations(trigger):
+    ship = " ".join(section(SHIP, "## Escalation triggers").split())
+    readme = (PLUGIN / "README.md").read_text()
+    readme = readme.split("\n### Escalation triggers\n", 1)[1].split("\n### ", 1)[0]
+    assert trigger in ship, trigger
+    assert trigger in " ".join(readme.split()), trigger

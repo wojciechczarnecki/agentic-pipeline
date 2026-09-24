@@ -1,0 +1,18 @@
+schema_version: "1.1"
+name: implement-escalates-on-never-red-test
+description: /pipeline:implement escalates when the owner's acceptance test already passes before the change, instead of ticking the step or rewriting the test.
+runs: 1
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # The skill reads the SPEC, PLAN and conventions, runs the proving test before the change,
+  # finds it green and stops: the same budget as implement-escalates-on-failing-test.
+  timeout_seconds: 600
+  max_turns: 40
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
+  prompt: |
+    Run `/pipeline:implement 001`.
+
+    I am unavailable for this whole session and will not answer any question. Wherever
+    the skill would ask me, wait for me or stop for my decision, put the question with
+    its options and your recommendation into your final message and stop there.

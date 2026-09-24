@@ -7,11 +7,45 @@ Semantic versioning. A release is tagged with `claude plugin tag`.
 The skills and agents are reworded for Claude Opus 5.5 after a prompt audit
 (`specs/009-prompt-audit-for-opus-5-5/AUDIT.md` in the repository): rules keep their words
 and their reasons, stated at normal volume; a line that only raised the pressure or coached
-a strategy the model follows unprompted is gone, and `idea` gains two guardrails.
+a strategy the model follows unprompted is gone, and `idea` gains two guardrails. SPEC 010
+adds test-first evidence and a converge pass to `implement`, scales the plan and the
+reviews with the change, and caps the final-review report at five nits.
 
-**consumer impact:** none — no configuration change; update as usual.
+**consumer impact:** none — no configuration change; update as usual. `implement` now
+starts one or two extra subagent runs (the converge pass) before the Definition of Done.
+
+### Added
+
+- The PLAN templates' AC → steps matrix gains a fourth column, "Red before the change"
+  (`Czerwony przed zmianą` in Polish). `implement` records there the command and the
+  failing assertion line of each AC's proving test, run before the change; an import or
+  collection error does not count, a missing symbol gets a stub first, and the step that
+  makes an AC's proving test pass is not ticked without a red record or a `manual` /
+  `n/a — <reason>` mark. A proving test green before the change is rewritten when the step
+  writes it and it does not exercise the AC, and escalated when it does exercise the AC (a
+  gap in the SPEC) or came from the owner or the plan.
+- `implement` closes with a converge pass: a fresh subagent compares the code with every
+  AC and reports `missing`, `partial`, `contradicts` or `unrequested` gaps; the subagent's
+  diff leaves out the spec directory, so it does not see the plan; each real gap becomes an
+  added step with its matrix row, carried out test-first; `unrequested` code that no plan
+  step and no deviation covers is removed; an AC the plan leaves out waits for the pass
+  instead of an early escalation; at most two passes, then an escalation, and the stage
+  agents' escalation triggers name both new escalations.
+- Eval cases `implement-escalates-on-never-red-test` and
+  `implement-converge-finds-missing-ac`.
 
 ### Changed
+
+- `plan` orders each step so its proving test is written and run before the product
+  change, and `plan-review` checks that order and the fourth column. The plan's length
+  follows the change: a template section that does not apply gets one line
+  `n/a — <reason>`, and a checklist point that does not apply gets a one-line verdict.
+- `final-review` always runs its three perspectives, which report every finding with its
+  severity; the report follows the findings and keeps at most five `nit` findings, chosen
+  by risk or maintenance cost, stating how many were left out; `final_review_nits` counts
+  the reported nits. The compliance perspective checks the red records in the matrix.
+- The `reviewer` agent's SUMMARY and the `ship` gate carry the sentence on how many `nit`
+  findings were left out.
 
 - Capitals used as emphasis are lowered across the skills and agents; capitals stay only
   for contract tokens and identifiers (`STOP`, `RESULT: ESCALATE`, `SPEC`, `PLAN`, …), and

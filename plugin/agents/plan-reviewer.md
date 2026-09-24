@@ -51,4 +51,7 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
 - the self-correction loop exhausted (the 4th iteration on the same error),
 - a test finds a product defect whose fix goes beyond the plan's scope or the owner
   decisions — instead of working around it by changing the test or the test data,
+- a proving test from the owner or the plan that is green before the change it is meant to
+  prove,
+- a real gap left after the second converge pass,
 - a conflict on `git merge origin/main`.

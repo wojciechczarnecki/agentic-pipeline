@@ -277,6 +277,7 @@ HEADINGS = [
     "### Spec statuses",
     "### The `RESULT` contract",
     "### Escalation triggers",
+    "### Implementation and review",
     "### Language contract",
     "### Section map",
     "### Severity tokens",
@@ -364,3 +365,35 @@ def test_the_changelog_names_the_read_rule():
     assert "Read(~/.claude/plugins/cache/" in impact
     assert "permissions.allow" in impact
     assert "stops" in impact
+
+
+# SPEC 010, AC10: the pipeline mechanics describe test-first evidence, the converge pass and
+# the nit cap, and the 0.7.0 release notes record them with their consumer impact.
+def test_the_readme_describes_test_first_and_converge():
+    mechanics = README.split("\n## Pipeline mechanics\n", 1)[1].split("\n## ", 1)[0]
+    mechanics = " ".join(mechanics.split())
+    for token in [
+        "Red before the change",
+        "converge pass",
+        "`missing`",
+        "`partial`",
+        "`contradicts`",
+        "`unrequested`",
+        "at most two passes",
+        "five `nit`",
+        "left out",
+    ]:
+        assert token in mechanics, token
+
+
+def test_the_changelog_records_spec_010():
+    section = CHANGELOG.split("## 0.7.0\n", 1)[1].split("\n## ", 1)[0]
+    assert "### Added" in section, "no Added subsection"
+    added = section.split("### Added", 1)[1].split("\n### ", 1)[0]
+    for token in ["converge", "Red before the change"]:
+        assert token in added, token
+    changed = section.split("### Changed", 1)[1].split("\n### ", 1)[0]
+    assert "nit" in changed
+    impact = " ".join(section.split("**consumer impact:**", 1)[1].split("\n### ", 1)[0].split())
+    for token in ["no configuration change", "subagent"]:
+        assert token in impact, token

@@ -14,8 +14,8 @@
 
 ## AC → steps matrix
 
-| AC | Steps | Proving test |
-|----|-------|--------------|
+| AC | Steps | Proving test | Red before the change |
+|----|-------|--------------|-----------------------|
 
 ## Steps
 

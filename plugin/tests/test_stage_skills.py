@@ -93,7 +93,7 @@ CLOSING_STEPS = {
         ["plan_review_blockers", "plan_review_majors", "plan_changes"],
     ),
     "implement": (
-        "5. **Finish",
+        "6. **Finish",
         ["implement_steps", "implement_iterations", "deviations"],
     ),
     "final-review": (

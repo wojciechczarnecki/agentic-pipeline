@@ -78,16 +78,24 @@ with the final review report; they do not approve the whole plan).
    the SPEC. Steps small (≤ ~1 h of work) and closed: each has an `Automatic verification:`
    section with exact commands (test paths,
    not a vague "add tests") — this is the contract for the self-correction loop of
-   `/pipeline:implement`. An order without "forward" dependencies; a data migration always
+   `/pipeline:implement`. Each step that delivers an AC writes and runs its proving test
+   before the product change, so that `/pipeline:implement` can record the test red
+   before the change makes it pass. An order without "forward" dependencies; a data
+   migration always
    as a separate step. Split the end-to-end verification into automatic (done by the agent)
    and manual (done by the owner) — only what cannot be
    automated goes into the manual one. When `verify.scopes` has a UI scope and the change
    touches the interface — plan in the automatic verification `<verify.command> <UI scope>`
    and looking at the visual artifacts and updating the review scenario required by
-   `<docs.conventions>`.
+   `<docs.conventions>`. The plan's length follows the change: each step and section says
+   something the implementer needs, and a template section that does not apply gets one
+   line `n/a — <reason>` instead of filler, because filler hides the steps that matter.
 6. **AC → steps matrix:** every AC must have steps that deliver it and a test that
    proves it. An AC impossible to cover → escalation (a gap in the SPEC); do not patch the
-   SPEC yourself.
+   SPEC yourself. The fourth column stays empty for `/pipeline:implement`, which records
+   the red run there. You mark a row `manual` (the owner checks it by hand) or
+   `n/a — <reason>` (for example `n/a — kept behaviour`) only when no test can be red
+   before the change.
 7. **Fill in `## Owner summary`** at the end, when the plan
    is ready. The "new dependency" and "data migration" flags must be true — on them
    depends whether the plan review can approve it without the owner.

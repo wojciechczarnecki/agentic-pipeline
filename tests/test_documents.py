@@ -567,3 +567,28 @@ def test_decisions_record_run_time_reads():
 def test_repository_settings_allow_reading_the_installed_plugin():
     settings = json.loads(read(".claude/settings.json"))
     assert "Read(~/.claude/plugins/cache/wcz-tools/pipeline/**)" in settings["permissions"]["allow"]
+
+
+# SPEC 010, AC10: the roadmap ticks the five Stage 6 items the spec delivers, and the
+# decisions record the converge pass and the nit cap.
+def roadmap_items() -> list[str]:
+    items: list[str] = []
+    for line in read("docs/ROADMAP.md").splitlines():
+        if re.match(r"- \[[ x]\] ", line):
+            items.append(line)
+        elif items and line.startswith("      "):
+            items[-1] += " " + line.strip()
+    return items
+
+
+def test_roadmap_ticks_spec_010():
+    link = "specs/010-test-first-and-converge/SPEC.md"
+    items = [item for item in roadmap_items() if link in item]
+    assert len(items) == 5, items
+    assert all(item.startswith("- [x]") for item in items), items
+
+
+def test_decisions_record_spec_010():
+    rows = [row for row in read("docs/DECISIONS.md").splitlines() if "SPEC 010" in row]
+    assert any("converge" in row for row in rows)
+    assert any("nit" in row for row in rows)
