@@ -470,6 +470,16 @@ def test_neither_deviations_form_names_both(tmp_path, status, form):
     assert "missing" not in named[0]
 
 
+# SPEC 010's regression, guarded by AC9 and AC10: a spec in progress carries only the keys its
+# status requires, and no deviations key before `implemented`. Widening DEVIATIONS_DUE to an
+# earlier status would turn every such spec red.
+@pytest.mark.parametrize("status", ["plan-draft", "plan-approved"])
+def test_a_spec_in_progress_needs_no_deviations_key(tmp_path, status):
+    metrics = {key: COMPLETE[key] for key in workflow_metrics.REQUIRED[status]}
+    assert "deviations" not in metrics
+    assert workflow_metrics.check(spec_dir(tmp_path, status, metrics)) == []
+
+
 def costed(**extra: str) -> dict[str, str]:
     return dict(COMPLETE, **extra)
 

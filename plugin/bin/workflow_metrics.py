@@ -166,9 +166,11 @@ def repository_roots(spec_dir: Path) -> list[Path]:
     return [root.resolve() for root in roots]
 
 
+# A transcript still being written, or left by a crashed session, can end inside a multi-byte
+# character: `errors="replace"` keeps that from stopping the whole run.
 def read_lines(path: Path):
     try:
-        with path.open() as handle:
+        with path.open(encoding="utf-8", errors="replace") as handle:
             for line in handle:
                 try:
                     entry = json.loads(line)
@@ -180,8 +182,12 @@ def read_lines(path: Path):
         return
 
 
+# The prompt is the first `user` entry: an entry of another type written ahead of it must not
+# hide the agent.
 def prompt_and_cwd(path: Path) -> tuple[str, str]:
     for entry in read_lines(path):
+        if entry.get("type") != "user":
+            continue
         message = entry.get("message")
         content = message.get("content") if isinstance(message, dict) else None
         if isinstance(content, list):
@@ -201,7 +207,7 @@ def find_agents(source: Path) -> dict[str, tuple[dict, list[Path]]]:
         if meta_path.parent.name != "subagents":
             continue
         try:
-            meta = json.loads(meta_path.read_text())
+            meta = json.loads(meta_path.read_text(encoding="utf-8", errors="replace"))
         except (OSError, ValueError):
             continue
         if not isinstance(meta, dict):
@@ -218,7 +224,11 @@ def find_agents(source: Path) -> dict[str, tuple[dict, list[Path]]]:
 # directory as a whole path segment, and it ran inside this repository: a spec with the same
 # number, or even the same name, in another repository is not counted. Its descendants (the
 # final review's perspectives, the converge pass) count toward its stage.
-def stage_usage(spec_dir: Path, source: Path) -> dict[str, dict[str, list[int]]]:
+# `estimates`, when given, gets per stage the logged output tokens and an estimate from the
+# content (see `content_tokens`).
+def stage_usage(
+    spec_dir: Path, source: Path, estimates: dict[str, list[int]] | None = None
+) -> dict[str, dict[str, list[int]]]:
     agents = find_agents(source)
     name = re.compile(rf"(?<![\w.-]){re.escape(spec_dir.resolve().name)}(?![\w.-])")
     roots = repository_roots(spec_dir)
@@ -245,6 +255,7 @@ def stage_usage(spec_dir: Path, source: Path) -> dict[str, dict[str, list[int]]]
         return None
 
     messages: dict[str, tuple[str, str, tuple[int, ...]]] = {}
+    blocks: dict[str, set[str]] = {}
     for agent_id, (_, transcripts) in agents.items():
         stage = owning_stage(agent_id)
         if stage is None:
@@ -262,12 +273,40 @@ def stage_usage(spec_dir: Path, source: Path) -> dict[str, dict[str, list[int]]]
                 tokens = usage_tokens(usage)
                 if key not in messages or tokens[-1] > messages[key][2][-1]:
                     messages[key] = (stage, model, tokens)
+                content = message.get("content")
+                if isinstance(content, list):
+                    blocks.setdefault(key, set()).update(
+                        json.dumps(block, sort_keys=True) for block in content
+                    )
     stages: dict[str, dict[str, list[int]]] = {}
-    for stage, model, tokens in messages.values():
+    for key, (stage, model, tokens) in messages.items():
         totals = stages.setdefault(stage, {}).setdefault(model, [0] * len(TOKEN_TYPES))
         for index, count in enumerate(tokens):
             totals[index] += count
+        if estimates is not None:
+            estimate = estimates.setdefault(stage, [0, 0])
+            estimate[0] += tokens[-1]
+            estimate[1] += content_tokens(blocks.get(key, set()))
     return stages
+
+
+# Claude Code often logs a message's `output_tokens` from the start of the stream, not its
+# final count, so the logged output is a lower bound. Characters / 4 of the logged content is
+# a rough size of what the model wrote, used only to warn, never to price.
+def content_tokens(blocks: set[str]) -> int:
+    return sum(len(block) for block in blocks) // 4
+
+
+# Warn when the content is at least twice the logged output and more than 1000 tokens apart,
+# so small or empty messages stay quiet.
+def output_shortfall(stage: str, logged: int, estimated: int) -> str | None:
+    if estimated < 2 * logged or estimated - logged <= 1000:
+        return None
+    return (
+        f"stage `{stage}`: transcripts log {logged} output tokens, while the content comes to "
+        f"about {estimated} (characters / 4); Claude Code often logs the output count from "
+        f"the start of the stream, so `{COST_KEYS[stage]}` is a lower bound"
+    )
 
 
 FRONTMATTER = re.compile(r"---\n(.*?)\n---", re.DOTALL)
@@ -507,8 +546,14 @@ def write_costs(text: str, values: dict[str, int]) -> str | None:
     if close < 0:
         return None
     lines = text[4 : close + 1].splitlines(keepends=True)
+    # The same test as `parse_metrics`, so `metrics: ` with a trailing space is still the block.
     start = next(
-        (index for index, line in enumerate(lines) if line.rstrip("\n") == "metrics:"), None
+        (
+            index
+            for index, line in enumerate(lines)
+            if not line.startswith(" ") and line.strip() == "metrics:"
+        ),
+        None,
     )
     if start is None:
         lines.append("metrics:\n")
@@ -551,11 +596,12 @@ def usage_table(stages: dict[str, dict[str, list[int]]], cents: dict[str, int | 
 def record_cost(spec_dir: Path, source: Path) -> int:
     spec = spec_dir / "SPEC.md"
     try:
-        text = spec.read_text()
-    except OSError as exc:
+        text = spec.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
         print(f"no readable SPEC.md in {spec_dir}: {exc}", file=sys.stderr)
         return 1
-    stages = stage_usage(spec_dir, source) if source.is_dir() else {}
+    estimates: dict[str, list[int]] = {}
+    stages = stage_usage(spec_dir, source, estimates) if source.is_dir() else {}
     if not stages:
         print(
             f"no stage transcripts of {spec_dir.resolve().name} in {source}; "
@@ -579,6 +625,9 @@ def record_cost(spec_dir: Path, source: Path) -> int:
             )
         elif cents[stage] is not None:
             values[key] = cents[stage]
+        shortfall = output_shortfall(stage, *estimates.get(stage, [0, 0]))
+        if shortfall:
+            print(shortfall, file=sys.stderr)
     print(usage_table(stages, cents))
     if not values:
         return 0
@@ -586,7 +635,7 @@ def record_cost(spec_dir: Path, source: Path) -> int:
     if updated is None:
         print(f"{spec} has no frontmatter; cost not written", file=sys.stderr)
     elif updated != text:
-        spec.write_text(updated)
+        spec.write_text(updated, encoding="utf-8")
     return 0
 
 
@@ -597,6 +646,10 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--transcripts")
     parser.add_argument("directory", nargs="?")
     args = parser.parse_args(argv[1:])
+    if args.check and args.record_cost:
+        parser.error("--check and --record-cost are separate runs; pass one of them")
+    if args.transcripts and not args.record_cost:
+        parser.error("--transcripts only works with --record-cost")
 
     if args.record_cost:
         if not args.directory:

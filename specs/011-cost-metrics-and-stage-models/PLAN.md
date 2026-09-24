@@ -762,3 +762,25 @@ Rejected:
   guard runs.
 
 Left out: 12 nit findings.
+
+**2026-09-24, /pipeline:final-review (apply).** All twelve findings were accepted (see
+`## Owner decisions`) and fixed. `bash scripts/check.sh` → `ALL GREEN` (2161 tests). Each
+new code test was checked red against a mutation of the fix (F2, F3, F6, F7, F10, F11), and
+the `parentAgentId` cycle test hangs without the cycle guard.
+
+| id | change |
+|----|--------|
+| F1 | `--record-cost` keeps pricing the logged `output_tokens` and warns on stderr, per stage, when the logged content (characters / 4, each content block once) is at least twice the logged output and more than 1000 tokens above it; the estimate is never priced. README ("Output tokens are a lower bound"), CHANGELOG 0.8.0 and the 2026-09-24 cost row of `docs/DECISIONS.md` say the output is a lower bound. A follow-up to find the final count is in `docs/BACKLOG.md` (P2). Tests: `test_an_output_count_far_below_the_content_warns`, `test_small_content_does_not_warn`, `test_content_estimates_are_per_stage` |
+| F2 | Transcripts are read with `encoding="utf-8", errors="replace"`, `meta.json` likewise, and SPEC.md is read and written as UTF-8. Tests: `test_a_transcript_cut_inside_a_character_is_still_read`, `test_a_spec_with_non_ascii_text_keeps_it` (under `LC_ALL=C`) |
+| F3 | `write_costs` finds the block the way `parse_metrics` does (a top-level line whose stripped text is `metrics:`). Test: `test_a_metrics_line_with_a_trailing_space_is_the_block` |
+| F4 | `ship` Closing step 2: still red after the one rerun → steps 3 and 4 are skipped, the red check and its run link go into the owner's summary, and Closing ends. Test: `test_a_cost_commit_still_red_after_the_rerun_ends_closing` |
+| F5 | `ship` names every ignored `models` entry, with its value, in the owner's summary (Starting a stage agent, Closing step 5); the guard says "that entry falls back to `inherit`" for `models.*` problems, and the README's validation paragraph says so. Tests: `test_ignored_models_entries_reach_the_owner`, `test_a_bad_models_entry_warns_about_that_entry_only` |
+| F6 | A fixture with a real `git worktree add` lane: the spec costed from inside the lane counts agents with a main-checkout `cwd` and a lane `cwd`. Test: `test_a_spec_costed_from_inside_a_real_lane` |
+| F7 | `plan-draft` and `plan-approved` pass with only their required keys and no deviations key. Test: `test_a_spec_in_progress_needs_no_deviations_key` |
+| F8 | README: a second run replaces the keys it writes; a stage skipped on a re-run keeps the value an earlier run wrote |
+| F9 | `test_the_manifest_is_at_least_0_8_0` compares versions; the CHANGELOG section for the manifest version stays pinned in `test_readme.py` |
+| F10 | `prompt_and_cwd` takes the first `type == "user"` entry. Test: `test_an_entry_ahead_of_the_prompt_does_not_hide_the_agent` |
+| F11 | `--check` with `--record-cost`, and `--transcripts` without `--record-cost`, end in `parser.error` (exit 2), SPEC.md untouched. Test: `test_options_that_do_not_go_together_are_refused` |
+| F12 | Fixtures for a grandchild agent, a `parentAgentId` cycle and a `metrics:` block followed by another top-level key: `test_a_grandchild_counts_and_a_parent_cycle_ends`, `test_a_block_followed_by_another_key_keeps_it_outside` |
+
+No backlog trigger fired. New backlog item: the output-count lower bound (P2, from F1).

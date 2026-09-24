@@ -25,7 +25,9 @@ covers the new `--record-cost` call.
   and the converge pass — from the transcripts, and writes `cost_plan_cents`,
   `cost_plan_review_cents`, `cost_implement_cents` and `cost_final_review_cents`. The unit
   is a cent at the API list rates of 2026-09-24, from a rate table that is never repriced.
-  Stdout shows the tokens per stage by type and model. `/pipeline:ship` runs it in Closing
+  Stdout shows the tokens per stage by type and model. The output count is a lower bound:
+  Claude Code often logs a message's `output_tokens` from the start of the stream, and
+  stderr warns when a stage's logged content is far larger. `/pipeline:ship` runs it in Closing
   after the final review's `apply`, then commits and pushes the change.
 - `converge_gaps`, `deviations_minor` and `deviations_major` metric keys; `implement` writes
   them instead of `deviations`. Major is a deviation that changes the scope, the

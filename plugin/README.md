@@ -42,7 +42,8 @@ The one place where a project describes itself. The file may be missing: then th
 apply, and the guard prints a warning on stderr once per session and **never blocks** for
 that reason. An unknown key or a wrong type ends in a readable validation error
 (`python3 bin/workflow_config.py --check`), again without blocking the session. Validation
-goes section by section: a faulty section falls back to the defaults with a warning, and
+goes section by section: a faulty section falls back to the defaults with a warning (in
+`models` only the faulty entry, which falls back to `inherit`), and
 the others keep configuring the rules — a typo in one key does not disarm the whole guard.
 
 | key | default | meaning |
@@ -375,10 +376,16 @@ Prices what the spec's four stage subagents spent and writes `cost_plan_cents`,
   are never changed — a new model is only added at its launch rates — so a cent is a fixed
   unit and costs from different years compare. Only the stage total is rounded.
 - **Output.** Stdout shows a table per stage: models, tokens by type (input, cache write
-  5 min, cache write 1 h, cache read, output) and cents. A second run replaces the keys;
-  every other byte of SPEC.md stays as it was.
+  5 min, cache write 1 h, cache read, output) and cents. A second run replaces the keys it
+  writes; every other byte of SPEC.md stays as it was.
+- **Output tokens are a lower bound.** Claude Code often logs a message's `output_tokens`
+  from the start of the stream rather than its final count, so the output share of a cost
+  is undercounted, by a share that differs by model and stage. When a stage's logged
+  content (characters / 4) is at least twice its logged output and more than 1000 tokens
+  above it, stderr says so; the estimate is never priced.
 - **Warnings, never a stop.** No transcripts, a stage without transcripts, or a model missing
-  from the rate table leaves that key unwritten, names the reason on stderr and exits `0`,
+  from the rate table leaves that key unwritten — a value an earlier run wrote is kept —
+  names the reason on stderr and exits `0`,
   because a missing cost must not stop the closing of a spec. Only a spec directory
   without a readable SPEC.md exits `1`. Cost needs local transcripts: a spec run in the
   cloud or on another machine has none here.

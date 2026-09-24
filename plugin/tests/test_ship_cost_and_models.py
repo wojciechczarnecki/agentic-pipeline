@@ -70,3 +70,22 @@ def test_the_stage_prompt_names_the_spec_directory():
     starting = section("Starting a stage agent")
     assert "`<docs.specsDir>/NNN-<slug>/SPEC.md`" in starting
     assert "`--record-cost`" in starting
+
+
+# A metrics-only commit that stays red after its one rerun: no notification, the red check
+# goes to the owner, and Closing ends — the reviewer has already returned DONE and will not
+# escalate it.
+def test_a_cost_commit_still_red_after_the_rerun_ends_closing():
+    closing = section("Closing")
+    step = closing.split("2. Record the cost", 1)[1].split(" 3. ", 1)[0]
+    for token in ["Still red after that one rerun", "skip steps 3 and 4", "end Closing there"]:
+        assert token in step, token
+
+
+# The guard's warning about a bad `models` entry is not shown in a normal session, so the
+# orchestrator names the ignored entries for the owner.
+def test_ignored_models_entries_reach_the_owner():
+    starting = section("Starting a stage agent")
+    assert "name every `models` entry you ignored" in starting
+    summary = section("Closing").split(" 5. Summary for the owner", 1)[1]
+    assert "the `models` entries you ignored" in summary

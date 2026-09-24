@@ -433,10 +433,13 @@ def read_config(cwd: Path, env: dict[str, str], warn: bool = False) -> workflow_
         return workflow_config.Config(workflow_config.defaults(), unreadable=True)
     if warn:
         for problem in problems:
-            print(
-                f"pipeline guard: {problem}; that section falls back to the defaults",
-                file=sys.stderr,
+            # `models` is checked entry by entry, so a bad entry costs only its own stage.
+            fallback = (
+                "that entry falls back to `inherit`"
+                if "`models." in problem
+                else "that section falls back to the defaults"
             )
+            print(f"pipeline guard: {problem}; {fallback}", file=sys.stderr)
     return config
 
 

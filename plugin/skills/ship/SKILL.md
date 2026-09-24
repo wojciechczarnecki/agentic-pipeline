@@ -94,9 +94,10 @@ The model per stage comes from `models.<stage>` in `.claude/workflow.json`, with
 keys `plan` → `planner`, `plan-review` → `plan-reviewer`, `implement` → `implementer` and
 `final-review` → `reviewer` (both `report` and `apply`). When the entry is `sonnet`, `opus`,
 `haiku` or `fable`, pass it to `Agent` as `model`. When it is `inherit`, missing, or any
-other value, pass no `model`: the agent then runs on the session model, and the guard has
-already warned about a bad value. The same holds for a stage run again under the Result
-protocol.
+other value, pass no `model`: the agent then runs on the session model. The guard's warning
+about a bad value goes to stderr, which a normal session does not show, so name every
+`models` entry you ignored, with its value, in the summary for the owner. The same holds for
+a stage run again under the Result protocol.
 
 You wait for the stage agent's result before you go on.
 
@@ -182,7 +183,9 @@ No findings in the report → skip the gate: record in the decisions, in the lan
    `chore: record stage cost for NNN`, run `git push`, and wait for
    `gh pr checks <number> --watch`, because the notification below promises green CI on the
    PR's last commit. A red check after this metrics-only commit is re-run like the
-   reviewer's status commit (`gh run rerun <id> --failed`). A non-zero exit or a warning
+   reviewer's status commit (`gh run rerun <id> --failed`). Still red after that one rerun:
+   skip steps 3 and 4, put the red check and its run link into the summary for the owner
+   (step 5), and end Closing there. A non-zero exit or a warning
    goes into the summary for the owner and does not stop Closing: a missing cost must not
    hold back a finished spec.
 3. `PushNotification`: "PR NNN ready to merge: <title>" — only with green CI. A PR
@@ -194,7 +197,8 @@ No findings in the report → skip the gate: record in the decisions, in the lan
    cost keys of step 2, which the `--record-cost` script writes.
 5. Summary for the owner: the PR link, the CI status, the link to the visual artifacts, the
    manual scenarios to check before the merge (from PLAN.md →
-   `### Manual (performed by the owner)` in `## End-to-end verification`), the spec metrics.
+   `### Manual (performed by the owner)` in `## End-to-end verification`), the spec metrics,
+   and the `models` entries you ignored.
 
 ## Guardrails
 

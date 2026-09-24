@@ -623,3 +623,246 @@ def test_record_cost_output_passes_the_check(repo, tmp_path):
     spec = repo / "specs" / SPEC_NAME
     assert run_record(spec, "--transcripts", str(source), home=tmp_path / "h").returncode == 0
     assert workflow_metrics.check(spec) == []
+
+
+# A transcript cut off inside a multi-byte character (a lane still writing, a crashed
+# session) must not stop the run: every other stage keeps its cost.
+def test_a_transcript_cut_inside_a_character_is_still_read(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    transcript = source / "slug" / "s1" / "subagents" / "agent-im.jsonl"
+    with transcript.open("ab") as handle:
+        handle.write(b'{"type": "assistant", "message": {"id": "cut", "text": "\xe2\x80')
+    spec = repo / "specs" / SPEC_NAME
+    result = run_record(spec, "--transcripts", str(source), home=tmp_path / "h")
+    assert result.returncode == 0, result.stderr
+    assert "Traceback" not in result.stderr
+    assert cost_values(spec) == EXPECTED
+
+
+def test_a_spec_with_non_ascii_text_keeps_it(repo, tmp_path):
+    spec = repo / "specs" / SPEC_NAME
+    text = (spec / "SPEC.md").read_text(encoding="utf-8") + "Naïve café — déjà vu.\n"
+    (spec / "SPEC.md").write_bytes(text.encode("utf-8"))
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    result = run_record(
+        spec, "--transcripts", str(source), home=tmp_path / "h", env={"LC_ALL": "C"}
+    )
+    assert result.returncode == 0, result.stderr
+    assert (spec / "SPEC.md").read_bytes().decode("utf-8").endswith("Naïve café — déjà vu.\n")
+    assert cost_values(spec) == EXPECTED
+
+
+# `metrics: ` with a trailing space is the same block for `parse_metrics`, so it must not get
+# a second `metrics:` key.
+def test_a_metrics_line_with_a_trailing_space_is_the_block(repo, tmp_path):
+    spec = repo / "specs" / SPEC_NAME
+    text = (spec / "SPEC.md").read_text().replace("metrics:\n", "metrics: \n")
+    (spec / "SPEC.md").write_text(text)
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    assert run_record(spec, "--transcripts", str(source), home=tmp_path / "h").returncode == 0
+    after = (spec / "SPEC.md").read_text()
+    assert after.count("metrics:") == 1
+    assert cost_values(spec) == EXPECTED
+
+
+def test_a_block_followed_by_another_key_keeps_it_outside(repo, tmp_path):
+    spec = repo / "specs" / SPEC_NAME
+    text = (spec / "SPEC.md").read_text().replace("\n---\n", "\nowner: someone\n---\n", 1)
+    (spec / "SPEC.md").write_text(text)
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    assert run_record(spec, "--transcripts", str(source), home=tmp_path / "h").returncode == 0
+    after = (spec / "SPEC.md").read_text()
+    assert "  cost_final_review_cents: 5\nowner: someone\n---\n" in after
+    assert cost_values(spec) == EXPECTED
+
+
+# Claude Code may log a message's `output_tokens` from the start of the stream; the output
+# count is then a lower bound, and the run says so without changing the cost.
+def append_content(source: Path, agent_id: str, message_id: str, text: str) -> None:
+    transcript = source / "slug" / "s1" / "subagents" / f"agent-{agent_id}.jsonl"
+    line = {
+        "type": "assistant",
+        "message": {
+            "id": message_id,
+            "model": OPUS,
+            "usage": usage(output=8),
+            "content": [{"type": "text", "text": text}],
+        },
+    }
+    with transcript.open("a") as handle:
+        handle.write(json.dumps(line) + "\n")
+
+
+def test_an_output_count_far_below_the_content_warns(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    append_content(source, "rv", "big", "x" * 20_000)
+    spec = repo / "specs" / SPEC_NAME
+    result = run_record(spec, "--transcripts", str(source), home=tmp_path / "h")
+    assert result.returncode == 0, result.stderr
+    warned = [line for line in result.stderr.splitlines() if "lower bound" in line]
+    assert len(warned) == 1, result.stderr
+    assert "final-review" in warned[0] and "cost_final_review_cents" in warned[0]
+    # The 8 logged tokens are priced; the estimate never is: 2 500 000 + 2 000 000 + 8 × 2000
+    # = 4 516 000 → 4.5 → 5.
+    assert cost_values(spec) == EXPECTED
+
+
+def test_small_content_does_not_warn(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    append_content(source, "rv", "small", "x" * 400)
+    result = run_record(
+        repo / "specs" / SPEC_NAME, "--transcripts", str(source), home=tmp_path / "h"
+    )
+    assert "lower bound" not in result.stderr
+
+
+def test_content_estimates_are_per_stage(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    append_content(source, "rv", "big", "x" * 20_000)
+    append_content(source, "rv", "big", "x" * 20_000)
+    estimates: dict[str, list[int]] = {}
+    workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source, estimates)
+    logged, estimated = estimates["final-review"]
+    assert logged == 1000 + 0 + 8
+    # One block, logged twice, counts once.
+    assert 5000 <= estimated < 5100
+    assert estimates["plan"] == [3000, 0]
+
+
+# The prompt is the first `user` entry, whatever Claude Code writes ahead of it.
+def test_an_entry_ahead_of_the_prompt_does_not_hide_the_agent(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "a",
+        "pipeline:planner",
+        prompt(),
+        repo,
+        [("m1", OPUS, usage(output=5))],
+    )
+    transcript = source / "slug" / "s1" / "subagents" / "agent-a.jsonl"
+    header = json.dumps({"type": "summary", "cwd": str(repo), "message": {"content": "x"}})
+    transcript.write_text(header + "\n" + transcript.read_text())
+    stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source)
+    assert stages == {"plan": {OPUS: [0, 0, 0, 0, 5]}}
+
+
+def test_a_grandchild_counts_and_a_parent_cycle_ends(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_agent(
+        source, "slug", "s1", "rv", "pipeline:reviewer", prompt(), repo, [("m1", OPUS, usage())]
+    )
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "p",
+        "general-purpose",
+        "x",
+        repo,
+        [("m2", OPUS, usage(output=3))],
+        parent="rv",
+    )
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "g",
+        "Explore",
+        "x",
+        repo,
+        [("m3", OPUS, usage(output=4))],
+        parent="p",
+    )
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "c1",
+        "general-purpose",
+        "x",
+        repo,
+        [("m4", OPUS, usage(output=100))],
+        parent="c2",
+    )
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "c2",
+        "general-purpose",
+        "x",
+        repo,
+        [("m5", OPUS, usage(output=100))],
+        parent="c1",
+    )
+    stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source)
+    assert stages == {"final-review": {OPUS: [0, 0, 0, 0, 7]}}
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["--check", "--record-cost", "SPEC_DIR"],
+        ["--transcripts", "SOURCE", "SPEC_DIR"],
+        ["--check", "--transcripts", "SOURCE", "SPEC_DIR"],
+    ],
+    ids=["check-and-record", "transcripts-with-report", "transcripts-with-check"],
+)
+def test_options_that_do_not_go_together_are_refused(repo, tmp_path, args):
+    spec = repo / "specs" / SPEC_NAME
+    before = (spec / "SPEC.md").read_bytes()
+    argv = [{"SPEC_DIR": str(spec), "SOURCE": str(tmp_path)}.get(arg, arg) for arg in args]
+    result = subprocess.run([sys.executable, str(SCRIPT), *argv], capture_output=True, text=True)
+    assert result.returncode == 2
+    assert "usage" in result.stderr
+    assert (spec / "SPEC.md").read_bytes() == before
+
+
+# A real lane: `ship` runs `--record-cost` on the lane's spec, while agents ran in the main
+# checkout and in the lane. Only `--git-common-dir` leads from the lane back to the main
+# checkout and to `worktree.dir` resolved from there.
+def test_a_spec_costed_from_inside_a_real_lane(repo, tmp_path):
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            check=True,
+            capture_output=True,
+        )
+
+    git("add", "-A")
+    git("commit", "-q", "-m", "init")
+    lane = tmp_path / "wt" / "011-x"
+    git("worktree", "add", "-q", "-b", "lane", str(lane))
+    source = tmp_path / "projects"
+    write_agent(
+        source,
+        "-repo",
+        "s1",
+        "pl",
+        "pipeline:planner",
+        prompt(),
+        repo,
+        [("m1", OPUS, usage(output=3))],
+    )
+    write_agent(
+        source,
+        "-wt-011-x",
+        "s2",
+        "im",
+        "pipeline:implementer",
+        prompt(),
+        lane,
+        [("m2", OPUS, usage(output=4))],
+    )
+    stages = workflow_metrics.stage_usage(lane / "specs" / SPEC_NAME, source)
+    assert stages == {"plan": {OPUS: [0, 0, 0, 0, 3]}, "implement": {OPUS: [0, 0, 0, 0, 4]}}
