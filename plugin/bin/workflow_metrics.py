@@ -8,7 +8,9 @@
 # problem (every one named on stderr), an unreadable spec directory or a broken
 # workflow.json; 2 — argparse rejected the arguments.
 import argparse
+import json
 import re
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -109,6 +111,158 @@ def stage_cents(tokens_by_model: dict[str, list[int]]) -> int | None:
             return None
         numerator += sum(count * rate for count, rate in zip(tokens, rates, strict=True))
     return (numerator + 500_000) // 1_000_000
+
+
+STAGE_AGENTS = {
+    "planner": "plan",
+    "plan-reviewer": "plan-review",
+    "implementer": "implement",
+    "reviewer": "final-review",
+}
+
+
+def stage_of(agent_type: object) -> str | None:
+    if not isinstance(agent_type, str):
+        return None
+    return STAGE_AGENTS.get(agent_type.removeprefix("pipeline:"))
+
+
+def git_path(directory: Path, *args: str) -> Path | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(directory), "rev-parse", "--path-format=absolute", *args],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    output = result.stdout.strip()
+    return Path(output) if result.returncode == 0 and output else None
+
+
+# Where a stage agent of this repository may have run: the spec's own checkout, the main
+# checkout, and the configured worktree directory, where lanes live under a project slug of
+# their own.
+def repository_roots(spec_dir: Path) -> list[Path]:
+    spec_dir = spec_dir.resolve()
+    checkout = git_path(spec_dir, "--show-toplevel") or workflow_config.project_root(spec_dir)
+    common = git_path(spec_dir, "--git-common-dir")
+    main_root = common.parent if common else checkout
+    roots = [checkout, main_root]
+    try:
+        config, _ = workflow_config.load_sections(main_root)
+        lanes = config.get("worktree.dir")
+    except workflow_config.ConfigError:
+        lanes = None
+    if not isinstance(lanes, str) or Path(lanes).is_absolute():
+        lanes = workflow_config.defaults()["worktree"]["dir"]
+    roots.append((main_root / lanes).resolve())
+    return [root.resolve() for root in roots]
+
+
+def read_lines(path: Path):
+    try:
+        with path.open() as handle:
+            for line in handle:
+                try:
+                    entry = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(entry, dict):
+                    yield entry
+    except OSError:
+        return
+
+
+def prompt_and_cwd(path: Path) -> tuple[str, str]:
+    for entry in read_lines(path):
+        message = entry.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        if isinstance(content, list):
+            content = " ".join(
+                block.get("text", "")
+                for block in content
+                if isinstance(block, dict) and isinstance(block.get("text"), str)
+            )
+        cwd = entry.get("cwd")
+        return (content if isinstance(content, str) else ""), (cwd if isinstance(cwd, str) else "")
+    return "", ""
+
+
+def find_agents(source: Path) -> dict[str, tuple[dict, list[Path]]]:
+    agents: dict[str, tuple[dict, list[Path]]] = {}
+    for meta_path in sorted(source.rglob("agent-*.meta.json")):
+        if meta_path.parent.name != "subagents":
+            continue
+        try:
+            meta = json.loads(meta_path.read_text())
+        except (OSError, ValueError):
+            continue
+        if not isinstance(meta, dict):
+            continue
+        agent_id = meta_path.name.removeprefix("agent-").removesuffix(".meta.json")
+        transcript = meta_path.with_name(f"agent-{agent_id}.jsonl")
+        known = agents.setdefault(agent_id, (meta, []))
+        if transcript.is_file():
+            known[1].append(transcript)
+    return agents
+
+
+# A stage agent belongs to this spec when its type is a stage agent, its prompt names the spec
+# directory as a whole path segment, and it ran inside this repository: a spec with the same
+# number, or even the same name, in another repository is not counted. Its descendants (the
+# final review's perspectives, the converge pass) count toward its stage.
+def stage_usage(spec_dir: Path, source: Path) -> dict[str, dict[str, list[int]]]:
+    agents = find_agents(source)
+    name = re.compile(rf"(?<![\w.-]){re.escape(spec_dir.resolve().name)}(?![\w.-])")
+    roots = repository_roots(spec_dir)
+    stage_agents: dict[str, str] = {}
+    for agent_id, (meta, transcripts) in agents.items():
+        stage = stage_of(meta.get("agentType"))
+        if stage is None or not transcripts:
+            continue
+        text, cwd = prompt_and_cwd(transcripts[0])
+        if not cwd or not name.search(text):
+            continue
+        where = Path(cwd).resolve()
+        if any(where.is_relative_to(root) for root in roots):
+            stage_agents[agent_id] = stage
+
+    def owning_stage(agent_id: str) -> str | None:
+        seen = set()
+        while agent_id and agent_id not in seen:
+            if agent_id in stage_agents:
+                return stage_agents[agent_id]
+            seen.add(agent_id)
+            parent = agents.get(agent_id, ({}, []))[0].get("parentAgentId")
+            agent_id = parent if isinstance(parent, str) else ""
+        return None
+
+    messages: dict[str, tuple[str, str, tuple[int, ...]]] = {}
+    for agent_id, (_, transcripts) in agents.items():
+        stage = owning_stage(agent_id)
+        if stage is None:
+            continue
+        for transcript in transcripts:
+            for entry in read_lines(transcript):
+                message = entry.get("message")
+                if entry.get("type") != "assistant" or not isinstance(message, dict):
+                    continue
+                model, usage, key = message.get("model"), message.get("usage"), message.get("id")
+                if not isinstance(model, str) or model == "<synthetic>":
+                    continue
+                if not isinstance(usage, dict) or not isinstance(key, str):
+                    continue
+                tokens = usage_tokens(usage)
+                if key not in messages or tokens[-1] > messages[key][2][-1]:
+                    messages[key] = (stage, model, tokens)
+    stages: dict[str, dict[str, list[int]]] = {}
+    for stage, model, tokens in messages.values():
+        totals = stages.setdefault(stage, {}).setdefault(model, [0] * len(TOKEN_TYPES))
+        for index, count in enumerate(tokens):
+            totals[index] += count
+    return stages
 
 
 FRONTMATTER = re.compile(r"---\n(.*?)\n---", re.DOTALL)

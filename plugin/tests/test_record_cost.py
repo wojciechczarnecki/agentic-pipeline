@@ -1,5 +1,9 @@
 import importlib.util
+import json
+import subprocess
 from pathlib import Path
+
+import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "bin" / "workflow_metrics.py"
 _spec = importlib.util.spec_from_file_location("workflow_metrics", SCRIPT)
@@ -61,3 +65,242 @@ def test_usage_without_the_ttl_split_counts_as_5m():
         older, cache_creation={"ephemeral_5m_input_tokens": 2, "ephemeral_1h_input_tokens": 5}
     )
     assert workflow_metrics.usage_tokens(split) == (1, 2, 5, 3, 4)
+
+
+# The transcript layout of Claude Code 2.1.281: <source>/<project slug>/<session>/subagents/
+# agent-<id>.meta.json beside agent-<id>.jsonl, whose first line is the prompt with `cwd`.
+def write_agent(
+    source: Path,
+    slug: str,
+    session: str,
+    agent_id: str,
+    agent_type: str,
+    prompt: str,
+    cwd: Path,
+    messages: list[tuple[str, str, dict]],
+    parent: str | None = None,
+) -> None:
+    directory = source / slug / session / "subagents"
+    directory.mkdir(parents=True, exist_ok=True)
+    meta = {"agentType": agent_type, "description": "x"}
+    if parent:
+        meta["parentAgentId"] = parent
+    (directory / f"agent-{agent_id}.meta.json").write_text(json.dumps(meta))
+    lines = [
+        {
+            "type": "user",
+            "agentId": agent_id,
+            "cwd": str(cwd),
+            "message": {"role": "user", "content": [{"type": "text", "text": prompt}]},
+        }
+    ]
+    for message_id, model, usage in messages:
+        lines.append(
+            {
+                "type": "assistant",
+                "agentId": agent_id,
+                "cwd": str(cwd),
+                "message": {"id": message_id, "model": model, "usage": usage},
+            }
+        )
+    (directory / f"agent-{agent_id}.jsonl").write_text(
+        "".join(json.dumps(line) + "\n" for line in lines)
+    )
+
+
+SPEC_NAME = "011-cost-x"
+OPUS = "claude-opus-5-5"
+
+
+def usage(input_tokens=0, write_5m=0, write_1h=0, read=0, output=0) -> dict:
+    return {
+        "input_tokens": input_tokens,
+        "cache_creation_input_tokens": write_5m + write_1h,
+        "cache_read_input_tokens": read,
+        "cache_creation": {
+            "ephemeral_5m_input_tokens": write_5m,
+            "ephemeral_1h_input_tokens": write_1h,
+        },
+        "output_tokens": output,
+    }
+
+
+def git_repo(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "init", "-q", str(path)], check=True)
+    return path
+
+
+@pytest.fixture
+def repo(tmp_path) -> Path:
+    root = git_repo(tmp_path / "repo")
+    (root / ".claude").mkdir()
+    (root / ".claude" / "workflow.json").write_text('{"worktree": {"dir": "../wt"}}')
+    spec = root / "specs" / SPEC_NAME
+    spec.mkdir(parents=True)
+    (spec / "SPEC.md").write_text(
+        '---\nstatus: done\nstage_history:\n  - "done — 2026-09-24"\nmetrics:\n'
+        "  started_at: 2026-09-24T10:00\n  escalations: 0\n---\n\n# SPEC 011 — x\n\nBody.\n"
+    )
+    return root
+
+
+def prompt(name: str = SPEC_NAME) -> str:
+    return f"Spec 011: specs/{name}/SPEC.md and PLAN.md (status plan-approved)."
+
+
+def test_perspectives_and_both_reviewer_runs_count_toward_the_final_review(repo, tmp_path):
+    source = tmp_path / "projects"
+    for agent_id, output in [("r1", 10), ("r2", 20)]:
+        write_agent(
+            source,
+            "slug",
+            "s1",
+            agent_id,
+            "pipeline:reviewer",
+            prompt(),
+            repo,
+            [(f"m-{agent_id}", OPUS, usage(output=output))],
+        )
+    for index in range(3):
+        write_agent(
+            source,
+            "slug",
+            "s1",
+            f"p{index}",
+            "general-purpose",
+            "Review this diff.",
+            repo,
+            [(f"m-p{index}", OPUS, usage(input_tokens=100))],
+            parent="r1",
+        )
+    stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source)
+    assert stages == {"final-review": {OPUS: [300, 0, 0, 0, 30]}}
+
+
+def test_a_rerun_after_an_escalation_counts_toward_its_stage(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "a",
+        "pipeline:planner",
+        prompt(),
+        repo,
+        [("m1", OPUS, usage(output=5))],
+    )
+    write_agent(
+        source, "slug", "s2", "b", "planner", prompt(), repo, [("m2", OPUS, usage(output=7))]
+    )
+    stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source)
+    assert stages == {"plan": {OPUS: [0, 0, 0, 0, 12]}}
+
+
+def test_other_specs_and_other_repositories_are_not_counted(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "a",
+        "pipeline:implementer",
+        prompt(),
+        repo,
+        [("m1", OPUS, usage(output=5))],
+    )
+    spec = repo / "specs" / SPEC_NAME
+    before = workflow_metrics.stage_usage(spec, source)
+    other_repo = git_repo(tmp_path / "other")
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "b",
+        "pipeline:implementer",
+        prompt("012-other"),
+        repo,
+        [("m2", OPUS, usage(output=50))],
+    )
+    write_agent(
+        source,
+        "other-slug",
+        "s3",
+        "c",
+        "pipeline:implementer",
+        prompt(),
+        other_repo,
+        [("m3", OPUS, usage(output=500))],
+    )
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "d",
+        "pipeline:implementer",
+        prompt(SPEC_NAME + "-v2"),
+        repo,
+        [("m4", OPUS, usage(output=5000))],
+    )
+    assert workflow_metrics.stage_usage(spec, source) == before
+    assert before == {"implement": {OPUS: [0, 0, 0, 0, 5]}}
+
+
+def test_repeated_lines_and_archive_copies_count_once(repo, tmp_path):
+    source = tmp_path / "archive"
+    for day in ["2026-09-23", "2026-09-24"]:
+        write_agent(
+            source / day,
+            "slug",
+            "s1",
+            "a",
+            "pipeline:plan-reviewer",
+            prompt(),
+            repo,
+            [
+                ("m1", OPUS, usage(input_tokens=3, output=1)),
+                ("m1", OPUS, usage(input_tokens=3, output=4)),
+                ("m1", OPUS, usage(input_tokens=3, output=9)),
+            ],
+        )
+    stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source)
+    assert stages == {"plan-review": {OPUS: [3, 0, 0, 0, 9]}}
+
+
+def test_synthetic_lines_are_skipped(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_agent(
+        source,
+        "slug",
+        "s1",
+        "a",
+        "pipeline:planner",
+        prompt(),
+        repo,
+        [("m1", "<synthetic>", usage(output=100)), ("m2", OPUS, usage(output=2))],
+    )
+    directory = source / "slug" / "s1" / "subagents"
+    with (directory / "agent-a.jsonl").open("a") as handle:
+        handle.write("not json\n")
+        handle.write(json.dumps({"type": "assistant", "message": {"id": "m3", "model": OPUS}}))
+        handle.write("\n")
+    stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source)
+    assert stages == {"plan": {OPUS: [0, 0, 0, 0, 2]}}
+
+
+def test_worktree_lane_cwd_is_accepted(repo, tmp_path):
+    source = tmp_path / "projects"
+    lane = tmp_path / "wt" / "011-x"
+    lane.mkdir(parents=True)
+    write_agent(
+        source,
+        "-wt-011-x",
+        "s1",
+        "a",
+        "pipeline:implementer",
+        prompt(),
+        lane,
+        [("m1", OPUS, usage(write_1h=10))],
+    )
+    stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source)
+    assert stages == {"implement": {OPUS: [0, 0, 10, 0, 0]}}

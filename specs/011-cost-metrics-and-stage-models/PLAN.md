@@ -199,8 +199,8 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
 | AC1 | 3, 5 | `plugin/tests/test_record_cost.py::test_stage_cost_is_tokens_times_rates_rounded_once`, `::test_record_cost_writes_the_four_keys` | |
-| AC2 | 4 | `plugin/tests/test_record_cost.py::test_perspectives_and_both_reviewer_runs_count_toward_the_final_review`, `::test_a_rerun_after_an_escalation_counts_toward_its_stage` | |
-| AC3 | 4 | `plugin/tests/test_record_cost.py::test_other_specs_and_other_repositories_are_not_counted` | |
+| AC2 | 4 | `plugin/tests/test_record_cost.py::test_perspectives_and_both_reviewer_runs_count_toward_the_final_review`, `::test_a_rerun_after_an_escalation_counts_toward_its_stage` | `uv run pytest -q plugin/tests/test_record_cost.py -k perspectives` → `AssertionError: assert {} == {'final-review': {'claude-opus-5-5': [300, 0, 0, 0, 30]}}` (stub) |
+| AC3 | 4 | `plugin/tests/test_record_cost.py::test_other_specs_and_other_repositories_are_not_counted` | `uv run pytest -q plugin/tests/test_record_cost.py -k other_specs` → `AssertionError: assert {} == {'implement': {'claude-opus-5-5': [0, 0, 0, 0, 5]}}` (stub) |
 | AC4 | 4, 5 | `plugin/tests/test_record_cost.py::test_transcripts_option_reads_that_directory`, `::test_default_source_finds_worktree_lanes` | |
 | AC5 | 5 | `plugin/tests/test_record_cost.py::test_a_second_run_replaces_the_keys_and_keeps_every_other_byte` | |
 | AC6 | 5 | `plugin/tests/test_record_cost.py::test_an_unknown_model_skips_its_stage_and_is_named`, `::test_a_stage_without_transcripts_warns`, `::test_no_transcripts_leaves_the_file_unchanged` | |
@@ -279,7 +279,7 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
       - Stub the functions first (returning `None`), so that the tests fail on their
         assertions.
       Automatic verification: `uv run pytest -q plugin/tests/test_record_cost.py`
-- [ ] 4. Finding the spec's stage transcripts (AC2, AC3, AC4 discovery). Files:
+- [x] 4. Finding the spec's stage transcripts (AC2, AC3, AC4 discovery). Files:
       `plugin/bin/workflow_metrics.py` and `plugin/tests/test_record_cost.py`.
       - Add `stage_usage(spec_dir: Path, source: Path) -> dict[str, dict[str,
         list[int]]]` (stage → model → token totals), plus the helpers `repository_roots`,
