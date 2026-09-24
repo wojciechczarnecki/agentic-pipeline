@@ -16,6 +16,9 @@ metrics:
   implement_steps: 10
   implement_iterations: 1
   deviations: 1
+  final_review_blockers: 0
+  final_review_worth_fixing: 10
+  final_review_nits: 5
 ---
 
 # SPEC 010 — Test-first evidence, a converge pass and proportional review

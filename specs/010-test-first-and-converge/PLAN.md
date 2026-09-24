@@ -704,4 +704,124 @@ are fixed, and there is no new dependency or data migration.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+**2026-09-24, /pipeline:final-review (report, under /pipeline:ship).** Three independent
+perspectives (compliance, quality, tests) on `git diff origin/main...HEAD`; every finding
+below was checked in the code. `uv run pytest -q`: 2015 passed; ruff and black clean; both
+eval scaffolds run and create the situation their graders expect.
+
+AC → evidence matrix:
+
+| AC | Evidence | Proving test |
+|----|----------|--------------|
+| AC1 | `plugin/templates/PLAN.en.md:17-18`, `plugin/templates/PLAN.pl.md:17-18`: four-column header and separator; `sections.md` unchanged | `test_templates_language.py::test_the_ac_matrix_has_the_red_column`, section-map snapshot |
+| AC2 | `plugin/skills/implement/SKILL.md` `## Test-first evidence` (lines 107-133), procedure step 2 (78-82) | `test_test_first.py::test_implement_*` |
+| AC3 | `plugin/skills/plan/SKILL.md` steps 5 and 6; `plugin/skills/plan-review/SKILL.md` step 3 `**test-first:**` bullet | `test_test_first.py::test_plan_*`, `::test_plan_review_*` |
+| AC4 | `implement/SKILL.md` procedure step 5, `## Converge pass` (135-162), Handoff | `test_converge.py`, `test_stage_skills.py` (Finish prefix `6.`) |
+| AC5 | `plan` step 5, `plan-review` step 3, `final-review` report steps 2 and 4 | `test_review_depth.py::test_depth_*`, `::test_no_size_tiers_anywhere` |
+| AC6 | `final-review` report steps 2-5; `plugin/agents/reviewer.md:19-20`; `ship` → Gate: final review step 2 | `test_review_depth.py::test_nit_cap_*` |
+| AC7 | `plugin/evals/implement-escalates-on-never-red-test/` | `test_eval_cases.py` (`NEW_CASES`, `WRONG_BEHAVIOUR`, `test_never_red_*`) |
+| AC8 | `plugin/evals/implement-converge-finds-missing-ac/` (`Agent` allowed) | `test_eval_cases.py` (`test_converge_*`) |
+| AC9 | pending — owner's command after the PR is open | `plugin/evals/last-run.json` (not yet run) |
+| AC10 | `plugin/README.md` `### Implementation and review`; `plugin/CHANGELOG.md` 0.7.0; `plugin.json` 0.7.0; `docs/DECISIONS.md:50-51`; `docs/ROADMAP.md` Stage 6 (five items ticked) | `test_readme.py::test_the_readme_describes_test_first_and_converge`, `::test_the_changelog_records_spec_010`; `tests/test_documents.py::test_roadmap_ticks_spec_010`, `::test_decisions_record_spec_010` |
+| AC11 | `test_prompt_style.py` unchanged; full suite green | `test_prompt_style.py`, `bash scripts/check.sh` |
+
+Steps 1-10 are ticked with their commits; the matrix has red records for AC1-AC8 and AC10
+(AC9 `manual`, AC11 `n/a`); the one deviation is whitespace only; nothing outside the
+scope (no metric keys, no `workflow_metrics.py`, section map or version change).
+
+Findings:
+
+- **F1** `worth-fixing` — `plugin/skills/implement/SKILL.md:149-152` (and README,
+  CHANGELOG). The converge subagent does not see PLAN.md, so code a plan step asked for
+  but no AC names (a helper, a refactor) comes back `unrequested`; with no `## Deviations`
+  entry the rule gives it a removal step → the implementer removes code the approved plan
+  required. Fix: "`unrequested` code that no plan step and no `## Deviations` entry covers
+  gets a removal step".
+- **F2** `worth-fixing` — `plugin/skills/implement/SKILL.md:140-146`;
+  `plugin/tests/test_converge.py:41`. The subagent is to get "not … PLAN.md", but
+  `git diff origin/main...HEAD` includes the committed spec directory with PLAN.md, so the
+  fresh reader sees the plan anyway (and may flag the spec files as `unrequested`); the
+  test pins only "not your reasoning", so "give it PLAN.md but not your reasoning" passes.
+  Fix: a diff command that excludes `<docs.specsDir>/NNN-<slug>` (pathspec
+  `':(exclude)…'`), and pin "PLAN.md" in the withheld sentence.
+- **F3** `worth-fixing` — `plugin/skills/implement/SKILL.md:122-124`. "When the step writes
+  the test, rewrite it until it fails" assumes a green test is a weak test. If the AC's
+  behaviour already exists (the SPEC's premise is wrong), a correct test of the AC is
+  green → the rule pushes the agent to assert something beyond or against the AC to get
+  red. Fix: rewrite only when the test does not exercise the AC; a correct test of the AC
+  that passes on the old code is a gap in the SPEC → escalation.
+- **F4** `worth-fixing` — `plugin/skills/implement/SKILL.md:120-121`. "A step is not green,
+  and is not ticked while its AC has no red record" (a) reads, with its comma, as a bare
+  "a step is not green", and (b) deadlocks an AC delivered across several steps whose
+  proving test comes in a later step: the earlier steps can never be ticked. Fix: tie the
+  gate to the step that makes the AC's proving test pass ("the step that makes an AC's
+  proving test pass is not green and is not ticked while …"), and drop the comma.
+- **F5** `worth-fixing` — `plugin/skills/implement/SKILL.md:149-152` with 113-115. A
+  converge-added step for an AC the plan left out has no matrix row, so its red record has
+  nowhere to go and the final-review compliance check of every row misses it. Fix: "an
+  added step for an AC adds or updates its row in the AC → steps matrix".
+- **F6** `worth-fixing` — `plugin/skills/implement/SKILL.md:76-77, 157-162`;
+  `plugin/agents/implementer.md:10-11`. After an escalation from the second converge pass
+  and an owner decision, `ship` starts a new implementer: all steps are ticked, both pass
+  records exist, and nothing says whether to carry out the decided step, run a third pass
+  or go to the Definition of Done → the two-pass bound and resumption are undefined. Fix:
+  one sentence — after an owner decision on a converge gap, carry out the decided steps,
+  then the Definition of Done, without another pass; mirror it in `implementer.md`.
+- **F7** `worth-fixing` — `plugin/skills/ship/SKILL.md:133-142`, `plugin/README.md:150-160`.
+  The binding escalation-trigger lists do not name the two new triggers (a proving test
+  from the owner or the plan green before the change; a gap left after the second
+  converge pass) → a stage agent reading the contract list finds no trigger for them.
+  Fix: add both bullets to both lists.
+- **F8** `worth-fixing` —
+  `plugin/evals/implement-converge-finds-missing-ac/graders/criteria.md:30-31`. The grader
+  fails an agent that escalates about AC2 before the planned step, but nothing in the
+  implement skill forbids that (a plan that misses an AC can be read as a plan mismatch)
+  → a reasonable run fails the 0.7.0 gate at `runs: 1`. Fix: one sentence in the skill —
+  an AC the plan leaves out is left to the converge pass, not escalated at the start (the
+  PLAN risk "sharpen the skill, not the grader").
+- **F9** `worth-fixing` — `plugin/tests/test_test_first.py:47-85`. Phrases are pinned one
+  by one anywhere in the section: swapping the two branches (rewrite ↔ escalate),
+  deleting "or the plan gives it verbatim", "Before that change" → "After that change",
+  reordering procedure step 2, "skip the stub", or "Any AC may get this mark" all still
+  pass (mutations confirmed by the tests perspective). Fix: assert per sub-bullet (the
+  "step writes the test" bullet has "rewrite" and no "escalate"; the other has "existed
+  before", "verbatim", "Expected / Found / Why it matters"); pin "Before that change, run
+  the AC's proving test", the order in step 2, "add a stub first" and "An AC that asks for
+  new behaviour never gets this mark".
+- **F10** `worth-fixing` — `plugin/tests/test_review_depth.py:90-107`. The "no filter or
+  cap in the perspectives" guard rejects only the literals "at most" and "five": "Report
+  only `blocker` and `worth-fixing` findings" or "no more than 5 `nit` findings" pass;
+  and `Left out: N nit findings` is checked over steps 3-5 joined, so removing it from
+  step 4 (the report contents) passes. Fix: reject a filter/cap pattern in step 2 and
+  assert the token in step 4 and step 5 separately.
+- **F11** `nit` — `plugin/skills/implement/SKILL.md:131-133` with
+  `plugin/skills/final-review/SKILL.md:75-78`. A plan from before 0.7.0 resumed with ticked
+  steps gets the fourth column added, but rows of ACs already delivered can never get a red
+  record → compliance findings. Fix: mark such rows `n/a — delivered before the red
+  record` and say so in final-review.
+- **F12** `nit` — `plugin/skills/final-review/SKILL.md:108-111`. The standalone decision
+  shows the owner only the findings table, without the `Left out: N nit findings`
+  sentence the ship path carries. Fix: show both.
+- **F13** `nit` — `plugin/tests/test_review_depth.py:55-58`. `threshold` and `size:` are
+  case-sensitive, so `**Size:** S | M | L` in a template or "Threshold: 200 lines" pass.
+  Fix: `re.IGNORECASE` and `\bsize\b\W*:`.
+- **F14** `nit` — `plugin/evals/implement-escalates-on-never-red-test/scaffold.sh:181-182`.
+  The proving tests are named in pytest `file::test` form in a unittest-only project
+  (class `FreeShippingTest` missing) → an agent running the id literally gets a usage
+  error instead of a clean green run, adding noise to the graded behaviour. Fix:
+  `python3 -m unittest tests.test_free_shipping.FreeShippingTest.test_large_orders_ship_free`.
+- **F15** `nit` — `plugin/tests/test_eval_cases.py:470-500`. The converge fixture tests run
+  their own `PLANNED_NOTES` and check only Steps and the matrix: they do not assert that
+  the scaffold has no `shop/notes.py`, that a correct AC1+AC2 change keeps the suite green,
+  or that the rest of PLAN.md has no AC2 hint. Fix: add those three assertions.
+
+Left out: 10 nit findings.
+
+Rejected:
+
+- The AC7/AC8 red records ("`scaffold.sh`: No such file or directory") are not stub-less
+  collection errors: they are `AssertionError`s of `assert result.returncode == 0` in the
+  fixture helper, a record the approved plan chose on purpose.
+- The helper duplication across the new test modules (`skill_text`, `section`,
+  `collapse`) follows the existing test files, which have no shared `conftest`; the plan
+  asked for copies, not imports.
