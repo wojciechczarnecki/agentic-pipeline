@@ -51,6 +51,7 @@ COUNTERS = [
     "plan_changes",
     "implement_steps",
     "implement_iterations",
+    "implement_chunks",
     "converge_gaps",
     "deviations",
     "deviations_minor",

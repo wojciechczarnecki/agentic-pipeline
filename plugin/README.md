@@ -280,6 +280,7 @@ metrics:
   plan_changes: 5
   implement_steps: 8                   # /pipeline:implement
   implement_iterations: 3              # self-correction iterations beyond the first attempt
+  implement_chunks: 3                  # groups carried out as separate chunks (chunk mode only)
   converge_gaps: 1                     # real gaps kept from the converge passes
   deviations_minor: 1                  # every other entry in `## Deviations`
   deviations_major: 0                  # deviations that change scope, architecture or schema
@@ -299,7 +300,8 @@ metrics:
 Specs recorded before 0.8.0 carry one `deviations:` counter instead of the two split keys;
 it still passes `--check`. The new keys (`converge_gaps`, the split deviations and the four
 `cost_*` keys) are never required, because a cost can be missing (another machine, the
-cloud, expired transcripts).
+cloud, expired transcripts). `implement_chunks` is never required either: only a spec
+implemented in chunk mode writes it.
 
 A report over all specs — a table per spec, totals, the share of significant findings
 caught before code, and escalations per spec. Where specs carry cost keys, three more lines
@@ -344,7 +346,7 @@ Keys due by status:
 | `plan-draft` | `started_at`, `escalations`, `plan_steps` |
 | `plan-approved` | the above + `plan_review_blockers`, `plan_review_majors`, `plan_changes` |
 | `implemented` | the above + `implement_steps`, `implement_iterations`, and either `deviations` or both `deviations_minor` and `deviations_major` |
-| `done` | `started_at`, `finished_at`, every counter from the block above except the optional ones (`converge_gaps`, the `cost_*` keys), and either deviations form |
+| `done` | `started_at`, `finished_at`, every counter from the block above except the optional ones (`converge_gaps`, `implement_chunks`, the `cost_*` keys), and either deviations form |
 
 A consumer must have the rule `Bash(workflow_metrics.py *)` in `permissions.allow` — a stage
 subagent cannot answer a permission prompt, so without it every `--check` stalls and

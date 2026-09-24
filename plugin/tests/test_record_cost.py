@@ -866,3 +866,29 @@ def test_a_spec_costed_from_inside_a_real_lane(repo, tmp_path):
     )
     stages = workflow_metrics.stage_usage(lane / "specs" / SPEC_NAME, source)
     assert stages == {"plan": {OPUS: [0, 0, 0, 0, 3]}, "implement": {OPUS: [0, 0, 0, 0, 4]}}
+
+
+# SPEC 012, AC15: every chunk of the chunked implementer is an `implementer` subagent whose
+# prompt names the spec, so their usage adds up into one `cost_implement_cents`. This pins
+# behaviour that already works, so chunking cannot break it later.
+def test_three_implementer_chunks_add_up(repo, tmp_path):
+    source = tmp_path / "projects"
+    for index, output in enumerate([1000, 2000, 3000], start=1):
+        write_agent(
+            source,
+            "slug",
+            f"s{index}",
+            f"c{index}",
+            "pipeline:implementer",
+            prompt(),
+            repo,
+            [(f"m-c{index}", OPUS, usage(output=output))],
+        )
+    spec = repo / "specs" / SPEC_NAME
+    stages = workflow_metrics.stage_usage(spec, source)
+    assert stages == {"implement": {OPUS: [0, 0, 0, 0, 6000]}}
+    result = run_record(spec, "--transcripts", str(source), home=tmp_path / "h")
+    assert result.returncode == 0, result.stderr
+    expected = workflow_metrics.stage_cents({OPUS: [0, 0, 0, 0, 6000]})
+    assert expected == 12
+    assert cost_values(spec)["cost_implement_cents"] == expected

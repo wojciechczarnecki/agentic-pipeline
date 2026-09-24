@@ -180,8 +180,8 @@ wants a small plan to be one group.
 | AC11 | 7 | `plugin/tests/test_eval_cases.py` (the `NEW_CASES` parametrisations for `implement-stops-at-group-boundary`, `::test_group_boundary_*`); 5 of 5 runs: manual | |
 | AC12 | 6 | `plugin/tests/test_chunked_implementer.py::test_ship_*` | |
 | AC13 | 5, 6 | `plugin/tests/test_chunked_implementer.py::test_implementer_agent_reports_the_chunk`, `::test_ship_no_progress_is_a_missing_result`, `::test_readme_documents_the_chunk_line` | |
-| AC14 | 3, 5 | `plugin/tests/test_workflow_metrics.py::test_implement_chunks_*`, `plugin/tests/test_chunked_implementer.py::test_implement_final_chunk_writes_the_metrics` | |
-| AC15 | 3 | `plugin/tests/test_record_cost.py::test_three_implementer_chunks_add_up` | n/a — kept behaviour ("The test pins what already works") |
+| AC14 | 3, 5 | `plugin/tests/test_workflow_metrics.py::test_implement_chunks_*`, `plugin/tests/test_chunked_implementer.py::test_implement_final_chunk_writes_the_metrics` | step 3: `uv run pytest plugin/tests/test_workflow_metrics.py -q` → `assert 'implement_chunks' in workflow_metrics.COUNTERS` |
+| AC15 | 3 | `plugin/tests/test_record_cost.py::test_three_implementer_chunks_add_up` | n/a — kept behaviour ("The test pins what already works"); green before the change, as expected |
 | AC16 | 8 | `plugin/tests/test_release_0_8_0.py::test_the_changelog_records_spec_012`, `tests/test_documents.py::test_roadmap_ticks_spec_012`, `::test_decisions_record_spec_012`; `bash scripts/check.sh` | |
 
 ## Steps
@@ -262,7 +262,7 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
         comparison measures it)".
       Automatic verification: `uv run pytest plugin/tests/test_workflow_config.py plugin/tests/test_readme.py plugin/tests/test_init_skill.py plugin/tests/test_init_templates.py plugin/tests/test_guard.py -q` → green.
 
-- [ ] 3. `implement_chunks` and the three-chunk cost (AC14 script part, AC15) — files:
+- [x] 3. `implement_chunks` and the three-chunk cost (AC14 script part, AC15) — files:
       `plugin/tests/test_workflow_metrics.py`, `plugin/tests/test_record_cost.py`,
       `plugin/bin/workflow_metrics.py`, `plugin/README.md`.
       Tests first:
