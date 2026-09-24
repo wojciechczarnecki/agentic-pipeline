@@ -609,6 +609,8 @@ Results (2026-09-24):
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-24 · final review · Which final review findings to fix? · Accepted all: F1, F2, F3, F4, F5, F6 (worth-fixing) and F7, F8, F9, F10, F11 (nit). Rejected: none.
+
 ## Review log
 
 **2026-09-24 — /pipeline:plan-review**
