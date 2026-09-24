@@ -224,7 +224,50 @@ def render(rows: list[tuple[str, dict[str, str]]]) -> str:
     if decided:
         lines.append(f"Final-review findings accepted: {ratio(accepted, decided)}")
     lines.append(f"Escalations per spec: {totals['escalations'] / len(rows):.1f}")
+    lines.extend(cost_lines([metrics for _, metrics in rows]))
     return "\n".join(lines)
+
+
+def integer(metrics: dict[str, str], key: str) -> int:
+    value = metrics.get(key, "")
+    return int(value) if value.isdigit() else 0
+
+
+def per_unit(label: str, cents: int, units: int) -> list[str]:
+    if units <= 0:
+        return []
+    return [f"{label}: {(2 * cents + units) // (2 * units)} cents ({cents}/{units})"]
+
+
+# Each line only counts specs that carry its cost, so a spec costed on another machine, or
+# before 0.8.0, adds nothing to the numerator or the denominator.
+def cost_lines(specs: list[dict[str, str]]) -> list[str]:
+    lines = []
+    for label, cost, findings in (
+        (
+            "Plan review cost per significant finding",
+            COST_KEYS["plan-review"],
+            ("plan_review_blockers", "plan_review_majors"),
+        ),
+        (
+            "Final review cost per significant finding",
+            COST_KEYS["final-review"],
+            ("final_review_blockers", "final_review_worth_fixing"),
+        ),
+    ):
+        costed = [metrics for metrics in specs if metrics.get(cost, "").isdigit()]
+        cents = sum(int(metrics[cost]) for metrics in costed)
+        units = sum(integer(metrics, key) for metrics in costed for key in findings)
+        lines.extend(per_unit(label, cents, units))
+    complete = [
+        metrics
+        for metrics in specs
+        if all(metrics.get(key, "").isdigit() for key in COST_KEYS.values())
+    ]
+    cents = sum(int(metrics[key]) for metrics in complete for key in COST_KEYS.values())
+    steps = sum(integer(metrics, "plan_steps") for metrics in complete)
+    lines.extend(per_unit("Cost per plan step", cents, steps))
+    return lines
 
 
 # Section-wise, like the hooks: a key that fails validation (a `language` outside the

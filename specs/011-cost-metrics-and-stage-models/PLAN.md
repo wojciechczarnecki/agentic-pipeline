@@ -209,7 +209,7 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
 | AC9 | 1 | `plugin/tests/test_workflow_metrics.py::test_new_counters_are_known_and_never_required` | `uv run pytest -q plugin/tests/test_workflow_metrics.py -k new_counters` → `assert 'converge_gaps' in ['plan_steps', 'plan_review_blockers', …] = workflow_metrics.COUNTERS` |
 | AC10 | 1 | `plugin/tests/test_workflow_metrics.py::test_either_deviations_form_satisfies_the_check`, `::test_neither_deviations_form_names_both`; regression guard, green before by design and not the red record: `tests/test_spec_metrics.py::test_every_repository_spec_passes_the_check` (AC10: "still pass `--check`") | `uv run pytest -q plugin/tests/test_workflow_metrics.py -k either_deviations` → `AssertionError: assert ['014-e2e: status `implemented` requires metric keys that are missing: deviations', …] == []` |
 | AC11 | 8 | `plugin/tests/test_stage_skills.py::test_implement_records_the_split_metrics`, `plugin/tests/test_stage_contract.py::test_the_implementer_metrics_line` | |
-| AC12 | 2 | `plugin/tests/test_workflow_metrics.py::test_report_shows_cost_per_finding_and_per_step`, `::test_cost_lines_are_hidden_without_data`, `::test_report_has_columns_for_the_new_keys` | |
+| AC12 | 2 | `plugin/tests/test_workflow_metrics.py::test_report_shows_cost_per_finding_and_per_step`, `::test_cost_lines_are_hidden_without_data`, `::test_report_has_columns_for_the_new_keys` | `uv run pytest -q plugin/tests/test_workflow_metrics.py -k cost_per_finding` → `AssertionError: assert 'Plan review cost per significant finding: 80 cents (401/5)' in '| spec | lead_time_h | …'` (the columns test was already green: step 1 added the keys to `COUNTERS`, which the report iterates) |
 | AC13 | 7 | `plugin/tests/test_ship_cost_and_models.py::test_closing_records_cost_between_apply_and_notification`, `::test_the_guardrail_names_the_cost_exception` | |
 | AC14 | 6 | `plugin/tests/test_workflow_config.py::test_models_accepts_every_stage_and_alias`, `::test_a_bad_models_entry_warns_and_only_that_stage_inherits`, `::test_models_errors_are_readable` | |
 | AC15 | 7 | `plugin/tests/test_ship_cost_and_models.py::test_ship_passes_the_model_only_when_not_inherit` | |
@@ -247,7 +247,7 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
         `test_metrics_block_lists_every_counter` goes red when `COUNTERS` grows and green
         with the README change.
       Automatic verification: `uv run pytest -q plugin/tests/test_workflow_metrics.py plugin/tests/test_readme.py tests/test_spec_metrics.py`
-- [ ] 2. The report's cost lines (AC12). Files: `plugin/bin/workflow_metrics.py`
+- [x] 2. The report's cost lines (AC12). Files: `plugin/bin/workflow_metrics.py`
       (`render`), `plugin/tests/test_workflow_metrics.py`, and one README sentence on the
       three lines.
       - Tests first, over two or three specs built with `spec_dir()`.

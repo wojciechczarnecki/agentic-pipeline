@@ -468,3 +468,88 @@ def test_neither_deviations_form_names_both(tmp_path, status, form):
     for key in ["`deviations`", "`deviations_minor`", "`deviations_major`"]:
         assert key in named[0], key
     assert "missing" not in named[0]
+
+
+def costed(**extra: str) -> dict[str, str]:
+    return dict(COMPLETE, **extra)
+
+
+# SPEC 011, AC12. Three specs:
+#   015-a: plan review 300 cents, findings 1 + 2 = 3; final review 500, findings 0 + 1 = 1;
+#          all four costs (100 + 300 + 900 + 500 = 1800) and 5 plan steps.
+#   016-b: plan review 101 cents, findings 2 + 0 = 2; no final-review cost, so no four costs.
+#   017-c: no cost keys at all — neither numerator nor denominator.
+# Plan review: (300 + 101) / (3 + 2) = 80.2 → 80. Final review: 500 / 1 = 500.
+# Per plan step: 1800 / 5 = 360.
+def test_report_shows_cost_per_finding_and_per_step(tmp_path):
+    spec_dir(
+        tmp_path,
+        "done",
+        costed(
+            cost_plan_cents="100",
+            cost_plan_review_cents="300",
+            cost_implement_cents="900",
+            cost_final_review_cents="500",
+        ),
+        name="015-a",
+    )
+    spec_dir(
+        tmp_path,
+        "done",
+        costed(cost_plan_review_cents="101", plan_review_blockers="2", plan_review_majors="0"),
+        name="016-b",
+    )
+    spec_dir(tmp_path, "done", costed(final_review_worth_fixing="9"), name="017-c")
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    assert "Plan review cost per significant finding: 80 cents (401/5)" in report
+    assert "Final review cost per significant finding: 500 cents (500/1)" in report
+    assert "Cost per plan step: 360 cents (1800/5)" in report
+
+
+def test_the_cost_ratio_rounds_half_up(tmp_path):
+    # 5 / 2 = 2.5 → 3, where round() would give the even 2.
+    spec_dir(
+        tmp_path,
+        "done",
+        costed(cost_plan_review_cents="5", plan_review_blockers="1", plan_review_majors="1"),
+    )
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    assert "Plan review cost per significant finding: 3 cents (5/2)" in report
+
+
+def test_cost_lines_are_hidden_without_data(tmp_path):
+    spec_dir(tmp_path, "done", COMPLETE, name="015-a")
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    assert "cost per" not in report.lower()
+
+    spec_dir(
+        tmp_path,
+        "done",
+        costed(
+            cost_plan_review_cents="40",
+            plan_review_blockers="0",
+            plan_review_majors="0",
+            cost_final_review_cents="70",
+            final_review_blockers="0",
+            final_review_worth_fixing="0",
+        ),
+        name="015-a",
+    )
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    assert "Plan review cost per significant finding" not in report
+    assert "Final review cost per significant finding" not in report
+    assert "Cost per plan step" not in report
+
+
+def test_report_has_columns_for_the_new_keys(tmp_path):
+    spec_dir(tmp_path, "done", costed(converge_gaps="2"), name="015-a")
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    header = report.splitlines()[0]
+    cells = [cell.strip() for cell in header.strip("|").split("|")]
+    for key in NEW_KEYS:
+        assert key in cells, key
+    row = next(line for line in report.splitlines() if line.startswith("| 015-a"))
+    values = dict(zip(cells, [cell.strip() for cell in row.strip("|").split("|")], strict=True))
+    assert values["converge_gaps"] == "2"
+    assert values["cost_plan_cents"] == "-"
+    assert values["deviations_minor"] == "-"

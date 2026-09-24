@@ -285,7 +285,10 @@ it still passes `--check`. The new keys (`converge_gaps`, the split deviations a
 cloud, expired transcripts).
 
 A report over all specs — a table per spec, totals, the share of significant findings
-caught before code, and escalations per spec:
+caught before code, and escalations per spec. Where specs carry cost keys, three more lines
+follow: the plan review's and the final review's cost per significant finding (each over the
+specs with that stage's cost) and the cost per plan step (over the specs with all four
+costs), in cents rounded half up; a line with no data is left out:
 
 ```bash
 workflow_metrics.py [specs-directory]
