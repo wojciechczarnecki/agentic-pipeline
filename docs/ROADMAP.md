@@ -173,20 +173,20 @@ and 10xWorkflow (tests verified by breaking them).
       stay: the repetition is pinned by tests, and exact steps suit fragile operations
       (`specs/009-prompt-audit-for-opus-5-5/SPEC.md`)
 - [ ] 0.7.0: `implement` records every acceptance-criterion test failing before the change
-      that makes it pass — a test that was never red proves nothing
+      that makes it pass — a test that was never red proves nothing (`specs/010-test-first-and-converge/SPEC.md`)
 - [ ] 0.7.0: `implement` closes with a converge pass — a fresh subagent compares the code
       with the acceptance criteria, classifies gaps as missing / partial / contradicts /
       unrequested and adds steps, before the final review (68% of significant findings in
-      the consumer's specs 014–022 surfaced only at final review)
+      the consumer's specs 014–022 surfaced only at final review) (`specs/010-test-first-and-converge/SPEC.md`)
 - [ ] 0.7.0: plan and review depth proportional to the change, instead of spec sizes — a
       four-step fix got a 349-line plan and three reviewers (decision row with the spec:
-      no size tiers; small things keep the fast path)
+      no size tiers; small things keep the fast path) (`specs/010-test-first-and-converge/SPEC.md`)
 - [ ] 0.7.0: the final review reports at most five nits and states how many it left out;
       the cap applies when the report is merged, not in the perspectives' prompts — they
       report every finding with its severity, since a reviewer told to report less finds
-      less (current Claude models follow severity filters literally)
+      less (current Claude models follow severity filters literally) (`specs/010-test-first-and-converge/SPEC.md`)
 - [ ] Eval cases for the new behaviour: a test that was never red is caught, and the
-      converge pass finds an acceptance criterion left unimplemented
+      converge pass finds an acceptance criterion left unimplemented (`specs/010-test-first-and-converge/SPEC.md`)
 
 ## Stage 7 — A cheaper pipeline, measured
 
