@@ -625,6 +625,10 @@ so no converge pass ran on this spec; the final review covers the ACs.
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-24 · final review (gate) · Which findings to fix? · Accepted: F1, F2, F3, F4, F5,
+  F6, F7, F8, F9, F10 (all `worth-fixing`; no `blocker` was reported). Rejected: F11, F12,
+  F13, F14, F15 (`nit`).
+
 ## Review log
 
 **2026-09-24, /pipeline:plan-review (under /pipeline:ship).** Anti-anchoring leads (read
