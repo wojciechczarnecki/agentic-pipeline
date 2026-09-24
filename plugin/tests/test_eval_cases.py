@@ -32,6 +32,7 @@ NEW_CASES = [
     "final-review-ignores-false-positive",
     "implement-escalates-on-never-red-test",
     "implement-converge-finds-missing-ac",
+    "implement-stops-at-group-boundary",
 ]
 
 # The wrong behaviour each case must name, so a transcript that merely avoids the subject
@@ -48,6 +49,7 @@ WRONG_BEHAVIOUR = {
         "tests/test_free_shipping.py",
     ],
     "implement-converge-finds-missing-ac": ["implemented", "AC2", "converge", "subagent"],
+    "implement-stops-at-group-boundary": ["implemented", "step 3", "Chunk notes", "converge"],
 }
 
 
@@ -501,6 +503,92 @@ print(order["notes"][0], len(order["notes"]))
 
 def test_converge_case_allows_agent():
     manifest = (EVALS / "implement-converge-finds-missing-ac" / "case.yaml").read_text()
+    tools = next(line for line in manifest.splitlines() if "allowed_tools:" in line)
+    assert "Agent" in tools
+
+
+# implement-stops-at-group-boundary (SPEC 012, AC11)
+
+
+@pytest.fixture
+def tags(tmp_path) -> Path:
+    return scaffold("implement-stops-at-group-boundary", tmp_path)
+
+
+ORDER_TAGS_SPEC = Path("specs") / "001-order-tags"
+
+
+def test_group_boundary_fixture_is_ready_for_the_skill(tags):
+    assert_ready_for_the_skill(tags, "feat/001-order-tags", "001-order-tags", "plan-approved")
+    assert run(VERIFY, tags).returncode == 0
+
+
+def test_group_boundary_chunking_is_on(tags):
+    workflow = json.loads((tags / ".claude" / "workflow.json").read_text())
+    assert workflow["implement"] == {"chunked": True}
+    code = (
+        f"import sys; sys.path.insert(0, {str(PLUGIN / 'bin')!r}); import workflow_config; "
+        "config, problems = workflow_config.load_sections('.'); "
+        "print(problems, config.get('implement.chunked'))"
+    )
+    result = python(tags, code)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "[] True"
+
+
+def test_group_boundary_plan_has_two_groups(tags):
+    plan = (tags / ORDER_TAGS_SPEC / "PLAN.md").read_text()
+    steps = section(plan, "## Steps")
+    groups = re.split(r"^### ", steps, flags=re.MULTILINE)[1:]
+    assert [group.split("\n", 1)[0] for group in groups] == [
+        "Group 1 — Tags",
+        "Group 2 — Label",
+    ]
+    numbers = [re.findall(r"^- \[ \] (\d+)\.", group, flags=re.MULTILINE) for group in groups]
+    assert numbers == [["1", "2"], ["3"]]
+    assert "- [x]" not in steps
+    notes = section(plan, "## Chunk notes")
+    assert notes.strip().startswith("_(") and notes.strip().endswith(")_"), notes
+    matrix = section(plan, "## AC → steps matrix")
+    assert "| AC | Steps | Proving test | Red before the change |" in matrix
+
+
+GROUP_ONE_TAGS = """def add_tag(order, tag):
+    tag = tag.lower()
+    if tag not in order["tags"]:
+        order["tags"].append(tag)
+"""
+
+GROUP_ONE_TESTS = """import unittest
+
+from shop.orders import new_order
+from shop.tags import add_tag
+
+
+class AddTagTest(unittest.TestCase):
+    def test_tag_is_lower_cased(self):
+        order = new_order(1)
+        add_tag(order, "Gift")
+        self.assertEqual(order["tags"], ["gift"])
+
+    def test_duplicate_is_ignored(self):
+        order = new_order(1)
+        add_tag(order, "gift")
+        add_tag(order, "GIFT")
+        self.assertEqual(order["tags"], ["gift"])
+"""
+
+
+def test_group_boundary_group_one_alone_is_green(tags):
+    (tags / "shop" / "tags.py").write_text(GROUP_ONE_TAGS)
+    (tags / "tests" / "test_tags.py").write_text(GROUP_ONE_TESTS)
+    result = run(VERIFY, tags)
+    assert result.returncode == 0, result.stderr
+    assert not (tags / "shop" / "labels.py").exists()
+
+
+def test_group_boundary_case_allows_agent():
+    manifest = (EVALS / "implement-stops-at-group-boundary" / "case.yaml").read_text()
     tools = next(line for line in manifest.splitlines() if "allowed_tools:" in line)
     assert "Agent" in tools
 

@@ -177,7 +177,7 @@ wants a small plan to be one group.
 | AC8 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_off_or_one_group_runs_one_context` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert f"\n## {heading}\n" in text` (`implement: no section \`Chunk mode\``) |
 | AC9 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_chunk_note_contents`, `::test_implement_start_reads_the_chunk_notes` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert f"\n## {heading}\n" in text` (`implement: no section \`Chunk mode\``); `assert '`## Chunk notes`' in start` |
 | AC10 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_standalone_handoff_after_clear` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert 'group boundary' in bullet` |
-| AC11 | 7 | `plugin/tests/test_eval_cases.py` (the `NEW_CASES` parametrisations for `implement-stops-at-group-boundary`, `::test_group_boundary_*`); 5 of 5 runs: manual | |
+| AC11 | 7 | `plugin/tests/test_eval_cases.py` (the `NEW_CASES` parametrisations for `implement-stops-at-group-boundary`, `::test_group_boundary_*`); 5 of 5 runs: manual | `uv run pytest plugin/tests/test_eval_cases.py -q` → `assert (EVALS / name / "scaffold.sh").is_file()` (`assert False`), and `assert result.returncode == 0, result.stderr` (`assert 127 == 0`) in `scaffold`; the 5-run half: manual |
 | AC12 | 6 | `plugin/tests/test_chunked_implementer.py::test_ship_*` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert 'a chunk ended' in ship_state_row()` |
 | AC13 | 5, 6 | `plugin/tests/test_chunked_implementer.py::test_implementer_agent_reports_the_chunk`, `::test_ship_no_progress_is_a_missing_result`, `::test_readme_documents_the_chunk_line` | step 5: `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '`CHUNK: <group>/<groups>`' in intro`; `uv run pytest plugin/tests/test_stage_contract.py -q` → `assert 'METRICS of this stage: … and in chunk mode `implement_chunks`.' in text`; step 6: `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '`CHUNK: <group>/<groups>`' in protocol`; `assert '`CHUNK: <group>/<groups>`' in collapse(readme_section('### The `RESULT` contract'))` |
 | AC14 | 3, 5 | `plugin/tests/test_workflow_metrics.py::test_implement_chunks_*`, `plugin/tests/test_chunked_implementer.py::test_implement_final_chunk_writes_the_metrics` | step 3: `uv run pytest plugin/tests/test_workflow_metrics.py -q` → `assert 'implement_chunks' in workflow_metrics.COUNTERS`; step 5: `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '`implement_chunks`' in finish` |
@@ -413,7 +413,7 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
         up groups, the switch, a chunk's end, the note, the final chunk and the metrics.
       Automatic verification: `uv run pytest plugin/tests/test_chunked_implementer.py plugin/tests/test_ship_cost_and_models.py plugin/tests/test_stage_contract.py plugin/tests/test_readme.py plugin/tests/test_prompt_style.py -q` → green.
 
-- [ ] 7. Eval case `implement-stops-at-group-boundary` (AC11, the deterministic part) —
+- [x] 7. Eval case `implement-stops-at-group-boundary` (AC11, the deterministic part) —
       files: `plugin/tests/test_eval_cases.py`,
       `plugin/evals/implement-stops-at-group-boundary/{case.yaml,scaffold.sh,graders/criteria.md}`.
       Tests first:
