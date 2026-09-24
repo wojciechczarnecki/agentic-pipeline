@@ -2,6 +2,50 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.8.0
+
+SPEC 011 prepares Stage 7's comparison: every spec records what each stage cost, the
+implementer records its converge gaps and splits its deviations, a consumer can choose a
+model per stage, and every stage searches the decision log, the roadmap and the domain
+documents by the feature's topic instead of reading them whole.
+
+**consumer impact:** every new metric key is optional, and specs with the old `deviations`
+key still pass `--check`. `models` in `.claude/workflow.json` is optional: without it every
+stage inherits the session model, as before. `/pipeline:init` writes
+`"models": {"implement": "sonnet"}` for new projects only — a guess not yet measured; an
+existing configuration is not touched. The cost keys need Claude Code's local transcripts
+(`~/.claude/projects`): a spec run in the cloud or on another machine gets none, with a
+warning, and its closing is not held back. The existing rule `Bash(workflow_metrics.py *)`
+covers the new `--record-cost` call.
+
+### Added
+
+- `workflow_metrics.py --record-cost <spec-dir> [--transcripts <dir>]` prices the spec's
+  four stage subagents — with their descendants, such as the final review's perspectives
+  and the converge pass — from the transcripts, and writes `cost_plan_cents`,
+  `cost_plan_review_cents`, `cost_implement_cents` and `cost_final_review_cents`. The unit
+  is a cent at the API list rates of 2026-09-24, from a rate table that is never repriced.
+  Stdout shows the tokens per stage by type and model. `/pipeline:ship` runs it in Closing
+  after the final review's `apply`, then commits and pushes the change.
+- `converge_gaps`, `deviations_minor` and `deviations_major` metric keys; `implement` writes
+  them instead of `deviations`. Major is a deviation that changes the scope, the
+  architecture or the data schema.
+- The metrics report shows the new keys and three lines: the plan review's and the final
+  review's cost per significant finding, and the cost per plan step.
+- `models` in `.claude/workflow.json`: a model alias (`inherit`, `sonnet`, `opus`, `haiku`,
+  `fable`) per stage (`plan`, `plan-review`, `implement`, `final-review`), passed by
+  `/pipeline:ship` to the `Agent` tool; a bad entry warns and only its stage inherits. An
+  effort level cannot be configured: the `Agent` tool takes none (Claude Code 2.1.281).
+
+### Changed
+
+- `plan`, `plan-review`, `implement` and `final-review` share a Reading section: SPEC,
+  PLAN and the conventions are read in full; the decisions, the roadmap and the domain
+  documents are searched by the feature's terms and the names of the files it changes, and
+  read whole only when the search leaves the question open. `idea` and `plan` list what
+  they read and how; `plan-review` checks the plan against the decisions it finds itself.
+- `--check` accepts either `deviations` or both split keys at `implemented` and `done`.
+
 ## 0.7.0
 
 The skills and agents are reworded for Claude Opus 5.5 after a prompt audit

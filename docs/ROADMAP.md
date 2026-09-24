@@ -205,21 +205,20 @@ per significant finding, and a finding before code is the cheaper one to fix.
       user settings and the transcripts of this repository and the consumer copied to an
       archive outside both repositories (2026-09-24; the default 30-day cleanup would have
       removed spec 001 within weeks)
-- [ ] 0.8.0: targeted reading in every stage — SPEC, PLAN and conventions in full;
+- [x] 0.8.0: targeted reading in every stage — SPEC, PLAN and conventions in full;
       decisions, roadmap and domain documents searched by the feature's topic, with what
       was read listed (the consumer's documents are 271 KB, and every fresh subagent read
       them whole) (`specs/011-cost-metrics-and-stage-models/SPEC.md`)
-- [ ] 0.8.0: a `models` section in `.claude/workflow.json` that `/pipeline:ship` passes to
-      each stage agent — a model and an effort level per stage; `/pipeline:init` writes the
-      defaults the comparison below measured; without the section every stage inherits the
-      session model and its effort, as today. On Claude Opus 5.5 the first candidate for a
-      stage is the same model at `low` or `medium` effort (its default is `medium`), and
-      a cheaper model only when that measures worse; whether an agent's frontmatter or
-      the `Agent` tool accepts an effort level is checked before the spec is written
+- [x] 0.8.0: a `models` section in `.claude/workflow.json` that `/pipeline:ship` passes to
+      each stage agent — a model per stage; without the section every stage inherits the
+      session model and its effort, as before. Checked before the spec: the `Agent` tool
+      takes no effort level (Claude Code 2.1.281), so effort stays a plugin default in the
+      agents' frontmatter, which the comparison below sets. `/pipeline:init` writes the
+      guess `"implement": "sonnet"` until the comparison measures the defaults
       (`specs/011-cost-metrics-and-stage-models/SPEC.md`)
-- [ ] 0.8.0: `deviations` split into `deviations_minor` and `deviations_major`; specs with
+- [x] 0.8.0: `deviations` split into `deviations_minor` and `deviations_major`; specs with
       the old key still pass `--check` (`specs/011-cost-metrics-and-stage-models/SPEC.md`)
-- [ ] 0.8.0: cost per stage from the local session transcripts, written into `metrics:`
+- [x] 0.8.0: cost per stage from the local session transcripts, written into `metrics:`
       when a spec closes (transcripts are local and expire, so it cannot be computed later);
       the implement stage also records `converge_gaps`, and `workflow_metrics.py` reports
       the cost per significant finding of the plan review and the final review — the

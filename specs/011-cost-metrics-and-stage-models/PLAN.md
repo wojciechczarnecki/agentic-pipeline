@@ -217,7 +217,7 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
 | AC17 | 7 | `plugin/tests/test_plugin_structure.py::test_no_agent_sets_effort_yet` | n/a — kept behaviour: "the agents … do not get `effort` in this release" |
 | AC18 | 9 | `plugin/tests/test_targeted_reading.py::test_the_reading_section_is_identical_in_four_skills`, `::test_the_reading_section_names_full_and_searched_documents` | `uv run pytest -q plugin/tests/test_targeted_reading.py -k identical` → `AssertionError: plan: no section `Reading`` (`assert '\n## Reading\n' in '---\nname: plan …'`) |
 | AC19 | 9 | `plugin/tests/test_targeted_reading.py::test_idea_states_how_each_document_was_read`, `::test_plan_lists_what_it_read_in_the_approach`, `::test_plan_review_checks_decisions_by_its_own_search` | `uv run pytest -q plugin/tests/test_targeted_reading.py -k idea_states` → `AssertionError: assert 'read in full' in '1. **Gather context (before you assess anything):** …'` |
-| AC20 | 10 | `plugin/tests/test_readme.py::test_changelog_starts_at_the_manifest_version`, `::test_the_changelog_names_the_consumer_impact`, `plugin/tests/test_release_0_8_0.py::test_the_manifest_is_0_8_0`, `bash scripts/check.sh` | |
+| AC20 | 10 | `plugin/tests/test_readme.py::test_changelog_starts_at_the_manifest_version`, `::test_the_changelog_names_the_consumer_impact`, `plugin/tests/test_release_0_8_0.py::test_the_manifest_is_0_8_0`, `bash scripts/check.sh` | `uv run pytest -q plugin/tests/test_release_0_8_0.py` → `AssertionError: assert '0.7.0' == '0.8.0'` |
 
 ## Steps
 
@@ -433,7 +433,7 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
         full" and "searched" with the terms. `test_plan_lists_what_it_read_in_the_approach`.
         `test_plan_review_checks_decisions_by_its_own_search`.
       Automatic verification: `uv run pytest -q plugin/tests/test_targeted_reading.py plugin/tests/test_stage_skills.py plugin/tests/test_language_contract.py plugin/tests/test_prompt_style.py plugin/tests/test_english_only.py`
-- [ ] 10. Release 0.8.0 and project documents (AC20). Files:
+- [x] 10. Release 0.8.0 and project documents (AC20). Files:
       `plugin/.claude-plugin/plugin.json` (`0.8.0`), `plugin/CHANGELOG.md` (`## 0.8.0`),
       `plugin/tests/test_release_0_8_0.py` (new, `test_the_manifest_is_0_8_0`),
       `docs/ROADMAP.md` (tick the four 0.8.0 items of this spec), `docs/DECISIONS.md` and
