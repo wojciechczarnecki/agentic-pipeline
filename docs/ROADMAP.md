@@ -190,6 +190,21 @@ and 10xWorkflow (tests verified by breaking them).
 
 ## Stage 7 — A cheaper pipeline, measured
 
+A cost audit on 2026-09-24 (`docs/DECISIONS.md`) priced every stage from the local session
+transcripts — this repository's specs 001–010 and the consumer's 014–023, at Opus API rates
+as a relative unit (the owner works on a subscription, where it is quota): the implementer
+takes about 40% of a spec's cost, the final review with its perspectives 33–41%, the
+planner 11–15% and the plan review 7–11%; a consumer spec costs about $14 at the median
+($6–51), and the implementer alone ranges from $1.2 to $27 per spec. Most of the
+implementer's cost is cache reads (52–69%) — one long context re-read on every turn — and
+cache writes take 25–43% of the other stages, whose fresh subagents rebuild their context
+from scratch. No stage is dropped: the plan review and the final review cost about the same
+per significant finding, and a finding before code is the cheaper one to fix.
+
+- [x] Transcripts kept for the baseline: `cleanupPeriodDays` raised to 365 in the owner's
+      user settings and the transcripts of this repository and the consumer copied to an
+      archive outside both repositories (2026-09-24; the default 30-day cleanup would have
+      removed spec 001 within weeks)
 - [ ] 0.8.0: targeted reading in every stage — SPEC, PLAN and conventions in full;
       decisions, roadmap and domain documents searched by the feature's topic, with what
       was read listed (the consumer's documents are 271 KB, and every fresh subagent read
@@ -204,13 +219,37 @@ and 10xWorkflow (tests verified by breaking them).
 - [ ] 0.8.0: `deviations` split into `deviations_minor` and `deviations_major`; specs with
       the old key still pass `--check`
 - [ ] 0.8.0: cost per stage from the local session transcripts, written into `metrics:`
-      when a spec closes (transcripts are local and expire, so it cannot be computed later)
-- [ ] Before/after comparison of model and effort per stage: a baseline of 2–3 consumer
-      specs on 0.7.0 with every stage on the session model at its default effort, then
-      3–5 specs with the candidates — Opus at `low` effort for the stages that follow a
-      checklist or a script, Opus at `low` or Sonnet for the implementer — and the chosen
-      defaults — not the 9 specs before Stage 6, which changes the metrics by itself;
-      the result goes into the root `README.md`
+      when a spec closes (transcripts are local and expire, so it cannot be computed later);
+      the implement stage also records `converge_gaps`, and `workflow_metrics.py` reports
+      the cost per significant finding of the plan review and the final review — the
+      measure the audit used to keep every stage. The converge pass returns to the owner
+      when it reports no gap over several specs
+- [ ] 0.8.0, a candidate measured in the comparison below and off by default until it
+      measures no worse: `/pipeline:ship` runs the implementer in chunks — by a step count
+      or by step groups the planner marks in PLAN.md, decided in the spec — each a fresh
+      subagent that resumes from the ticked PLAN.md checkboxes as an
+      interrupted run does today; a chunk ends only on a green, committed step, and hands
+      the next one a note in PLAN.md (deviations, decisions taken, a failure still being
+      traced). Plans below a size threshold run in one context, since every chunk pays its
+      cache writes again; the converge pass and the Definition of Done run as today
+- [ ] Before/after comparison of model, effort and the chunked implementer: the transcripts
+      from the audit are the reference from before Stage 6 (and show what the converge
+      pass added); the baseline is the consumer's next 2–3 ordinary specs on 0.7.0, with
+      every stage on the session model at its default effort, costed afterwards from the
+      archived transcripts — no spec runs only for the baseline; then 3–5 specs with the
+      candidates — Opus at `low` effort for the stages that follow a checklist or a script,
+      Opus at `low` or Sonnet for the implementer, the chunked implementer — and the chosen
+      defaults. Cost is compared per plan step, since spec sizes differ; quality through
+      the metrics and the eval suite on the candidate settings; the result goes into the
+      root `README.md`
+- [ ] Cheaper eval runs, in `scripts/` (no plugin version bump): re-running only the
+      failed cases merges their results into the receipt while the plugin fingerprint is
+      unchanged; a session limit or another infrastructure error is recorded as an error,
+      not a FAIL, and does not trigger the five-run measurement policy (twice between
+      2026-09-23 and 2026-09-24 a session limit failed every remaining case and forced a
+      full re-run); development runs pick the cases whose skill, agent or fixture changed,
+      and only the release receipt needs the full suite (a full run costs about $3.5–4.6
+      and the three `init` cases are a quarter of it)
 - [ ] Write-up, linked from the root `README.md`: the guard as a shell analyser rather than
       a regex, the measured LLM-judge noise, the before/after numbers and cost per spec
 
