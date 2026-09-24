@@ -203,7 +203,9 @@ the committed state and a short note, instead of re-reading one long context.
 - A group is a `### Group N — <name>` heading inside `## Steps` (either literal from the
   section map). A level-3 heading of a converge pass is not a group.
 - Chunk mode is on when `implement.chunked` in `.claude/workflow.json` is the literal
-  `true` and `## Steps` has more than one group. Chunking off, or a PLAN with one group or
+  `true` and the `implement` section has no other key, and `## Steps` has more than one group.
+  Any other value, or an unknown key in the section, counts as off, as the configuration
+  loader decides. Chunking off, or a PLAN with one group or
   none: you run the whole plan in one context, exactly as in 0.7.0, with no
   `## Chunk notes` entry and no `implement_chunks`.
 - On start, read `## Chunk notes` in full: the chunks before you left there what the plan

@@ -170,7 +170,7 @@ wants a small plan to be one group.
 | AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_section_map_matches_the_snapshot`, `::test_english_templates_match_the_snapshot`, `::test_polish_templates_match_the_snapshot` | `uv run pytest plugin/tests/test_templates_language.py -q` → `assert section_map() == MAP_SNAPSHOT`: `At index 19 diff: ('step-verification', …) != ('step-group', 'PLAN', '### Grupa N — ', '### Group N — ')` |
 | AC2 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_*` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert f"\n## {heading}\n" in text` (`plan: no section \`Step groups\``) |
 | AC3 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_review_*` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '**groups:**' in checklist` |
-| AC4 | 2 | `plugin/tests/test_workflow_config.py::test_implement_*` | `uv run pytest plugin/tests/test_workflow_config.py -q` → `assert 1 == 0` (`--check` on `{"implement": {"chunked": true}}`: `unknown key \`implement\``) |
+| AC4 | 2, 9 | `plugin/tests/test_workflow_config.py::test_implement_*`, `plugin/tests/test_chunked_implementer.py::test_implement_switch_matches_the_loader` | `uv run pytest plugin/tests/test_workflow_config.py -q` → `assert 1 == 0` (`--check` on `{"implement": {"chunked": true}}`: `unknown key \`implement\``); step 9: `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert 'no other key' in text` |
 | AC5 | 2 | `plugin/tests/test_readme.py::test_the_implement_row_marks_the_candidate`, `plugin/tests/test_init_skill.py::test_init_does_not_write_the_implement_section`, `plugin/tests/test_init_templates.py::test_the_example_shows_chunking_off` | `uv run pytest plugin/tests/test_readme.py plugin/tests/test_init_skill.py -q` → `assert len(rows) == 1` (`assert 0 == 1`, no `implement.chunked` row); `assert "you do not write the \`implement\` section" in generating` |
 | AC6 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_chunk_ends_at_the_group_boundary` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert f"\n## {heading}\n" in text` (`implement: no section \`Chunk mode\``) |
 | AC7 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_last_chunk_converges_and_finishes` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert f"\n## {heading}\n" in text` (`implement: no section \`Chunk mode\``) |
@@ -485,6 +485,30 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
         column: a step count K, a threshold key, `ship` passing a chunk mode, each chunk
         updating `metrics:`, pytest only.
       Automatic verification: `uv run pytest plugin/tests/test_release_0_8_0.py plugin/tests/test_readme.py tests/test_documents.py -q` → green, then `bash scripts/check.sh` → green.
+
+### Converge pass 1 — 2026-09-24
+
+A fresh subagent compared the diff (spec directory left out) with AC1–AC16.
+
+- `[partial] AC4/AC6 plugin/skills/implement/SKILL.md, ## Chunk mode` — the skill turned
+  chunk mode on for a literal `true` alone, while the loader drops an `implement` section
+  with an unknown key (`{"chunked": true, "size": 3}` → off). **Real:** the implementer reads
+  the switch itself and would chunk where the guard says the section fell back to off.
+  Added step 9.
+- Additions reported as beyond the ACs (the `CHUNK:` no-progress refinements, the groups
+  severities in `plan-review`, the `CHUNK:` line in every chunk-mode RESULT, the Polish
+  fixture and the prefix-literal test helpers): **not gaps** — each is asked for by a plan
+  step (5, 6, 4, 1) or recorded in `## Deviations` (D1), and the subagent itself did not
+  count them.
+
+- [x] 9. The skill's switch agrees with the loader (AC4, converge pass 1) — files:
+      `plugin/tests/test_chunked_implementer.py`, `plugin/skills/implement/SKILL.md`.
+      Test first: `test_implement_switch_matches_the_loader` — `## Chunk mode` holds
+      `the literal \`true\``, `no other key` and `counts as off`. Then the `## Chunk mode`
+      bullet says chunk mode is on only when the `implement` section holds `chunked` as the
+      literal `true` and no other key.
+      Automatic verification: `uv run pytest plugin/tests/test_chunked_implementer.py plugin/tests/test_language_contract.py plugin/tests/test_prompt_style.py plugin/tests/test_stage_skills.py -q` → green.
+
 
 ## Risks and traps
 

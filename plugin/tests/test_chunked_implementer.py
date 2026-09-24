@@ -210,3 +210,11 @@ def test_readme_documents_the_chunk_line():
         if line.startswith("| `plan-approved`")
     ]
     assert len(rows) == 1 and "chunk" in rows[0], rows
+
+
+# AC4 through the skill (converge pass 1): the implementer reads the switch itself, so it
+# has to agree with the loader, which drops an `implement` section with an unknown key.
+def test_implement_switch_matches_the_loader():
+    text = chunk()
+    for token in ["the literal `true`", "no other key", "counts as off"]:
+        assert token in text, token
