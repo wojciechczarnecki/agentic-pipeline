@@ -170,7 +170,7 @@ and `docs:` for documents. Each commit holds the step's files plus PLAN.md, per
 | AC4 | 4 | `plugin/tests/test_converge.py` (all); `plugin/tests/test_stage_skills.py` (Finish prefix) | `uv run pytest plugin/tests/test_converge.py` → `AssertionError: implement: no section Converge pass` (10 failed, all on assertions; the Finish prefix raised `StopIteration`, not counted) |
 | AC5 | 5 | `plugin/tests/test_review_depth.py::test_depth_*`; the absence guard `::test_no_size_tiers_anywhere` is green before the change by design | `uv run pytest plugin/tests/test_review_depth.py` → `AssertionError: length follows the change` (4 `test_depth_*` failed on assertions; the guard passed, as designed) |
 | AC6 | 6 | `plugin/tests/test_review_depth.py::test_nit_cap_*` | `uv run pytest plugin/tests/test_review_depth.py` → `AssertionError: at most five nit findings` (6 failed, all on assertions) |
-| AC7 | 7 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-escalates-on-never-red-test`, `::test_never_red_*`) | |
+| AC7 | 7 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-escalates-on-never-red-test`, `::test_never_red_*`) | `uv run pytest plugin/tests/test_eval_cases.py` → `AssertionError: bash: …/implement-escalates-on-never-red-test/scaffold.sh: No such file or directory` on `assert result.returncode == 0` in `scaffold()` |
 | AC8 | 8 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-converge-finds-missing-ac`, `::test_converge_*`) | |
 | AC9 | after the PR is open, on the owner's command (not part of `/pipeline:implement`) | `plugin/evals/last-run.json`: green, `cases_total: 11`, fingerprint matching `plugin/` at the branch head | manual — a paid model run on the owner's command |
 | AC10 | 9, 10 | `plugin/tests/test_readme.py::test_the_readme_describes_*`, `::test_the_changelog_records_spec_010`; `tests/test_documents.py::test_roadmap_ticks_spec_010`, `::test_decisions_record_spec_010` | |
@@ -366,7 +366,7 @@ the red record comes from the `test_depth_*` tests.
       Files: `plugin/skills/final-review/SKILL.md`, `plugin/agents/reviewer.md`,
       `plugin/skills/ship/SKILL.md`, `plugin/tests/test_review_depth.py`
       Automatic verification: `uv run pytest plugin/tests/test_review_depth.py plugin/tests/test_stage_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_language_contract.py plugin/tests/test_prompt_style.py plugin/tests/test_prompt_audit.py -q`
-- [ ] 7. **AC7: eval case `implement-escalates-on-never-red-test`.** Test first: in
+- [x] 7. **AC7: eval case `implement-escalates-on-never-red-test`.** Test first: in
       `plugin/tests/test_eval_cases.py`, add the name to `NEW_CASES`, add to
       `WRONG_BEHAVIOUR` the tokens `["implemented", "tick", "red",
       "tests/test_free_shipping.py"]`, and add a `never_red` fixture plus these tests:
