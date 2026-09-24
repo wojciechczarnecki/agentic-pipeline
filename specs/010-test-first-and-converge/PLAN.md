@@ -164,7 +164,7 @@ and `docs:` for documents. Each commit holds the step's files plus PLAN.md, per
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_ac_matrix_has_the_red_column`; section map unchanged: `::test_the_section_map_matches_the_snapshot` | |
+| AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_ac_matrix_has_the_red_column`; section map unchanged: `::test_the_section_map_matches_the_snapshot` | `uv run pytest plugin/tests/test_templates_language.py -k red_column` → `AssertionError: ('en', '| AC | Steps | Proving test | Red before the change |')` |
 | AC2 | 2 | `plugin/tests/test_test_first.py::test_implement_*` | |
 | AC3 | 3 | `plugin/tests/test_test_first.py::test_plan_*`, `::test_plan_review_*` | |
 | AC4 | 4 | `plugin/tests/test_converge.py` (all); `plugin/tests/test_stage_skills.py` (Finish prefix) | |
@@ -184,7 +184,7 @@ the red record comes from the `test_depth_*` tests.
 
 ## Steps
 
-- [ ] 1. **AC1: the fourth matrix column.** Test first: in
+- [x] 1. **AC1: the fourth matrix column.** Test first: in
       `plugin/tests/test_templates_language.py`, after `test_template_pairs_have_the_same_structure`,
       add `test_the_ac_matrix_has_the_red_column`, parametrised over
       `("en", "| AC | Steps | Proving test | Red before the change |")` and

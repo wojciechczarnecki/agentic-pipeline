@@ -260,6 +260,23 @@ def test_template_pairs_have_the_same_structure(document):
     check_structure(document)
 
 
+# SPEC 010, AC1: the AC matrix carries the red record `implement` fills in, in both languages,
+# as a table column, so the section map stays as it is.
+@pytest.mark.parametrize(
+    "language, header",
+    [
+        ("en", "| AC | Steps | Proving test | Red before the change |"),
+        ("pl", "| AC | Kroki | Test dowodzący | Czerwony przed zmianą |"),
+    ],
+)
+def test_the_ac_matrix_has_the_red_column(language, header):
+    lines = template("PLAN", language).splitlines()
+    assert header in lines, (language, header)
+    separator = lines[lines.index(header) + 1]
+    assert re.fullmatch(r"\|(-+\|)+", separator), separator
+    assert separator.count("|") == 5, separator
+
+
 @pytest.mark.parametrize("document", DOCUMENTS)
 def test_every_map_row_occurs_in_its_template(document):
     check_occurs(document)
