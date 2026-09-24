@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-09-23"
   - "spec-ready — 2026-09-23"
   - "plan-draft — 2026-09-24"
   - "plan-approved — 2026-09-24"
   - "implemented — 2026-09-24"
+  - "done — 2026-09-24"
 metrics:
   started_at: 2026-09-24T00:06
   escalations: 0
@@ -21,6 +22,7 @@ metrics:
   final_review_nits: 5
   findings_accepted: 3
   findings_rejected: 4
+  finished_at: 2026-09-24T07:32
 ---
 
 # SPEC 009 — Prompt audit of the skills and agents for Claude Opus 5.5

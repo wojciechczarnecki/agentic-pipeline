@@ -509,3 +509,7 @@ Fixed:
 
 `bash scripts/check.sh`: all green (1941 tests passed). Backlog: nothing delivered or
 added; no item's trigger has fired.
+
+PR: https://github.com/wojciechczarnecki/agentic-pipeline/pull/28 — CI green on the first
+attempt (`plugin`, `python-audit`); no test passed only after a retry. AC9 (the eval
+receipt) remains for the owner's command, as recorded in Owner decisions.
