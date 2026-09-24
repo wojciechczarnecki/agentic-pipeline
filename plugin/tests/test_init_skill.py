@@ -232,3 +232,10 @@ def test_init_fills_the_read_rule_with_the_marketplace():
         and "the same value" in sentence
         for sentence in derivation
     ), derivation
+
+
+# SPEC 011, AC16: new projects get the implementer on Sonnet — a guess until the Stage 7
+# comparison measures it — and every other stage on the session model.
+def test_init_writes_the_implement_model_guess():
+    generating = " ".join(step(4).split())
+    assert '"models": {"implement": "sonnet"}' in generating

@@ -398,3 +398,18 @@ def test_the_changelog_records_spec_010():
     impact = " ".join(section.split("**consumer impact:**", 1)[1].split("\n### ", 1)[0].split())
     for token in ["no configuration change", "subagent"]:
         assert token in impact, token
+
+
+# SPEC 011, AC16: the `models` row and the effort subsection.
+def test_the_models_row_marks_the_guess_and_effort():
+    rows = [line for line in README.splitlines() if line.startswith("| `models`")]
+    assert len(rows) == 1
+    row = rows[0]
+    for token in ["absent", "`plan`", "`plan-review`", "`implement`", "`final-review`"]:
+        assert token in row, token
+    for value in ["inherit", "sonnet", "opus", "haiku", "fable"]:
+        assert f"`{value}`" in row, value
+    assert "guess" in row
+    effort = " ".join(section(README, "### Models and effort").split())
+    for token in ["`Agent`", "effort", "2.1.281", "frontmatter", "plugin default", "guess"]:
+        assert token in effort, token

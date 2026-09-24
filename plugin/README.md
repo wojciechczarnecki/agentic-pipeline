@@ -63,8 +63,23 @@ the others keep configuring the rules — a typo in one key does not disarm the 
 | `gitHooksDir` | `"scripts/git-hooks"` | the git hooks directory (an existing hook is protected from shell edits; named in the enable instruction) |
 | `protectedBranches` | absent | extra branch names the guard treats exactly like `main`/`master` (which stay protected whatever the list says); exact names, no patterns; binds agent sessions only — the `pre-push` hook and `/pipeline:init` do not read or write it |
 | `language` | `"en"` | the language of every file the pipeline writes into the repository and of PR descriptions — supported `en`, `pl`; any other value warns and falls back to `en` (see the language contract below) |
+| `models` | absent | the model per stage agent started by `/pipeline:ship`: keys `plan`, `plan-review`, `implement`, `final-review`; values `inherit` (the session model), `sonnet`, `opus`, `haiku`, `fable`; a stage without an entry inherits; a bad entry warns and only that stage inherits. `/pipeline:init` writes `{"implement": "sonnet"}` — a guess not yet measured, until the Stage 7 comparison |
 
 Full example: `templates/workflow.example.json`.
+
+### Models and effort
+
+`/pipeline:ship` passes a stage's `models` entry to the `Agent` tool as its `model`; for
+`inherit` or no entry it passes none, and the stage runs on the session model. The value
+`/pipeline:init` writes, the implementer on Sonnet, is a guess not yet measured: the
+implementer takes the largest share of a spec's cost and carries out a detailed plan with
+tests, and the self-correction loop, the converge pass and the final review catch its
+mistakes. The Stage 7 comparison will measure it with the cost keys (see Workflow metrics).
+
+An effort level cannot be configured. The `Agent` tool takes a model alias but no effort
+level (measured on Claude Code 2.1.281), and a plugin agent's `effort` sits in its
+frontmatter, which a consumer cannot override. Effort therefore stays a plugin default; in
+this release the agents set none and inherit the session's.
 
 ### Formatting (`format[]`)
 

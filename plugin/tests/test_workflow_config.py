@@ -231,3 +231,62 @@ def test_load_sections_falls_back_to_english(repo):
     assert problems == ["`language` has to be one of: en, pl"]
     assert config.get("language") == "en"
     assert config.get("production.hosts") == ["x.test"]
+
+
+STAGES = ["plan", "plan-review", "implement", "final-review"]
+ALIASES = ["inherit", "sonnet", "opus", "haiku", "fable"]
+
+
+# SPEC 011, AC14: a model per stage, passed by /pipeline:ship to the Agent tool.
+@pytest.mark.parametrize("stage", STAGES)
+@pytest.mark.parametrize("value", ALIASES)
+def test_models_accepts_every_stage_and_alias(repo, stage, value):
+    write_config(repo, {"models": {stage: value}})
+    result = run_cli(repo, "--check")
+    assert result.returncode == 0, result.stderr
+    assert workflow_config.stage_model(workflow_config.load(repo), stage) == value
+
+
+def test_stage_model_defaults_to_inherit(repo):
+    config = workflow_config.load(repo)
+    for stage in STAGES:
+        assert workflow_config.stage_model(config, stage) == "inherit"
+    write_config(repo, {"models": {"implement": "sonnet"}})
+    config = workflow_config.load(repo)
+    assert workflow_config.stage_model(config, "implement") == "sonnet"
+    assert workflow_config.stage_model(config, "plan") == "inherit"
+
+
+# The guard and the report load section by section; for `models` a bad entry costs only its
+# own stage, which then inherits, and the other stages keep their model.
+def test_a_bad_models_entry_warns_and_only_that_stage_inherits(repo):
+    write_config(repo, {"models": {"implement": "gpt", "plan": "opus"}, "language": "en"})
+    config, problems = workflow_config.load_sections(repo)
+    assert len(problems) == 1 and "models.implement" in problems[0], problems
+    assert workflow_config.stage_model(config, "implement") == "inherit"
+    assert workflow_config.stage_model(config, "plan") == "opus"
+
+    write_config(repo, {"models": {"deploy": "opus", "plan": "haiku"}})
+    config, problems = workflow_config.load_sections(repo)
+    assert len(problems) == 1 and "models.deploy" in problems[0], problems
+    assert workflow_config.stage_model(config, "plan") == "haiku"
+    assert config.get("models.deploy") is None
+
+
+@pytest.mark.parametrize(
+    "models, fragment",
+    [
+        (
+            {"implement": "gpt"},
+            "`models.implement` has to be one of: inherit, sonnet, opus, haiku, fable",
+        ),
+        ({"implement": 3}, "`models.implement` has to be str"),
+        ({"deploy": "opus"}, "unknown key `models.deploy`"),
+        ("sonnet", "`models` has to be an object"),
+    ],
+)
+def test_models_errors_are_readable(repo, models, fragment):
+    write_config(repo, {"models": models})
+    result = run_cli(repo, "--check")
+    assert result.returncode == 1
+    assert fragment in result.stderr
