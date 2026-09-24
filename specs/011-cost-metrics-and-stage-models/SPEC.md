@@ -1,11 +1,13 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-09-24"
   - "spec-ready — 2026-09-24"
+  - "plan-draft — 2026-09-24"
 metrics:
   started_at: 2026-09-24T14:32
   escalations: 0
+  plan_steps: 10
 ---
 
 # SPEC 011 — Cost per stage, a model per stage and targeted reading
