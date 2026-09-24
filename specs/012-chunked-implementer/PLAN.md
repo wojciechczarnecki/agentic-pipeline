@@ -168,8 +168,8 @@ wants a small plan to be one group.
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
 | AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_section_map_matches_the_snapshot`, `::test_english_templates_match_the_snapshot`, `::test_polish_templates_match_the_snapshot` | `uv run pytest plugin/tests/test_templates_language.py -q` → `assert section_map() == MAP_SNAPSHOT`: `At index 19 diff: ('step-verification', …) != ('step-group', 'PLAN', '### Grupa N — ', '### Group N — ')` |
-| AC2 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_*` | |
-| AC3 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_review_*` | |
+| AC2 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_*` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert f"\n## {heading}\n" in text` (`plan: no section \`Step groups\``) |
+| AC3 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_review_*` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '**groups:**' in checklist` |
 | AC4 | 2 | `plugin/tests/test_workflow_config.py::test_implement_*` | `uv run pytest plugin/tests/test_workflow_config.py -q` → `assert 1 == 0` (`--check` on `{"implement": {"chunked": true}}`: `unknown key \`implement\``) |
 | AC5 | 2 | `plugin/tests/test_readme.py::test_the_implement_row_marks_the_candidate`, `plugin/tests/test_init_skill.py::test_init_does_not_write_the_implement_section`, `plugin/tests/test_init_templates.py::test_the_example_shows_chunking_off` | `uv run pytest plugin/tests/test_readme.py plugin/tests/test_init_skill.py -q` → `assert len(rows) == 1` (`assert 0 == 1`, no `implement.chunked` row); `assert "you do not write the \`implement\` section" in generating` |
 | AC6 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_chunk_ends_at_the_group_boundary` | |
@@ -287,7 +287,7 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
       the `--check` table's `done` row lists `implement_chunks` among the optional ones.
       Automatic verification: `uv run pytest plugin/tests/test_workflow_metrics.py plugin/tests/test_record_cost.py plugin/tests/test_readme.py tests/test_spec_metrics.py -q` → green.
 
-- [ ] 4. Groups in `plan` and `plan-review` (AC2, AC3) — files:
+- [x] 4. Groups in `plan` and `plan-review` (AC2, AC3) — files:
       `plugin/tests/test_chunked_implementer.py` (new), `plugin/skills/plan/SKILL.md`,
       `plugin/skills/plan-review/SKILL.md`.
       Tests first:
@@ -632,7 +632,13 @@ no dependency or migration.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- **D1 (minor), step 4:** `plugin/tests/test_language_contract.py::test_quoted_headings_are_english_map_literals`
+  accepted only exact map literals in backticks, so the planned running-text mention
+  `` `### Group N — <name>` `` in `plan` and `plan-review` was rejected. The check now treats
+  a map literal that ends in `— ` as a prefix, the same rule step 1 gave `key_of` in
+  `test_templates_language.py`, through a helper `is_english_literal` with its own test
+  (`test_a_prefix_literal_admits_only_its_own_headings`: the Polish `### Grupa N — ` and an
+  extended exact heading are still rejected). The check is not weakened for any other literal.
 
 ## Final review
 

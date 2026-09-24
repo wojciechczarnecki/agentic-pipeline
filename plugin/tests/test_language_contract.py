@@ -233,13 +233,31 @@ def heading_like(span: str) -> bool:
 
 
 # Every quoted heading or map literal (`## …`, `**…:**`, `…:`, `(…)`) is the English literal
-# of a map row, so a stage cannot name a section the templates do not have.
+# of a map row, so a stage cannot name a section the templates do not have. A literal that
+# ends in "— " is a prefix (`### Group N — <name>`, SPEC 012) and matches a span that starts
+# with it.
+def is_english_literal(span: str, english: set[str]) -> bool:
+    return span in english or any(
+        literal.endswith("— ") and span.startswith(literal) for literal in english
+    )
+
+
 @pytest.mark.parametrize("path", FILES)
 def test_quoted_headings_are_english_map_literals(path):
     english = {row[3] for row in section_map()} | OTHER_HEADINGS
     spans = quoted((PLUGIN / path).read_text())
-    unknown = [span for span in spans if heading_like(span) and span not in english]
+    unknown = [
+        span for span in spans if heading_like(span) and not is_english_literal(span, english)
+    ]
     assert not unknown, (path, unknown)
+
+
+def test_a_prefix_literal_admits_only_its_own_headings():
+    english = {"### Group N — ", "## Steps"}
+    assert is_english_literal("### Group N — <name>", english)
+    assert is_english_literal("## Steps", english)
+    assert not is_english_literal("### Grupa N — <nazwa>", english)
+    assert not is_english_literal("## Steps and more", english)
 
 
 def test_the_heading_checks_see_wrapped_spans():

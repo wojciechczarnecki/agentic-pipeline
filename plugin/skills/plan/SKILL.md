@@ -103,6 +103,7 @@ with the final review report; they do not approve the whole plan).
    `<docs.conventions>`. The plan's length follows the change: each step and section says
    something the implementer needs, and a template section that does not apply gets one
    line `n/a — <reason>` instead of filler, because filler hides the steps that matter.
+   Divide the steps into groups as the Step groups section says.
 6. **AC → steps matrix:** every AC must have steps that deliver it and a test that
    proves it. An AC impossible to cover → escalation (a gap in the SPEC); do not patch the
    SPEC yourself. The fourth column stays empty for `/pipeline:implement`, which records
@@ -120,6 +121,24 @@ with the final review report; they do not approve the whole plan).
    A red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
    STOP with a question) with the names of the missing keys; you do not invent a value you
    did not measure. Commit (`docs: add PLAN NNN <slug>`). Do not implement anything.
+
+## Step groups
+
+- Divide `## Steps` into groups, each under a heading `### Group N — <name>` (the Polish
+  literal comes from the section map, `sections.md`), whatever `implement.chunked` says in
+  `.claude/workflow.json`. A plan can be chunked later, when the owner turns the switch on,
+  and plans look the same in both modes, so the before and after runs stay comparable.
+- A group is a coherent part of the change that ends in a green, committable state: no
+  step leaves work for a later group to finish, because a chunk of the implementer stops at
+  the group boundary and the next one starts from the committed state and a short note.
+- Keep one numbering: step numbers run through the whole plan, and a later group continues
+  the numbering of the group before it.
+- A small plan is one group, because every chunk pays its cache writes again: it re-reads
+  the SPEC, the PLAN, the conventions and its own files. The rule of thumb: split only where
+  a later part of the change needs other files and other context than the earlier one, and
+  where the context a chunk would drop (the files, test runs and failures of a finished
+  group) outweighs what the next chunk reads again. A plan that stays in one area is one
+  group.
 
 ## PLAN.md template
 
