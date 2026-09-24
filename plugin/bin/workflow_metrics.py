@@ -17,14 +17,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import workflow_config  # noqa: E402
 
-COUNTERS = [
+REQUIRED_DONE_COUNTERS = [
     "plan_steps",
     "plan_review_blockers",
     "plan_review_majors",
     "plan_changes",
     "implement_steps",
     "implement_iterations",
-    "deviations",
     "escalations",
     "final_review_blockers",
     "final_review_worth_fixing",
@@ -32,19 +31,48 @@ COUNTERS = [
     "findings_accepted",
     "findings_rejected",
 ]
+COST_KEYS = {
+    "plan": "cost_plan_cents",
+    "plan-review": "cost_plan_review_cents",
+    "implement": "cost_implement_cents",
+    "final-review": "cost_final_review_cents",
+}
+COUNTERS = [
+    "plan_steps",
+    "plan_review_blockers",
+    "plan_review_majors",
+    "plan_changes",
+    "implement_steps",
+    "implement_iterations",
+    "converge_gaps",
+    "deviations",
+    "deviations_minor",
+    "deviations_major",
+    "escalations",
+    "final_review_blockers",
+    "final_review_worth_fixing",
+    "final_review_nits",
+    "findings_accepted",
+    "findings_rejected",
+    *COST_KEYS.values(),
+]
+# `deviations` or both split keys: the split arrived in SPEC 011, and nobody guesses it for
+# specs that recorded the old key.
+DEVIATION_FORMS = ("deviations", ("deviations_minor", "deviations_major"))
+DEVIATIONS_DUE = ("implemented", "done")
 FRONTMATTER = re.compile(r"---\n(.*?)\n---", re.DOTALL)
 TIME_FORMAT = "%Y-%m-%dT%H:%M"
 TIMESTAMPS = ("started_at", "finished_at")
 _PLAN_DRAFT = ["started_at", "escalations", "plan_steps"]
 _PLAN_APPROVED = _PLAN_DRAFT + ["plan_review_blockers", "plan_review_majors", "plan_changes"]
-_IMPLEMENTED = _PLAN_APPROVED + ["implement_steps", "implement_iterations", "deviations"]
+_IMPLEMENTED = _PLAN_APPROVED + ["implement_steps", "implement_iterations"]
 REQUIRED: dict[str, list[str]] = {
     "spec-draft": [],
     "spec-ready": [],
     "plan-draft": _PLAN_DRAFT,
     "plan-approved": _PLAN_APPROVED,
     "implemented": _IMPLEMENTED,
-    "done": ["started_at", "finished_at", *COUNTERS],
+    "done": ["started_at", "finished_at", *REQUIRED_DONE_COUNTERS],
 }
 BALANCE = (
     ("findings_accepted", "findings_rejected"),
@@ -102,6 +130,13 @@ def check(spec_dir: Path) -> list[str]:
     if missing:
         problems.append(
             f"status `{status}` requires metric keys that are missing: " + ", ".join(missing)
+        )
+    old, split = DEVIATION_FORMS
+    if status in DEVIATIONS_DUE and not (
+        metrics.get(old) or all(metrics.get(key) for key in split)
+    ):
+        problems.append(
+            f"status `{status}` requires either `{old}` or both `{split[0]}` and `{split[1]}`"
         )
     for key in TIMESTAMPS:
         value = metrics.get(key)

@@ -263,7 +263,9 @@ metrics:
   plan_changes: 5
   implement_steps: 8                   # /pipeline:implement
   implement_iterations: 3              # self-correction iterations beyond the first attempt
-  deviations: 1
+  converge_gaps: 1                     # real gaps kept from the converge passes
+  deviations_minor: 1                  # every other entry in `## Deviations`
+  deviations_major: 0                  # deviations that change scope, architecture or schema
   escalations: 1                       # /pipeline:ship — questions to the owner
   final_review_blockers: 0             # /pipeline:final-review report
   final_review_worth_fixing: 3
@@ -271,7 +273,16 @@ metrics:
   findings_accepted: 3                 # /pipeline:final-review apply
   findings_rejected: 2
   finished_at: "2026-09-15T14:30"      # /pipeline:final-review apply (green CI on the PR)
+  cost_plan_cents: 180                 # /pipeline:ship in Closing, `--record-cost`
+  cost_plan_review_cents: 120
+  cost_implement_cents: 950
+  cost_final_review_cents: 610
 ```
+
+Specs recorded before 0.8.0 carry one `deviations:` counter instead of the two split keys;
+it still passes `--check`. The new keys (`converge_gaps`, the split deviations and the four
+`cost_*` keys) are never required, because a cost can be missing (another machine, the
+cloud, expired transcripts).
 
 A report over all specs — a table per spec, totals, the share of significant findings
 caught before code, and escalations per spec:
@@ -312,8 +323,8 @@ Keys due by status:
 | `spec-draft`, `spec-ready` | none |
 | `plan-draft` | `started_at`, `escalations`, `plan_steps` |
 | `plan-approved` | the above + `plan_review_blockers`, `plan_review_majors`, `plan_changes` |
-| `implemented` | the above + `implement_steps`, `implement_iterations`, `deviations` |
-| `done` | `started_at`, `finished_at` and every counter from the block above |
+| `implemented` | the above + `implement_steps`, `implement_iterations`, and either `deviations` or both `deviations_minor` and `deviations_major` |
+| `done` | `started_at`, `finished_at`, every counter from the block above except the optional ones (`converge_gaps`, the `cost_*` keys), and either deviations form |
 
 A consumer must have the rule `Bash(workflow_metrics.py *)` in `permissions.allow` — a stage
 subagent cannot answer a permission prompt, so without it every `--check` stalls and
