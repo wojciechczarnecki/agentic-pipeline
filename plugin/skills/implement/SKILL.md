@@ -75,10 +75,11 @@ correct only when the verification commands say so — never because it "looks g
    may already be pushed, and force-push is blocked). A conflict → escalation.
    If the PLAN already has ticked steps (resuming work) — trust them and continue from
    the first unticked one.
-2. **Step by step, in order:** the step's implementation + tests → **the self-correction
-   loop** (below) → green → tick the checkbox in PLAN.md → commit the step
-   (`<type>: <message>` in English, the format from `<docs.conventions>`; the step's files +
-   PLAN.md) → the next step.
+2. **Step by step, in order:** the step's proving test first → its red record (the
+   test-first evidence section below) → the product change and the step's other tests →
+   **the self-correction loop** (below) → green → tick the checkbox in PLAN.md → commit the
+   step (`<type>: <message>` in English, the format from `<docs.conventions>`; the step's
+   files + PLAN.md) → the next step.
 3. **Deviations:** minor and necessary (a different file name, a small helper) → do it
    and add it to `## Deviations` with a rationale. Ones that change the scope, the
    architecture or the data schema → escalation; do not carry on on your own.
@@ -100,6 +101,34 @@ correct only when the verification commands say so — never because it "looks g
      STOP with a question) with the names of the missing keys; you do not invent an
      unmeasured value;
    - the closing commit, then `git push -u origin feat/NNN-<slug>`.
+
+## Test-first evidence
+
+A test that was never red proves nothing: it may pass for a reason that has nothing to do
+with the change. So each AC's proving test is seen failing before the change that is meant
+to make it pass.
+
+- Before that change, run the AC's proving test. Record the command and the failing
+  assertion line in the fourth column of the AC → steps matrix, as
+  `` `<command>` → `<failing assertion line>` ``.
+- Red means a failed assertion about the AC's behaviour. An import, collection or syntax
+  error is not red, because such an error is red for any reason. When the symbol under
+  test does not exist yet, add a stub first (a function that returns a placeholder value),
+  so that the test reaches its assertion, and record that assertion failure.
+- A step is not green, and is not ticked while its AC has no red record, unless the row is
+  marked `manual` (the owner checks it by hand) or `n/a — <reason>`.
+- A proving test that is green before the change:
+  - when the step writes the test, rewrite it until it fails on the assertion — a test
+    that passes on the old code does not check the new behaviour;
+  - when the test existed before, or the plan gives it verbatim, escalate
+    (Expected / Found / Why it matters), leave the test unchanged and the step unticked —
+    that test belongs to the owner or to the plan, and changing it is the owner's call.
+- An AC whose own words require existing behaviour to stay as it is (a regression guard)
+  is green before the change by design; its row is marked `n/a — kept behaviour`. An AC
+  that asks for new behaviour never gets this mark.
+- A plan written before 0.7.0 has no fourth column: add it, with the heading taken from
+  `${CLAUDE_PLUGIN_ROOT}/templates/PLAN.<language>.md`, and mark the kept-behaviour rows
+  yourself, quoting the AC's words. A plan with no matrix at all gets one the same way.
 
 ## Self-correction loop (mandatory for every step)
 

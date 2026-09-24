@@ -164,8 +164,8 @@ and `docs:` for documents. Each commit holds the step's files plus PLAN.md, per
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_ac_matrix_has_the_red_column`; section map unchanged: `::test_the_section_map_matches_the_snapshot` | `uv run pytest plugin/tests/test_templates_language.py -k red_column` → `AssertionError: ('en', '| AC | Steps | Proving test | Red before the change |')` |
-| AC2 | 2 | `plugin/tests/test_test_first.py::test_implement_*` | |
+| AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_ac_matrix_has_the_red_column`; section map unchanged: `::test_the_section_map_matches_the_snapshot` | `uv run pytest plugin/tests/test_templates_language.py -k red_column` → `AssertionError: ('en', '… Red before the change …')` (the header line missing, both languages) |
+| AC2 | 2 | `plugin/tests/test_test_first.py::test_implement_*` | `uv run pytest plugin/tests/test_test_first.py` → `AssertionError: implement: no section Test-first evidence` (7 failed, all on assertions) |
 | AC3 | 3 | `plugin/tests/test_test_first.py::test_plan_*`, `::test_plan_review_*` | |
 | AC4 | 4 | `plugin/tests/test_converge.py` (all); `plugin/tests/test_stage_skills.py` (Finish prefix) | |
 | AC5 | 5 | `plugin/tests/test_review_depth.py::test_depth_*`; the absence guard `::test_no_size_tiers_anywhere` is green before the change by design | |
@@ -198,7 +198,7 @@ the red record comes from the `test_depth_*` tests.
       Files: `plugin/templates/PLAN.en.md`, `plugin/templates/PLAN.pl.md`,
       `plugin/tests/test_templates_language.py`
       Automatic verification: `uv run pytest plugin/tests/test_templates_language.py plugin/tests/test_eval_cases.py plugin/tests/test_english_only.py -q`
-- [ ] 2. **AC2: test-first evidence in `implement`.** Test first: create
+- [x] 2. **AC2: test-first evidence in `implement`.** Test first: create
       `plugin/tests/test_test_first.py` (comment header `# SPEC 010, AC2/AC3: …`) with the
       tests below. Each one asserts whitespace-collapsed phrases:
       - `test_implement_has_the_test_first_section`: section
