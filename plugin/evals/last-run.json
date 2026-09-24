@@ -1,12 +1,12 @@
 {
-  "commit": "6208804516d5605b063f3c28c43f20304ed78fb8",
-  "plugin_fingerprint": "d6374cf5b8d980a02a70f3d391c953d9b2245f90716670d031ec0f40d0adbd86",
+  "commit": "377d674085b1d62e1e853891b32e63026d67a10f",
+  "plugin_fingerprint": "c4f0096ff6fd0682a0f21aa1c9f57f880e67403b0c177da882bedaeb3a41d3d6",
   "plugin_version": "0.7.0",
-  "ran_at": "2026-09-24T08:26",
-  "cases_total": 9,
-  "cases_passed": 9,
+  "ran_at": "2026-09-24T12:34",
+  "cases_total": 11,
+  "cases_passed": 11,
   "green": true,
-  "cost_usd": 3.7288,
+  "cost_usd": 4.6085,
   "model": "default",
   "cases": {
     "final-review-finds-planted-defect": {
@@ -21,7 +21,15 @@
       "runs": 1,
       "passed": 1
     },
+    "implement-converge-finds-missing-ac": {
+      "runs": 1,
+      "passed": 1
+    },
     "implement-escalates-on-failing-test": {
+      "runs": 1,
+      "passed": 1
+    },
+    "implement-escalates-on-never-red-test": {
       "runs": 1,
       "passed": 1
     },
