@@ -207,14 +207,14 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
 | AC7 | 5 | `plugin/tests/test_record_cost.py::test_stdout_shows_tokens_by_type_model_and_cost` | |
 | AC8 | 3 | `plugin/tests/test_record_cost.py::test_the_rate_table_is_dated_and_frozen` | |
 | AC9 | 1 | `plugin/tests/test_workflow_metrics.py::test_new_counters_are_known_and_never_required` | |
-| AC10 | 1 | `plugin/tests/test_workflow_metrics.py::test_either_deviations_form_satisfies_the_check`, `::test_neither_deviations_form_names_both`; repository specs: `tests/test_spec_metrics.py::test_every_repository_spec_passes_the_check` (n/a — kept behaviour: "still pass `--check`") | |
+| AC10 | 1 | `plugin/tests/test_workflow_metrics.py::test_either_deviations_form_satisfies_the_check`, `::test_neither_deviations_form_names_both`; regression guard, green before by design and not the red record: `tests/test_spec_metrics.py::test_every_repository_spec_passes_the_check` (AC10: "still pass `--check`") | |
 | AC11 | 8 | `plugin/tests/test_stage_skills.py::test_implement_records_the_split_metrics`, `plugin/tests/test_stage_contract.py::test_the_implementer_metrics_line` | |
 | AC12 | 2 | `plugin/tests/test_workflow_metrics.py::test_report_shows_cost_per_finding_and_per_step`, `::test_cost_lines_are_hidden_without_data`, `::test_report_has_columns_for_the_new_keys` | |
 | AC13 | 7 | `plugin/tests/test_ship_cost_and_models.py::test_closing_records_cost_between_apply_and_notification`, `::test_the_guardrail_names_the_cost_exception` | |
 | AC14 | 6 | `plugin/tests/test_workflow_config.py::test_models_accepts_every_stage_and_alias`, `::test_a_bad_models_entry_warns_and_only_that_stage_inherits`, `::test_models_errors_are_readable` | |
 | AC15 | 7 | `plugin/tests/test_ship_cost_and_models.py::test_ship_passes_the_model_only_when_not_inherit` | |
 | AC16 | 6 | `plugin/tests/test_init_skill.py::test_init_writes_the_implement_model_guess`, `plugin/tests/test_readme.py::test_the_models_row_marks_the_guess_and_effort` | |
-| AC17 | 7 | `plugin/tests/test_plugin_structure.py::test_no_agent_sets_effort_yet` (n/a — kept behaviour: "do not get `effort` in this release") | |
+| AC17 | 7 | `plugin/tests/test_plugin_structure.py::test_no_agent_sets_effort_yet` | n/a — kept behaviour: "the agents … do not get `effort` in this release" |
 | AC18 | 9 | `plugin/tests/test_targeted_reading.py::test_the_reading_section_is_identical_in_four_skills`, `::test_the_reading_section_names_full_and_searched_documents` | |
 | AC19 | 9 | `plugin/tests/test_targeted_reading.py::test_idea_states_how_each_document_was_read`, `::test_plan_lists_what_it_read_in_the_approach`, `::test_plan_review_checks_decisions_by_its_own_search` | |
 | AC20 | 10 | `plugin/tests/test_readme.py::test_changelog_starts_at_the_manifest_version`, `::test_the_changelog_names_the_consumer_impact`, `plugin/tests/test_release_0_8_0.py::test_the_manifest_is_0_8_0`, `bash scripts/check.sh` | |
@@ -307,7 +307,9 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
       `plugin/bin/workflow_metrics.py` (`record_cost`, `write_costs`, argparse
       `--record-cost` and `--transcripts`, the header usage comment),
       `plugin/tests/test_record_cost.py`, and a new README subsection
-      `### Recording cost (--record-cost)` after `### Checking metrics (--check)`.
+      ``### Recording cost (`--record-cost`)`` after ``### Checking metrics (`--check`)``,
+      in the same heading style, and added to `HEADINGS` in `plugin/tests/test_readme.py`
+      so `test_the_readme_keeps_its_sections` pins its place.
       - README subsection: what is counted, the source and the option, the frozen unit
         and the rate date, the warnings, and "local transcripts only".
       - Tests first, run as subprocesses on `sys.executable`.
@@ -370,7 +372,9 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
         `fable`, pass it as `model` to `Agent`. When it is `inherit`, missing, or any
         other value, pass no `model`: the agent then runs on the session model, and a bad
         value has already been warned about by the guard. The rule holds for a stage run
-        again under the Result protocol too.
+        again under the Result protocol too. The same section says the prompt names the
+        spec directory as `<docs.specsDir>/NNN-<slug>/SPEC.md`, because `--record-cost`
+        attributes a stage agent to its spec by that name.
       - Closing gets a new step after step 1 (the apply RESULT) and before
         `PushNotification`. Run `workflow_metrics.py --record-cost
         <docs.specsDir>/NNN-<slug>` by name. When `git status --porcelain` shows SPEC.md
@@ -389,7 +393,8 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
         `test_the_guardrail_names_the_cost_exception`.
       - `test_ship_passes_the_model_only_when_not_inherit` checks that the section names
         `models`, the four stage keys, the four aliases, `inherit` and the phrase that no
-        `model` is passed.
+        `model` is passed. `test_the_stage_prompt_names_the_spec_directory` checks that
+        the section names `<docs.specsDir>/NNN-<slug>/SPEC.md` and `--record-cost`.
       - `test_no_agent_sets_effort_yet`: no `effort` key in any `plugin/agents/*.md`
         frontmatter. A comment says it is removed when the measured defaults land.
       Automatic verification: `uv run pytest -q plugin/tests/test_ship_cost_and_models.py plugin/tests/test_plugin_structure.py plugin/tests/test_stage_skills.py plugin/tests/test_language_contract.py plugin/tests/test_prompt_style.py plugin/tests/test_stage_contract.py`
@@ -469,6 +474,10 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
   Every text step runs both.
 - **`ship` pushes after the reviewer's green CI.** The extra commit reruns CI, so `ship`
   waits for it before notifying, because the notification says "ready to merge".
+- **A late `apply` run is not costed.** Closing step 3 can start `reviewer` (`apply`)
+  again for a flaky test after the cost is recorded, as AC13 places the recording before
+  `PushNotification`. That run is left out of `cost_final_review_cents`. It is rare, and
+  a later manual `--record-cost` picks it up.
 
 ## End-to-end verification
 
@@ -489,7 +498,8 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
      tokens in the input, cache and output columns;
    - `--check` exits 0;
    - the archive run gives the same four values as the default run, because the copies
-     are deduplicated;
+     are deduplicated. A difference is acceptable only when the stdout tables show a
+     session one source lacks (the archive is a dated snapshot); record which one;
    - the diff touches only four `cost_*` lines.
 
    The working-tree script is called by path here on purpose: the session's `PATH`
@@ -526,7 +536,58 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+**2026-09-24, /pipeline:plan-review.** The SPEC was read in full first, before the plan. My
+own approach agreed with the plan on the main points: the mode lives in
+`workflow_metrics.py`; attribution goes by `agentType`, the spec directory in the prompt and
+`cwd`; descendants count through `parentAgentId`; the frontmatter is edited line by line.
+The differences I followed up: the spec name in `ship`'s prompt (F4), the timing of a late
+`apply` run (F5), and whether the new AC10 and AC17 tests are red before the change (F1).
+
+Findings (counted before the fixes):
+
+| id | severity | finding | change |
+|---|---|---|---|
+| F1 | `major` | AC17's only proving test (`test_no_agent_sets_effort_yet`) is green before the change by design, but the `n/a — kept behaviour` mark was in the third column and the fourth was empty. `/pipeline:implement` would then escalate a proving test that is green before its change. AC10's repository-specs guard had the same misplaced note. | AC17: `n/a — kept behaviour` with the AC's words in the fourth column. AC10: the note now says the guard is not the red record. The either-form tests are red today, so that row's fourth column stays empty. |
+| F2 | `minor` | Step 5 named the README heading `### Recording cost (--record-cost)` without backticks, unlike ``### Checking metrics (`--check`)``, and did not pin where it goes. | The heading now uses backticks and is added to `HEADINGS` in `test_readme.py`. |
+| F3 | `minor` | End-to-end check 2 expected the archive run and the default run to match exactly. The archive is a dated snapshot, so a session missing from one source would make the check fail even though the code is correct. | A difference is accepted only when the stdout tables show the missing session, and it is recorded. |
+| F4 | `minor` | Attribution relies on the stage prompt naming the spec directory, but `ship` only said "the spec number and path", and nothing pinned it. | Step 7: "Starting a stage agent" names `<docs.specsDir>/NNN-<slug>/SPEC.md` and why. New pin `test_the_stage_prompt_names_the_spec_directory`. |
+| F5 | `minor` | Closing step 3 can start `apply` again after the cost is recorded (AC13 puts the recording before `PushNotification`), so that run is not costed. | Added to Risks and traps as an accepted gap. It is rare, and a manual re-run covers it. |
+
+Checked and found sound, so later stages need not check these again:
+
+- **Coverage:** AC1–AC20 each have steps and a proving test. The matrix's step numbers
+  match the steps.
+- **Rates:** checked against the `/claude-api` model table (cached 2026-06-24). Opus 5.5 costs
+  $4 / $20 with cache reads at $0.20, Fable 5.1 $10 / $50 with cache reads at $0.25,
+  Opus 5 $5 / $25, Sonnet 5 $2 / $10 and Haiku 4.5 $1 / $5. Cache writes are 1.25× input
+  for 5 minutes and 2× input for one hour. Every row of the Approach table matches. Adding
+  `claude-opus-5` for the baseline is right.
+- **Transcript facts:** checked on this machine against this session's own subagents.
+  `meta.json` holds `agentType`, and `parentAgentId` on nested agents. The first jsonl
+  line is `type: user` and carries `cwd`, `gitBranch` and the prompt, which names
+  `specs/011-cost-metrics-and-stage-models/SPEC.md`.
+- **Compliance:** `docs/DECISIONS.md` was searched for `PATH`, cost, `converge_gaps`,
+  required keys and prompt style. The plan keeps the 2026-09-21 rule (`ship` calls the
+  script by name). The end-to-end check calls it by path, with a stated reason. The plan
+  keeps the new keys optional, as SPEC 010 requires, and it adds `converge_gaps`, which
+  SPEC 010 rejected but the 2026-09-24 audit row and SPEC 011 now ask for.
+  `CLAUDE_CONFIG_DIR` as a fallback source does not contradict AC4, because without it
+  the default is `~/.claude/projects`.
+- **Existing tests:** `REQUIRED["done"]` spreads `COUNTERS`, so without
+  `REQUIRED_DONE_COUNTERS` the new keys would become required. The plan handles this.
+  `test_every_missing_key_is_named` and `test_keys_due_per_status` are adjusted as the
+  SPEC requires. The "requires either" wording keeps the single "missing" line.
+  `CLOSING_STEPS` prefixes are unaffected by the new Reading section. `pyproject.toml`
+  collects `tests/`, so `tests/test_spec_metrics.py` runs in `check.sh`.
+- **Configuration:** the `models` row stays out of `defaults()`, like `protectedBranches`.
+  `test_every_config_key_is_documented_with_its_default` still holds, and the example
+  template covers the new SCHEMA key.
+- **Feasibility:** no step depends on a later one. There is no migration and no new
+  dependency. The owner summary's flags are correct.
+- **Language:** the plan is in English, as `language` requires.
+
+The plan is ready. It has no blocker, adds no dependency and no migration, and every
+finding above was fixed in the plan itself.
 
 ## Deviations
 
