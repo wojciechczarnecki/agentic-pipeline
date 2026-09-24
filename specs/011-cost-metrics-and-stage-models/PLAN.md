@@ -584,6 +584,8 @@ Real gaps: 0. No step added, so no second pass.
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-24 — final review (gate 2) — Which findings to accept? — Accepted all: F1, F2, F3, F4, F5, F6, F7 (`worth-fixing`) and F8, F9, F10, F11, F12 (`nit`). Rejected: none. The nit findings left out of the report are not in scope.
+
 ## Review log
 
 **2026-09-24, /pipeline:plan-review.** The SPEC was read in full first, before the plan. My
