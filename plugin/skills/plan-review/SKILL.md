@@ -76,6 +76,10 @@ implementation — the owner steps in only when the decision is not yours (step 
    - **testability:** every step has an `Automatic verification:` section
      with exact commands (test paths) that
      `/pipeline:implement` will run in the self-correction loop — not a vague "add tests";
+   - **test-first:** each step that delivers an AC writes and runs its proving test before
+     the product change, and the AC → steps matrix has the fourth column, empty or marked
+     `manual` / `n/a — <reason>` — without them `/pipeline:implement` cannot record the
+     test red; a missing column you add in place, severity `major`;
    - **summary:** `## Owner summary` consistent with the plan
      — especially the new dependency and data migration flags;
    - **language:** the PLAN (every section, the Review log included) in the current

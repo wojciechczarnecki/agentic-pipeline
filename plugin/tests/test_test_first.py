@@ -85,3 +85,27 @@ def test_implement_kept_behaviour_rows():
 def test_implement_procedure_points_to_the_evidence():
     step = collapse(numbered_step(section("implement", "Procedure"), 2))
     assert "test-first evidence" in step
+
+
+def plan_step(name: str, number: int) -> str:
+    return collapse(numbered_step(section(name, "Steps"), number))
+
+
+def test_plan_orders_the_proving_test_first():
+    step = plan_step("plan", 5)
+    assert "writes and runs its proving test before the product change" in step
+
+
+def test_plan_leaves_the_red_column_to_implement():
+    step = plan_step("plan", 6)
+    for phrase in ["fourth column", "`manual`", "`n/a — <reason>`"]:
+        assert phrase in step, phrase
+
+
+def test_plan_review_checks_the_order_and_the_column():
+    step = numbered_step(section("plan-review", "Steps"), 3)
+    items = [collapse(item) for item in step.split("\n   - ")[1:]]
+    matching = [item for item in items if item.startswith("**test-first:**")]
+    assert len(matching) == 1, "no **test-first:** bullet"
+    for phrase in ["before the product change", "fourth column"]:
+        assert phrase in matching[0], phrase

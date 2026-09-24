@@ -166,7 +166,7 @@ and `docs:` for documents. Each commit holds the step's files plus PLAN.md, per
 |----|-------|--------------|-----------------------|
 | AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_ac_matrix_has_the_red_column`; section map unchanged: `::test_the_section_map_matches_the_snapshot` | `uv run pytest plugin/tests/test_templates_language.py -k red_column` → `AssertionError: ('en', '… Red before the change …')` (the header line missing, both languages) |
 | AC2 | 2 | `plugin/tests/test_test_first.py::test_implement_*` | `uv run pytest plugin/tests/test_test_first.py` → `AssertionError: implement: no section Test-first evidence` (7 failed, all on assertions) |
-| AC3 | 3 | `plugin/tests/test_test_first.py::test_plan_*`, `::test_plan_review_*` | |
+| AC3 | 3 | `plugin/tests/test_test_first.py::test_plan_*`, `::test_plan_review_*` | `uv run pytest plugin/tests/test_test_first.py -k plan` → `AssertionError: assert 'writes and runs its proving test before the product change' in '**Write PLAN.md** …'` (3 failed, all on assertions) |
 | AC4 | 4 | `plugin/tests/test_converge.py` (all); `plugin/tests/test_stage_skills.py` (Finish prefix) | |
 | AC5 | 5 | `plugin/tests/test_review_depth.py::test_depth_*`; the absence guard `::test_no_size_tiers_anywhere` is green before the change by design | |
 | AC6 | 6 | `plugin/tests/test_review_depth.py::test_nit_cap_*` | |
@@ -228,7 +228,7 @@ the red record comes from the `test_depth_*` tests.
       Commit: `feat: record every acceptance test red before the change in implement`.
       Files: `plugin/skills/implement/SKILL.md`, `plugin/tests/test_test_first.py`
       Automatic verification: `uv run pytest plugin/tests/test_test_first.py plugin/tests/test_prompt_audit.py plugin/tests/test_prompt_style.py plugin/tests/test_language_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_english_only.py -q`
-- [ ] 3. **AC3: `plan` and `plan-review` order the test first.** Test first: in
+- [x] 3. **AC3: `plan` and `plan-review` order the test first.** Test first: in
       `plugin/tests/test_test_first.py` add these tests:
       - `test_plan_orders_the_proving_test_first`: `plan` → `## Steps` step 5 contains
         "writes and runs its proving test before the product change";
