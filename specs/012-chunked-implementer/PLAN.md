@@ -172,15 +172,15 @@ wants a small plan to be one group.
 | AC3 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_review_*` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '**groups:**' in checklist` |
 | AC4 | 2 | `plugin/tests/test_workflow_config.py::test_implement_*` | `uv run pytest plugin/tests/test_workflow_config.py -q` → `assert 1 == 0` (`--check` on `{"implement": {"chunked": true}}`: `unknown key \`implement\``) |
 | AC5 | 2 | `plugin/tests/test_readme.py::test_the_implement_row_marks_the_candidate`, `plugin/tests/test_init_skill.py::test_init_does_not_write_the_implement_section`, `plugin/tests/test_init_templates.py::test_the_example_shows_chunking_off` | `uv run pytest plugin/tests/test_readme.py plugin/tests/test_init_skill.py -q` → `assert len(rows) == 1` (`assert 0 == 1`, no `implement.chunked` row); `assert "you do not write the \`implement\` section" in generating` |
-| AC6 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_chunk_ends_at_the_group_boundary` | |
-| AC7 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_last_chunk_converges_and_finishes` | |
-| AC8 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_off_or_one_group_runs_one_context` | |
-| AC9 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_chunk_note_contents`, `::test_implement_start_reads_the_chunk_notes` | |
-| AC10 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_standalone_handoff_after_clear` | |
+| AC6 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_chunk_ends_at_the_group_boundary` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert f"\n## {heading}\n" in text` (`implement: no section \`Chunk mode\``) |
+| AC7 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_last_chunk_converges_and_finishes` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert f"\n## {heading}\n" in text` (`implement: no section \`Chunk mode\``) |
+| AC8 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_off_or_one_group_runs_one_context` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert f"\n## {heading}\n" in text` (`implement: no section \`Chunk mode\``) |
+| AC9 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_chunk_note_contents`, `::test_implement_start_reads_the_chunk_notes` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert f"\n## {heading}\n" in text` (`implement: no section \`Chunk mode\``); `assert '`## Chunk notes`' in start` |
+| AC10 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_standalone_handoff_after_clear` | `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert 'group boundary' in bullet` |
 | AC11 | 7 | `plugin/tests/test_eval_cases.py` (the `NEW_CASES` parametrisations for `implement-stops-at-group-boundary`, `::test_group_boundary_*`); 5 of 5 runs: manual | |
 | AC12 | 6 | `plugin/tests/test_chunked_implementer.py::test_ship_*` | |
-| AC13 | 5, 6 | `plugin/tests/test_chunked_implementer.py::test_implementer_agent_reports_the_chunk`, `::test_ship_no_progress_is_a_missing_result`, `::test_readme_documents_the_chunk_line` | |
-| AC14 | 3, 5 | `plugin/tests/test_workflow_metrics.py::test_implement_chunks_*`, `plugin/tests/test_chunked_implementer.py::test_implement_final_chunk_writes_the_metrics` | step 3: `uv run pytest plugin/tests/test_workflow_metrics.py -q` → `assert 'implement_chunks' in workflow_metrics.COUNTERS` |
+| AC13 | 5, 6 | `plugin/tests/test_chunked_implementer.py::test_implementer_agent_reports_the_chunk`, `::test_ship_no_progress_is_a_missing_result`, `::test_readme_documents_the_chunk_line` | step 5: `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '`CHUNK: <group>/<groups>`' in intro`; `uv run pytest plugin/tests/test_stage_contract.py -q` → `assert 'METRICS of this stage: … and in chunk mode `implement_chunks`.' in text` |
+| AC14 | 3, 5 | `plugin/tests/test_workflow_metrics.py::test_implement_chunks_*`, `plugin/tests/test_chunked_implementer.py::test_implement_final_chunk_writes_the_metrics` | step 3: `uv run pytest plugin/tests/test_workflow_metrics.py -q` → `assert 'implement_chunks' in workflow_metrics.COUNTERS`; step 5: `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '`implement_chunks`' in finish` |
 | AC15 | 3 | `plugin/tests/test_record_cost.py::test_three_implementer_chunks_add_up` | n/a — kept behaviour ("The test pins what already works"); green before the change, as expected |
 | AC16 | 8 | `plugin/tests/test_release_0_8_0.py::test_the_changelog_records_spec_012`, `tests/test_documents.py::test_roadmap_ticks_spec_012`, `::test_decisions_record_spec_012`; `bash scripts/check.sh` | |
 
@@ -322,7 +322,7 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
         `major`, and missing groups or a small plan split in several are `minor`.
       Automatic verification: `uv run pytest plugin/tests/test_chunked_implementer.py plugin/tests/test_stage_skills.py plugin/tests/test_language_contract.py plugin/tests/test_prompt_style.py plugin/tests/test_targeted_reading.py plugin/tests/test_test_first.py plugin/tests/test_review_depth.py -q` → green.
 
-- [ ] 5. Chunk mode in `implement` and the implementer agent (AC6–AC10, AC13 agent part,
+- [x] 5. Chunk mode in `implement` and the implementer agent (AC6–AC10, AC13 agent part,
       AC14 writing rule) — files: `plugin/tests/test_chunked_implementer.py`,
       `plugin/tests/test_stage_contract.py`, `plugin/skills/implement/SKILL.md`,
       `plugin/agents/implementer.md`.

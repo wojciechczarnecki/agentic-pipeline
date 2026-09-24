@@ -108,5 +108,5 @@ def test_the_implementer_metrics_line():
     text = " ".join(agent_text("implementer").split())
     assert (
         "METRICS of this stage: `implement_steps`, `implement_iterations`, `converge_gaps`, "
-        "`deviations_minor`, `deviations_major`." in text
+        "`deviations_minor`, `deviations_major`, and in chunk mode `implement_chunks`." in text
     )

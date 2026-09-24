@@ -84,7 +84,8 @@ correct only when the verification commands say so — never because it "looks g
    has commits the branch does not have — `git merge origin/main` (not rebase: the branch
    may already be pushed, and force-push is blocked). A conflict → escalation.
    If the PLAN already has ticked steps (resuming work) — trust them and continue from
-   the first unticked one.
+   the first unticked one. With chunking on, read `## Chunk notes` and carry out one group,
+   as the Chunk mode section says.
 2. **Step by step, in order:** the step's proving test first → its red record (the
    test-first evidence section below) → the product change and the step's other tests →
    **the self-correction loop** (below) → green → tick the checkbox in PLAN.md → commit the
@@ -110,7 +111,9 @@ correct only when the verification commands say so — never because it "looks g
      SPEC.md: `implement_steps`, `implement_iterations` (the sum of loop iterations beyond
      the first attempt, over all steps), `converge_gaps` (the real gaps kept after your
      verdicts, summed over the passes; `0` when a pass found none), `deviations_minor` and
-     `deviations_major` (step 3);
+     `deviations_major` (step 3); in chunk mode, `implement_iterations` is the running total
+     from the last `## Chunk notes` entry plus your own, and `implement_chunks` the entries
+     in `## Chunk notes` plus one; without chunk mode `implement_chunks` is not written;
    - the flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
      success `workflow_metrics.py --check <spec-dir>`;
      a red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
@@ -191,6 +194,41 @@ spots. So before the Definition of Done a fresh reader compares the code with th
   then goes to the Definition of Done, without a third pass. A run with one recorded pass
   that added steps still runs the second pass after them.
 
+## Chunk mode
+
+One implementer context re-reads its whole history on every turn, and that history grows
+with every step. In chunk mode each group of steps runs in a fresh context that starts from
+the committed state and a short note, instead of re-reading one long context.
+
+- A group is a `### Group N — <name>` heading inside `## Steps` (either literal from the
+  section map). A level-3 heading of a converge pass is not a group.
+- Chunk mode is on when `implement.chunked` in `.claude/workflow.json` is the literal
+  `true` and `## Steps` has more than one group. Chunking off, or a PLAN with one group or
+  none: you run the whole plan in one context, exactly as in 0.7.0, with no
+  `## Chunk notes` entry and no `implement_chunks`.
+- On start, read `## Chunk notes` in full: the chunks before you left there what the plan
+  does not say. Then carry out the group that holds the first unticked step, step by step
+  as the Procedure says.
+- The group ends when its last step is green, ticked and committed. You then append one
+  entry to `## Chunk notes`: the group you carried out, the decisions taken within the
+  plan's latitude, the traps the next group will meet too, and the running
+  `implement_iterations` total (the previous entry's total plus the iterations of this
+  chunk). Deviations stay in `## Deviations`. Commit the note
+  (`docs: add chunk note N for NNN`), push the branch, and end with the spec status left at
+  `plan-approved`; you write no metric into SPEC.md. A chunk never ends on a red or
+  uncommitted step: it goes on, or it escalates as in any other step.
+- The chunk that holds the last group runs its steps, then the converge pass, the steps it
+  adds and the Definition of Done, as one context does. The converge-resume rules apply
+  unchanged (the last two bullets of the Converge pass section). Steps a converge pass adds
+  belong to this chunk and to no group.
+- A chunk whose first unticked step lies after the last group (a step a converge pass
+  added), or which finds every step ticked, is the final chunk too: it resumes the converge
+  pass or the Definition of Done by the converge-resume rules. That is the state after an
+  escalation inside the final chunk.
+- The final chunk writes the metrics once, as Procedure step 6 says: the running total of
+  `implement_iterations` and `implement_chunks`. The other keys are counted over the whole
+  plan, as in one context.
+
 ## Self-correction loop (mandatory for every step)
 
 You take the commands from the `Automatic verification:` section of the given
@@ -231,5 +269,7 @@ test you suspect is flaky is still red, and a skipped test is not green.
 
 - **Run on its own:** summarise what was done, the deviations, the converge passes with
   their gaps and verdicts, the verification result and the manual scenarios; the next
-  stage is `/pipeline:final-review NNN` after `/clear`.
+  stage is `/pipeline:final-review NNN` after `/clear`. A chunk that ended at a group
+  boundary summarises its group and its chunk note, and tells the owner to
+  run `/pipeline:implement NNN` again after `/clear`.
 - **Under `/pipeline:ship`:** end with the RESULT block from the stage agent contract.

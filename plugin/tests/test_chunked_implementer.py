@@ -60,3 +60,96 @@ def test_plan_review_checks_the_groups():
         "in place",
     ]:
         assert token in checklist, token
+
+
+def chunk() -> str:
+    return collapse(section("implement", "Chunk mode"))
+
+
+def agent_intro(name: str) -> str:
+    text = (PLUGIN / "agents" / f"{name}.md").read_text()
+    return collapse(text.split("\n## Stage agent contract\n", 1)[0])
+
+
+# AC6: a chunk carries out one group and ends on a committed, pushed boundary.
+def test_implement_chunk_ends_at_the_group_boundary():
+    text = chunk()
+    for token in [
+        "`implement.chunked`",
+        "more than one group",
+        "first unticked step",
+        "green, ticked and committed",
+        "`## Chunk notes`",
+        "push",
+        "`plan-approved`",
+        "never ends on a red or uncommitted step",
+    ]:
+        assert token in text, token
+
+
+# AC7: the chunk with the last group converges and finishes as one context does.
+def test_implement_last_chunk_converges_and_finishes():
+    text = chunk()
+    for token in [
+        "last group",
+        "converge pass",
+        "the steps it adds",
+        "Definition of Done",
+        "as one context does",
+        "converge-resume rules apply unchanged",
+        "after the last group",
+    ]:
+        assert token in text, token
+
+
+# AC8: chunking off, or a plan with one group or none, runs as 0.7.0 did.
+def test_implement_off_or_one_group_runs_one_context():
+    text = chunk()
+    for token in [
+        "one group or none",
+        "one context",
+        "as in 0.7.0",
+        "no `## Chunk notes` entry",
+        "no `implement_chunks`",
+    ]:
+        assert token in text, token
+
+
+# AC9: what a chunk note holds, and that the next chunk reads it.
+def test_implement_chunk_note_contents():
+    text = chunk()
+    for token in [
+        "the group",
+        "decisions taken within the plan's latitude",
+        "traps",
+        "running `implement_iterations` total",
+    ]:
+        assert token in text, token
+
+
+def test_implement_start_reads_the_chunk_notes():
+    start = numbered(section("implement", "Procedure"), 1)
+    for token in ["`## Chunk notes`", "Chunk mode"]:
+        assert token in start, token
+
+
+# AC10: run on its own, a chunk hands off to a fresh session.
+def test_implement_standalone_handoff_after_clear():
+    handoff = section("implement", "Handoff")
+    bullet = collapse(handoff.split("- **Run on its own:**", 1)[1].split("\n- **", 1)[0])
+    for token in ["group boundary", "run `/pipeline:implement NNN` again after `/clear`"]:
+        assert token in bullet, token
+
+
+# AC14: the final chunk writes the metrics once, with the running total.
+def test_implement_final_chunk_writes_the_metrics():
+    finish = numbered(section("implement", "Procedure"), 6)
+    for token in ["`implement_chunks`", "running total"]:
+        assert token in finish, token
+
+
+# AC13: the implementer agent reports its chunk.
+def test_implementer_agent_reports_the_chunk():
+    intro = agent_intro("implementer")
+    for token in ["`CHUNK: <group>/<groups>`", "`STATUS: plan-approved`", "Chunk mode"]:
+        assert token in intro, token
