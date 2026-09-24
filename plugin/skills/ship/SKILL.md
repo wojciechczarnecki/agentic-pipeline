@@ -135,8 +135,8 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
 - `implementer` with `DONE` and `STATUS: plan-approved` → a chunk ended (the skill's chunk
   mode, which the implementer turns on itself from `implement.chunked`): start the next
   implementer with the same prompt and the same `models` entry. In chunk mode the RESULT
-  carries a line `CHUNK: <group>/<groups>` after `STATUS`. A chunk end whose `CHUNK:` line
-  names the same group as the previous chunk that returned `DONE`, or that has no `CHUNK:`
+  carries a line `CHUNK: <group>/<groups>` after `STATUS`. A chunk end whose chunk line
+  names the same group as the previous chunk that returned `DONE`, or that has no chunk
   line, made no progress: treat it as a missing RESULT — run it again once, the second
   time escalate yourself, describing what the agent returned. An `ESCALATE` result is not a
   chunk end: the agent started after the owner's decision is simply the next chunk and
