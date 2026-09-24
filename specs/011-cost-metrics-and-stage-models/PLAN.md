@@ -655,4 +655,108 @@ finding above was fixed in the plan itself.
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+**2026-09-24, /pipeline:final-review (report).** Three independent perspectives were run:
+compliance, quality and tests. Each finding below was checked in the code. `bash scripts/check.sh` →
+`ALL GREEN` (2143 tests).
+
+AC → evidence:
+
+| AC | Evidence | |
+|----|----------|---|
+| AC1 | `test_record_cost.py::test_record_cost_writes_the_four_keys` (hand-computed 8/3/10/5), `::test_stage_cost_is_tokens_times_rates_rounded_once`; `stage_cents` | ok |
+| AC2 | `::test_perspectives_and_both_reviewer_runs_count_toward_the_final_review`, `::test_a_rerun_after_an_escalation_counts_toward_its_stage` | ok |
+| AC3 | `::test_other_specs_and_other_repositories_are_not_counted` (another spec, another repository, the `-v2` suffix) | ok |
+| AC4 | `::test_transcripts_option_reads_that_directory`, `::test_default_source_finds_worktree_lanes`, `::test_the_claude_config_dir_moves_the_default_source` | ok (see F6) |
+| AC5 | `::test_a_second_run_replaces_the_keys_and_keeps_every_other_byte`, `::test_an_existing_value_is_replaced_in_place` | ok (see F3) |
+| AC6 | `::test_an_unknown_model_skips_its_stage_and_is_named`, `::test_a_stage_without_transcripts_warns`, `::test_no_transcripts_leaves_the_file_unchanged` | ok (see F2) |
+| AC7 | `::test_stdout_shows_tokens_by_type_model_and_cost` | ok |
+| AC8 | `::test_the_rate_table_is_dated_and_frozen`; rates checked against `/claude-api` | ok |
+| AC9 | `test_workflow_metrics.py::test_new_counters_are_known_and_never_required` | ok (see F7) |
+| AC10 | `::test_either_deviations_form_satisfies_the_check`, `::test_neither_deviations_form_names_both`, `tests/test_spec_metrics.py` | ok |
+| AC11 | `test_stage_skills.py::test_implement_records_the_split_metrics`, `::test_implement_defines_major_and_minor_deviations`, `test_stage_contract.py::test_the_implementer_metrics_line` | ok |
+| AC12 | `::test_report_shows_cost_per_finding_and_per_step`, `::test_cost_lines_are_hidden_without_data`, `::test_report_has_columns_for_the_new_keys`, `::test_the_cost_ratio_rounds_half_up` | ok |
+| AC13 | `test_ship_cost_and_models.py::test_closing_records_cost_between_apply_and_notification`, `::test_the_guardrail_names_the_cost_exception` | ok (see F4) |
+| AC14 | `test_workflow_config.py::test_models_accepts_every_stage_and_alias`, `::test_a_bad_models_entry_warns_and_only_that_stage_inherits`, `::test_models_errors_are_readable` | ok (see F5) |
+| AC15 | `test_ship_cost_and_models.py::test_ship_passes_the_model_only_when_not_inherit` | ok |
+| AC16 | `test_init_skill.py::test_init_writes_the_implement_model_guess`, `test_readme.py::test_the_models_row_marks_the_guess_and_effort`, `workflow.example.json` | ok |
+| AC17 | `test_plugin_structure.py::test_no_agent_sets_effort_yet` | ok |
+| AC18 | `test_targeted_reading.py::test_the_reading_section_is_identical_in_four_skills`, `::test_the_reading_section_names_full_and_searched_documents` | ok |
+| AC19 | `::test_idea_states_how_each_document_was_read`, `::test_plan_lists_what_it_read_in_the_approach`, `::test_plan_review_checks_decisions_by_its_own_search` | ok |
+| AC20 | `plugin.json` 0.8.0, `test_release_0_8_0.py`, CHANGELOG `**consumer impact:**`, `check.sh` green | ok |
+
+The steps are ticked, each with its commit. The deviations are justified, and nothing
+outside the scope is in the branch.
+
+Findings:
+
+- **F1** `worth-fixing` — `plugin/bin/workflow_metrics.py:89,263` — Claude Code often logs
+  a message's `output_tokens` from the start of the stream, not the final count. In the
+  implementer transcript of this spec, a message with 15 KB of content has
+  `output_tokens: 8`: 95 messages add up to 2898 output tokens, while their content is
+  about 69,000 tokens at chars/4. The output cost is undercounted, by a share that
+  differs by model and stage, and that skews the Sonnet-vs-Opus comparison the keys exist
+  for. Fix: at least document the output count as a lower bound (README, CHANGELOG,
+  DECISIONS), and print a stderr warning when a message's `output_tokens` is far below its
+  content size. Better: record an estimated floor (content chars/4 when that is larger).
+- **F2** `worth-fixing` — `plugin/bin/workflow_metrics.py:169-180` — a transcript cut off
+  inside a multi-byte UTF-8 character (a lane still writing, a crashed session) raises
+  `UnicodeDecodeError` from `for line in handle`, which the `except OSError` does not
+  catch. `--record-cost` dies with a traceback and exit 1, and one bad file anywhere under
+  `~/.claude/projects` loses every stage's cost. That breaks AC6. Verified with a line
+  ending in `b"\xe2\x80"`. Fix: `path.open(encoding="utf-8", errors="replace")`, pass
+  `encoding="utf-8"` to the SPEC.md read and write (lines 554 and 589), and add a test.
+- **F3** `worth-fixing` — `plugin/bin/workflow_metrics.py:511` — `write_costs` matches
+  `metrics:` exactly, while `parse_metrics` (line 301) matches `line.strip()`. A SPEC with
+  `metrics: ` (a trailing space) gets a second top-level `metrics:` block, a duplicate YAML
+  key. Fix: match the way `parse_metrics` does, and add a test.
+- **F4** `worth-fixing` — `plugin/skills/ship/SKILL.md:185-190` — Closing step 2 does not
+  say what happens when the metrics-only commit is still red after
+  `gh run rerun --failed`. Step 3 relies on "the reviewer then returns ESCALATE", but the
+  reviewer has already returned DONE, so the orchestrator can loop on reruns or skip the
+  notification without an instruction. Fix: red after one rerun means no
+  `PushNotification`: the red check goes into the owner's summary, and Closing stops
+  there.
+- **F5** `worth-fixing` — `plugin/skills/ship/SKILL.md:96-98`, `plugin/bin/guard.py:437`
+  — a `models` typo (`"Sonnet"`, `"sonet"`) silently runs the stage on the session model.
+  The guard's warning goes to stderr with exit 0, which a normal session does not show,
+  and it says "that section falls back to the defaults" when only that entry does. The
+  cost comparison would then run on the wrong model unnoticed. Fix: `ship` names every
+  `models` entry it ignored in its summary for the owner, and the guard says "that entry"
+  for `models.*`.
+- **F6** `worth-fixing` — `plugin/tests/test_record_cost.py` (code
+  `workflow_metrics.py:156`) — no fixture uses `git worktree add`, so the
+  `--git-common-dir` branch never runs. A mutation to `main_root = checkout` passes the
+  whole suite. That is the path of a real lane, where `ship` runs `--record-cost` on the
+  lane's spec. Fix: a fixture with a real worktree, where the spec is costed from inside
+  the lane and agents with a main-checkout `cwd` and with a lane `cwd` are both counted.
+- **F7** `worth-fixing` — `plugin/tests/test_workflow_metrics.py` (code
+  `workflow_metrics.py:69`) — widening `DEVIATIONS_DUE` to `plan-approved` passes the
+  suite, although it would turn specs in progress red: the SPEC 010 regression that AC9
+  and AC10 guard against. Fix: a test that `plan-draft` and `plan-approved` pass with only
+  their required keys and no deviations key.
+- **F8** `nit` — `plugin/README.md:378-381` — on a re-run, a stage that now has no
+  transcripts or an unknown model keeps the value written earlier (the plan intends this),
+  but the README says "a second run replaces the keys" and "leaves that key unwritten".
+  Fix: one sentence saying that a key already present is kept.
+- **F9** `nit` — `plugin/tests/test_release_0_8_0.py:11` — `version == "0.8.0"` turns red
+  on the next bump. Fix: pin 0.8.0 only for the CHANGELOG content, or check the
+  CHANGELOG against the manifest version, as `test_readme.py` already does.
+- **F10** `nit` — `plugin/bin/workflow_metrics.py:183-194` — `prompt_and_cwd` takes the
+  first parseable entry of any type. If Claude Code ever writes a metadata entry first,
+  every stage agent drops out, and the only sign is a "no stage transcripts" warning.
+  Fix: take the first entry with `type == "user"`.
+- **F11** `nit` — `plugin/bin/workflow_metrics.py:601` — `--check --record-cost` silently
+  runs only `--record-cost`, and `--transcripts` without `--record-cost` is ignored. Fix:
+  `parser.error` for those combinations.
+- **F12** `nit` — `plugin/tests/test_record_cost.py` — there are no fixtures for a
+  grandchild agent (a perspective's own subagent), a `parentAgentId` cycle, or a
+  `metrics:` block followed by another top-level key. The code handles all three, but
+  mutations there go unnoticed. Fix: one fixture for each.
+
+Rejected:
+
+- `stage_model()` is dead code, because nothing calls it: rejected. Plan step 6 asks for
+  it, and the per-entry drop in `load_sections` that its tests go through is what the
+  guard runs.
+
+Left out: 12 nit findings.
