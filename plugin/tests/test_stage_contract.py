@@ -101,3 +101,12 @@ def test_the_trigger_list_names_the_spec_010_escalations(trigger):
     readme = readme.split("\n### Escalation triggers\n", 1)[1].split("\n### ", 1)[0]
     assert trigger in ship, trigger
     assert trigger in " ".join(readme.split()), trigger
+
+
+# SPEC 011, AC11: the implementer reports the split deviations and `converge_gaps`.
+def test_the_implementer_metrics_line():
+    text = " ".join(agent_text("implementer").split())
+    assert (
+        "METRICS of this stage: `implement_steps`, `implement_iterations`, `converge_gaps`, "
+        "`deviations_minor`, `deviations_major`." in text
+    )

@@ -94,7 +94,13 @@ CLOSING_STEPS = {
     ),
     "implement": (
         "6. **Finish",
-        ["implement_steps", "implement_iterations", "deviations"],
+        [
+            "implement_steps",
+            "implement_iterations",
+            "converge_gaps",
+            "deviations_minor",
+            "deviations_major",
+        ],
     ),
     "final-review": (
         "4. **Write the report",
@@ -175,3 +181,26 @@ def test_final_review_takes_the_run_link_from_the_pr_checks():
     text = (PLUGIN / "skills" / "final-review" / "SKILL.md").read_text()
     assert "--workflow" not in text
     assert "gh pr checks <nr> --json name,workflow,link" in text
+
+
+# SPEC 011, AC11: `implement` writes the split deviations and `converge_gaps`; the old
+# `deviations` key is no longer one it writes (a word boundary keeps `deviations_minor` out
+# of the match).
+def test_implement_records_the_split_metrics():
+    step = closing_step("implement")
+    for key in ["converge_gaps", "deviations_minor", "deviations_major"]:
+        assert f"`{key}`" in step, key
+    assert not re.search(r"\bdeviations\b", step), "the closing step still names `deviations`"
+
+
+def test_implement_defines_major_and_minor_deviations():
+    procedure = " ".join(section("implement", "Procedure").split())
+    step = procedure.split("3. **Deviations:**", 1)[1].split(" 4. ", 1)[0]
+    for token in [
+        "scope",
+        "architecture",
+        "data schema",
+        "`deviations_major`",
+        "`deviations_minor`",
+    ]:
+        assert token in step, token

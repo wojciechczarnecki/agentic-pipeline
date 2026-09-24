@@ -82,7 +82,9 @@ correct only when the verification commands say so — never because it "looks g
    files + PLAN.md) → the next step.
 3. **Deviations:** minor and necessary (a different file name, a small helper) → do it
    and add it to `## Deviations` with a rationale. Ones that change the scope, the
-   architecture or the data schema → escalation; do not carry on on your own.
+   architecture or the data schema → escalation; do not carry on on your own. In the
+   metrics, `deviations_major` counts the entries of the second kind (the ones that
+   escalate) and `deviations_minor` every other entry in `## Deviations`.
 4. **Screen:** when `verify.scopes` has a UI scope and the change touches the interface —
    run `<verify.command> <UI scope>` and look at the visual artifacts required by
    `<docs.conventions>`; without it the step is not green, and record the result in PLAN.md.
@@ -96,7 +98,9 @@ correct only when the verification commands say so — never because it "looks g
      from the map in `CLAUDE.md`, if applicable;
    - `status: implemented` + an entry in `stage_history`; in the `metrics:` block of
      SPEC.md: `implement_steps`, `implement_iterations` (the sum of loop iterations beyond
-     the first attempt, over all steps), `deviations`;
+     the first attempt, over all steps), `converge_gaps` (the real gaps kept after your
+     verdicts, summed over the passes; `0` when a pass found none), `deviations_minor` and
+     `deviations_major` (step 3);
    - the flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
      success `workflow_metrics.py --check <spec-dir>`;
      a red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
@@ -171,7 +175,8 @@ spots. So before the Definition of Done a fresh reader compares the code with th
   cost: a real gap after the second pass is an escalation.
 - Record each pass in PLAN.md, below the last step, under a level-3 heading
   Converge pass N — <date>, followed by the gaps with your verdicts and the added steps.
-  A resumed run then sees which pass ran. `implement_steps` counts the added steps.
+  A resumed run then sees which pass ran. `implement_steps` counts the added steps, and
+  `converge_gaps` the real gaps.
 - A resumed run with two passes recorded carries out the steps the owner decided on and
   then goes to the Definition of Done, without a third pass. A run with one recorded pass
   that added steps still runs the second pass after them.
