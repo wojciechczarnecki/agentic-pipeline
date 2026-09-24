@@ -20,6 +20,16 @@ with the final review report; they do not approve the whole plan).
 - Read `.claude/workflow.json`; no file = the defaults from the plugin README → `/pipeline:init`.
 - `<verify.command>`, `<docs.specsDir>` etc. = values from this configuration (keys in the README).
 
+## Reading
+
+- SPEC, PLAN and `<docs.conventions>` you read in full: they are this stage's own material,
+  and working on a fragment of them is working on a stale model.
+- `<docs.decisions>`, `<docs.roadmap>` and the domain documents from the document map in the
+  project's `CLAUDE.md` you search by the feature's topic — its terms and the names of the
+  files it changes — and read the passages the search finds. A document is read whole only
+  when the search leaves the question open. Fresh stage subagents paid for these documents
+  read whole at every stage, and most of what they read did not concern the feature.
+
 ## Language
 
 - Files you write into the repository (SPEC, PLAN — every section, including decision
@@ -63,12 +73,15 @@ with the final review report; they do not approve the whole plan).
    branch `feat/NNN-<slug>`; if it does not exist (e.g. the SPEC was committed to `main`) —
    create it: `git switch main && git pull --ff-only && git switch -c feat/NNN-<slug>`
    (in parallel work: a worktree in the directory from `worktree.dir`).
-3. **Gather context:** the SPEC in full (including `## Owner decisions`);
-   `<docs.conventions>`; `<docs.decisions>`; domain documents
-   from the document map in the project's `CLAUDE.md` (under the conditions in the map); the
-   code of the area — read the files the plan will change in full (no limit/offset). Note
-   the existing patterns to reuse with concrete paths (e.g. pagination in a specific API
-   module, shared test fixtures, error handling in the API client).
+3. **Gather context:** the SPEC in full (including `## Owner decisions`) and
+   `<docs.conventions>` in full; `<docs.decisions>`, `<docs.roadmap>` and domain documents
+   from the document map in the project's `CLAUDE.md` (under the conditions in the map)
+   searched as the Reading section says; the code of the area — read the files the plan
+   will change in full (no limit/offset). Note the existing patterns to reuse with concrete
+   paths (e.g. pagination in a specific API module, shared test fixtures, error handling in
+   the API client). List what you read and how at the start of `## Approach`, one item per
+   document: "read in full", or "searched for" with the terms and what the search gave, so
+   the plan review can check what the plan rests on.
 4. **Design the approach:** minimal, following the conventions, covering all
    ACs. Where a real choice exists, consider ≥2 variants; write the chosen one into the plan
    + one sentence on why.

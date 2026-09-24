@@ -15,6 +15,16 @@ correct only when the verification commands say so — never because it "looks g
 - Read `.claude/workflow.json`; no file = the defaults from the plugin README → `/pipeline:init`.
 - `<verify.command>`, `<docs.specsDir>` etc. = values from this configuration (keys in the README).
 
+## Reading
+
+- SPEC, PLAN and `<docs.conventions>` you read in full: they are this stage's own material,
+  and working on a fragment of them is working on a stale model.
+- `<docs.decisions>`, `<docs.roadmap>` and the domain documents from the document map in the
+  project's `CLAUDE.md` you search by the feature's topic — its terms and the names of the
+  files it changes — and read the passages the search finds. A document is read whole only
+  when the search leaves the question open. Fresh stage subagents paid for these documents
+  read whole at every stage, and most of what they read did not concern the feature.
+
 ## Language
 
 - Files you write into the repository (SPEC, PLAN — every section, including decision
@@ -69,7 +79,7 @@ correct only when the verification commands say so — never because it "looks g
 ## Procedure
 
 1. **Start:** read SPEC.md, PLAN.md (including `## Owner decisions`)
-   and `<docs.conventions>`. Check `git status` (a clean tree)
+   and `<docs.conventions>`; any other document as the Reading section says. Check `git status` (a clean tree)
    and `git branch --show-current` (the lane branch). `git fetch origin`; if `origin/main`
    has commits the branch does not have — `git merge origin/main` (not rebase: the branch
    may already be pushed, and force-push is blocked). A conflict → escalation.

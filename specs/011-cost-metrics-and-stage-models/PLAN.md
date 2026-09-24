@@ -215,8 +215,8 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
 | AC15 | 7 | `plugin/tests/test_ship_cost_and_models.py::test_ship_passes_the_model_only_when_not_inherit` | `uv run pytest -q plugin/tests/test_ship_cost_and_models.py -k passes_the_model` → `AssertionError: `models.<stage>`` (`assert '`models.<stage>`' in "The `Agent` tool …"`) |
 | AC16 | 6 | `plugin/tests/test_init_skill.py::test_init_writes_the_implement_model_guess`, `plugin/tests/test_readme.py::test_the_models_row_marks_the_guess_and_effort` | `uv run pytest -q plugin/tests/test_init_skill.py -k model_guess` → `assert '"models": {"implement": "sonnet"}' in …` |
 | AC17 | 7 | `plugin/tests/test_plugin_structure.py::test_no_agent_sets_effort_yet` | n/a — kept behaviour: "the agents … do not get `effort` in this release" |
-| AC18 | 9 | `plugin/tests/test_targeted_reading.py::test_the_reading_section_is_identical_in_four_skills`, `::test_the_reading_section_names_full_and_searched_documents` | |
-| AC19 | 9 | `plugin/tests/test_targeted_reading.py::test_idea_states_how_each_document_was_read`, `::test_plan_lists_what_it_read_in_the_approach`, `::test_plan_review_checks_decisions_by_its_own_search` | |
+| AC18 | 9 | `plugin/tests/test_targeted_reading.py::test_the_reading_section_is_identical_in_four_skills`, `::test_the_reading_section_names_full_and_searched_documents` | `uv run pytest -q plugin/tests/test_targeted_reading.py -k identical` → `AssertionError: plan: no section `Reading`` (`assert '\n## Reading\n' in '---\nname: plan …'`) |
+| AC19 | 9 | `plugin/tests/test_targeted_reading.py::test_idea_states_how_each_document_was_read`, `::test_plan_lists_what_it_read_in_the_approach`, `::test_plan_review_checks_decisions_by_its_own_search` | `uv run pytest -q plugin/tests/test_targeted_reading.py -k idea_states` → `AssertionError: assert 'read in full' in '1. **Gather context (before you assess anything):** …'` |
 | AC20 | 10 | `plugin/tests/test_readme.py::test_changelog_starts_at_the_manifest_version`, `::test_the_changelog_names_the_consumer_impact`, `plugin/tests/test_release_0_8_0.py::test_the_manifest_is_0_8_0`, `bash scripts/check.sh` | |
 
 ## Steps
@@ -415,7 +415,7 @@ and `plugin/tests/test_stage_skills.py` for text pins; `spec_dir()`/`run_check()
       - A test for the major/minor definition checks the Procedure step 3 text for
         "scope", "architecture", "data schema" and both key names.
       Automatic verification: `uv run pytest -q plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py plugin/tests/test_converge.py plugin/tests/test_prompt_style.py plugin/tests/test_language_contract.py`
-- [ ] 9. Targeted reading (AC18, AC19). Files: `plugin/skills/plan/SKILL.md`,
+- [x] 9. Targeted reading (AC18, AC19). Files: `plugin/skills/plan/SKILL.md`,
       `plugin/skills/plan-review/SKILL.md`, `plugin/skills/implement/SKILL.md` and
       `plugin/skills/final-review/SKILL.md` (a Reading section after Project
       configuration, identical in all four), `plugin/skills/idea/SKILL.md` (step 1 and the

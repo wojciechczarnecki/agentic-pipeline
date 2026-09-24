@@ -17,6 +17,16 @@ implementation — the owner steps in only when the decision is not yours (step 
 - Read `.claude/workflow.json`; no file = the defaults from the plugin README → `/pipeline:init`.
 - `<verify.command>`, `<docs.specsDir>` etc. = values from this configuration (keys in the README).
 
+## Reading
+
+- SPEC, PLAN and `<docs.conventions>` you read in full: they are this stage's own material,
+  and working on a fragment of them is working on a stale model.
+- `<docs.decisions>`, `<docs.roadmap>` and the domain documents from the document map in the
+  project's `CLAUDE.md` you search by the feature's topic — its terms and the names of the
+  files it changes — and read the passages the search finds. A document is read whole only
+  when the search leaves the question open. Fresh stage subagents paid for these documents
+  read whole at every stage, and most of what they read did not concern the feature.
+
 ## Language
 
 - Files you write into the repository (SPEC, PLAN — every section, including decision
@@ -63,7 +73,9 @@ implementation — the owner steps in only when the decision is not yours (step 
    - **coverage:** every AC from the SPEC has steps and a proving test; the matrix matches
      the list of steps;
    - **compliance:** `<docs.conventions>` (code patterns, user-facing texts, tests)
-     and `<docs.decisions>` (the plan does not break a decision);
+     and the decisions you find by your own search of `<docs.decisions>` for the feature's
+     topic, as the Reading section says, not only the ones the plan lists (the plan does
+     not break a decision);
    - **minimality:** is there a simpler way; was something reusable in the code missed; does
      the scope not go beyond the SPEC;
    - **feasibility:** the order of steps without "forward" dependencies, migrations
