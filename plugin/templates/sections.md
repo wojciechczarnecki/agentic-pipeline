@@ -28,6 +28,7 @@ shared by both languages.
 | `approach` | PLAN | `## Podejście` | `## Approach` |
 | `ac-matrix` | PLAN | `## Macierz AC → kroki` | `## AC → steps matrix` |
 | `steps` | PLAN | `## Kroki` | `## Steps` |
+| `step-group` | PLAN | `### Grupa N — ` | `### Group N — ` |
 | `step-verification` | PLAN | `Weryfikacja automatyczna:` | `Automatic verification:` |
 | `risks` | PLAN | `## Ryzyka i pułapki` | `## Risks and traps` |
 | `e2e` | PLAN | `## Weryfikacja end-to-end` | `## End-to-end verification` |
@@ -36,5 +37,6 @@ shared by both languages.
 | `definition-of-done` | PLAN | `## Definition of Done` | `## Definition of Done` |
 | `owner-decisions` | PLAN | `## Decyzje właściciela` | `## Owner decisions` |
 | `review-log` | PLAN | `## Review log` | `## Review log` |
+| `chunk-notes` | PLAN | `## Notatki chunków` | `## Chunk notes` |
 | `deviations` | PLAN | `## Deviations` | `## Deviations` |
 | `final-review` | PLAN | `## Final review` | `## Final review` |

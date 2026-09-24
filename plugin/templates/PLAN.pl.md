@@ -19,6 +19,8 @@
 
 ## Kroki
 
+### Grupa N — <nazwa>
+
 - [ ] 1. <co> — pliki: `…`
       Weryfikacja automatyczna: `<dokładne komendy, np. uruchomienie konkretnego pliku testów>`
 - [ ] 2. …
@@ -55,6 +57,10 @@ _(dopisuje /pipeline:ship lub etap przy eskalacji: data, etap, pytanie, decyzja)
 ## Review log
 
 _(wypełnia /pipeline:plan-review)_
+
+## Notatki chunków
+
+_(wypełnia /pipeline:implement w trybie chunków — jeden wpis na chunk kończący się na granicy grupy)_
 
 ## Deviations
 

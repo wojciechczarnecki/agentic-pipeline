@@ -577,6 +577,12 @@ def body_headings(text: str) -> list[str]:
     return [line for line in text.splitlines() if re.match(r"#+ ", line)][1:]
 
 
+# A step group heading carries its own number and name (SPEC 012), so both sides compare
+# as the map literal.
+def normalised(headings: list[str]) -> list[str]:
+    return ["### Grupa N — " if line.startswith("### Grupa ") else line for line in headings]
+
+
 def test_the_mirror_owner_accepted_the_dependency(polish_settings):
     folder = polish_settings / "specs" / "001-deployment-settings"
     spec, plan = (folder / "SPEC.md").read_text(), (folder / "PLAN.md").read_text()
@@ -586,5 +592,5 @@ def test_the_mirror_owner_accepted_the_dependency(polish_settings):
     field = next(line for line in summary.splitlines() if "**Nowa zależność:**" in line)
     assert field.split("**Nowa zależność:**", 1)[1].strip().startswith("tak")
     assert "PyYAML" in section(plan, "## Kroki")
-    assert body_headings(plan) == template_headings("PLAN.pl.md")
+    assert normalised(body_headings(plan)) == normalised(template_headings("PLAN.pl.md"))
     assert body_headings(spec) == template_headings("SPEC.pl.md")

@@ -19,6 +19,8 @@
 
 ## Steps
 
+### Group N — <name>
+
 - [ ] 1. <what> — files: `…`
       Automatic verification: `<exact commands, e.g. running a specific test file>`
 - [ ] 2. …
@@ -55,6 +57,10 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 ## Review log
 
 _(filled in by /pipeline:plan-review)_
+
+## Chunk notes
+
+_(filled in by /pipeline:implement in chunk mode — one entry per chunk that ends at a group boundary)_
 
 ## Deviations
 

@@ -167,7 +167,7 @@ wants a small plan to be one group.
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_section_map_matches_the_snapshot`, `::test_english_templates_match_the_snapshot`, `::test_polish_templates_match_the_snapshot` | |
+| AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_section_map_matches_the_snapshot`, `::test_english_templates_match_the_snapshot`, `::test_polish_templates_match_the_snapshot` | `uv run pytest plugin/tests/test_templates_language.py -q` → `assert section_map() == MAP_SNAPSHOT`: `At index 19 diff: ('step-verification', …) != ('step-group', 'PLAN', '### Grupa N — ', '### Group N — ')` |
 | AC2 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_*` | |
 | AC3 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_review_*` | |
 | AC4 | 2 | `plugin/tests/test_workflow_config.py::test_implement_*` | |
@@ -193,7 +193,7 @@ one in `test_converge.py`. Each step first writes its tests with the tokens give
 them red on an assertion, and then changes the product. The tokens are exact substrings of
 the collapsed text. Where a step names a sentence, the wording around the tokens is free.
 
-- [ ] 1. Section map and PLAN templates (AC1) — files:
+- [x] 1. Section map and PLAN templates (AC1) — files:
       `plugin/tests/test_templates_language.py`, `plugin/templates/sections.md`,
       `plugin/templates/PLAN.en.md`, `plugin/templates/PLAN.pl.md`,
       `plugin/tests/test_eval_cases.py`,
