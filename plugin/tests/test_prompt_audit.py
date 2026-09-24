@@ -127,6 +127,20 @@ def test_idea_guardrails_keep_assumptions_for_the_owner():
     for phrase in [
         "You do not remove the `(assumption)` suffix or set `spec-ready` before the owner has "
         "answered on every such item",
-        "including in a session without `AskUserQuestion`, leaves the SPEC `spec-draft`",
+        "also in a session without `AskUserQuestion` — the SPEC stays `spec-draft`",
     ]:
         assert phrase in guardrails, phrase
+
+
+# Final review F2: a stage that ends with the SPEC still `spec-draft` does not announce a
+# ready SPEC or send the owner to ship.
+def test_idea_handoff_covers_a_spec_left_in_draft():
+    handoff = collapse(section("idea", "Handoff"))
+    for phrase in [
+        "The SPEC left `spec-draft`",
+        "the SPEC is not ready",
+        "list the open `(assumption)` items",
+        "say whether the draft is committed",
+        "`/pipeline:ship NNN` waits until the owner has answered",
+    ]:
+        assert phrase in handoff, phrase

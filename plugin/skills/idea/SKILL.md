@@ -138,8 +138,8 @@ template from memory).
 - You end the stage at the handoff — `/pipeline:ship` and the later stages are started by
   the owner, never by `idea`, because GATE 1 is the owner's.
 - You do not remove the `(assumption)` suffix or set `spec-ready` before the owner has
-  answered on every such item — no answer, including in a session without
-  `AskUserQuestion`, leaves the SPEC `spec-draft`.
+  answered on every such item; without the owner's answer — also in a session without
+  `AskUserQuestion` — the SPEC stays `spec-draft`.
 - A SPEC with status `spec-ready` has in the `## Read context` section
   an item for `<docs.roadmap>`, `<docs.project>`, `<docs.decisions>` and every domain
   document from the map in `CLAUDE.md` (definition in step 1).
@@ -155,3 +155,8 @@ after `/clear` (or in a new session — in parallel work in the lane's worktree 
 The orchestrator will run the plan, its review and the implementation by itself and come
 back to the owner on escalation and with the final review report. The stages can also be run
 one by one (`/pipeline:plan NNN` etc.).
+
+The SPEC left `spec-draft` (an `(assumption)` item or a blocking question without the
+owner's answer) → tell the owner instead: the SPEC is not ready; list the open
+`(assumption)` items and questions; say whether the draft is committed;
+`/pipeline:ship NNN` waits until the owner has answered and the SPEC is `spec-ready`.

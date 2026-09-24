@@ -28,7 +28,8 @@ a strategy the model follows unprompted is gone, and `idea` gains two guardrails
   and the check of every finding set the depth of the review (S3).
 - `idea`: the stage ends at the handoff and never starts `/pipeline:ship` or a later stage,
   and it neither removes an `(assumption)` suffix nor sets `spec-ready` before the owner
-  has answered on every such item (R1).
+  has answered on every such item (R1); a stage that ends with the SPEC still
+  `spec-draft` hands off with the open items and does not point at `/pipeline:ship`.
 
 ## 0.6.1
 

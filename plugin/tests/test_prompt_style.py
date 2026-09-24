@@ -51,7 +51,10 @@ def prose(text: str) -> str:
             kept.append(line)
     # An unclosed fence would hide the rest of the text from the scan.
     assert not fenced, "unbalanced code fence"
-    return re.sub(r"`[^`\n]*`", "", "\n".join(kept))
+    # The skills are hard-wrapped, so a code span may cross a line break; a span never
+    # crosses a blank line, which keeps a stray backtick from hiding a whole section.
+    paragraphs = re.split(r"\n[ \t]*\n", "\n".join(kept))
+    return "\n\n".join(re.sub(r"`[^`]*`", "", paragraph) for paragraph in paragraphs)
 
 
 def emphasis_words(text: str) -> list[str]:
@@ -91,6 +94,16 @@ def test_the_scanner_ignores_code_and_tokens():
         "End with `RESULT: ESCALATE`; the SPEC and the PLAN pass GATE 1, and AC2 too.\n"
     )
     assert emphasis_words(text) == []
+
+
+def test_the_scanner_pairs_code_spans_across_a_line_break():
+    text = "Run (`git rev-parse\n--inside`) and you MUST `x` here.\n"
+    assert emphasis_words(text) == ["MUST"]
+
+
+def test_a_code_span_does_not_cross_a_blank_line():
+    text = "A stray ` backtick.\n\nYou MUST read this `x`.\n"
+    assert emphasis_words(text) == ["MUST"]
 
 
 def test_the_implement_loop_has_no_emphasis():

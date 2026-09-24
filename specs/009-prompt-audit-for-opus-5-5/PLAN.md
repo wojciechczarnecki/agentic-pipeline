@@ -487,3 +487,25 @@ Rejected:
   trimming it would depart from the SPEC; they are harmless.
 - Two-letter emphasis (`NO`) is not caught — AC1 defines emphasis as three or more
   capitals, and the PLAN accepts the limit knowingly; no current text is affected.
+
+### 2026-09-24 — /pipeline:final-review apply (under /pipeline:ship)
+
+Owner decisions: F1, F2, F7 accepted; F3, F4, F5, F6 rejected (no backlog items).
+
+Fixed:
+
+- F1 → `plugin/tests/test_prompt_style.py`: `prose()` strips code spans across line breaks
+  within a paragraph (never across a blank line, so a stray backtick cannot hide a
+  section); self-tests `test_the_scanner_pairs_code_spans_across_a_line_break` and
+  `test_a_code_span_does_not_cross_a_blank_line`. The scanner still flags the same 8 files
+  of the merge-base text.
+- F2 → `plugin/skills/idea/SKILL.md` → `## Handoff`: a branch for a SPEC left `spec-draft`
+  (list the open `(assumption)` items and questions, say whether the draft is committed,
+  `/pipeline:ship NNN` waits for the owner's answer); test
+  `test_idea_handoff_covers_a_spec_left_in_draft`; CHANGELOG 0.7.0 R1 bullet extended.
+- F7 → `plugin/skills/idea/SKILL.md` → `## Guardrails`: "without the owner's answer — also
+  in a session without `AskUserQuestion` — the SPEC stays `spec-draft`"; the pinned phrase
+  in `test_idea_guardrails_keep_assumptions_for_the_owner` updated.
+
+`bash scripts/check.sh`: all green (1941 tests passed). Backlog: nothing delivered or
+added; no item's trigger has fired.

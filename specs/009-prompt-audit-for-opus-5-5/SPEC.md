@@ -19,6 +19,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 2
   final_review_nits: 5
+  findings_accepted: 3
+  findings_rejected: 4
 ---
 
 # SPEC 009 — Prompt audit of the skills and agents for Claude Opus 5.5
