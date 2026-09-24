@@ -182,7 +182,7 @@ wants a small plan to be one group.
 | AC13 | 5, 6 | `plugin/tests/test_chunked_implementer.py::test_implementer_agent_reports_the_chunk`, `::test_ship_no_progress_is_a_missing_result`, `::test_readme_documents_the_chunk_line` | step 5: `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '`CHUNK: <group>/<groups>`' in intro`; `uv run pytest plugin/tests/test_stage_contract.py -q` → `assert 'METRICS of this stage: … and in chunk mode `implement_chunks`.' in text`; step 6: `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '`CHUNK: <group>/<groups>`' in protocol`; `assert '`CHUNK: <group>/<groups>`' in collapse(readme_section('### The `RESULT` contract'))` |
 | AC14 | 3, 5 | `plugin/tests/test_workflow_metrics.py::test_implement_chunks_*`, `plugin/tests/test_chunked_implementer.py::test_implement_final_chunk_writes_the_metrics` | step 3: `uv run pytest plugin/tests/test_workflow_metrics.py -q` → `assert 'implement_chunks' in workflow_metrics.COUNTERS`; step 5: `uv run pytest plugin/tests/test_chunked_implementer.py -q` → `assert '`implement_chunks`' in finish` |
 | AC15 | 3 | `plugin/tests/test_record_cost.py::test_three_implementer_chunks_add_up` | n/a — kept behaviour ("The test pins what already works"); green before the change, as expected |
-| AC16 | 8 | `plugin/tests/test_release_0_8_0.py::test_the_changelog_records_spec_012`, `tests/test_documents.py::test_roadmap_ticks_spec_012`, `::test_decisions_record_spec_012`; `bash scripts/check.sh` | |
+| AC16 | 8 | `plugin/tests/test_release_0_8_0.py::test_the_changelog_records_spec_012`, `tests/test_documents.py::test_roadmap_ticks_spec_012`, `::test_decisions_record_spec_012`; `bash scripts/check.sh` | `uv run pytest plugin/tests/test_release_0_8_0.py tests/test_documents.py -q` → `assert token in impact, token` (`` `implement.chunked` ``); `assert items[0].startswith("- [x]"), items`; `assert any("chunk" in row and "group" in row for row in rows), rows` |
 
 ## Steps
 
@@ -452,7 +452,7 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
       stops inside group 1.
       Automatic verification: `uv run pytest plugin/tests/test_eval_cases.py plugin/tests/test_english_only.py -q` → green.
 
-- [ ] 8. Release 0.8.0 documents (AC16) — files: `plugin/tests/test_release_0_8_0.py`,
+- [x] 8. Release 0.8.0 documents (AC16) — files: `plugin/tests/test_release_0_8_0.py`,
       `tests/test_documents.py`, `plugin/CHANGELOG.md`, `docs/ROADMAP.md`,
       `docs/DECISIONS.md`.
       Tests first:

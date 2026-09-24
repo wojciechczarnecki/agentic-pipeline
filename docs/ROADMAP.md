@@ -224,14 +224,15 @@ per significant finding, and a finding before code is the cheaper one to fix.
       the cost per significant finding of the plan review and the final review — the
       measure the audit used to keep every stage. The converge pass returns to the owner
       when it reports no gap over several specs (`specs/011-cost-metrics-and-stage-models/SPEC.md`)
-- [ ] 0.8.0, a candidate measured in the comparison below and off by default until it
-      measures no worse: `/pipeline:ship` runs the implementer in chunks — by a step count
-      or by step groups the planner marks in PLAN.md, decided in the spec — each a fresh
-      subagent that resumes from the ticked PLAN.md checkboxes as an
-      interrupted run does today; a chunk ends only on a green, committed step, and hands
-      the next one a note in PLAN.md (deviations, decisions taken, a failure still being
-      traced). Plans below a size threshold run in one context, since every chunk pays its
-      cache writes again; the converge pass and the Definition of Done run as today
+- [x] 0.8.0, a candidate measured in the comparison below and off by default until it
+      measures no worse (`"implement": {"chunked": true}`): `/pipeline:ship` runs the
+      implementer in chunks, one per step group the planner marks in PLAN.md, each a fresh
+      subagent that resumes from the ticked PLAN.md checkboxes as an interrupted run does
+      today; a chunk ends only on a green, committed step at its group boundary, and hands
+      the next one a note in `## Chunk notes` (decisions taken, traps, the running
+      iteration count). A small plan is one group by the planner's judgement, with no
+      threshold, since every chunk pays its cache writes again; the converge pass and the
+      Definition of Done run in the chunk with the last group, as today
       (`specs/012-chunked-implementer/SPEC.md`)
 - [ ] Before/after comparison of model, effort and the chunked implementer: the transcripts
       from the audit are the reference from before Stage 6 (and show what the converge
