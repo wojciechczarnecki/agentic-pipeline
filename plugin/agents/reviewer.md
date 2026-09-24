@@ -16,7 +16,8 @@ end with a RESULT block.
 
 METRICS of this stage:
 - `report`: `final_review_blockers`, `final_review_worth_fixing`, `final_review_nits`;
-  in SUMMARY the findings table `id | severity | one sentence`;
+  in SUMMARY the findings table `id | severity | one sentence` and the sentence stating how
+  many `nit` findings were left out (`Left out: N nit findings`);
 - `apply`: `findings_accepted`, `findings_rejected`; in SUMMARY the link to the open PR, the
   CI status (after `gh pr checks --watch`) and the link to the run with the visual
   artifacts.

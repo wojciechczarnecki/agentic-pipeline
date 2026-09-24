@@ -200,5 +200,6 @@ test you suspect is flaky is still red, and a skipped test is not green.
 ## Handoff
 
 - **Run on its own:** summarise what was done, the deviations, the converge passes with
-  their gaps and verdicts, the verification result and the manual scenarios; the next stage is `/pipeline:final-review NNN` after `/clear`.
+  their gaps and verdicts, the verification result and the manual scenarios; the next
+  stage is `/pipeline:final-review NNN` after `/clear`.
 - **Under `/pipeline:ship`:** end with the RESULT block from the stage agent contract.

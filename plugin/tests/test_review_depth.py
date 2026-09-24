@@ -79,3 +79,40 @@ def test_no_size_tiers_anywhere():
         if pattern.search(path.read_text())
     ]
     assert not found, found
+
+
+def test_nit_cap_in_merge_and_verify():
+    text = report_step(3)
+    for phrase in ["at most five `nit` findings", "risk or maintenance cost", "left out"]:
+        assert phrase in text, phrase
+
+
+def test_nit_cap_states_the_count():
+    steps = " ".join(report_step(number) for number in (3, 4, 5))
+    assert "`Left out: N nit findings`" in steps
+    decisions = report_step(5)
+    assert "`Left out: N nit findings`" in decisions or "left-out sentence" in decisions
+    assert "RESULT" in decisions and "SUMMARY" in decisions
+
+
+def test_nit_cap_metric_counts_reported_nits():
+    assert "`final_review_nits` counts the reported nits" in report_step(4)
+
+
+# A reviewer told to report less finds less, so the cap sits in the merge, not in the prompts.
+def test_nit_cap_leaves_the_perspectives_alone():
+    text = report_step(2)
+    assert "every finding with its severity" in text
+    assert "at most" not in text
+    assert "five" not in text
+
+
+def test_nit_cap_reaches_reviewer_and_ship():
+    reviewer = collapse((PLUGIN / "agents" / "reviewer.md").read_text())
+    metrics = reviewer.split("METRICS of this stage:", 1)[1].split("## Stage agent contract")[0]
+    assert "left out" in metrics
+    assert "left out" in collapse(section("ship", "Gate: final review"))
+
+
+def test_compliance_checks_the_red_column():
+    assert "red record" in report_step(2)

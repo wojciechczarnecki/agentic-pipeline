@@ -145,8 +145,9 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
 ## Gate: final review
 
 1. `reviewer` in `report` mode → the report in PLAN.md → `## Final review`.
-2. Show the owner the findings table from SUMMARY and ask `AskUserQuestion` — both
-   in the session language, severity tokens untranslated:
+2. Show the owner the findings table from SUMMARY, together with its sentence on how many
+   `nit` findings were left out, and ask `AskUserQuestion` — both in the session language,
+   severity tokens untranslated:
    "Accept `blocker` and `worth-fixing`, reject `nit` (Recommended)" / "Accept
    all" / "I will choose one by one" / "Only `blocker`". On "I will choose one by one" ask
    for the list of ids.

@@ -169,7 +169,7 @@ and `docs:` for documents. Each commit holds the step's files plus PLAN.md, per
 | AC3 | 3 | `plugin/tests/test_test_first.py::test_plan_*`, `::test_plan_review_*` | `uv run pytest plugin/tests/test_test_first.py -k plan` → `AssertionError: assert 'writes and runs its proving test before the product change' in '**Write PLAN.md** …'` (3 failed, all on assertions) |
 | AC4 | 4 | `plugin/tests/test_converge.py` (all); `plugin/tests/test_stage_skills.py` (Finish prefix) | `uv run pytest plugin/tests/test_converge.py` → `AssertionError: implement: no section Converge pass` (10 failed, all on assertions; the Finish prefix raised `StopIteration`, not counted) |
 | AC5 | 5 | `plugin/tests/test_review_depth.py::test_depth_*`; the absence guard `::test_no_size_tiers_anywhere` is green before the change by design | `uv run pytest plugin/tests/test_review_depth.py` → `AssertionError: length follows the change` (4 `test_depth_*` failed on assertions; the guard passed, as designed) |
-| AC6 | 6 | `plugin/tests/test_review_depth.py::test_nit_cap_*` | |
+| AC6 | 6 | `plugin/tests/test_review_depth.py::test_nit_cap_*` | `uv run pytest plugin/tests/test_review_depth.py` → `AssertionError: at most five nit findings` (6 failed, all on assertions) |
 | AC7 | 7 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-escalates-on-never-red-test`, `::test_never_red_*`) | |
 | AC8 | 8 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-converge-finds-missing-ac`, `::test_converge_*`) | |
 | AC9 | after the PR is open, on the owner's command (not part of `/pipeline:implement`) | `plugin/evals/last-run.json`: green, `cases_total: 11`, fingerprint matching `plugin/` at the branch head | manual — a paid model run on the owner's command |
@@ -331,7 +331,7 @@ the red record comes from the `test_depth_*` tests.
       Files: `plugin/skills/plan/SKILL.md`, `plugin/skills/plan-review/SKILL.md`,
       `plugin/skills/final-review/SKILL.md`, `plugin/tests/test_review_depth.py`
       Automatic verification: `uv run pytest plugin/tests/test_review_depth.py plugin/tests/test_test_first.py plugin/tests/test_language_contract.py plugin/tests/test_stage_skills.py plugin/tests/test_prompt_style.py plugin/tests/test_prompt_audit.py -q`
-- [ ] 6. **AC6: the nit cap.** Test first: in `plugin/tests/test_review_depth.py` add
+- [x] 6. **AC6: the nit cap.** Test first: in `plugin/tests/test_review_depth.py` add
       these tests:
       - `test_nit_cap_in_merge_and_verify`: report step 3 contains "at most five `nit`
         findings", "risk or maintenance cost" and "left out";
