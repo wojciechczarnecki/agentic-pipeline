@@ -170,8 +170,8 @@ wants a small plan to be one group.
 | AC1 | 1 | `plugin/tests/test_templates_language.py::test_the_section_map_matches_the_snapshot`, `::test_english_templates_match_the_snapshot`, `::test_polish_templates_match_the_snapshot` | `uv run pytest plugin/tests/test_templates_language.py -q` → `assert section_map() == MAP_SNAPSHOT`: `At index 19 diff: ('step-verification', …) != ('step-group', 'PLAN', '### Grupa N — ', '### Group N — ')` |
 | AC2 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_*` | |
 | AC3 | 4 | `plugin/tests/test_chunked_implementer.py::test_plan_review_*` | |
-| AC4 | 2 | `plugin/tests/test_workflow_config.py::test_implement_*` | |
-| AC5 | 2 | `plugin/tests/test_readme.py::test_the_implement_row_marks_the_candidate`, `plugin/tests/test_init_skill.py::test_init_does_not_write_the_implement_section`, `plugin/tests/test_init_templates.py::test_the_example_shows_chunking_off` | |
+| AC4 | 2 | `plugin/tests/test_workflow_config.py::test_implement_*` | `uv run pytest plugin/tests/test_workflow_config.py -q` → `assert 1 == 0` (`--check` on `{"implement": {"chunked": true}}`: `unknown key \`implement\``) |
+| AC5 | 2 | `plugin/tests/test_readme.py::test_the_implement_row_marks_the_candidate`, `plugin/tests/test_init_skill.py::test_init_does_not_write_the_implement_section`, `plugin/tests/test_init_templates.py::test_the_example_shows_chunking_off` | `uv run pytest plugin/tests/test_readme.py plugin/tests/test_init_skill.py -q` → `assert len(rows) == 1` (`assert 0 == 1`, no `implement.chunked` row); `assert "you do not write the \`implement\` section" in generating` |
 | AC6 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_chunk_ends_at_the_group_boundary` | |
 | AC7 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_last_chunk_converges_and_finishes` | |
 | AC8 | 5 | `plugin/tests/test_chunked_implementer.py::test_implement_off_or_one_group_runs_one_context` | |
@@ -224,7 +224,7 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
       a small `normalised(headings)` helper.
       Automatic verification: `uv run pytest plugin/tests/test_templates_language.py plugin/tests/test_eval_cases.py plugin/tests/test_language_contract.py plugin/tests/test_english_only.py -q` → green.
 
-- [ ] 2. The switch and its documentation (AC4, AC5) — files:
+- [x] 2. The switch and its documentation (AC4, AC5) — files:
       `plugin/tests/test_workflow_config.py`, `plugin/tests/test_readme.py`,
       `plugin/tests/test_init_skill.py`, `plugin/tests/test_init_templates.py`,
       `plugin/bin/workflow_config.py`, `plugin/README.md`,

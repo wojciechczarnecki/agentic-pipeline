@@ -31,5 +31,8 @@
   "language": "en",
   "models": {
     "implement": "sonnet"
+  },
+  "implement": {
+    "chunked": false
   }
 }

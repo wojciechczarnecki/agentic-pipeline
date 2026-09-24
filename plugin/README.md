@@ -65,6 +65,7 @@ the others keep configuring the rules — a typo in one key does not disarm the 
 | `protectedBranches` | absent | extra branch names the guard treats exactly like `main`/`master` (which stay protected whatever the list says); exact names, no patterns; binds agent sessions only — the `pre-push` hook and `/pipeline:init` do not read or write it |
 | `language` | `"en"` | the language of every file the pipeline writes into the repository and of PR descriptions — supported `en`, `pl`; any other value warns and falls back to `en` (see the language contract below) |
 | `models` | absent | the model per stage agent started by `/pipeline:ship`: keys `plan`, `plan-review`, `implement`, `final-review`; values `inherit` (the session model), `sonnet`, `opus`, `haiku`, `fable`; a stage without an entry inherits; a bad entry warns and only that stage inherits. `/pipeline:init` writes `{"implement": "sonnet"}` — a guess not yet measured, until the Stage 7 comparison |
+| `implement.chunked` | `false` | `true` runs the implementer in chunks, one fresh subagent per step group of PLAN.md (see "The chunked implementer" below); any other value warns and counts as off. A Stage 7 candidate, not yet measured: off until the comparison measures it no worse; `/pipeline:init` does not write it |
 
 Full example: `templates/workflow.example.json`.
 

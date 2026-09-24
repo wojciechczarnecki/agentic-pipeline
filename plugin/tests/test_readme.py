@@ -413,3 +413,11 @@ def test_the_models_row_marks_the_guess_and_effort():
     effort = " ".join(section(README, "### Models and effort").split())
     for token in ["`Agent`", "effort", "2.1.281", "frontmatter", "plugin default", "guess"]:
         assert token in effort, token
+
+
+# SPEC 012, AC5: the switch is off by default and marked as a candidate not yet measured.
+def test_the_implement_row_marks_the_candidate():
+    rows = [line for line in README.splitlines() if line.startswith("| `implement.chunked`")]
+    assert len(rows) == 1
+    for token in ["`false`", "Stage 7", "not yet measured"]:
+        assert token in rows[0], token
