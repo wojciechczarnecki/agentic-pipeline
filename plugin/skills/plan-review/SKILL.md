@@ -89,6 +89,12 @@ implementation — the owner steps in only when the decision is not yours (step 
    - **testability:** every step has an `Automatic verification:` section
      with exact commands (test paths) that
      `/pipeline:implement` will run in the self-correction loop — not a vague "add tests";
+   - **groups:** every step is in exactly one group under a `### Group N — <name>` heading
+     (either literal from the section map); no group boundary leaves work for a later group
+     to finish; a small plan is one group, because every chunk pays its cache writes again.
+     You fix a violation in place, and a plan without groups gets them. A boundary that
+     leaves work half done is `major`; missing groups, or a small plan split in several,
+     are `minor`;
    - **test-first:** each step that delivers an AC writes and runs its proving test before
      the product change, and the AC → steps matrix has the fourth column, empty or marked
      `manual` / `n/a — <reason>` — without them `/pipeline:implement` cannot record the

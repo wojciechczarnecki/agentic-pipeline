@@ -243,3 +243,9 @@ def test_settings_template_allows_reading_the_plugin():
     match = re.fullmatch(r"Read\(~/\.claude/plugins/cache/([^/]+)/pipeline/\*\*\)", rules[0])
     assert match, rules[0]
     assert [match.group(1)] == list(settings["extraKnownMarketplaces"])
+
+
+# SPEC 012, AC5: the example shows the switch, off.
+def test_the_example_shows_chunking_off():
+    example = json.loads((TEMPLATES / "workflow.example.json").read_text())
+    assert example["implement"] == {"chunked": False}

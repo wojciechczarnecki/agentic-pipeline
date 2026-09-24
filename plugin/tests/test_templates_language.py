@@ -9,7 +9,8 @@ TEMPLATES = PLUGIN / "templates"
 DOCUMENTS = ("SPEC", "PLAN")
 
 # The headings and frontmatter of the inline templates `idea` and `plan` carried before 0.5.0
-# (SPEC 006, AC17): a Polish consumer's new specs have to look exactly like its old ones.
+# (SPEC 006, AC17): a Polish consumer's new specs have to look exactly like its old ones. SPEC 012
+# adds two PLAN headings on purpose: the step group heading and the chunk notes section.
 POLISH_SNAPSHOT = {
     "SPEC": {
         "frontmatter": [
@@ -40,6 +41,7 @@ POLISH_SNAPSHOT = {
             "## Podejście",
             "## Macierz AC → kroki",
             "## Kroki",
+            "### Grupa N — <nazwa>",
             "## Ryzyka i pułapki",
             "## Weryfikacja end-to-end",
             "### Automatyczna (wykonuje /pipeline:implement)",
@@ -47,6 +49,7 @@ POLISH_SNAPSHOT = {
             "## Definition of Done",
             "## Decyzje właściciela",
             "## Review log",
+            "## Notatki chunków",
             "## Deviations",
             "## Final review",
         ],
@@ -75,6 +78,7 @@ ENGLISH_HEADINGS = {
         "## Approach",
         "## AC → steps matrix",
         "## Steps",
+        "### Group N — <name>",
         "## Risks and traps",
         "## End-to-end verification",
         "### Automatic (performed by /pipeline:implement)",
@@ -82,6 +86,7 @@ ENGLISH_HEADINGS = {
         "## Definition of Done",
         "## Owner decisions",
         "## Review log",
+        "## Chunk notes",
         "## Deviations",
         "## Final review",
     ],
@@ -130,6 +135,7 @@ MAP_SNAPSHOT = [
     ("approach", "PLAN", "## Podejście", "## Approach"),
     ("ac-matrix", "PLAN", "## Macierz AC → kroki", "## AC → steps matrix"),
     ("steps", "PLAN", "## Kroki", "## Steps"),
+    ("step-group", "PLAN", "### Grupa N — ", "### Group N — "),
     ("step-verification", "PLAN", "Weryfikacja automatyczna:", "Automatic verification:"),
     ("risks", "PLAN", "## Ryzyka i pułapki", "## Risks and traps"),
     ("e2e", "PLAN", "## Weryfikacja end-to-end", "## End-to-end verification"),
@@ -148,6 +154,7 @@ MAP_SNAPSHOT = [
     ("definition-of-done", "PLAN", "## Definition of Done", "## Definition of Done"),
     ("owner-decisions", "PLAN", "## Decyzje właściciela", "## Owner decisions"),
     ("review-log", "PLAN", "## Review log", "## Review log"),
+    ("chunk-notes", "PLAN", "## Notatki chunków", "## Chunk notes"),
     ("deviations", "PLAN", "## Deviations", "## Deviations"),
     ("final-review", "PLAN", "## Final review", "## Final review"),
 ]
@@ -208,8 +215,16 @@ def rows(document: str, table=None) -> list[tuple[str, str, str, str]]:
     return [row for row in (section_map() if table is None else table) if row[1] == document]
 
 
+# A literal that ends in "— " is a prefix (`### Group N — <name>`); every other one matches
+# exactly.
+def matches_literal(heading: str, literal: str) -> bool:
+    if literal.endswith("— "):
+        return heading.startswith(literal)
+    return heading == literal
+
+
 def key_of(heading: str, document: str, column: int, table=None) -> str:
-    matches = [row[0] for row in rows(document, table) if row[column] == heading]
+    matches = [row[0] for row in rows(document, table) if matches_literal(heading, row[column])]
     assert len(matches) == 1, (document, heading)
     return matches[0]
 

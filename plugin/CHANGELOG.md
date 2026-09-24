@@ -7,7 +7,9 @@ Semantic versioning. A release is tagged with `claude plugin tag`.
 SPEC 011 prepares Stage 7's comparison: every spec records what each stage cost, the
 implementer records its converge gaps and splits its deviations, a consumer can choose a
 model per stage, and every stage searches the decision log, the roadmap and the domain
-documents by the feature's topic instead of reading them whole.
+documents by the feature's topic instead of reading them whole. SPEC 012 adds the chunked
+implementer: `/pipeline:ship` can run the implementer in chunks, one fresh subagent per
+step group the planner marks in PLAN.md, a Stage 7 candidate that stays off by default.
 
 **consumer impact:** every new metric key is optional, and specs with the old `deviations`
 key still pass `--check`. `models` in `.claude/workflow.json` is optional: without it every
@@ -16,7 +18,10 @@ stage inherits the session model, as before. `/pipeline:init` writes
 existing configuration is not touched. The cost keys need Claude Code's local transcripts
 (`~/.claude/projects`): a spec run in the cloud or on another machine gets none, with a
 warning, and its closing is not held back. The existing rule `Bash(workflow_metrics.py *)`
-covers the new `--record-cost` call.
+covers the new `--record-cost` call. Chunking (`implement.chunked`) is off by default: nothing changes
+until `"implement": {"chunked": true}` is set in `.claude/workflow.json`, and
+`/pipeline:init` does not write the key. Plans written by 0.8.0 carry `### Group N — <name>` headings inside
+`## Steps` and a `## Chunk notes` section, which older skills ignore as ordinary headings.
 
 ### Added
 
@@ -38,6 +43,27 @@ covers the new `--record-cost` call.
   `fable`) per stage (`plan`, `plan-review`, `implement`, `final-review`), passed by
   `/pipeline:ship` to the `Agent` tool; a bad entry warns and only its stage inherits. An
   effort level cannot be configured: the `Agent` tool takes none (Claude Code 2.1.281).
+- Step groups in PLAN.md: a `### Group N — <name>` heading inside `## Steps` and a
+  `## Chunk notes` section, in the section map (`step-group`, `chunk-notes`) and both PLAN
+  templates.
+- `implement.chunked` in `.claude/workflow.json` (off by default; any value but a boolean
+  warns and counts as off).
+- Chunk mode in `implement`: with chunking on and more than one group, a chunk carries out
+  the group that holds the first unticked step, appends a chunk note (the group, decisions
+  taken within the plan's latitude, traps for the next group, the running
+  `implement_iterations` total), commits, pushes and ends at `plan-approved`; the chunk with
+  the last group runs the converge pass and the Definition of Done as before. A chunk that
+  finds a finished group without its note (the chunk before ended between its last commit
+  and its note) writes that note first. Run on its own, the skill stops at the group
+  boundary and asks to be run again after `/clear`.
+- The implementer's RESULT carries a `CHUNK: <group>/<groups>` line in chunk mode, shown in
+  the RESULT template every stage agent carries, and `/pipeline:ship` loops over the
+  chunks: `DONE` with `STATUS: plan-approved` starts the next implementer, and a chunk that
+  repeats the group of the last `DONE` chunk counts as a missing RESULT, with one re-run
+  per chunk.
+- `implement_chunks`, an optional metric key written by the final chunk, and a column in
+  the metrics report.
+- The eval case `implement-stops-at-group-boundary`.
 
 ### Changed
 
@@ -47,6 +73,9 @@ covers the new `--record-cost` call.
   read whole only when the search leaves the question open. `idea` and `plan` list what
   they read and how; `plan-review` checks the plan against the decisions it finds itself.
 - `--check` accepts either `deviations` or both split keys at `implemented` and `done`.
+- `plan` always divides the steps into groups, whatever the switch says, and a small plan
+  is one group by the planner's judgement; `plan-review` checks the grouping and fixes it in
+  place.
 
 ## 0.7.0
 

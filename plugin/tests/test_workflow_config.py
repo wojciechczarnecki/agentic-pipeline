@@ -290,3 +290,55 @@ def test_models_errors_are_readable(repo, models, fragment):
     result = run_cli(repo, "--check")
     assert result.returncode == 1
     assert fragment in result.stderr
+
+
+# SPEC 012, AC4: `implement.chunked` turns the chunked implementer on; anything but a boolean
+# warns and counts as off, and the guard never blocks on it.
+@pytest.mark.parametrize("value", [True, False])
+def test_implement_chunked_accepts_a_boolean(repo, value):
+    write_config(repo, {"implement": {"chunked": value}})
+    assert run_cli(repo, "--check").returncode == 0
+    assert workflow_config.load(repo).get("implement.chunked") is value
+
+
+def test_implement_chunked_is_off_without_the_section(repo):
+    assert workflow_config.defaults()["implement"] == {"chunked": False}
+    write_config(repo, {"language": "en"})
+    assert workflow_config.load(repo).get("implement.chunked") is False
+    config, problems = workflow_config.load_sections(repo)
+    assert problems == []
+    assert config.get("implement.chunked") is False
+
+
+@pytest.mark.parametrize(
+    "section, fragment",
+    [
+        ({"chunked": "yes"}, "`implement.chunked` has to be bool"),
+        ({"chunked": 1}, "`implement.chunked` has to be bool"),
+        ({"chunked": True, "size": 3}, "unknown key `implement.size`"),
+        ("on", "`implement` has to be an object"),
+    ],
+)
+def test_implement_bad_values_warn_and_count_as_off(repo, section, fragment):
+    write_config(repo, {"implement": section, "language": "en"})
+    config, problems = workflow_config.load_sections(repo)
+    assert len(problems) == 1 and fragment in problems[0], problems
+    assert config.get("implement.chunked") is False
+    assert config.get("language") == "en"
+    result = run_cli(repo, "--check")
+    assert result.returncode == 1
+    assert fragment in result.stderr
+
+
+@pytest.mark.parametrize(
+    "data, fragment",
+    [
+        ({"language": True}, "`language` has to be str"),
+        ({"verify": {"command": True}}, "`verify.command` has to be str"),
+        ({"protectedBranches": False}, "`protectedBranches` has to be list"),
+    ],
+)
+def test_implement_bool_does_not_open_other_keys(repo, data, fragment):
+    write_config(repo, data)
+    with pytest.raises(workflow_config.ConfigError, match=fragment):
+        workflow_config.load(repo)

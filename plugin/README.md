@@ -65,6 +65,7 @@ the others keep configuring the rules — a typo in one key does not disarm the 
 | `protectedBranches` | absent | extra branch names the guard treats exactly like `main`/`master` (which stay protected whatever the list says); exact names, no patterns; binds agent sessions only — the `pre-push` hook and `/pipeline:init` do not read or write it |
 | `language` | `"en"` | the language of every file the pipeline writes into the repository and of PR descriptions — supported `en`, `pl`; any other value warns and falls back to `en` (see the language contract below) |
 | `models` | absent | the model per stage agent started by `/pipeline:ship`: keys `plan`, `plan-review`, `implement`, `final-review`; values `inherit` (the session model), `sonnet`, `opus`, `haiku`, `fable`; a stage without an entry inherits; a bad entry warns and only that stage inherits. `/pipeline:init` writes `{"implement": "sonnet"}` — a guess not yet measured, until the Stage 7 comparison |
+| `implement.chunked` | `false` | `true` runs the implementer in chunks, one fresh subagent per step group of PLAN.md (see "The chunked implementer" below); any other value warns and counts as off. A Stage 7 candidate, not yet measured: off until the comparison measures it no worse; `/pipeline:init` does not write it |
 
 Full example: `templates/workflow.example.json`.
 
@@ -134,7 +135,7 @@ be resumed after an interruption.
 | `spec-draft` | owner + `/pipeline:idea` | `spec-ready` (gate 1) |
 | `spec-ready` | `planner` | `plan-draft` |
 | `plan-draft` | `plan-reviewer` | `plan-approved` (by itself when nothing escalates) |
-| `plan-approved` | `implementer` | `implemented` |
+| `plan-approved` | `implementer` | `implemented` (in chunk mode each chunk but the last returns `plan-approved`) |
 | `implemented` | `reviewer` (`report`) | findings report → gate 2 |
 | `implemented` + decisions | `reviewer` (`apply`) | PR with green CI → `done` |
 | `done` | owner | PR merge (gate 3) |
@@ -149,6 +150,7 @@ Every stage agent launched by `/pipeline:ship` ends its reply with this block:
 ```
 RESULT: DONE | ESCALATE
 STATUS: <spec status after the stage>
+CHUNK: <group>/<groups> — only the implementer in chunk mode
 METRICS: <key=value; …>
 ESCALATION: <only with ESCALATE — problem; options (≤ 4); recommendation; why>
 SUMMARY: <≤ 10 lines; for reviewer/report — findings table: id | severity | one sentence>
@@ -158,6 +160,13 @@ SUMMARY: <≤ 10 lines; for reviewer/report — findings table: id | severity | 
 appears only with `ESCALATE` — the problem, up to four options, a recommendation and why;
 `SUMMARY` is at most ten lines, and for the reviewer in `report` mode a findings table
 (id, severity, one sentence).
+
+In chunk mode the implementer adds a line `CHUNK: <group>/<groups>` right after `STATUS`:
+the group it carried out and the number of groups. `ship` reads `DONE` with
+`STATUS: plan-approved` as the end of a chunk and starts the next implementer with the same
+prompt; a chunk end that repeats the group of the previous chunk that returned `DONE`, or
+has no `CHUNK:` line, counts as a missing RESULT (one re-run per chunk, then an
+escalation).
 
 A stage agent cannot ask the owner: wherever a skill says to ask or to STOP, it ends with a
 `RESULT: ESCALATE` block. The orchestrator turns that into a question for the owner and
@@ -205,6 +214,20 @@ gets a removal step. There are at most two passes, and a gap left after the seco
 escalation; after the owner decides on it, the decided steps are carried out without a
 third pass. Each pass is recorded in PLAN.md, and the added steps count in
 `implement_steps`.
+
+**The chunked implementer.** `plan` always divides `## Steps` into groups under
+`### Group N — <name>` headings, and a small plan is one group, because every chunk pays
+its cache writes again; `plan-review` checks the grouping. With `"implement": {"chunked":
+true}` in `.claude/workflow.json` (off by default) and more than one group, `implement`
+carries out only the group that holds the first unticked step. When that group's last step
+is green, ticked and committed, it appends an entry to `## Chunk notes` (the group, the
+decisions taken within the plan's latitude, the traps the next group will meet, and the
+running `implement_iterations` total), commits, pushes and ends at `plan-approved`. The next
+chunk starts in a fresh context from the committed state and reads the notes. The chunk
+with the last group runs the converge pass and the Definition of Done as one context does,
+and writes the metrics once: `implement_iterations` as the running total and the optional
+`implement_chunks`. Run on its own, `/pipeline:implement` stops at the group boundary and
+asks to be run again after `/clear`. `cost_implement_cents` adds up every chunk.
 
 **The final-review report.** The review always runs all three perspectives, for a small
 change as for a large one, and each perspective reports every finding with its severity.
@@ -279,6 +302,7 @@ metrics:
   plan_changes: 5
   implement_steps: 8                   # /pipeline:implement
   implement_iterations: 3              # self-correction iterations beyond the first attempt
+  implement_chunks: 3                  # groups carried out as separate chunks (chunk mode only)
   converge_gaps: 1                     # real gaps kept from the converge passes
   deviations_minor: 1                  # every other entry in `## Deviations`
   deviations_major: 0                  # deviations that change scope, architecture or schema
@@ -298,7 +322,8 @@ metrics:
 Specs recorded before 0.8.0 carry one `deviations:` counter instead of the two split keys;
 it still passes `--check`. The new keys (`converge_gaps`, the split deviations and the four
 `cost_*` keys) are never required, because a cost can be missing (another machine, the
-cloud, expired transcripts).
+cloud, expired transcripts). `implement_chunks` is never required either: only a spec
+implemented in chunk mode writes it.
 
 A report over all specs — a table per spec, totals, the share of significant findings
 caught before code, and escalations per spec. Where specs carry cost keys, three more lines
@@ -343,7 +368,7 @@ Keys due by status:
 | `plan-draft` | `started_at`, `escalations`, `plan_steps` |
 | `plan-approved` | the above + `plan_review_blockers`, `plan_review_majors`, `plan_changes` |
 | `implemented` | the above + `implement_steps`, `implement_iterations`, and either `deviations` or both `deviations_minor` and `deviations_major` |
-| `done` | `started_at`, `finished_at`, every counter from the block above except the optional ones (`converge_gaps`, the `cost_*` keys), and either deviations form |
+| `done` | `started_at`, `finished_at`, every counter from the block above except the optional ones (`converge_gaps`, `implement_chunks`, the `cost_*` keys), and either deviations form |
 
 A consumer must have the rule `Bash(workflow_metrics.py *)` in `permissions.allow` — a stage
 subagent cannot answer a permission prompt, so without it every `--check` stalls and

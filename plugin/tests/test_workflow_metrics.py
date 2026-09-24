@@ -416,6 +416,7 @@ NEW_KEYS = [
     "cost_plan_review_cents",
     "cost_implement_cents",
     "cost_final_review_cents",
+    "implement_chunks",
 ]
 STATUSES = ["spec-draft", "spec-ready", "plan-draft", "plan-approved", "implemented", "done"]
 
@@ -563,3 +564,19 @@ def test_report_has_columns_for_the_new_keys(tmp_path):
     assert values["converge_gaps"] == "2"
     assert values["cost_plan_cents"] == "-"
     assert values["deviations_minor"] == "-"
+
+
+# SPEC 012, AC14: the chunk count is a report column, `-` where a spec ran in one context.
+def test_implement_chunks_is_a_report_column(tmp_path):
+    spec_dir(tmp_path, "done", dict(COMPLETE, implement_chunks="3"), name="015-a")
+    spec_dir(tmp_path, "done", COMPLETE, name="016-b")
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    header = report.splitlines()[0]
+    cells = [cell.strip() for cell in header.strip("|").split("|")]
+    assert "implement_chunks" in cells
+    values = {}
+    for name in ("015-a", "016-b"):
+        row = next(line for line in report.splitlines() if line.startswith(f"| {name}"))
+        row_cells = [cell.strip() for cell in row.strip("|").split("|")]
+        values[name] = dict(zip(cells, row_cells, strict=True))["implement_chunks"]
+    assert values == {"015-a": "3", "016-b": "-"}

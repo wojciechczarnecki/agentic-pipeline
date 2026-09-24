@@ -21,3 +21,18 @@ def test_the_changelog_records_spec_011():
         assert token in impact, token
     for token in ["--record-cost", "converge_gaps", "deviations_minor", "Reading section"]:
         assert token in section, token
+
+
+# SPEC 012, AC16: the chunked implementer ships in 0.8.0, off by default.
+def test_the_changelog_records_spec_012():
+    section = CHANGELOG.split("\n## 0.8.0\n", 1)[1].split("\n## ", 1)[0]
+    impact = " ".join(section.split("**consumer impact:**", 1)[1].split("\n### ", 1)[0].split())
+    for token in ["`implement.chunked`", "off", "older skills", "ordinary headings"]:
+        assert token in impact, token
+    for token in [
+        "`## Chunk notes`",
+        "`CHUNK: ",
+        "implement_chunks",
+        "implement-stops-at-group-boundary",
+    ]:
+        assert token in section, token

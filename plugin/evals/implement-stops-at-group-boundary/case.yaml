@@ -1,0 +1,19 @@
+schema_version: "1.1"
+name: implement-stops-at-group-boundary
+description: /pipeline:implement with chunking on carries out the first step group of a two-group plan, leaves a chunk note and stops at the group boundary with the spec still plan-approved.
+runs: 1
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # Two small steps, a chunk note, a commit and a push: the size of
+  # final-review-finds-planted-defect (900 s / 60 turns).
+  timeout_seconds: 900
+  max_turns: 60
+  # Agent stays allowed, so a wrong converge pass is possible and visible.
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write, Agent]
+  prompt: |
+    Run `/pipeline:implement 001`.
+
+    I am unavailable for this whole session and will not answer any question. Wherever
+    the skill would ask me, wait for me or stop for my decision, put the question with
+    its options and your recommendation into your final message and stop there.

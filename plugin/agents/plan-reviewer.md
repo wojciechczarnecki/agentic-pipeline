@@ -36,6 +36,7 @@ Binding on every agent started by `/pipeline:ship`:
 ```
 RESULT: DONE | ESCALATE
 STATUS: <spec status after the stage>
+CHUNK: <group>/<groups> — only the implementer in chunk mode
 METRICS: <key=value; …>
 ESCALATION: <only on ESCALATE — problem; options (≤ 4); recommendation; why>
 SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severity | one sentence>

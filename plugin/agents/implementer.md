@@ -17,8 +17,14 @@ manual scenarios from the plan. When `verify.scopes` has a UI scope and the chan
 the interface — run `<verify.command> <UI scope>` and look at the visual artifacts required
 by `<docs.conventions>`; list the files you looked at in SUMMARY.
 
+In chunk mode (the skill's Chunk mode section) you carry out one group of steps. A chunk
+that ends at a group boundary returns `RESULT: DONE` with `STATUS: plan-approved`, its
+running `implement_iterations` in METRICS, and writes no metric into SPEC.md. In chunk mode
+every RESULT carries a line `CHUNK: <group>/<groups>` right after `STATUS` — the group you
+carried out and the number of groups — also in the final chunk and in an `ESCALATE` result.
+
 METRICS of this stage: `implement_steps`, `implement_iterations`, `converge_gaps`,
-`deviations_minor`, `deviations_major`.
+`deviations_minor`, `deviations_major`, and in chunk mode `implement_chunks`.
 
 ## Stage agent contract
 
@@ -42,6 +48,7 @@ Binding on every agent started by `/pipeline:ship`:
 ```
 RESULT: DONE | ESCALATE
 STATUS: <spec status after the stage>
+CHUNK: <group>/<groups> — only the implementer in chunk mode
 METRICS: <key=value; …>
 ESCALATION: <only on ESCALATE — problem; options (≤ 4); recommendation; why>
 SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severity | one sentence>

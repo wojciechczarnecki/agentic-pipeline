@@ -28,6 +28,7 @@ SCHEMA: dict[str, object] = {
     "protectedBranches": list,
     "language": str,
     "models": {"plan": str, "plan-review": str, "implement": str, "final-review": str},
+    "implement": {"chunked": bool},
 }
 
 
@@ -55,6 +56,7 @@ def defaults() -> dict:
         },
         "gitHooksDir": "scripts/git-hooks",
         "language": "en",
+        "implement": {"chunked": False},
     }
 
 
@@ -175,7 +177,7 @@ def validate(raw: dict, schema: dict | None = None, prefix: str = "") -> None:
             if not isinstance(value, dict):
                 raise ConfigError(f"`{dotted}` has to be an object")
             validate(value, expected, f"{dotted}.")
-        elif not isinstance(value, expected) or isinstance(value, bool):
+        elif not isinstance(value, expected) or (expected is not bool and isinstance(value, bool)):
             raise ConfigError(f"`{dotted}` has to be {expected.__name__}")
         elif expected is list:
             check_list(dotted, value)

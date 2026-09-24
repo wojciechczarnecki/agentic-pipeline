@@ -592,3 +592,16 @@ def test_decisions_record_spec_010():
     rows = [row for row in read("docs/DECISIONS.md").splitlines() if "SPEC 010" in row]
     assert any("converge" in row for row in rows)
     assert any("nit" in row for row in rows)
+
+
+# SPEC 012, AC16: the roadmap ticks the chunked implementer and the decisions record it.
+def test_roadmap_ticks_spec_012():
+    link = "specs/012-chunked-implementer/SPEC.md"
+    items = [item for item in roadmap_items() if link in item]
+    assert len(items) == 1, items
+    assert items[0].startswith("- [x]"), items
+
+
+def test_decisions_record_spec_012():
+    rows = [row for row in read("docs/DECISIONS.md").splitlines() if "SPEC 012" in row]
+    assert any("chunk" in row and "group" in row for row in rows), rows
