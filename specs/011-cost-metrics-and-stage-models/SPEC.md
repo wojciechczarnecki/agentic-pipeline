@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-09-24"
   - "spec-ready — 2026-09-24"
   - "plan-draft — 2026-09-24"
   - "plan-approved — 2026-09-24"
   - "implemented — 2026-09-24"
+  - "done — 2026-09-24"
 metrics:
   started_at: 2026-09-24T14:32
   escalations: 0
@@ -21,6 +22,7 @@ metrics:
   final_review_nits: 5
   findings_accepted: 12
   findings_rejected: 0
+  finished_at: 2026-09-24T18:00
 ---
 
 # SPEC 011 — Cost per stage, a model per stage and targeted reading
