@@ -159,6 +159,38 @@ records the decision in the owner decisions section of PLAN.md.
   decisions — instead of working around it by changing the test or the test data,
 - a conflict on `git merge origin/main`.
 
+### Implementation and review
+
+**Test-first evidence.** The AC → steps matrix of a PLAN has a fourth column, "Red before
+the change". Before the change meant to make an AC's proving test pass, `implement` runs
+that test and records the command and the failing assertion line there. Only a failed
+assertion counts: an import, collection or syntax error is red for any reason, so a missing
+symbol gets a stub first. A step is not ticked while its AC has no red record, unless the
+row is marked `manual` or `n/a — <reason>` (for example `n/a — kept behaviour`). A proving
+test that is green before the change is rewritten when the step writes it, and escalated,
+with the test unchanged, when it existed before or the plan gives it verbatim. `plan`
+orders each step so the proving test is written and run before the product change, and
+`plan-review` checks that order and the column.
+
+**The converge pass.** After the last planned step and before the Definition of Done,
+`implement` starts a fresh subagent with the SPEC path and the diff command, without its
+own reasoning or the plan. The subagent compares the code with every AC and reports gaps as
+`missing`, `partial`, `contradicts` or `unrequested`. `implement` checks each gap in the
+code, rejects false ones with a reason, and adds a step for each real one, carried out
+test-first in the self-correction loop; `unrequested` code without a `## Deviations` entry
+gets a removal step. There are at most two passes, and a gap left after the second is an
+escalation. Each pass is recorded in PLAN.md, and the added steps count in
+`implement_steps`.
+
+**The final-review report.** The review always runs all three perspectives, for a small
+change as for a large one, and each perspective reports every finding with its severity.
+When the findings are merged, the report keeps at most five `nit` findings, the ones with
+the highest risk or maintenance cost; the rest are left out and counted in the sentence
+`Left out: N nit findings`, which also goes into the RESULT SUMMARY. `final_review_nits`
+counts the reported nits. The depth of the plan, its review and the report follows the
+change, with no spec-size classes: a section that does not apply gets one line
+`n/a — <reason>`, and small things keep the fast path.
+
 ### Language contract
 
 `language` in `.claude/workflow.json` (`en` or `pl`) decides the language of what the

@@ -173,7 +173,7 @@ and `docs:` for documents. Each commit holds the step's files plus PLAN.md, per
 | AC7 | 7 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-escalates-on-never-red-test`, `::test_never_red_*`) | `uv run pytest plugin/tests/test_eval_cases.py` → `AssertionError: bash: …/implement-escalates-on-never-red-test/scaffold.sh: No such file or directory` on `assert result.returncode == 0` in `scaffold()` |
 | AC8 | 8 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-converge-finds-missing-ac`, `::test_converge_*`) | `uv run pytest plugin/tests/test_eval_cases.py` → `AssertionError: bash: …/implement-converge-finds-missing-ac/scaffold.sh: No such file or directory` on `assert result.returncode == 0` in `scaffold()` |
 | AC9 | after the PR is open, on the owner's command (not part of `/pipeline:implement`) | `plugin/evals/last-run.json`: green, `cases_total: 11`, fingerprint matching `plugin/` at the branch head | manual — a paid model run on the owner's command |
-| AC10 | 9, 10 | `plugin/tests/test_readme.py::test_the_readme_describes_*`, `::test_the_changelog_records_spec_010`; `tests/test_documents.py::test_roadmap_ticks_spec_010`, `::test_decisions_record_spec_010` | |
+| AC10 | 9, 10 | `plugin/tests/test_readme.py::test_the_readme_describes_*`, `::test_the_changelog_records_spec_010`; `tests/test_documents.py::test_roadmap_ticks_spec_010`, `::test_decisions_record_spec_010` | step 9: `uv run pytest plugin/tests/test_readme.py` → `AssertionError: Red before the change` (and `no Added subsection`; the order check failed on the missing heading); step 10: see below |
 | AC11 | all | `bash scripts/check.sh`; `git diff origin/main -- plugin/tests/test_prompt_style.py` empty | n/a — the full check guards every step; it has no single red |
 
 In each step, "record red" means: run the step's new tests before the product edit,
@@ -476,7 +476,7 @@ the red record comes from the `test_depth_*` tests.
       Files: `plugin/evals/implement-converge-finds-missing-ac/{case.yaml,scaffold.sh,graders/criteria.md}`,
       `plugin/tests/test_eval_cases.py`
       Automatic verification: `uv run pytest plugin/tests/test_eval_cases.py plugin/tests/test_english_only.py plugin/tests/test_no_domain_references.py -q`
-- [ ] 9. **AC10a: README and CHANGELOG.** Test first: in `plugin/tests/test_readme.py` add
+- [x] 9. **AC10a: README and CHANGELOG.** Test first: in `plugin/tests/test_readme.py` add
       two tests.
       - `test_the_readme_describes_test_first_and_converge`: the `## Pipeline mechanics`
         section contains "Red before the change", "converge pass", all four classes,
