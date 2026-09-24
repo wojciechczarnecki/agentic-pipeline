@@ -101,6 +101,10 @@ Procedure step 1 points to it, and so do step 6 and the Handoff. The rules:
 - The chunk that holds the last group runs its steps, then the converge pass, the steps the
   pass adds and the Definition of Done, as one context does. The converge-resume rules stay
   as they are. Steps the converge pass adds belong to that chunk and to no group.
+- A chunk whose first unticked step lies after the last group (a step a converge pass
+  added, under its `### Converge pass N — ` heading), or which finds every step ticked, is
+  the final chunk too: it resumes the converge pass or the Definition of Done by the
+  converge-resume rules. This is the case after an escalation inside the final chunk.
 - The final chunk writes the metrics. `implement_iterations` is the last entry's running
   total plus its own. `implement_chunks` is the number of groups carried out as separate
   chunks: the entries in `## Chunk notes` plus one. The other keys are counted over the
@@ -125,9 +129,13 @@ mode only). The shared `## Stage agent contract` block stays identical to `ship`
 when a chunk ended, in which case the next implementer is started with the same prompt.
 The Result protocol gains one bullet. An `implementer` with `DONE` and
 `STATUS: plan-approved` means a chunk ended: start the next implementer with the same
-prompt and the same `models` entry. A `CHUNK:` line that names the same group as the chunk
-before it, or no `CHUNK:` line, counts as a missing RESULT: one re-run, then an escalation
-to the owner that says what the agent returned. `STATUS: implemented` means the stage is
+prompt and the same `models` entry. For such a result, a `CHUNK:` line that names the same
+group as the previous chunk that returned `DONE`, or no `CHUNK:` line, counts as a missing
+RESULT: one re-run, then an escalation to the owner that says what the agent returned. An
+`ESCALATE` result is not a chunk end: the agent started after the owner's decision
+continues the same group, so its `DONE` is compared with the last `DONE` chunk, never with
+the escalated one. The final `DONE` with `STATUS: implemented` is not checked for
+progress. `STATUS: implemented` means the stage is
 done. After an escalation, the new implementer is simply the next chunk. `ship` still reads
 only RESULT blocks, and the implementer decides the chunk from the configuration. The
 variant where `ship` passes a chunk mode or a step range in the prompt was rejected by the
@@ -325,7 +333,9 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
         `` `plan-approved` `` and `never ends on a red or uncommitted step`.
       - `test_implement_last_chunk_converges_and_finishes` (AC7): `chunk` holds
         `last group`, `converge pass`, `the steps it adds`, `Definition of Done`,
-        `as one context does` and `converge-resume rules apply unchanged`.
+        `as one context does`, `converge-resume rules apply unchanged` and
+        `after the last group` (the first unticked step lies after the last group, or every
+        step is ticked: the chunk is the final one).
       - `test_implement_off_or_one_group_runs_one_context` (AC8): `chunk` holds
         `one group or none`, `one context`, `as in 0.7.0`,
         `` no `## Chunk notes` entry `` and `` no `implement_chunks` ``.
@@ -351,7 +361,8 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
         from the Approach ("Chunk mode in `implement`"). It says why the mode exists (each
         chunk starts from the committed state instead of re-reading one long context) and
         that a group is a `### Group N — ` heading from the section map, while converge
-        pass headings are not groups.
+        pass headings are not groups. It adds the rule from the Approach: a first unticked
+        step after the last group, or no unticked step at all, makes the chunk the final one.
       - Procedure step 1: after the resume sentence, "With chunking on, read
         `## Chunk notes` and carry out one group, as the Chunk mode section says."
       - Procedure step 6, the metrics bullet: "in chunk mode, `implement_iterations` is the
@@ -364,7 +375,8 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
       - `implementer.md` intro: a paragraph on chunk mode per the skill's Chunk mode
         section. A chunk that ends at a group boundary returns `RESULT: DONE`,
         `STATUS: plan-approved`, a line `CHUNK: <group>/<groups>` right after `STATUS`
-        (also in the final chunk, with its own group), and in METRICS its running
+        (also in the final chunk and in an `ESCALATE` result, with its own group), and in
+        METRICS its running
         `implement_iterations`; it writes no metric into SPEC.md. The METRICS sentence as
         in the test. The `## Stage agent contract` block stays unchanged.
       Automatic verification: `uv run pytest plugin/tests/test_chunked_implementer.py plugin/tests/test_stage_contract.py plugin/tests/test_converge.py plugin/tests/test_test_first.py plugin/tests/test_stage_skills.py plugin/tests/test_targeted_reading.py plugin/tests/test_language_contract.py plugin/tests/test_prompt_style.py plugin/tests/test_prompt_audit.py -q` → green.
@@ -377,8 +389,8 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
         `` | `plan-approved` `` holds `a chunk ended`, and the Result protocol holds `` `STATUS: plan-approved` ``, `a chunk ended`, `same prompt` and
         `` `STATUS: implemented` ``.
       - `test_ship_no_progress_is_a_missing_result`: the Result protocol holds
-        `` `CHUNK: <group>/<groups>` ``, `same group as the chunk before`,
-        `missing RESULT` and `escalat`.
+        `` `CHUNK: <group>/<groups>` ``, `same group as the previous chunk that returned`,
+        `missing RESULT`, `escalat` and `never with the escalated one`.
       - `test_readme_documents_the_chunk_line`: the README section
         ``### The `RESULT` contract`` holds `` `CHUNK: <group>/<groups>` ``; "Implementation
         and review" holds `**The chunked implementer.**`; the spec statuses row for
@@ -387,8 +399,10 @@ the collapsed text. Where a step names a sentence, the wording around the tokens
       - `ship` State table, the `plan-approved` row, DONE result: "`implemented`; a chunk
         ended: `plan-approved` → the next `implementer`".
       - `ship` Result protocol, a new bullet before **ESCALATE**, as in the Approach
-        ("`ship`"): a chunk ended; the `CHUNK:` no-progress rule; `STATUS: implemented`
-        means the stage is done; an agent started after an escalation is the next chunk.
+        ("`ship`"): a chunk ended; the `CHUNK:` no-progress rule, which compares only with
+        the previous chunk that returned `DONE`, never with the escalated one, and applies
+        only to `DONE` with `STATUS: plan-approved`; `STATUS: implemented` means the stage is
+        done; an agent started after an escalation is the next chunk.
         In `## Starting a stage agent`, the sentence "The same holds for a stage run again
         under the Result protocol" also names every chunk.
       - README: the statuses row `plan-approved` → "`implemented` (in chunk mode each chunk
@@ -557,7 +571,64 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+**2026-09-24 — /pipeline:plan-review**
+
+Anti-anchoring leads (from the SPEC alone): map rows and templates first; the switch with a
+bool-aware schema; skill text pinned by pytest; `implement_chunks` as an optional counter
+plus a three-agent cost fixture; the eval case modelled on the converge case; the resume
+edges of a chunk (an escalation mid-group, a converge pass in the last chunk). The plan
+matches the first five; the sixth gave both findings.
+
+Findings (counted before the fixes):
+
+| id | severity | finding | change |
+|----|----------|---------|--------|
+| R1 | `major` | Chunk mode picks "the group that holds the first unticked step", which is undefined when that step lies after the last group (a converge-pass step under `### Converge pass N — `) or when every step is ticked. That is exactly the state after an escalation inside the final chunk, so the resumed agent had no rule and could stop without the Definition of Done. | Approach: a bullet making such a chunk the final one, resumed by the converge-resume rules. Step 5: the `## Chunk mode` text states the rule, and the AC7 test asks for `after the last group`. |
+| R2 | `major` | The no-progress rule compared a chunk's `CHUNK:` with "the chunk before it". After an `ESCALATE` in the middle of group 1 (whose result also carries `CHUNK: 1/3`), the agent started after the owner's decision finishes group 1 and reports `1/3` again: a legitimate chunk would be re-run and then escalated. The "no `CHUNK:` line" clause also read as applying to `STATUS: implemented`. | Approach ("`ship`"), step 5 (the agent's `CHUNK:` line also in an `ESCALATE` result) and step 6 (the Result protocol bullet and its test tokens): the comparison is with the previous chunk that returned `DONE`, never with the escalated one, and applies only to `DONE` with `STATUS: plan-approved`. |
+
+Checked and found correct (later stages need not repeat it):
+
+- **coverage:** AC1–AC16 each have steps and a proving test; the matrix matches the steps
+  (AC13 and AC14 span two steps each, and both steps name them).
+- **compliance:** `validate()` really rejects every bool today
+  (`not isinstance(value, expected) or isinstance(value, bool)`), and the proposed guard
+  `(expected is not bool and isinstance(value, bool))` keeps `True` out of `str`/`list`
+  keys; `load_sections` drops a bad section with a problem, so off is the fallback and
+  nothing blocks (DECISIONS 2026-09-23). `implement_chunks` stays out of every `REQUIRED`
+  list (SPEC 010). Shared blocks (`## Project configuration`, `## Reading`,
+  `## Section map`, `## Stage agent contract`) stay untouched. The Polish literals stay in
+  the allowlisted files.
+- **tests named by the plan exist as described:** `MAP_SNAPSHOT`, `ENGLISH_HEADINGS`,
+  `POLISH_SNAPSHOT`, `key_of`/`check_structure` (exact match, so the `— ` prefix rule is
+  needed), `NEW_CASES`, `WRONG_BEHAVIOUR`, `assert_ready_for_the_skill`, `VERIFY`,
+  `test_the_mirror_owner_accepted_the_dependency` (compares with `PLAN.pl.md` headings, so
+  the fixture and normalisation are needed), `NEW_KEYS` with
+  `test_new_counters_are_known_and_never_required` and `test_report_has_columns_for_the_new_keys`,
+  `write_agent`/`prompt`/`OPUS`/`run_record` in `test_record_cost.py`,
+  `test_every_config_key_is_documented_with_its_default` (derived from `defaults()`, hence
+  README row and default in one step), `test_the_implementer_metrics_line`, and the
+  template leak check in `test_language_contract.py` (whole lines only, so backticked
+  running text is safe). `render()` puts every `COUNTERS` key into the report header, so
+  AC14's column follows from the list.
+- **minimality:** no new CLI mode, no new module besides one test file, `--record-cost`
+  untouched; scope stays within the SPEC.
+- **feasibility:** no forward dependencies (templates → config → metrics → planner
+  skills → implementer → ship → eval → release); version stays `0.8.0` (already on the
+  branch base).
+- **E2E:** no running application; the automatic part is executable (`check.sh`, the
+  scaffold, `--check`, the report header); the paid 5-run measurement and a real chunked
+  `ship` run are rightly manual.
+- **testability / test-first:** every step has exact `Automatic verification:` commands;
+  every step writes its tests first; the matrix has the fourth column, with AC15 marked
+  `n/a — kept behaviour` by its own words.
+- **summary:** no dependency, no migration, consistent with the SPEC's owner decisions.
+- **language:** the PLAN is in English, as `language: en` requires.
+- Not changed, noted: a chunk that escalates mid-group loses its own iterations from the
+  running total, as a resumed single context does today; not a regression. This plan has
+  no step groups, which the 0.7.0 stages running it neither write nor read.
+
+The plan is ready: both findings were fixable in the plan, no blocker remains, and it adds
+no dependency or migration.
 
 ## Deviations
 
