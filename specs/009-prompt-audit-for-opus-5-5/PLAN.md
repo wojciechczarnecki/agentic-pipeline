@@ -393,6 +393,8 @@ Record the results in this section when done.
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-09-24 — final review (gate): which findings to accept? Decision (one by one): accepted F1, F2, F7; rejected F3, F4, F5, F6.
+
 ## Review log
 
 ### 2026-09-24 — /pipeline:plan-review (under /pipeline:ship)
