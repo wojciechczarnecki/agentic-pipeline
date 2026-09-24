@@ -208,7 +208,7 @@ per significant finding, and a finding before code is the cheaper one to fix.
 - [ ] 0.8.0: targeted reading in every stage — SPEC, PLAN and conventions in full;
       decisions, roadmap and domain documents searched by the feature's topic, with what
       was read listed (the consumer's documents are 271 KB, and every fresh subagent read
-      them whole)
+      them whole) (`specs/011-cost-metrics-and-stage-models/SPEC.md`)
 - [ ] 0.8.0: a `models` section in `.claude/workflow.json` that `/pipeline:ship` passes to
       each stage agent — a model and an effort level per stage; `/pipeline:init` writes the
       defaults the comparison below measured; without the section every stage inherits the
@@ -216,14 +216,15 @@ per significant finding, and a finding before code is the cheaper one to fix.
       stage is the same model at `low` or `medium` effort (its default is `medium`), and
       a cheaper model only when that measures worse; whether an agent's frontmatter or
       the `Agent` tool accepts an effort level is checked before the spec is written
+      (`specs/011-cost-metrics-and-stage-models/SPEC.md`)
 - [ ] 0.8.0: `deviations` split into `deviations_minor` and `deviations_major`; specs with
-      the old key still pass `--check`
+      the old key still pass `--check` (`specs/011-cost-metrics-and-stage-models/SPEC.md`)
 - [ ] 0.8.0: cost per stage from the local session transcripts, written into `metrics:`
       when a spec closes (transcripts are local and expire, so it cannot be computed later);
       the implement stage also records `converge_gaps`, and `workflow_metrics.py` reports
       the cost per significant finding of the plan review and the final review — the
       measure the audit used to keep every stage. The converge pass returns to the owner
-      when it reports no gap over several specs
+      when it reports no gap over several specs (`specs/011-cost-metrics-and-stage-models/SPEC.md`)
 - [ ] 0.8.0, a candidate measured in the comparison below and off by default until it
       measures no worse: `/pipeline:ship` runs the implementer in chunks — by a step count
       or by step groups the planner marks in PLAN.md, decided in the spec — each a fresh
