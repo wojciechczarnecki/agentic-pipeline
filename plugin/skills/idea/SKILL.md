@@ -71,9 +71,11 @@ A gap in the SPEC comes back later as an escalation — it is cheaper here.
    - the existing code the feature will change or extend — read the named files
      in full (Grep/Read on specifics, not guesses).
 
-   How you read the documents is up to you (in full or a targeted search), but
-   `<docs.roadmap>`, `<docs.project>`, `<docs.decisions>` and every domain document
-   go into the `## Read context` section of the SPEC.
+   How you read the documents is up to you (in full or a targeted search by the idea's
+   terms), but `<docs.roadmap>`, `<docs.project>`, `<docs.decisions>` and every domain
+   document go into the `## Read context` section of the SPEC, and each item says how it
+   was read: "read in full", or "searched for" with the terms. The later stages search the
+   same documents, and the list shows them what the SPEC rests on.
 2. **Confront the idea.** Assess in turn:
    - goal — is it known which user problem we solve and how we will recognise success;
    - scope — is it not too wide for one feature; what to cut out into a separate spec;
@@ -142,7 +144,8 @@ template from memory).
   `AskUserQuestion` — the SPEC stays `spec-draft`.
 - A SPEC with status `spec-ready` has in the `## Read context` section
   an item for `<docs.roadmap>`, `<docs.project>`, `<docs.decisions>` and every domain
-  document from the map in `CLAUDE.md` (definition in step 1).
+  document from the map in `CLAUDE.md` (definition in step 1); each item says "read in
+  full" or "searched for" with the terms.
 - Every AC must be verifiable: a test or a manual procedure can be written that
   confirms it. "Handles long texts" is not an AC; "text >10,000 characters → 422" is.
 - In `<docs.roadmap>` you may only add a link to the spec at the item being delivered —

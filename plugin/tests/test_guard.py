@@ -996,6 +996,19 @@ def test_one_bad_key_costs_only_its_own_section(tmp_path):
     assert evaluate("DB_HOST=10.0.0.5 alembic upgrade head", repo) is not None
 
 
+# `models` is checked entry by entry, so the warning names the entry, not the section.
+def test_a_bad_models_entry_warns_about_that_entry_only(tmp_path):
+    repo = make_repo(tmp_path / "models", {"models": {"implement": "Sonnet"}, "language": "xx"})
+    git(repo, "switch", "-C", "feat/001-x")
+    result = run_hook(hook_payload("git status", repo, f"test-{uuid.uuid4()}"), repo)
+    assert result.returncode == 0
+    lines = result.stderr.splitlines()
+    [models] = [line for line in lines if "models.implement" in line]
+    assert models.endswith("that entry falls back to `inherit`"), models
+    [language] = [line for line in lines if "`language`" in line]
+    assert language.endswith("that section falls back to the defaults"), language
+
+
 def test_a_broken_config_does_not_advise_running_init(tmp_path):
     repo = make_repo(tmp_path / "broken-advice", {})
     (repo / ".claude" / "workflow.json").write_text('{"nope": 1}')

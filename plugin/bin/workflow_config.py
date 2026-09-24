@@ -27,10 +27,12 @@ SCHEMA: dict[str, object] = {
     "gitHooksDir": str,
     "protectedBranches": list,
     "language": str,
+    "models": {"plan": str, "plan-review": str, "implement": str, "final-review": str},
 }
 
 
 LANGUAGES = ("en", "pl")
+MODEL_VALUES = ("inherit", "sonnet", "opus", "haiku", "fable")
 
 
 class ConfigError(Exception):
@@ -130,6 +132,9 @@ def load_sections(start: Path) -> tuple[Config, list[str]]:
     kept: dict[str, object] = {}
     problems: list[str] = []
     for key, value in raw.items():
+        if key == "models" and isinstance(value, dict):
+            kept[key] = valid_entries(key, value, problems)
+            continue
         try:
             validate({key: value})
         except ConfigError as exc:
@@ -137,6 +142,25 @@ def load_sections(start: Path) -> tuple[Config, list[str]]:
             continue
         kept[key] = value
     return Config(merge(defaults(), kept), path), problems
+
+
+# `models` is checked entry by entry: a bad entry sends only its own stage back to
+# `inherit`, where dropping the section would reset every stage.
+def valid_entries(key: str, section: dict, problems: list[str]) -> dict:
+    kept = {}
+    for entry, value in section.items():
+        try:
+            validate({key: {entry: value}})
+        except ConfigError as exc:
+            problems.append(str(exc))
+            continue
+        kept[entry] = value
+    return kept
+
+
+def stage_model(config: Config, stage: str) -> str:
+    value = config.get(f"models.{stage}")
+    return value if value in MODEL_VALUES else "inherit"
 
 
 def validate(raw: dict, schema: dict | None = None, prefix: str = "") -> None:
@@ -157,6 +181,8 @@ def validate(raw: dict, schema: dict | None = None, prefix: str = "") -> None:
             check_list(dotted, value)
         elif dotted == "language" and value not in LANGUAGES:
             raise ConfigError(f"`language` has to be one of: {', '.join(LANGUAGES)}")
+        elif prefix == "models." and value not in MODEL_VALUES:
+            raise ConfigError(f"`{dotted}` has to be one of: {', '.join(MODEL_VALUES)}")
 
 
 def check_list(dotted: str, value: list) -> None:

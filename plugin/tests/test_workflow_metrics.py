@@ -228,7 +228,7 @@ def test_the_balance_needs_all_five_counters(tmp_path):
             "plan-approved",
             ["plan_review_blockers", "plan_review_majors", "plan_changes"],
         ),
-        ("implemented", ["implement_steps", "implement_iterations", "deviations"]),
+        ("implemented", ["implement_steps", "implement_iterations"]),
         ("done", ["finished_at", "findings_accepted", "final_review_nits"]),
     ],
 )
@@ -264,10 +264,29 @@ def test_the_required_table_is_exactly_ac9():
             "plan_changes",
             "implement_steps",
             "implement_iterations",
-            "deviations",
         ],
-        "done": ["started_at", "finished_at", *workflow_metrics.COUNTERS],
+        "done": ["started_at", "finished_at", *workflow_metrics.REQUIRED_DONE_COUNTERS],
     }
+
+
+# SPEC 011 keeps the old thirteen counters due at `done`, less `deviations`, which moved to
+# the either-or rule; none of the new keys is ever required (SPEC 010: a new required key
+# turns specs in progress red).
+def test_the_done_counters_are_the_old_ones_without_deviations():
+    assert workflow_metrics.REQUIRED_DONE_COUNTERS == [
+        "plan_steps",
+        "plan_review_blockers",
+        "plan_review_majors",
+        "plan_changes",
+        "implement_steps",
+        "implement_iterations",
+        "escalations",
+        "final_review_blockers",
+        "final_review_worth_fixing",
+        "final_review_nits",
+        "findings_accepted",
+        "findings_rejected",
+    ]
 
 
 @pytest.mark.parametrize("status", ["spec-draft", "spec-ready"])
@@ -292,7 +311,7 @@ def test_every_missing_key_is_named(tmp_path):
     assert result.returncode == 1
     missing = [line for line in result.stderr.splitlines() if "missing" in line]
     assert len(missing) == 1
-    for key in ["finished_at", *workflow_metrics.COUNTERS]:
+    for key in ["finished_at", *workflow_metrics.REQUIRED_DONE_COUNTERS]:
         assert key in missing[0], key
 
 
@@ -387,3 +406,160 @@ def _readable(path: Path) -> bool:
     except OSError:
         return False
     return True
+
+
+NEW_KEYS = [
+    "converge_gaps",
+    "deviations_minor",
+    "deviations_major",
+    "cost_plan_cents",
+    "cost_plan_review_cents",
+    "cost_implement_cents",
+    "cost_final_review_cents",
+]
+STATUSES = ["spec-draft", "spec-ready", "plan-draft", "plan-approved", "implemented", "done"]
+
+
+# SPEC 011, AC9: the new keys are known integer counters and never required.
+def test_new_counters_are_known_and_never_required(tmp_path):
+    for key in NEW_KEYS:
+        assert key in workflow_metrics.COUNTERS, key
+        for status in STATUSES:
+            assert key not in workflow_metrics.REQUIRED[status], (key, status)
+    for status in STATUSES:
+        metrics = dict(COMPLETE, **{key: "4" for key in NEW_KEYS})
+        assert workflow_metrics.check(spec_dir(tmp_path, status, metrics)) == [], status
+    for key in NEW_KEYS:
+        metrics = dict(COMPLETE, **{key: "1.5"})
+        problems = workflow_metrics.check(spec_dir(tmp_path, "done", metrics))
+        assert any(
+            key in problem and "is not a non-negative integer" in problem for problem in problems
+        ), key
+
+
+def without_deviations(**extra: str) -> dict[str, str]:
+    metrics = {key: value for key, value in COMPLETE.items() if key != "deviations"}
+    metrics.update(extra)
+    return metrics
+
+
+# SPEC 011, AC10: at `implemented` and `done` either the old key or both split keys pass.
+@pytest.mark.parametrize("status", ["implemented", "done"])
+@pytest.mark.parametrize(
+    "form",
+    [{"deviations": "1"}, {"deviations_minor": "1", "deviations_major": "0"}],
+    ids=["old", "split"],
+)
+def test_either_deviations_form_satisfies_the_check(tmp_path, status, form):
+    metrics = without_deviations(**form)
+    assert workflow_metrics.check(spec_dir(tmp_path, status, metrics)) == []
+
+
+@pytest.mark.parametrize("status", ["implemented", "done"])
+@pytest.mark.parametrize(
+    "form",
+    [{}, {"deviations_minor": "1"}, {"deviations_major": "0"}],
+    ids=["none", "minor", "major"],
+)
+def test_neither_deviations_form_names_both(tmp_path, status, form):
+    problems = workflow_metrics.check(spec_dir(tmp_path, status, without_deviations(**form)))
+    named = [problem for problem in problems if "deviations_minor" in problem]
+    assert len(named) == 1, problems
+    for key in ["`deviations`", "`deviations_minor`", "`deviations_major`"]:
+        assert key in named[0], key
+    assert "missing" not in named[0]
+
+
+# SPEC 010's regression, guarded by AC9 and AC10: a spec in progress carries only the keys its
+# status requires, and no deviations key before `implemented`. Widening DEVIATIONS_DUE to an
+# earlier status would turn every such spec red.
+@pytest.mark.parametrize("status", ["plan-draft", "plan-approved"])
+def test_a_spec_in_progress_needs_no_deviations_key(tmp_path, status):
+    metrics = {key: COMPLETE[key] for key in workflow_metrics.REQUIRED[status]}
+    assert "deviations" not in metrics
+    assert workflow_metrics.check(spec_dir(tmp_path, status, metrics)) == []
+
+
+def costed(**extra: str) -> dict[str, str]:
+    return dict(COMPLETE, **extra)
+
+
+# SPEC 011, AC12. Three specs:
+#   015-a: plan review 300 cents, findings 1 + 2 = 3; final review 500, findings 0 + 1 = 1;
+#          all four costs (100 + 300 + 900 + 500 = 1800) and 5 plan steps.
+#   016-b: plan review 101 cents, findings 2 + 0 = 2; no final-review cost, so no four costs.
+#   017-c: no cost keys at all — neither numerator nor denominator.
+# Plan review: (300 + 101) / (3 + 2) = 80.2 → 80. Final review: 500 / 1 = 500.
+# Per plan step: 1800 / 5 = 360.
+def test_report_shows_cost_per_finding_and_per_step(tmp_path):
+    spec_dir(
+        tmp_path,
+        "done",
+        costed(
+            cost_plan_cents="100",
+            cost_plan_review_cents="300",
+            cost_implement_cents="900",
+            cost_final_review_cents="500",
+        ),
+        name="015-a",
+    )
+    spec_dir(
+        tmp_path,
+        "done",
+        costed(cost_plan_review_cents="101", plan_review_blockers="2", plan_review_majors="0"),
+        name="016-b",
+    )
+    spec_dir(tmp_path, "done", costed(final_review_worth_fixing="9"), name="017-c")
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    assert "Plan review cost per significant finding: 80 cents (401/5)" in report
+    assert "Final review cost per significant finding: 500 cents (500/1)" in report
+    assert "Cost per plan step: 360 cents (1800/5)" in report
+
+
+def test_the_cost_ratio_rounds_half_up(tmp_path):
+    # 5 / 2 = 2.5 → 3, where round() would give the even 2.
+    spec_dir(
+        tmp_path,
+        "done",
+        costed(cost_plan_review_cents="5", plan_review_blockers="1", plan_review_majors="1"),
+    )
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    assert "Plan review cost per significant finding: 3 cents (5/2)" in report
+
+
+def test_cost_lines_are_hidden_without_data(tmp_path):
+    spec_dir(tmp_path, "done", COMPLETE, name="015-a")
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    assert "cost per" not in report.lower()
+
+    spec_dir(
+        tmp_path,
+        "done",
+        costed(
+            cost_plan_review_cents="40",
+            plan_review_blockers="0",
+            plan_review_majors="0",
+            cost_final_review_cents="70",
+            final_review_blockers="0",
+            final_review_worth_fixing="0",
+        ),
+        name="015-a",
+    )
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    assert "Plan review cost per significant finding" not in report
+    assert "Final review cost per significant finding" not in report
+    assert "Cost per plan step" not in report
+
+
+def test_report_has_columns_for_the_new_keys(tmp_path):
+    spec_dir(tmp_path, "done", costed(converge_gaps="2"), name="015-a")
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    header = report.splitlines()[0]
+    cells = [cell.strip() for cell in header.strip("|").split("|")]
+    for key in NEW_KEYS:
+        assert key in cells, key
+    row = next(line for line in report.splitlines() if line.startswith("| 015-a"))
+    values = dict(zip(cells, [cell.strip() for cell in row.strip("|").split("|")], strict=True))
+    assert values["converge_gaps"] == "2"
+    assert values["cost_plan_cents"] == "-"
+    assert values["deviations_minor"] == "-"

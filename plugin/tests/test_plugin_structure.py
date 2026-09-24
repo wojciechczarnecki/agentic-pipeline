@@ -135,3 +135,10 @@ def test_metrics_checker_runs_from_path():
     script = PLUGIN / "bin" / "workflow_metrics.py"
     assert os.access(script, os.X_OK)
     assert script.read_text().splitlines()[0] == "#!/usr/bin/env python3"
+
+
+# SPEC 011, AC17: effort stays inherited from the session until the Stage 7 comparison
+# measures the defaults. Remove this test when the measured defaults land.
+def test_no_agent_sets_effort_yet():
+    for path in sorted((PLUGIN / "agents").glob("*.md")):
+        assert "effort" not in frontmatter(path), path.name

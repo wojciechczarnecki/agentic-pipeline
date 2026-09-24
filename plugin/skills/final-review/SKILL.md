@@ -18,6 +18,16 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
 - Read `.claude/workflow.json`; no file = the defaults from the plugin README → `/pipeline:init`.
 - `<verify.command>`, `<docs.specsDir>` etc. = values from this configuration (keys in the README).
 
+## Reading
+
+- SPEC, PLAN and `<docs.conventions>` you read in full: they are this stage's own material,
+  and working on a fragment of them is working on a stale model.
+- `<docs.decisions>`, `<docs.roadmap>` and the domain documents from the document map in the
+  project's `CLAUDE.md` you search by the feature's topic — its terms and the names of the
+  files it changes — and read the passages the search finds. A document is read whole only
+  when the search leaves the question open. Fresh stage subagents paid for these documents
+  read whole at every stage, and most of what they read did not concern the feature.
+
 ## Language
 
 - Files you write into the repository (SPEC, PLAN — every section, including decision
@@ -60,7 +70,7 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    are read by the perspectives).
 2. **Three perspectives — in parallel**, as separate subagents (the `Agent` tool, all
    three in one message). Each gets: the spec path, the diff command, its own
-   perspective and the finding format. It does not get the others' conclusions or your
+   perspective, the finding format and the reading rule of the Reading section. It does not get the others' conclusions or your
    hypotheses. The review always runs all three perspectives, for a small change as for a
    large one: independence is the method, and three readers of a small diff cost little.
    Each perspective reports every finding with its severity, because a reviewer told to

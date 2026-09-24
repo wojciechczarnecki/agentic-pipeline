@@ -42,7 +42,8 @@ The one place where a project describes itself. The file may be missing: then th
 apply, and the guard prints a warning on stderr once per session and **never blocks** for
 that reason. An unknown key or a wrong type ends in a readable validation error
 (`python3 bin/workflow_config.py --check`), again without blocking the session. Validation
-goes section by section: a faulty section falls back to the defaults with a warning, and
+goes section by section: a faulty section falls back to the defaults with a warning (in
+`models` only the faulty entry, which falls back to `inherit`), and
 the others keep configuring the rules — a typo in one key does not disarm the whole guard.
 
 | key | default | meaning |
@@ -63,8 +64,23 @@ the others keep configuring the rules — a typo in one key does not disarm the 
 | `gitHooksDir` | `"scripts/git-hooks"` | the git hooks directory (an existing hook is protected from shell edits; named in the enable instruction) |
 | `protectedBranches` | absent | extra branch names the guard treats exactly like `main`/`master` (which stay protected whatever the list says); exact names, no patterns; binds agent sessions only — the `pre-push` hook and `/pipeline:init` do not read or write it |
 | `language` | `"en"` | the language of every file the pipeline writes into the repository and of PR descriptions — supported `en`, `pl`; any other value warns and falls back to `en` (see the language contract below) |
+| `models` | absent | the model per stage agent started by `/pipeline:ship`: keys `plan`, `plan-review`, `implement`, `final-review`; values `inherit` (the session model), `sonnet`, `opus`, `haiku`, `fable`; a stage without an entry inherits; a bad entry warns and only that stage inherits. `/pipeline:init` writes `{"implement": "sonnet"}` — a guess not yet measured, until the Stage 7 comparison |
 
 Full example: `templates/workflow.example.json`.
+
+### Models and effort
+
+`/pipeline:ship` passes a stage's `models` entry to the `Agent` tool as its `model`; for
+`inherit` or no entry it passes none, and the stage runs on the session model. The value
+`/pipeline:init` writes, the implementer on Sonnet, is a guess not yet measured: the
+implementer takes the largest share of a spec's cost and carries out a detailed plan with
+tests, and the self-correction loop, the converge pass and the final review catch its
+mistakes. The Stage 7 comparison will measure it with the cost keys (see Workflow metrics).
+
+An effort level cannot be configured. The `Agent` tool takes a model alias but no effort
+level (measured on Claude Code 2.1.281), and a plugin agent's `effort` sits in its
+frontmatter, which a consumer cannot override. Effort therefore stays a plugin default; in
+this release the agents set none and inherit the session's.
 
 ### Formatting (`format[]`)
 
@@ -263,7 +279,9 @@ metrics:
   plan_changes: 5
   implement_steps: 8                   # /pipeline:implement
   implement_iterations: 3              # self-correction iterations beyond the first attempt
-  deviations: 1
+  converge_gaps: 1                     # real gaps kept from the converge passes
+  deviations_minor: 1                  # every other entry in `## Deviations`
+  deviations_major: 0                  # deviations that change scope, architecture or schema
   escalations: 1                       # /pipeline:ship — questions to the owner
   final_review_blockers: 0             # /pipeline:final-review report
   final_review_worth_fixing: 3
@@ -271,10 +289,22 @@ metrics:
   findings_accepted: 3                 # /pipeline:final-review apply
   findings_rejected: 2
   finished_at: "2026-09-15T14:30"      # /pipeline:final-review apply (green CI on the PR)
+  cost_plan_cents: 180                 # /pipeline:ship in Closing, `--record-cost`
+  cost_plan_review_cents: 120
+  cost_implement_cents: 950
+  cost_final_review_cents: 610
 ```
 
+Specs recorded before 0.8.0 carry one `deviations:` counter instead of the two split keys;
+it still passes `--check`. The new keys (`converge_gaps`, the split deviations and the four
+`cost_*` keys) are never required, because a cost can be missing (another machine, the
+cloud, expired transcripts).
+
 A report over all specs — a table per spec, totals, the share of significant findings
-caught before code, and escalations per spec:
+caught before code, and escalations per spec. Where specs carry cost keys, three more lines
+follow: the plan review's and the final review's cost per significant finding (each over the
+specs with that stage's cost) and the cost per plan step (over the specs with all four
+costs), in cents rounded half up; a line with no data is left out:
 
 ```bash
 workflow_metrics.py [specs-directory]
@@ -312,14 +342,53 @@ Keys due by status:
 | `spec-draft`, `spec-ready` | none |
 | `plan-draft` | `started_at`, `escalations`, `plan_steps` |
 | `plan-approved` | the above + `plan_review_blockers`, `plan_review_majors`, `plan_changes` |
-| `implemented` | the above + `implement_steps`, `implement_iterations`, `deviations` |
-| `done` | `started_at`, `finished_at` and every counter from the block above |
+| `implemented` | the above + `implement_steps`, `implement_iterations`, and either `deviations` or both `deviations_minor` and `deviations_major` |
+| `done` | `started_at`, `finished_at`, every counter from the block above except the optional ones (`converge_gaps`, the `cost_*` keys), and either deviations form |
 
 A consumer must have the rule `Bash(workflow_metrics.py *)` in `permissions.allow` — a stage
 subagent cannot answer a permission prompt, so without it every `--check` stalls and
 `final-review` in `apply` mode never sets `done`. `templates/settings.json` carries it for
 new projects. A rule written with `${CLAUDE_PLUGIN_ROOT}` does not work: Claude Code does
 not substitute permission rules.
+
+### Recording cost (`--record-cost`)
+
+```bash
+workflow_metrics.py --record-cost <spec-directory> [--transcripts <dir>]
+```
+
+Prices what the spec's four stage subagents spent and writes `cost_plan_cents`,
+`cost_plan_review_cents`, `cost_implement_cents` and `cost_final_review_cents` into its
+`metrics:` block. `/pipeline:ship` runs it in Closing, after the final review's `apply`.
+
+- **What counts.** A subagent whose type is `planner`, `plan-reviewer`, `implementer` or
+  `reviewer`, whose prompt names the spec directory (`NNN-<slug>`) and which ran inside this
+  repository — the main checkout, the spec's checkout or `worktree.dir` — plus every
+  subagent it started (the final review's perspectives, the converge pass). Report and
+  `apply` both count toward the final review, and a stage run again after an escalation
+  counts toward that stage. The `/pipeline:ship` orchestrator and the `idea` dialogue run in
+  the main session and are not counted.
+- **Source.** Claude Code's local transcripts: `~/.claude/projects` (or
+  `$CLAUDE_CONFIG_DIR/projects`), searched recursively so worktree lanes are found too;
+  `--transcripts <dir>` reads another directory, such as an archive. Each API message is
+  counted once, however many times it was logged or copied.
+- **Unit.** Cents at the API list rates of 2026-09-24, from a table in the script. Its rates
+  are never changed — a new model is only added at its launch rates — so a cent is a fixed
+  unit and costs from different years compare. Only the stage total is rounded.
+- **Output.** Stdout shows a table per stage: models, tokens by type (input, cache write
+  5 min, cache write 1 h, cache read, output) and cents. A second run replaces the keys it
+  writes; every other byte of SPEC.md stays as it was.
+- **Output tokens are a lower bound.** Claude Code often logs a message's `output_tokens`
+  from the start of the stream rather than its final count, so the output share of a cost
+  is undercounted, by a share that differs by model and stage. When a stage's logged
+  content (characters / 4) is at least twice its logged output and more than 1000 tokens
+  above it, stderr says so; the estimate is never priced.
+- **Warnings, never a stop.** No transcripts, a stage without transcripts, or a model missing
+  from the rate table leaves that key unwritten — a value an earlier run wrote is kept —
+  names the reason on stderr and exits `0`,
+  because a missing cost must not stop the closing of a spec. Only a spec directory
+  without a readable SPEC.md exits `1`. Cost needs local transcripts: a spec run in the
+  cloud or on another machine has none here.
 
 ## CHANGELOG
 

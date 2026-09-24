@@ -17,7 +17,8 @@ manual scenarios from the plan. When `verify.scopes` has a UI scope and the chan
 the interface — run `<verify.command> <UI scope>` and look at the visual artifacts required
 by `<docs.conventions>`; list the files you looked at in SUMMARY.
 
-METRICS of this stage: `implement_steps`, `implement_iterations`, `deviations`.
+METRICS of this stage: `implement_steps`, `implement_iterations`, `converge_gaps`,
+`deviations_minor`, `deviations_major`.
 
 ## Stage agent contract
 
