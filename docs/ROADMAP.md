@@ -232,6 +232,7 @@ per significant finding, and a finding before code is the cheaper one to fix.
       the next one a note in PLAN.md (deviations, decisions taken, a failure still being
       traced). Plans below a size threshold run in one context, since every chunk pays its
       cache writes again; the converge pass and the Definition of Done run as today
+      (`specs/012-chunked-implementer/SPEC.md`)
 - [ ] Before/after comparison of model, effort and the chunked implementer: the transcripts
       from the audit are the reference from before Stage 6 (and show what the converge
       pass added); the baseline is the consumer's next 2–3 ordinary specs on 0.7.0, with
