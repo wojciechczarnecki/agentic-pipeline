@@ -171,7 +171,7 @@ and `docs:` for documents. Each commit holds the step's files plus PLAN.md, per
 | AC5 | 5 | `plugin/tests/test_review_depth.py::test_depth_*`; the absence guard `::test_no_size_tiers_anywhere` is green before the change by design | `uv run pytest plugin/tests/test_review_depth.py` → `AssertionError: length follows the change` (4 `test_depth_*` failed on assertions; the guard passed, as designed) |
 | AC6 | 6 | `plugin/tests/test_review_depth.py::test_nit_cap_*` | `uv run pytest plugin/tests/test_review_depth.py` → `AssertionError: at most five nit findings` (6 failed, all on assertions) |
 | AC7 | 7 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-escalates-on-never-red-test`, `::test_never_red_*`) | `uv run pytest plugin/tests/test_eval_cases.py` → `AssertionError: bash: …/implement-escalates-on-never-red-test/scaffold.sh: No such file or directory` on `assert result.returncode == 0` in `scaffold()` |
-| AC8 | 8 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-converge-finds-missing-ac`, `::test_converge_*`) | |
+| AC8 | 8 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-converge-finds-missing-ac`, `::test_converge_*`) | `uv run pytest plugin/tests/test_eval_cases.py` → `AssertionError: bash: …/implement-converge-finds-missing-ac/scaffold.sh: No such file or directory` on `assert result.returncode == 0` in `scaffold()` |
 | AC9 | after the PR is open, on the owner's command (not part of `/pipeline:implement`) | `plugin/evals/last-run.json`: green, `cases_total: 11`, fingerprint matching `plugin/` at the branch head | manual — a paid model run on the owner's command |
 | AC10 | 9, 10 | `plugin/tests/test_readme.py::test_the_readme_describes_*`, `::test_the_changelog_records_spec_010`; `tests/test_documents.py::test_roadmap_ticks_spec_010`, `::test_decisions_record_spec_010` | |
 | AC11 | all | `bash scripts/check.sh`; `git diff origin/main -- plugin/tests/test_prompt_style.py` empty | n/a — the full check guards every step; it has no single red |
@@ -431,7 +431,7 @@ the red record comes from the `test_depth_*` tests.
       Files: `plugin/evals/implement-escalates-on-never-red-test/{case.yaml,scaffold.sh,graders/criteria.md}`,
       `plugin/tests/test_eval_cases.py`
       Automatic verification: `uv run pytest plugin/tests/test_eval_cases.py plugin/tests/test_english_only.py plugin/tests/test_no_domain_references.py -q` and `claude plugin validate --strict plugin/` (skip if `claude` is not on PATH, and `bash scripts/check.sh` in step 10 covers it)
-- [ ] 8. **AC8: eval case `implement-converge-finds-missing-ac`.** Test first: in
+- [x] 8. **AC8: eval case `implement-converge-finds-missing-ac`.** Test first: in
       `plugin/tests/test_eval_cases.py`, add the name to `NEW_CASES`, add to
       `WRONG_BEHAVIOUR` the tokens `["implemented", "AC2", "converge", "subagent"]`, and
       add a `order_notes` fixture plus these tests:

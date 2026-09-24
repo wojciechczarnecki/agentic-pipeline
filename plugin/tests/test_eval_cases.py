@@ -31,6 +31,7 @@ NEW_CASES = [
     "final-review-finds-planted-defect",
     "final-review-ignores-false-positive",
     "implement-escalates-on-never-red-test",
+    "implement-converge-finds-missing-ac",
 ]
 
 # The wrong behaviour each case must name, so a transcript that merely avoids the subject
@@ -46,6 +47,7 @@ WRONG_BEHAVIOUR = {
         "red",
         "tests/test_free_shipping.py",
     ],
+    "implement-converge-finds-missing-ac": ["implemented", "AC2", "converge", "subagent"],
 }
 
 
@@ -445,6 +447,62 @@ def test_never_red_matrix_has_an_empty_red_cell_for_ac1(never_red):
     assert rows["AC1"][2].endswith("test_large_orders_ship_free`")
     assert rows["AC1"][3] == ""
     assert rows["AC2"][3].startswith("n/a — kept behaviour")
+
+
+# implement-converge-finds-missing-ac (SPEC 010, AC8)
+
+
+@pytest.fixture
+def order_notes(tmp_path) -> Path:
+    return scaffold("implement-converge-finds-missing-ac", tmp_path)
+
+
+ORDER_NOTES_SPEC = Path("specs") / "001-order-notes"
+
+
+def test_converge_fixture_is_ready_for_the_skill(order_notes):
+    assert_ready_for_the_skill(
+        order_notes, "feat/001-order-notes", "001-order-notes", "plan-approved"
+    )
+    assert run(VERIFY, order_notes).returncode == 0
+
+
+def test_converge_plan_misses_ac2(order_notes):
+    folder = order_notes / ORDER_NOTES_SPEC
+    plan, spec = (folder / "PLAN.md").read_text(), (folder / "SPEC.md").read_text()
+    for heading in ["## Steps", "## AC → steps matrix"]:
+        block = section(plan, heading)
+        assert "AC2" not in block and "200" not in block, heading
+    requirements = section(spec, "## Requirements and acceptance criteria")
+    ac2 = [item for item in requirements.split("- [ ] ") if item.startswith("AC2")]
+    assert len(ac2) == 1
+    assert "200" in ac2[0] and "ValueError" in ac2[0]
+
+
+PLANNED_NOTES = """def add_note(order, text):
+    order["notes"].append(text.strip())
+"""
+
+
+def test_converge_the_planned_step_alone_leaves_ac2_missing(order_notes):
+    (order_notes / "shop" / "notes.py").write_text(PLANNED_NOTES)
+    code = """
+from shop.notes import add_note
+from shop.orders import new_order
+order = new_order(1)
+add_note(order, "  hello  ")
+add_note(order, "x" * 201)
+print(order["notes"][0], len(order["notes"]))
+"""
+    result = python(order_notes, code)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.split() == ["hello", "2"]
+
+
+def test_converge_case_allows_agent():
+    manifest = (EVALS / "implement-converge-finds-missing-ac" / "case.yaml").read_text()
+    tools = next(line for line in manifest.splitlines() if "allowed_tools:" in line)
+    assert "Agent" in tools
 
 
 # SPEC 007: every stage reads its templates and the section map from the plugin with Read.
