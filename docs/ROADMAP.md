@@ -225,8 +225,9 @@ per significant finding, and a finding before code is the cheaper one to fix.
       measure the audit used to keep every stage. The converge pass returns to the owner
       when it reports no gap over several specs
 - [ ] 0.8.0, a candidate measured in the comparison below and off by default until it
-      measures no worse: `/pipeline:ship` runs the implementer in chunks of N plan steps,
-      each a fresh subagent that resumes from the ticked PLAN.md checkboxes as an
+      measures no worse: `/pipeline:ship` runs the implementer in chunks — by a step count
+      or by step groups the planner marks in PLAN.md, decided in the spec — each a fresh
+      subagent that resumes from the ticked PLAN.md checkboxes as an
       interrupted run does today; a chunk ends only on a green, committed step, and hands
       the next one a note in PLAN.md (deviations, decisions taken, a failure still being
       traced). Plans below a size threshold run in one context, since every chunk pays its
