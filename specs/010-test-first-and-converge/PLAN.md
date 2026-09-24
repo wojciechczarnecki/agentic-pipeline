@@ -173,7 +173,7 @@ and `docs:` for documents. Each commit holds the step's files plus PLAN.md, per
 | AC7 | 7 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-escalates-on-never-red-test`, `::test_never_red_*`) | `uv run pytest plugin/tests/test_eval_cases.py` → `AssertionError: bash: …/implement-escalates-on-never-red-test/scaffold.sh: No such file or directory` on `assert result.returncode == 0` in `scaffold()` |
 | AC8 | 8 | `plugin/tests/test_eval_cases.py` (new-case parametrisations for `implement-converge-finds-missing-ac`, `::test_converge_*`) | `uv run pytest plugin/tests/test_eval_cases.py` → `AssertionError: bash: …/implement-converge-finds-missing-ac/scaffold.sh: No such file or directory` on `assert result.returncode == 0` in `scaffold()` |
 | AC9 | after the PR is open, on the owner's command (not part of `/pipeline:implement`) | `plugin/evals/last-run.json`: green, `cases_total: 11`, fingerprint matching `plugin/` at the branch head | manual — a paid model run on the owner's command |
-| AC10 | 9, 10 | `plugin/tests/test_readme.py::test_the_readme_describes_*`, `::test_the_changelog_records_spec_010`; `tests/test_documents.py::test_roadmap_ticks_spec_010`, `::test_decisions_record_spec_010` | step 9: `uv run pytest plugin/tests/test_readme.py` → `AssertionError: Red before the change` (and `no Added subsection`; the order check failed on the missing heading); step 10: `uv run pytest tests/test_documents.py` → `AssertionError: ['- [ ] 0.7.0: `implement` records every …']` in `test_roadmap_ticks_spec_010` (the decisions test green by design) |
+| AC10 | 9, 10 | `plugin/tests/test_readme.py::test_the_readme_describes_*`, `::test_the_changelog_records_spec_010`; `tests/test_documents.py::test_roadmap_ticks_spec_010`, `::test_decisions_record_spec_010` | step 9: `uv run pytest plugin/tests/test_readme.py` → `AssertionError: Red before the change` (and `no Added subsection`; the order check failed on the missing heading); step 10: `uv run pytest tests/test_documents.py` → `AssertionError: ['- [ ] 0.7.0: … records every …']` in `test_roadmap_ticks_spec_010` (the decisions test green by design) |
 | AC11 | all | `bash scripts/check.sh`; `git diff origin/main -- plugin/tests/test_prompt_style.py` empty | n/a — the full check guards every step; it has no single red |
 
 In each step, "record red" means: run the step's new tests before the product edit,
@@ -587,6 +587,18 @@ application. The end-to-end check has three parts:
 
 Record the results here when done.
 
+**Result (2026-09-24, /pipeline:implement):**
+
+1. `bash scripts/check.sh` → `ALL GREEN` (validate --strict, ruff, black; 2015 passed).
+2. `git diff origin/main -- plugin/tests/test_prompt_style.py plugin/templates/sections.md plugin/.claude-plugin/plugin.json`
+   → empty (0 bytes): the allowlist, the section map and the version `0.7.0` are unchanged.
+3. The `## AC → steps matrix` read back: AC1–AC8 and AC10 each have a red record in the
+   fourth column, every one an assertion failure; AC9 is `manual` and AC11 `n/a`, as
+   planned.
+
+This run was carried out by the installed 0.6.0 `implement`, which has no converge pass,
+so no converge pass ran on this spec; the final review covers the ACs.
+
 ### Manual (performed by the owner)
 
 1. **AC9, after the PR is open, on the owner's explicit command** (Owner decisions): run
@@ -602,12 +614,12 @@ Record the results here when done.
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` / domain documents from the map
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` / domain documents from the map
       in `CLAUDE.md`, if applicable
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -686,7 +698,9 @@ are fixed, and there is no new dependency or data migration.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- Step 6's commit also rewraps the `implement` Handoff bullet written in step 4: that
+  edit left one line at 139 characters, above the 100-column line length of
+  `docs/CONVENTIONS.md`. Whitespace only; the step 4 tests stay green.
 
 ## Final review
 
