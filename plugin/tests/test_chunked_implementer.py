@@ -153,3 +153,60 @@ def test_implementer_agent_reports_the_chunk():
     intro = agent_intro("implementer")
     for token in ["`CHUNK: <group>/<groups>`", "`STATUS: plan-approved`", "Chunk mode"]:
         assert token in intro, token
+
+
+def ship_state_row() -> str:
+    rows = [
+        line
+        for line in section("ship", "State").splitlines()
+        if line.startswith("| `plan-approved`")
+    ]
+    assert len(rows) == 1
+    return rows[0]
+
+
+def result_protocol() -> str:
+    return collapse(section("ship", "Result protocol"))
+
+
+# AC12: `ship` reads `plan-approved` from the implementer as the end of a chunk.
+def test_ship_state_table_names_the_chunk():
+    assert "a chunk ended" in ship_state_row()
+    protocol = result_protocol()
+    for token in [
+        "`STATUS: plan-approved`",
+        "a chunk ended",
+        "same prompt",
+        "`STATUS: implemented`",
+    ]:
+        assert token in protocol, token
+
+
+# AC13: a chunk with no progress is a missing RESULT, compared only with the last `DONE`.
+def test_ship_no_progress_is_a_missing_result():
+    protocol = result_protocol()
+    for token in [
+        "`CHUNK: <group>/<groups>`",
+        "same group as the previous chunk that returned",
+        "missing RESULT",
+        "escalat",
+        "never with the escalated one",
+    ]:
+        assert token in protocol, token
+
+
+def readme_section(heading: str) -> str:
+    text = (PLUGIN / "README.md").read_text()
+    assert f"\n{heading}\n" in text, heading
+    return text.split(f"\n{heading}\n", 1)[1].split("\n### ", 1)[0].split("\n## ", 1)[0]
+
+
+def test_readme_documents_the_chunk_line():
+    assert "`CHUNK: <group>/<groups>`" in collapse(readme_section("### The `RESULT` contract"))
+    assert "**The chunked implementer.**" in readme_section("### Implementation and review")
+    rows = [
+        line
+        for line in readme_section("### Spec statuses").splitlines()
+        if line.startswith("| `plan-approved`")
+    ]
+    assert len(rows) == 1 and "chunk" in rows[0], rows

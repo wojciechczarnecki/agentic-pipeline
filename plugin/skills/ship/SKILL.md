@@ -55,7 +55,7 @@ by hand stage by stage.
 |-----------------|-----------------|----------|-----------------------------------------|
 | `spec-ready`    | `planner`       | —        | `plan-draft`                            |
 | `plan-draft`    | `plan-reviewer` | —        | `plan-approved` (itself, when there is no escalation) |
-| `plan-approved` | `implementer`   | —        | `implemented`                           |
+| `plan-approved` | `implementer`   | —        | `implemented`; a chunk ended: `plan-approved` → the next `implementer` |
 | `implemented`   | `reviewer`      | `report` | findings report → **owner gate**        |
 | `implemented` + decisions recorded | `reviewer` | `apply` | PR with green CI + `done` |
 | `done`          | —               | —        | STOP: nothing to do (give the PR link, if it exists) |
@@ -97,7 +97,7 @@ keys `plan` → `planner`, `plan-review` → `plan-reviewer`, `implement` → `i
 other value, pass no `model`: the agent then runs on the session model. The guard's warning
 about a bad value goes to stderr, which a normal session does not show, so name every
 `models` entry you ignored, with its value, in the summary for the owner. The same holds for
-a stage run again under the Result protocol.
+a stage run again under the Result protocol, and for every chunk of the implementer.
 
 You wait for the stage agent's result before you go on.
 
@@ -132,6 +132,17 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
 
 - No RESULT block, or a `STATUS` that does not match the file → run the stage again once;
   the second time → escalate yourself, describing what the agent returned.
+- `implementer` with `DONE` and `STATUS: plan-approved` → a chunk ended (the skill's chunk
+  mode, which the implementer turns on itself from `implement.chunked`): start the next
+  implementer with the same prompt and the same `models` entry. In chunk mode the RESULT
+  carries a line `CHUNK: <group>/<groups>` after `STATUS`. A chunk end whose `CHUNK:` line
+  names the same group as the previous chunk that returned `DONE`, or that has no `CHUNK:`
+  line, made no progress: treat it as a missing RESULT — run it again once, the second
+  time escalate yourself, describing what the agent returned. An `ESCALATE` result is not a
+  chunk end: the agent started after the owner's decision is simply the next chunk and
+  continues the same group, so its `DONE` is compared with the last chunk that returned
+  `DONE`, never with the escalated one. `STATUS: implemented` means the stage is done and is
+  not checked for progress.
 - **ESCALATE** → `AskUserQuestion`: the question from `ESCALATION`, the options from the
   agent, the recommended one first with the label suffix "(Recommended)" — asked in the
   session language, whatever the language the agent wrote them in. Append the answer (date,

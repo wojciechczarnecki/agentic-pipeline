@@ -135,7 +135,7 @@ be resumed after an interruption.
 | `spec-draft` | owner + `/pipeline:idea` | `spec-ready` (gate 1) |
 | `spec-ready` | `planner` | `plan-draft` |
 | `plan-draft` | `plan-reviewer` | `plan-approved` (by itself when nothing escalates) |
-| `plan-approved` | `implementer` | `implemented` |
+| `plan-approved` | `implementer` | `implemented` (in chunk mode each chunk but the last returns `plan-approved`) |
 | `implemented` | `reviewer` (`report`) | findings report → gate 2 |
 | `implemented` + decisions | `reviewer` (`apply`) | PR with green CI → `done` |
 | `done` | owner | PR merge (gate 3) |
@@ -159,6 +159,12 @@ SUMMARY: <≤ 10 lines; for reviewer/report — findings table: id | severity | 
 appears only with `ESCALATE` — the problem, up to four options, a recommendation and why;
 `SUMMARY` is at most ten lines, and for the reviewer in `report` mode a findings table
 (id, severity, one sentence).
+
+In chunk mode the implementer adds a line `CHUNK: <group>/<groups>` right after `STATUS`:
+the group it carried out and the number of groups. `ship` reads `DONE` with
+`STATUS: plan-approved` as the end of a chunk and starts the next implementer with the same
+prompt; a chunk end that repeats the group of the previous chunk that returned `DONE`, or
+has no `CHUNK:` line, counts as a missing RESULT (one re-run, then an escalation).
 
 A stage agent cannot ask the owner: wherever a skill says to ask or to STOP, it ends with a
 `RESULT: ESCALATE` block. The orchestrator turns that into a question for the owner and
@@ -206,6 +212,20 @@ gets a removal step. There are at most two passes, and a gap left after the seco
 escalation; after the owner decides on it, the decided steps are carried out without a
 third pass. Each pass is recorded in PLAN.md, and the added steps count in
 `implement_steps`.
+
+**The chunked implementer.** `plan` always divides `## Steps` into groups under
+`### Group N — <name>` headings, and a small plan is one group, because every chunk pays
+its cache writes again; `plan-review` checks the grouping. With `"implement": {"chunked":
+true}` in `.claude/workflow.json` (off by default) and more than one group, `implement`
+carries out only the group that holds the first unticked step. When that group's last step
+is green, ticked and committed, it appends an entry to `## Chunk notes` (the group, the
+decisions taken within the plan's latitude, the traps the next group will meet, and the
+running `implement_iterations` total), commits, pushes and ends at `plan-approved`. The next
+chunk starts in a fresh context from the committed state and reads the notes. The chunk
+with the last group runs the converge pass and the Definition of Done as one context does,
+and writes the metrics once: `implement_iterations` as the running total and the optional
+`implement_chunks`. Run on its own, `/pipeline:implement` stops at the group boundary and
+asks to be run again after `/clear`. `cost_implement_cents` adds up every chunk.
 
 **The final-review report.** The review always runs all three perspectives, for a small
 change as for a large one, and each perspective reports every finding with its severity.
