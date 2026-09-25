@@ -2,6 +2,22 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.8.1
+
+`implement` states that `implement_steps` counts every step carried out — the planned
+steps plus the steps the converge passes added — so the Stage 7 cost per plan step is not
+skewed.
+
+**consumer impact:** none — no configuration change; update as usual.
+
+### Fixed
+
+- `skills/implement/SKILL.md` defines `implement_steps` in the Definition of Done as the
+  planned steps plus the converge-added ones, over all chunks. The converge section said
+  only that the added steps "count" in it, and on the 0.8.0 canary a Sonnet implementer
+  read that as "only the added steps" and wrote `implement_steps: 0` after three planned
+  steps. `plugin/README.md` says the same.
+
 ## 0.8.0
 
 SPEC 011 prepares Stage 7's comparison: every spec records what each stage cost, the

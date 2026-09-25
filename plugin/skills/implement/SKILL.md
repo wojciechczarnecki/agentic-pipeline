@@ -108,8 +108,9 @@ correct only when the verification commands say so — never because it "looks g
    - `<docs.roadmap>` updated (checkboxes!), `<docs.decisions>` and the domain documents
      from the map in `CLAUDE.md`, if applicable;
    - `status: implemented` + an entry in `stage_history`; in the `metrics:` block of
-     SPEC.md: `implement_steps`, `implement_iterations` (the sum of loop iterations beyond
-     the first attempt, over all steps), `converge_gaps` (the real gaps kept after your
+     SPEC.md: `implement_steps` (every step carried out: the planned steps plus the steps
+     the converge passes added, over all chunks), `implement_iterations` (the sum of loop
+     iterations beyond the first attempt, over all steps), `converge_gaps` (the real gaps kept after your
      verdicts, summed over the passes; `0` when a pass found none), `deviations_minor` and
      `deviations_major` (step 3); whenever `## Chunk notes` has entries — also when chunking
      was turned off after them — `implement_iterations` is the running total from the last
@@ -189,8 +190,8 @@ spots. So before the Definition of Done a fresh reader compares the code with th
   cost: a real gap after the second pass is an escalation.
 - Record each pass in PLAN.md, below the last step, under a level-3 heading
   Converge pass N — <date>, followed by the gaps with your verdicts and the added steps.
-  A resumed run then sees which pass ran. `implement_steps` counts the added steps, and
-  `converge_gaps` the real gaps.
+  A resumed run then sees which pass ran. The added steps count in `implement_steps`
+  together with the planned ones, and `converge_gaps` counts the real gaps.
 - A resumed run with two passes recorded carries out the steps the owner decided on and
   then goes to the Definition of Done, without a third pass. A run with one recorded pass
   that added steps still runs the second pass after them.

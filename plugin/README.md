@@ -213,7 +213,7 @@ AC → steps matrix; `unrequested` code that no plan step and no `## Deviations`
 gets a removal step. There are at most two passes, and a gap left after the second is an
 escalation; after the owner decides on it, the decided steps are carried out without a
 third pass. Each pass is recorded in PLAN.md, and the added steps count in
-`implement_steps`.
+`implement_steps` together with the planned ones.
 
 **The chunked implementer.** `plan` always divides `## Steps` into groups under
 `### Group N — <name>` headings, and a small plan is one group, because every chunk pays
@@ -300,7 +300,7 @@ metrics:
   plan_review_blockers: 1              # /pipeline:plan-review — counted before the fixes
   plan_review_majors: 2
   plan_changes: 5
-  implement_steps: 8                   # /pipeline:implement
+  implement_steps: 8                   # /pipeline:implement — planned + converge-added steps
   implement_iterations: 3              # self-correction iterations beyond the first attempt
   implement_chunks: 3                  # groups carried out as separate chunks (chunk mode only)
   converge_gaps: 1                     # real gaps kept from the converge passes
