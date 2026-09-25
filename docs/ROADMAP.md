@@ -236,14 +236,21 @@ per significant finding, and a finding before code is the cheaper one to fix.
       (`specs/012-chunked-implementer/SPEC.md`)
 - [ ] Before/after comparison of model, effort and the chunked implementer: the transcripts
       from the audit are the reference from before Stage 6 (and show what the converge
-      pass added); the baseline is the consumer's next 2–3 ordinary specs on 0.7.0, with
-      every stage on the session model at its default effort, costed afterwards from the
-      archived transcripts — no spec runs only for the baseline; then 3–5 specs with the
-      candidates — Opus at `low` effort for the stages that follow a checklist or a script,
-      Opus at `low` or Sonnet for the implementer, the chunked implementer — and the chosen
-      defaults. Cost is compared per plan step, since spec sizes differ; quality through
-      the metrics and the eval suite on the candidate settings; the result goes into the
-      root `README.md`
+      pass added); the baseline is the consumer's next 2–3 ordinary specs on 0.8.1 with
+      its default settings — no `models`, no chunking, every stage on the session model at
+      its default effort — so that the baseline and the candidates differ only in
+      configuration, not in the plugin version (0.8.0 already reads documents by topic);
+      no spec runs only for the baseline; then 3–5 specs with the candidates, one change at
+      a time so each effect can be told apart — Sonnet for the implementer, then the
+      chunked implementer on plans with several groups, Opus at `low` effort for the stages
+      that follow a checklist or a script — and the chosen defaults. The plugin's own
+      repository runs a side series: SPEC 011 and 012 ran on 0.7.0 with every stage on the
+      session model and are its baseline (012's final review ran twice after a session
+      limit, so only its other stages count), and its next specs run with
+      `"models": {"implement": "sonnet"}`; this series compares within the repository only,
+      since cost per step depends on the project. Cost is compared per plan step, since
+      spec sizes differ; quality through the metrics and the eval suite on the candidate
+      settings; the consumer's result goes into the root `README.md`
 - [ ] Cheaper eval runs, in `scripts/` (no plugin version bump): re-running only the
       failed cases merges their results into the receipt while the plugin fingerprint is
       unchanged; a session limit or another infrastructure error is recorded as an error,

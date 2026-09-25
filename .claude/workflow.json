@@ -21,5 +21,8 @@
   },
   "gitHooksDir": "scripts/git-hooks",
   "protectedBranches": ["stable"],
-  "language": "en"
+  "language": "en",
+  "models": {
+    "implement": "sonnet"
+  }
 }
