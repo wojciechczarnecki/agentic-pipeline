@@ -1,12 +1,12 @@
 {
-  "commit": "377d674085b1d62e1e853891b32e63026d67a10f",
-  "plugin_fingerprint": "c4f0096ff6fd0682a0f21aa1c9f57f880e67403b0c177da882bedaeb3a41d3d6",
-  "plugin_version": "0.7.0",
-  "ran_at": "2026-09-24T12:34",
-  "cases_total": 11,
-  "cases_passed": 11,
+  "commit": "da297f07f01b6edd0feecdf591405b62b1b4a347",
+  "plugin_fingerprint": "0a1a8e68dc4ef28f5dc257540ac8628cc514b437078b15e32f1d9c0fc354d49b",
+  "plugin_version": "0.8.0",
+  "ran_at": "2026-09-24T23:48",
+  "cases_total": 12,
+  "cases_passed": 12,
   "green": true,
-  "cost_usd": 4.6085,
+  "cost_usd": 5.5494,
   "model": "default",
   "cases": {
     "final-review-finds-planted-defect": {
@@ -30,6 +30,10 @@
       "passed": 1
     },
     "implement-escalates-on-never-red-test": {
+      "runs": 1,
+      "passed": 1
+    },
+    "implement-stops-at-group-boundary": {
       "runs": 1,
       "passed": 1
     },
