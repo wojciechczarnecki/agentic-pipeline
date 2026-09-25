@@ -143,6 +143,14 @@ def test_closing_step_states_the_metrics_format(name):
         assert key in step, f"{name}: the closing step must name `{key}`"
 
 
+def test_implement_steps_counts_the_planned_steps_too():
+    # The 0.8.0 canary: a Sonnet implementer read "counts the added steps" as "only the
+    # converge-added steps" and wrote `implement_steps: 0` after three planned steps.
+    step = closing_step("implement")
+    assert "`implement_steps` (every step carried out: the planned steps" in step
+    assert "`implement_steps` counts the added steps" not in skill_text("implement")
+
+
 @pytest.mark.parametrize("name", METRIC_SKILLS)
 def test_closing_step_runs_the_checker(name):
     step = closing_step(name)

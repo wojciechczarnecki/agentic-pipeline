@@ -1,6 +1,6 @@
 {
   "name": "pipeline",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Spec-Driven Workflow: an agentic feature pipeline from an idea through planning and plan review to implementation, final review and a pull request — with a command guard, workflow metrics and a scaffold for new projects.",
   "author": {
     "name": "Wojciech Czarnecki"
