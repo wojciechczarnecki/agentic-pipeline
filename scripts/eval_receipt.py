@@ -58,18 +58,51 @@ def tally(case: dict) -> tuple[int, int, int]:
     return verdicts.count("pass"), errors, planned
 
 
-def case_runs(result: dict) -> dict[str, tuple[int, int]]:
-    counted = {}
-    for case in result["cases"]:
-        passed, _errors, planned = tally(case)
-        counted[case["name"]] = (passed, planned)
-    return counted
-
-
 # The CLI's own aggregate is not the verdict: under its default threshold a case that
 # passed 2 of 3 runs scores below 1.0 and counts as failed.
 def majority(passed: int, runs: int) -> bool:
     return 2 * passed > runs
+
+
+def case_verdict(passed: int, errors: int, runs: int) -> str:
+    """A case with an error run is never `pass`. It is `error` (re-runnable) when the errors
+    could have changed the outcome, and `fail` when it had already failed by majority."""
+    if errors == 0:
+        return "pass" if majority(passed, runs) else "fail"
+    return "error" if majority(passed + errors, runs) else "fail"
+
+
+def case_entries(result: dict) -> dict[str, dict]:
+    entries = {}
+    for case in result["cases"]:
+        passed, errors, planned = tally(case)
+        entries[case["name"]] = {
+            "runs": planned,
+            "passed": passed,
+            "errors": errors,
+            "verdict": case_verdict(passed, errors, planned),
+        }
+    return entries
+
+
+def problem_lines(entries: dict[str, dict]) -> list[str]:
+    """The errored and the failed cases, apart: an error is re-run, a failure is not."""
+    lines = []
+    errored = [name for name, entry in entries.items() if entry["verdict"] == "error"]
+    failed = [name for name, entry in entries.items() if entry["verdict"] == "fail"]
+    if errored:
+        lines += [
+            f"errored: {', '.join(errored)}",
+            "  infrastructure errors, not failures; re-run only these: "
+            "bash scripts/eval.sh --rerun-errors",
+        ]
+    if failed:
+        lines += [
+            f"failed: {', '.join(failed)}",
+            "  a failed case is not retried until it passes: the five-run measurement "
+            "policy applies (docs/CONVENTIONS.md)",
+        ]
+    return lines
 
 
 def model_override(args: list[str], environ: dict[str, str]) -> str | None:
@@ -89,19 +122,19 @@ def judge_cost(result: dict) -> float:
 
 
 def receipt(result: dict, args: list[str], environ: dict[str, str], **recorded) -> dict:
-    counted = case_runs(result)
-    passed = sum(majority(*runs) for runs in counted.values())
+    entries = case_entries(result)
+    passed = sum(entry["verdict"] == "pass" for entry in entries.values())
     model = model_override(args, environ) or result.get("suite", {}).get("modelOverride")
     return {
         **recorded,
         "ran_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M"),
-        "cases_total": len(counted),
+        "cases_total": len(entries),
         "cases_passed": passed,
         # A partial result (the cost ceiling or an abort cut the suite short) is no release.
-        "green": passed == len(counted) > 0 and not result.get("partial"),
+        "green": passed == len(entries) > 0 and not result.get("partial"),
         "cost_usd": round(result["costUsd"], 4),
         "model": model or "default",
-        "cases": {name: {"runs": runs, "passed": ok} for name, (ok, runs) in counted.items()},
+        "cases": entries,
     }
 
 
@@ -133,6 +166,8 @@ def write(argv: list[str]) -> int:
         handle.write("\n")
     verdict = "green" if written["green"] else "NOT green"
     print(f"\neval.sh: receipt written to {options.receipt} ({verdict})")
+    for line in problem_lines(written["cases"]):
+        print(line)
     return 0 if written["green"] else 1
 
 
@@ -142,14 +177,18 @@ def summary(argv: list[str]) -> int:
     options = parser.parse_args(argv)
     with open(options.raw) as handle:
         result = json.load(handle)
-    for name, (passed, runs) in case_runs(result).items():
-        print(f"{name} {passed}/{runs}")
+    entries = case_entries(result)
+    for name, entry in entries.items():
+        errors = f" ({entry['errors']} error)" if entry["errors"] else ""
+        print(f"{name} {entry['passed']}/{entry['runs']}{errors}")
     judged = judge_cost(result)
     print(
         f"cost {result['costUsd'] + judged:.4f} "
         f"(runs {result['costUsd']:.4f}, judge {judged:.4f}); "
         f"model {result.get('suite', {}).get('modelOverride') or 'default'}"
     )
+    for line in problem_lines(entries):
+        print(line)
     return 0
 
 

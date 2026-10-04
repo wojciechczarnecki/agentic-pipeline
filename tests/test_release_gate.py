@@ -179,15 +179,30 @@ def write_receipt(tmp_path, *eval_args: str, env: dict | None = None):
 # 1 of 3 and one at 1 of 1, as `claude plugin eval --json` reports them.
 def test_two_of_three_runs_count_as_passed(tmp_path):
     _, written = write_receipt(tmp_path)
-    assert written["cases"]["two-of-three"] == {"runs": 3, "passed": 2}
-    assert written["cases"]["one-of-one"] == {"runs": 1, "passed": 1}
+    assert written["cases"]["two-of-three"] == {
+        "runs": 3,
+        "passed": 2,
+        "errors": 0,
+        "verdict": "pass",
+    }
+    assert written["cases"]["one-of-one"] == {
+        "runs": 1,
+        "passed": 1,
+        "errors": 0,
+        "verdict": "pass",
+    }
     assert written["cases_total"] == 3
     assert written["cases_passed"] == 2
 
 
 def test_one_of_three_runs_counts_as_failed(tmp_path):
     result, written = write_receipt(tmp_path)
-    assert written["cases"]["one-of-three"] == {"runs": 3, "passed": 1}
+    assert written["cases"]["one-of-three"] == {
+        "runs": 3,
+        "passed": 1,
+        "errors": 0,
+        "verdict": "fail",
+    }
     assert written["green"] is False
     assert result.returncode == 1
     assert "NOT green" in result.stdout
@@ -222,7 +237,7 @@ def test_a_green_result_writes_a_green_receipt(tmp_path):
     )
 
 
-def test_a_run_without_a_grader_verdict_counts_as_failed(tmp_path):
+def test_a_run_without_a_grader_verdict_is_an_error(tmp_path):
     result_file = tmp_path / "skipped.json"
     data = json.loads(RESULT.read_text())
     run = data["cases"][2]["arms"]["with"][0]
@@ -235,7 +250,12 @@ def test_a_run_without_a_grader_verdict_counts_as_failed(tmp_path):
         capture_output=True,
         text=True,
     )
-    assert json.loads(out.read_text())["cases"]["one-of-one"] == {"runs": 1, "passed": 0}
+    assert json.loads(out.read_text())["cases"]["one-of-one"] == {
+        "runs": 1,
+        "passed": 0,
+        "errors": 1,
+        "verdict": "error",
+    }
 
 
 def test_receipt_records_the_model(tmp_path):
@@ -353,7 +373,7 @@ def green_result() -> dict:
 
 
 # `--max-cost-usd` stops launching runs: one passing run of three must not read 1/1.
-def test_runs_that_never_started_count_as_failed(tmp_path):
+def test_runs_that_never_started_are_an_error(tmp_path):
     data = green_result()
     two_of_three = data["cases"][0]
     assert two_of_three["runsPerCase"] == 3
@@ -361,7 +381,12 @@ def test_runs_that_never_started_count_as_failed(tmp_path):
         :1
     ]
     written = write_result(tmp_path, data)
-    assert written["cases"]["two-of-three"] == {"runs": 3, "passed": 1}
+    assert written["cases"]["two-of-three"] == {
+        "runs": 3,
+        "passed": 1,
+        "errors": 2,
+        "verdict": "error",
+    }
     assert written["green"] is False
 
 

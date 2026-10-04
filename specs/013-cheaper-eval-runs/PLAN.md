@@ -162,8 +162,8 @@ Design:
 | AC2 | 1 | `tests/test_eval_receipt.py::test_grader_threw_on_session_limit_is_an_error` (fixture `tests/fixtures/eval-result-session-limit.json`) |  `uv run pytest -q tests/test_eval_receipt.py` (against a stub `run_verdict`) → `AssertionError: assert 'stub' == 'error'` |
 | AC3 | 1 | `tests/test_eval_receipt.py::test_no_verdict_is_an_error` (skipped grader and never-started run) |  `uv run pytest -q tests/test_eval_receipt.py` (against a stub `run_verdict`) → `AssertionError: assert 'stub' == 'error'` |
 | AC4 | 1 | `tests/test_eval_receipt.py::test_other_errors_are_failures` (`timeout after 600s`, an unknown message) |  `uv run pytest -q tests/test_eval_receipt.py` (against a stub `run_verdict`) → `AssertionError: assert 'stub' == 'fail'` |
-| AC5 | 2, 7 | `tests/test_eval_receipt.py::test_an_errored_case_is_not_passed`, `::test_write_lists_errored_and_failed_cases`, `::test_summary_lists_errored_cases`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` (closing message) | |
-| AC6 | 2 | `tests/test_eval_receipt.py::test_receipt_keeps_a_verdict_per_case` | |
+| AC5 | 2, 7 | `tests/test_eval_receipt.py::test_an_errored_case_is_not_passed`, `::test_write_lists_errored_and_failed_cases`, `::test_summary_lists_errored_cases`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` (closing message) |  `uv run pytest -q tests/test_eval_receipt.py` → `AssertionError: assert 'errored: c' in '\neval.sh: receipt written to … (NOT green)\n'` |
+| AC6 | 2 | `tests/test_eval_receipt.py::test_receipt_keeps_a_verdict_per_case` |  `uv run pytest -q tests/test_eval_receipt.py::test_receipt_keeps_a_verdict_per_case` → `AssertionError: assert {'a': {'runs'... 'passed': 2}} == {'a': {'runs'...ict': 'pass'}}` |
 | AC7 | 3 | `tests/test_eval_receipt.py::test_a_rerun_of_errored_cases_merges_into_a_green_receipt` | |
 | AC8 | 3 | `tests/test_eval_receipt.py::test_a_failed_case_needs_five_of_five`, `::test_a_short_run_does_not_replace_a_case` | |
 | AC9 | 3 | `tests/test_eval_receipt.py::test_a_different_fingerprint_or_model_starts_a_new_receipt`, `::test_an_old_format_receipt_is_not_merged` | |
@@ -204,7 +204,7 @@ Design:
       `scripts/eval_receipt.py`, `tests/test_eval_receipt.py`,
       `tests/fixtures/eval-result-session-limit.json`.
       Automatic verification: `uv run pytest -q tests/test_eval_receipt.py tests/test_release_gate.py`
-- [ ] 2. Case verdict, receipt shape and messages (AC5, AC6). Tests first:
+- [x] 2. Case verdict, receipt shape and messages (AC5, AC6). Tests first:
       - every case entry is `{runs, passed, errors, verdict}`, and `cases_total`, `green`,
         `model`, `plugin_fingerprint`, `plugin_version` and `commit` are still there;
       - a case with one error run and two passes of three → `error`;
