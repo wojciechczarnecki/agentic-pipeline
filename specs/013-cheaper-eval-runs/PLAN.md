@@ -168,7 +168,7 @@ Design:
 | AC8 | 3 | `tests/test_eval_receipt.py::test_a_failed_case_needs_five_of_five`, `::test_a_short_run_does_not_replace_a_case` |  `uv run pytest -q tests/test_eval_receipt.py` (`write` accepting several files, no merge yet) → `AssertionError: assert {'runs': 1, '...dict': 'pass'} == {'runs': 1, '...dict': 'fail'}` |
 | AC9 | 3 | `tests/test_eval_receipt.py::test_a_different_fingerprint_or_model_starts_a_new_receipt`, `::test_an_old_format_receipt_is_not_merged` |  `uv run pytest -q tests/test_eval_receipt.py` (`write` accepting several files, no merge yet) → `assert True is False` |
 | AC10 | 9 | `tests/test_release_gate.py::test_a_suite_merged_from_several_runs_passes_the_hook` | |
-| AC11 | 4, 7 | `tests/test_eval_receipt.py::test_rerun_selects_errored_and_missing_cases`, `::test_rerun_refuses_a_different_fingerprint_or_model`, `::test_rerun_has_nothing_to_rerun`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` | |
+| AC11 | 4, 7 | `tests/test_eval_receipt.py::test_rerun_selects_errored_and_missing_cases`, `::test_rerun_refuses_a_different_fingerprint_or_model`, `::test_rerun_has_nothing_to_rerun`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` |  `uv run pytest -q tests/test_eval_receipt.py -k rerun` (no `rerun` subcommand yet) → `assert 2 == 0` |
 | AC12 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_runs_the_cases_of_the_diff` | |
 | AC13 | 5 | `tests/test_eval_receipt.py::test_changed_paths_map_to_cases` (one parameter per rule) | |
 | AC14 | 5 | `tests/test_eval_receipt.py::test_every_case_has_a_rule_of_its_own` | |
@@ -250,7 +250,7 @@ Design:
       (name → runs asked) and `merge(base, new, suite)` — files:
       `scripts/eval_receipt.py`, `tests/test_eval_receipt.py`.
       Automatic verification: `uv run pytest -q tests/test_eval_receipt.py tests/test_release_gate.py`
-- [ ] 4. `rerun` selection (the selection part of AC11). Tests first, through the
+- [x] 4. `rerun` selection (the selection part of AC11). Tests first, through the
       subprocess:
       - errored and missing suite cases are printed and a `fail` case is not;
       - a different fingerprint, or `-- --model sonnet` against a `default` receipt, or

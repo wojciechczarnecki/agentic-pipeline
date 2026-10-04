@@ -342,3 +342,78 @@ def test_a_partial_input_is_not_green(tmp_path):
 def test_a_receipt_case_outside_the_suite_is_not_green(tmp_path):
     _, written = merged_write(tmp_path, {"a": 1}, raw_result({"a": [PASS], "gone": [PASS]}))
     assert written["green"] is False
+
+
+def rerun(tmp_path, receipt: dict | None, *, fingerprint="f1", eval_args=(), env=None, suite=None):
+    root = evals_dir(tmp_path, suite or {"ok": 1, "bad": 1, "limited": 1, "new": 1})
+    path = tmp_path / "last-run.json"
+    if receipt is not None:
+        path.write_text(json.dumps(receipt))
+    environ = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_MODEL"}
+    environ.update(env or {})
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), "rerun", str(path)]
+        + ["--fingerprint", fingerprint, "--evals-dir", str(root), "--", *eval_args],
+        capture_output=True,
+        text=True,
+        env=environ,
+    )
+
+
+def entry(verdict: str) -> dict:
+    return {
+        "runs": 1,
+        "passed": int(verdict == "pass"),
+        "errors": int(verdict == "error"),
+        "verdict": verdict,
+    }
+
+
+def stored(**cases: str) -> dict:
+    return {
+        "plugin_fingerprint": "f1",
+        "model": "default",
+        "cases": {name: entry(verdict) for name, verdict in cases.items()},
+    }
+
+
+# AC11: errored and missing cases run again; a failed one is not retried.
+def test_rerun_selects_errored_and_missing_cases(tmp_path):
+    done = rerun(tmp_path, stored(ok="pass", bad="fail", limited="error"))
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.split() == ["limited", "new"]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "words"),
+    [
+        ({"fingerprint": "other"}, "fingerprint"),
+        ({"eval_args": ("--model", "sonnet")}, "model"),
+        ({"env": {"ANTHROPIC_MODEL": "sonnet"}}, "model"),
+    ],
+)
+def test_rerun_refuses_a_different_fingerprint_or_model(tmp_path, kwargs, words):
+    done = rerun(tmp_path, stored(ok="pass", limited="error"), **kwargs)
+    assert done.returncode == 1
+    assert done.stdout == ""
+    assert words in done.stderr
+
+
+def test_rerun_refuses_without_a_receipt_or_with_an_old_one(tmp_path):
+    done = rerun(tmp_path, None)
+    assert (done.returncode, done.stdout) == (1, "")
+    assert "bash scripts/eval.sh" in done.stderr
+    old = {"plugin_fingerprint": "f1", "model": "default", "cases": {"ok": {"runs": 1}}}
+    done = rerun(tmp_path, old)
+    assert (done.returncode, done.stdout) == (1, "")
+    assert "bash scripts/eval.sh" in done.stderr
+
+
+def test_rerun_has_nothing_to_rerun(tmp_path):
+    done = rerun(
+        tmp_path,
+        stored(ok="pass", bad="fail", limited="pass", new="pass"),
+    )
+    assert done.returncode == 0
+    assert done.stdout == ""
+    assert "nothing to re-run" in done.stderr

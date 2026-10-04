@@ -286,10 +286,60 @@ def summary(argv: list[str]) -> int:
     return 0
 
 
+def rerun(argv: list[str]) -> int:
+    """Prints the suite cases to run again: errored in the receipt, or missing from it."""
+    own, eval_args = argv, []
+    if "--" in argv:
+        split = argv.index("--")
+        own, eval_args = argv[:split], argv[split + 1 :]
+    parser = argparse.ArgumentParser(prog="eval_receipt.py rerun")
+    parser.add_argument("receipt")
+    parser.add_argument("--fingerprint", required=True)
+    parser.add_argument("--evals-dir", required=True)
+    options = parser.parse_args(own)
+
+    def refuse(message: str) -> int:
+        print(f"eval.sh: {message}", file=sys.stderr)
+        return 1
+
+    try:
+        with open(options.receipt) as handle:
+            previous = json.load(handle)
+    except (OSError, ValueError):
+        return refuse("no receipt to re-run from; run the whole suite: bash scripts/eval.sh")
+    cases = previous.get("cases") or {}
+    if not cases or any("verdict" not in entry for entry in cases.values()):
+        return refuse(
+            "the receipt is in the old format, without a verdict per case; "
+            "run the whole suite: bash scripts/eval.sh"
+        )
+    if previous.get("plugin_fingerprint") != options.fingerprint:
+        return refuse(
+            "plugin/ changed since the receipt was written (the fingerprint differs); "
+            "run the whole suite: bash scripts/eval.sh"
+        )
+    model = model_override(eval_args, dict(os.environ)) or "default"
+    if previous.get("model") != model:
+        return refuse(
+            f"the receipt ran on the model {previous.get('model')} and this run on {model}; "
+            "a merge needs the same model"
+        )
+    pending = [
+        name
+        for name in suite_cases(options.evals_dir)
+        if name not in cases or cases[name]["verdict"] == "error"
+    ]
+    if not pending:
+        print("eval.sh: nothing to re-run: no case is errored or missing.", file=sys.stderr)
+    for name in pending:
+        print(name)
+    return 0
+
+
 def main(argv: list[str]) -> int:
-    commands = {"write": write, "summary": summary}
+    commands = {"write": write, "summary": summary, "rerun": rerun}
     if len(argv) < 2 or argv[1] not in commands:
-        print("usage: eval_receipt.py write|summary …", file=sys.stderr)
+        print("usage: eval_receipt.py write|summary|rerun …", file=sys.stderr)
         return 2
     return commands[argv[1]](argv[2:])
 
