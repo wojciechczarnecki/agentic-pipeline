@@ -443,6 +443,11 @@ Result (2026-10-04): `bash scripts/check.sh` → `ALL GREEN` (2318 passed). The 
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-10-04 — final review (gate) — which findings to accept? Decision: **accept all**
+  (F1–F12); rejected: none. F8 (an error run replaces an earlier pass on the same
+  fingerprint) is accepted too: the owner amends AC8 so that an error run no longer
+  replaces an earlier pass of the same case on the same fingerprint and model.
+
 ## Review log
 
 ### 2026-10-04 — plan review
