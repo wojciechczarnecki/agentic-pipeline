@@ -170,8 +170,8 @@ Design:
 | AC10 | 9 | `tests/test_release_gate.py::test_a_suite_merged_from_several_runs_passes_the_hook` | |
 | AC11 | 4, 7 | `tests/test_eval_receipt.py::test_rerun_selects_errored_and_missing_cases`, `::test_rerun_refuses_a_different_fingerprint_or_model`, `::test_rerun_has_nothing_to_rerun`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` |  `uv run pytest -q tests/test_eval_receipt.py -k rerun` (no `rerun` subcommand yet) → `assert 2 == 0` |
 | AC12 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_runs_the_cases_of_the_diff` | |
-| AC13 | 5 | `tests/test_eval_receipt.py::test_changed_paths_map_to_cases` (one parameter per rule) | |
-| AC14 | 5 | `tests/test_eval_receipt.py::test_every_case_has_a_rule_of_its_own` | |
+| AC13 | 5 | `tests/test_eval_receipt.py::test_changed_paths_map_to_cases` (one parameter per rule) |  `uv run pytest -q tests/test_eval_receipt.py -k "changed or rule"` (stub `cases_for_paths` returning an empty set) → `AssertionError: assert [] == ['init-keeps-manual-edits']` |
+| AC14 | 5 | `tests/test_eval_receipt.py::test_every_case_has_a_rule_of_its_own` |  `uv run pytest -q tests/test_eval_receipt.py -k "changed or rule"` (stub `cases_for_paths` returning an empty set) → `AssertionError` on `assert set(cases) - reachable(cases) == set()` in `test_every_case_has_a_rule_of_its_own` |
 | AC15 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_without_origin_main_does_not_run`, `::test_eval_sh_changed_with_no_case_does_not_run` | |
 | AC16 | 6 | `tests/test_release_gate.py::test_eval_sh_refuses_untracked_files_under_plugin` | |
 | AC17 | 9 | `tests/test_release_gate.py::test_the_hook_reads_the_receipt_from_the_tagged_commit` (both directions) | |
@@ -262,7 +262,7 @@ Design:
       Then implement the subcommand — files: `scripts/eval_receipt.py`,
       `tests/test_eval_receipt.py`.
       Automatic verification: `uv run pytest -q tests/test_eval_receipt.py`
-- [ ] 5. `changed` mapping (AC13, AC14). Tests first:
+- [x] 5. `changed` mapping (AC13, AC14). Tests first:
       - one parametrized case per rule in the design (own directory; each skill stage;
         each of the three agents; `plugin/hooks/`; `plugin/bin/`, `plugin/templates/`,
         `plugin/.claude-plugin/` and an unlisted path → every case; each `NO_CASES` entry

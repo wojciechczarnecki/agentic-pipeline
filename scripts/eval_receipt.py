@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # Turns a `claude plugin eval --json` result into the release receipt the pre-push hook
 # checks, and summarises a result per case. Repository tooling, not plugin runtime.
-# Usage: eval_receipt.py write <raw.json> <receipt.json> --commit C --version V
-#                              --fingerprint F -- <arguments eval.sh passed to the CLI>
+# Usage: eval_receipt.py write <raw.json>... <receipt.json> --commit C --version V
+#                              --fingerprint F [--evals-dir DIR] -- <arguments eval.sh passed>
 #        eval_receipt.py summary <raw.json>
-# Exit codes: write — 0 when the receipt is green, 1 when it is not; summary — 0.
+#        eval_receipt.py rerun <receipt.json> --fingerprint F --evals-dir DIR -- <eval args>
+#        eval_receipt.py changed --evals-dir DIR      (changed paths on stdin)
+# Exit codes: write — 0 when the receipt is green, 1 when it is not; summary — 0;
+# rerun — 0 with the case names on stdout (none = nothing to re-run), 1 on a refusal.
 import argparse
 import datetime
 import json
@@ -336,10 +339,63 @@ def rerun(argv: list[str]) -> int:
     return 0
 
 
+# Which cases a change under plugin/ can affect. The mapping lives here and not in
+# case.yaml, so a change to it needs no plugin version bump. A path no rule names selects
+# every case: in doubt, run the whole suite.
+NO_CASES = (
+    "plugin/README.md",
+    "plugin/CHANGELOG.md",
+    "plugin/docs/",
+    "plugin/tests/",
+    "plugin/evals/last-run.json",
+    "plugin/skills/idea/",
+    "plugin/skills/plan/",  # before the prefix rule, or `plan-` would pick `plan-review-`
+    "plugin/skills/ship/",
+    "plugin/agents/planner.md",
+)
+PREFIX_RULES = {
+    "plugin/agents/implementer.md": "implement-",
+    "plugin/agents/reviewer.md": "final-review-",
+    "plugin/agents/plan-reviewer.md": "plan-review-",
+}
+
+
+def cases_for_paths(paths, cases) -> set[str]:
+    """The cases that need to run for the changed `paths`; the first rule that matches wins."""
+    cases, selected = set(cases), set()
+    for path in paths:
+        parts = path.split("/")
+        if path.startswith(NO_CASES):
+            continue
+        if parts[:2] == ["plugin", "evals"] and len(parts) > 3:
+            selected |= {parts[2]} & cases
+        elif path in PREFIX_RULES:
+            selected |= {name for name in cases if name.startswith(PREFIX_RULES[path])}
+        elif parts[:2] == ["plugin", "skills"] and len(parts) > 3:
+            selected |= {name for name in cases if name.startswith(parts[2] + "-")}
+        elif parts[:2] == ["plugin", "hooks"]:
+            selected |= {name for name in cases if name.startswith("guard-")}
+        elif parts[0] == "plugin":
+            return cases
+    return selected
+
+
+def changed(argv: list[str]) -> int:
+    """Prints the cases a list of changed paths (stdin, one per line) needs to run."""
+    parser = argparse.ArgumentParser(prog="eval_receipt.py changed")
+    parser.add_argument("--evals-dir", required=True)
+    options = parser.parse_args(argv)
+    suite = suite_cases(options.evals_dir)
+    paths = [line.strip() for line in sys.stdin.read().splitlines() if line.strip()]
+    for name in sorted(cases_for_paths(paths, suite)):
+        print(name)
+    return 0
+
+
 def main(argv: list[str]) -> int:
-    commands = {"write": write, "summary": summary, "rerun": rerun}
+    commands = {"write": write, "summary": summary, "rerun": rerun, "changed": changed}
     if len(argv) < 2 or argv[1] not in commands:
-        print("usage: eval_receipt.py write|summary|rerun …", file=sys.stderr)
+        print("usage: eval_receipt.py write|summary|rerun|changed …", file=sys.stderr)
         return 2
     return commands[argv[1]](argv[2:])
 

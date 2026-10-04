@@ -417,3 +417,116 @@ def test_rerun_has_nothing_to_rerun(tmp_path):
     assert done.returncode == 0
     assert done.stdout == ""
     assert "nothing to re-run" in done.stderr
+
+
+# AC13: the mapping from a changed path to the cases that need to run.
+SUITE = [
+    "final-review-finds-planted-defect",
+    "guard-blocks-main-push",
+    "implement-escalates-on-failing-test",
+    "implement-stops-at-group-boundary",
+    "init-keeps-manual-edits",
+    "plan-review-escalates-on-dependency",
+]
+
+
+@pytest.mark.parametrize(
+    ("path", "selected"),
+    [
+        # the case's own directory
+        ("plugin/evals/init-keeps-manual-edits/case.yaml", ["init-keeps-manual-edits"]),
+        ("plugin/evals/init-keeps-manual-edits/files/x.md", ["init-keeps-manual-edits"]),
+        # a deleted case has nothing to run
+        ("plugin/evals/gone/case.yaml", []),
+        # a skill selects the cases with its prefix
+        ("plugin/skills/init/SKILL.md", ["init-keeps-manual-edits"]),
+        (
+            "plugin/skills/implement/SKILL.md",
+            ["implement-escalates-on-failing-test", "implement-stops-at-group-boundary"],
+        ),
+        ("plugin/skills/final-review/SKILL.md", ["final-review-finds-planted-defect"]),
+        # `plan-review-` must not be picked by the `plan` skill (it has no case of its own)
+        ("plugin/skills/plan-review/SKILL.md", ["plan-review-escalates-on-dependency"]),
+        ("plugin/skills/plan/SKILL.md", []),
+        # the stage agents
+        (
+            "plugin/agents/implementer.md",
+            ["implement-escalates-on-failing-test", "implement-stops-at-group-boundary"],
+        ),
+        ("plugin/agents/reviewer.md", ["final-review-finds-planted-defect"]),
+        ("plugin/agents/plan-reviewer.md", ["plan-review-escalates-on-dependency"]),
+        ("plugin/agents/planner.md", []),
+        # the hooks
+        ("plugin/hooks/hooks.json", ["guard-blocks-main-push"]),
+        ("plugin/hooks/guard.py", ["guard-blocks-main-push"]),
+        # anything else under plugin/ selects every case
+        ("plugin/bin/workflow_metrics.py", SUITE),
+        ("plugin/templates/PLAN.en.md", SUITE),
+        ("plugin/.claude-plugin/plugin.json", SUITE),
+        ("plugin/evals/.gitignore", SUITE),
+        ("plugin/something-new/file", SUITE),
+        # documents, tests and the receipt select none
+        ("plugin/README.md", []),
+        ("plugin/CHANGELOG.md", []),
+        ("plugin/docs/INSTALL.md", []),
+        ("plugin/tests/test_x.py", []),
+        ("plugin/evals/last-run.json", []),
+        ("plugin/skills/idea/SKILL.md", []),
+        ("plugin/skills/ship/SKILL.md", []),
+    ],
+)
+def test_changed_paths_map_to_cases(path, selected):
+    assert sorted(eval_receipt.cases_for_paths([path], SUITE)) == sorted(selected)
+
+
+def test_changed_paths_are_a_union():
+    paths = ["plugin/hooks/hooks.json", "plugin/skills/init/SKILL.md", "plugin/README.md"]
+    assert eval_receipt.cases_for_paths(paths, SUITE) == {
+        "guard-blocks-main-push",
+        "init-keeps-manual-edits",
+    }
+
+
+def test_changed_subcommand_reads_paths_from_stdin(tmp_path):
+    root = evals_dir(tmp_path, {name: 1 for name in SUITE})
+    done = subprocess.run(
+        [sys.executable, str(SCRIPT), "changed", "--evals-dir", str(root)],
+        input="plugin/hooks/hooks.json\nplugin/README.md\n",
+        capture_output=True,
+        text=True,
+    )
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.split() == ["guard-blocks-main-push"]
+
+
+# AC14: a case is reachable through a rule other than "everything" and its own directory.
+# The candidate paths come from the real plugin tree, never from the case name, or a new
+# case with an unknown prefix would be matched by a path built to fit it.
+def reachable(cases: list[str]) -> set[str]:
+    plugin = ROOT / "plugin"
+    candidates = [f"plugin/skills/{d.name}/SKILL.md" for d in sorted((plugin / "skills").iterdir())]
+    candidates += [
+        f"plugin/agents/{name}.md" for name in ("implementer", "reviewer", "plan-reviewer")
+    ]
+    candidates.append("plugin/hooks/hooks.json")
+    found = set()
+    for path in candidates:
+        selected = eval_receipt.cases_for_paths([path], cases)
+        if selected != set(cases):
+            found |= selected
+    return found
+
+
+def real_cases() -> list[str]:
+    return sorted(eval_receipt.suite_cases(str(ROOT / "plugin" / "evals")))
+
+
+def test_every_case_has_a_rule_of_its_own():
+    cases = real_cases()
+    assert cases
+    assert set(cases) - reachable(cases) == set()
+
+
+def test_a_case_with_an_unknown_prefix_fails_the_rule_check():
+    cases = [*real_cases(), "zzz-unknown"]
+    assert set(cases) - reachable(cases) == {"zzz-unknown"}
