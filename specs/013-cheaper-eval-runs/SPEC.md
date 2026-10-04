@@ -1,11 +1,13 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-10-04"
   - "spec-ready — 2026-10-04"
+  - "plan-draft — 2026-10-04"
 metrics:
   started_at: 2026-10-04T23:12
   escalations: 0
+  plan_steps: 11
 ---
 
 # SPEC 013 — Cheaper eval runs
