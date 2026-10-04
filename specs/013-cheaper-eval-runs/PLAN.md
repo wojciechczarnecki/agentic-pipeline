@@ -169,10 +169,10 @@ Design:
 | AC9 | 3 | `tests/test_eval_receipt.py::test_a_different_fingerprint_or_model_starts_a_new_receipt`, `::test_an_old_format_receipt_is_not_merged` |  `uv run pytest -q tests/test_eval_receipt.py` (`write` accepting several files, no merge yet) → `assert True is False` |
 | AC10 | 9 | `tests/test_release_gate.py::test_a_suite_merged_from_several_runs_passes_the_hook` | |
 | AC11 | 4, 7 | `tests/test_eval_receipt.py::test_rerun_selects_errored_and_missing_cases`, `::test_rerun_refuses_a_different_fingerprint_or_model`, `::test_rerun_has_nothing_to_rerun`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` |  `uv run pytest -q tests/test_eval_receipt.py -k rerun` (no `rerun` subcommand yet) → `assert 2 == 0`; `uv run pytest -q tests/test_release_gate.py -k eval_sh` (`eval.sh` passing `--rerun-errors` to the CLI) → `assert 1 == 2` (one CLI call instead of two) |
-| AC12 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_runs_the_cases_of_the_diff` | |
+| AC12 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_runs_the_cases_of_the_diff` |  `uv run pytest -q tests/test_release_gate.py -k "changed or whole_suite"` (`--changed` parsed, no selection yet) → `assert '--case init-keeps-manual-edits ' in ('plugin eval plugin/ … --json … --max-cost-usd 2' + ' ')` |
 | AC13 | 5 | `tests/test_eval_receipt.py::test_changed_paths_map_to_cases` (one parameter per rule) |  `uv run pytest -q tests/test_eval_receipt.py -k "changed or rule"` (stub `cases_for_paths` returning an empty set) → `AssertionError: assert [] == ['init-keeps-manual-edits']` |
 | AC14 | 5 | `tests/test_eval_receipt.py::test_every_case_has_a_rule_of_its_own` |  `uv run pytest -q tests/test_eval_receipt.py -k "changed or rule"` (stub `cases_for_paths` returning an empty set) → `AssertionError` on `assert set(cases) - reachable(cases) == set()` in `test_every_case_has_a_rule_of_its_own` |
-| AC15 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_without_origin_main_does_not_run`, `::test_eval_sh_changed_with_no_case_does_not_run` | |
+| AC15 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_without_origin_main_does_not_run`, `::test_eval_sh_changed_with_no_case_does_not_run` |  `uv run pytest -q tests/test_release_gate.py -k "changed or whole_suite"` (`--changed` parsed, no selection yet) → `assert 0 == 1` (no `origin/main`) and `assert 'no eval case' in ''` |
 | AC16 | 6 | `tests/test_release_gate.py::test_eval_sh_refuses_untracked_files_under_plugin` |  `uv run pytest -q tests/test_release_gate.py -k eval_sh` → `assert 0 == 1` (`eval.sh` exited 0 with an untracked `plugin/new-file.md`) |
 | AC17 | 9 | `tests/test_release_gate.py::test_the_hook_reads_the_receipt_from_the_tagged_commit` (both directions) | |
 | AC18 | 10 | `tests/test_documents.py::test_conventions_describe_errors_and_merging`, `::test_roadmap_ticks_spec_013`, `::test_decisions_record_spec_013`, `::test_backlog_drops_the_delivered_eval_items` | |
@@ -315,7 +315,7 @@ Design:
       today's "no result file" message) and `write` with every non-empty raw file and `--evals-dir plugin/evals` (also for the
       default full run) — files: `scripts/eval.sh`, `tests/test_release_gate.py`.
       Automatic verification: `uv run pytest -q tests/test_release_gate.py -k eval_sh`
-- [ ] 8. `eval.sh --changed` (AC12, AC15). Tests first, in the harness:
+- [x] 8. `eval.sh --changed` (AC12, AC15). Tests first, in the harness:
       - with `refs/remotes/origin/main` set by `git update-ref` to the first commit and a
         second commit that touches `plugin/skills/init/…`, `--changed` runs only the
         `init-` case;

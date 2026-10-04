@@ -620,3 +620,61 @@ def test_eval_sh_rerun_errors_refuses_other_selections(tmp_path, other):
     assert run.returncode == 1
     assert "cannot be combined" in run.stderr
     assert claude_calls(tmp_path) == []
+
+
+CHANGE_CASES = {"init-keeps-manual-edits": 1, "guard-blocks-main-push": 1}
+
+
+def commit_change(repo: Path, path: str) -> None:
+    """Mark the current commit as origin/main, then commit a change to `path` on top."""
+    git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+    target = repo / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("changed\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "change")
+
+
+def changed_result() -> dict:
+    return result_of(**{name: "pass" for name in CHANGE_CASES})
+
+
+# AC12: the diff against the merge-base with origin/main picks the cases.
+def test_eval_sh_changed_runs_the_cases_of_the_diff(tmp_path):
+    repo, env = eval_repo(tmp_path, CHANGE_CASES, changed_result())
+    commit_change(repo, "plugin/skills/init/SKILL.md")
+    run = run_eval(repo, env, "--changed", "--max-cost-usd", "2")
+    calls = claude_calls(tmp_path)
+    assert len(calls) == 1, calls
+    assert "--case init-keeps-manual-edits " in calls[0] + " "
+    assert "--changed" not in calls[0]
+    written = json.loads((repo / "plugin" / "evals" / "last-run.json").read_text())
+    assert list(written["cases"]) == ["init-keeps-manual-edits"]
+    assert run.returncode == 1  # the receipt covers one case of two: no release from it
+
+
+def test_eval_sh_without_the_option_runs_the_whole_suite(tmp_path):
+    repo, env = eval_repo(tmp_path, CHANGE_CASES, changed_result())
+    commit_change(repo, "plugin/skills/init/SKILL.md")
+    run = run_eval(repo, env)
+    calls = claude_calls(tmp_path)
+    assert len(calls) == 1 and "--case" not in calls[0]
+    assert run.returncode == 0, run.stdout + run.stderr
+
+
+# AC15: no origin/main, or no case to run, ends with a message and without a run.
+def test_eval_sh_changed_without_origin_main_does_not_run(tmp_path):
+    repo, env = eval_repo(tmp_path, CHANGE_CASES, changed_result())
+    run = run_eval(repo, env, "--changed")
+    assert run.returncode == 1
+    assert "origin/main" in run.stderr
+    assert claude_calls(tmp_path) == []
+
+
+def test_eval_sh_changed_with_no_case_does_not_run(tmp_path):
+    repo, env = eval_repo(tmp_path, CHANGE_CASES, changed_result())
+    commit_change(repo, "plugin/README.md")
+    run = run_eval(repo, env, "--changed")
+    assert run.returncode == 0
+    assert "no eval case" in run.stderr
+    assert claude_calls(tmp_path) == []

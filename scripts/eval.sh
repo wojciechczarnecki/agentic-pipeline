@@ -63,6 +63,21 @@ if (( rerun )); then
     --fingerprint "$fingerprint" --evals-dir plugin/evals -- "${eval_args[@]+"${eval_args[@]}"}")" || exit 1
   [[ -n "$selected" ]] || exit 0
   mapfile -t cases <<<"$selected"
+elif (( changed )); then
+  # The cases the branch touches, measured against where it left origin/main. A development
+  # run only: the release receipt needs the whole suite, and pre-push refuses less.
+  base="$(git merge-base HEAD origin/main 2>/dev/null)" || {
+    echo "eval.sh: cannot find origin/main or the merge-base with it, so --changed has" >&2
+    echo "eval.sh: nothing to compare against; run: git fetch origin" >&2
+    exit 1
+  }
+  selected="$(git diff --name-only "$base" HEAD -- plugin/ |
+    python3 scripts/eval_receipt.py changed --evals-dir plugin/evals)" || exit 1
+  [[ -n "$selected" ]] || {
+    echo "eval.sh: the changes since origin/main touch no eval case; nothing to run." >&2
+    exit 0
+  }
+  mapfile -t cases <<<"$selected"
 fi
 
 rawdir="$(mktemp -d)"
