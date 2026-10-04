@@ -259,6 +259,7 @@ per significant finding, and a finding before code is the cheaper one to fix.
       full re-run); development runs pick the cases whose skill, agent or fixture changed,
       and only the release receipt needs the full suite (a full run costs about $3.5–4.6
       and the three `init` cases are a quarter of it)
+      (`specs/013-cheaper-eval-runs/SPEC.md`)
 - [ ] Write-up, linked from the root `README.md`: the guard as a shell analyser rather than
       a regex, the measured LLM-judge noise, the before/after numbers and cost per spec
 
