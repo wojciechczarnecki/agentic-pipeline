@@ -1,11 +1,12 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-04"
   - "spec-ready — 2026-10-04"
   - "plan-draft — 2026-10-04"
   - "plan-approved — 2026-10-04"
   - "implemented — 2026-10-04"
+  - "done — 2026-10-04"
 metrics:
   started_at: 2026-10-04T23:12
   escalations: 0
@@ -23,6 +24,7 @@ metrics:
   final_review_nits: 5
   findings_accepted: 12
   findings_rejected: 0
+  finished_at: 2026-10-04T23:45
 ---
 
 # SPEC 013 — Cheaper eval runs
