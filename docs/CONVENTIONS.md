@@ -92,7 +92,7 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   fingerprint and the model are the same (another one starts a new receipt). A `fail` is
   replaced only by a measurement of 5 of 5 passing runs (the policy above), so a flaky
   case cannot be retried until it passes; any other case is replaced by a run of at least
-  the runs its `case.yaml` asks. `bash scripts/eval.sh --rerun-errors` runs only the cases
+  the runs its `case.yaml` asks, except that an `error` does not replace a `pass`. `bash scripts/eval.sh --rerun-errors` runs only the cases
   the receipt records as an error, and those it does not have yet, and refuses when
   `plugin/` or the model differs from the receipt's. `bash scripts/eval.sh --changed` is
   for development: it runs the cases a diff against the merge-base with `origin/main`

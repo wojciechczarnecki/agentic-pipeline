@@ -387,6 +387,7 @@ A fresh subagent compared the diff with the SPEC. No `missing`, `partial` or `co
 
 Real gaps: 0. No step added, so no second pass.
 
+## Risks and traps
 
 - The hook tests run the real `pre-push` against the real repository. Throwaway commits
   come from `commit-tree` with a temporary `GIT_INDEX_FILE` and never move a ref. The
@@ -633,3 +634,39 @@ Left out: 14 nit findings
 `--changed --case` exclusion untested, cost untested on a new receipt, an even-run-count
 boundary, an unreadable receipt, `plugin/skills/README.md` in the mapping table, and the
 temp path spliced into Python source in `pre-push`).
+
+### 2026-10-04 — apply
+
+Owner decision: accept F1–F12, reject none; AC8 amended for F8. Fixed:
+
+- F1 → `merge` applies the `case.yaml` runs threshold to a case missing from the base too
+  (note `kept <case> out`); `test_a_short_run_does_not_add_a_missing_case`.
+- F2 → the `## Risks and traps` heading restored above its bullets.
+- F3 → `eval.sh --changed` runs `git diff --no-renames`;
+  `test_eval_sh_changed_sees_a_file_moved_out_of_a_skill`.
+- F4 → `INFRA_PATTERNS` tie 429/529/5xx to `API Error`, `HTTP` or `status` (or the reason
+  phrase), and words to word boundaries (`rate_limit_error`, `overloaded_error`,
+  `API is overloaded`); negatives `wrote 429 lines`, `test_rate_limit failed`,
+  `test_usage_limit failed`, `overloaded`, `API Error: 400` and a judge explanation without
+  `grader threw:` are tested as `fail`.
+- F5 → `test_a_failing_run_replaces_a_pass`.
+- F6 → the stub `claude` skips the cases in `STUB_SKIP`;
+  `test_eval_sh_rerun_errors_skips_a_call_without_a_result`,
+  `test_eval_sh_with_no_result_at_all_leaves_the_receipt`.
+- F7 → `test_eval_sh_rerun_errors_refuses_another_model`.
+- F8 → `merge` keeps a `pass` when the new run's verdict is `error` (note "kept … it passed");
+  AC8 in SPEC.md, `docs/CONVENTIONS.md` and the `docs/DECISIONS.md` row amended;
+  `test_an_error_run_does_not_replace_a_pass`.
+- F9 → `git -c core.quotePath=false diff`; `test_eval_sh_changed_reads_a_non_ascii_path`.
+- F10 → `write` prints a `missing:` line with the re-run command, and
+  `started a new receipt: <reason>` when the previous receipt differs in fingerprint, model
+  or format (one `base_mismatch` now serves `usable_base`, the receipt note and `rerun`).
+- F11 → the docstrings of `scripts/eval_receipt.py` became `#` comments (the `case_verdict`
+  one corrected); the long lines of `eval.sh` wrapped; `pre-push` reads receipt fields
+  through `receipt_field`, which also passes the temporary path as an argument instead of
+  splicing it into Python source (one of the left-out nits).
+- F12 → the AC10 test takes each case's runs from `suite_cases` and no longer requests the
+  `receipt` fixture.
+
+`bash scripts/check.sh` → `ALL GREEN` (2335 passed); `git diff origin/main -- plugin/` is
+empty. Backlog: no new item; no trigger fired by this change.

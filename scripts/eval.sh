@@ -60,7 +60,8 @@ fingerprint="$(plugin_fingerprint HEAD)"
 cases=()
 if (( rerun )); then
   selected="$(python3 scripts/eval_receipt.py rerun "$receipt" \
-    --fingerprint "$fingerprint" --evals-dir plugin/evals -- "${eval_args[@]+"${eval_args[@]}"}")" || exit 1
+    --fingerprint "$fingerprint" --evals-dir plugin/evals \
+    -- "${eval_args[@]+"${eval_args[@]}"}")" || exit 1
   [[ -n "$selected" ]] || exit 0
   mapfile -t cases <<<"$selected"
 elif (( changed )); then
@@ -71,7 +72,9 @@ elif (( changed )); then
     echo "eval.sh: nothing to compare against; run: git fetch origin" >&2
     exit 1
   }
-  selected="$(git diff --name-only "$base" HEAD -- plugin/ |
+  # A rename would list only the new path, and a file moved out of a skill changed that
+  # skill; a quoted non-ASCII path would match no rule.
+  selected="$(git -c core.quotePath=false diff --no-renames --name-only "$base" HEAD -- plugin/ |
     python3 scripts/eval_receipt.py changed --evals-dir plugin/evals)" || exit 1
   [[ -n "$selected" ]] || {
     echo "eval.sh: the changes since origin/main touch no eval case; nothing to run." >&2
@@ -102,7 +105,8 @@ if (( ${#cases[@]} == 0 )); then
   raws+=("$rawdir/all.json")
 else
   for index in "${!cases[@]}"; do
-    run_cli --case "${cases[index]}" --json "$rawdir/$index.json" "${eval_args[@]+"${eval_args[@]}"}"
+    run_cli --case "${cases[index]}" --json "$rawdir/$index.json" \
+      "${eval_args[@]+"${eval_args[@]}"}"
     if [[ -s "$rawdir/$index.json" ]]; then
       raws+=("$rawdir/$index.json")
     else
@@ -117,7 +121,10 @@ existing=()
 for file in "${raws[@]}"; do
   if [[ -s "$file" ]]; then existing+=("$file"); fi
 done
-(( ${#existing[@]} > 0 )) || { echo "eval.sh: the run produced no result file; nothing to record." >&2; exit 1; }
+(( ${#existing[@]} > 0 )) || {
+  echo "eval.sh: the run produced no result file; nothing to record." >&2
+  exit 1
+}
 
 commit="$(git rev-parse HEAD)"
 version="$(python3 -c 'import json;print(json.load(open("plugin/.claude-plugin/plugin.json"))["version"])')"

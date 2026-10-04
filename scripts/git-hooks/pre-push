@@ -23,6 +23,12 @@ release_needs_eval() {
 receipt_file=$(mktemp)
 trap 'rm -f "$receipt_file"' EXIT
 
+# One field of the receipt, empty when it is absent; the path goes in as an argument.
+receipt_field() {
+  python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' \
+    "$receipt_file" "$1"
+}
+
 while read -r local_ref _local_sha remote_ref _remote_sha; do
   if [[ "$remote_ref" =~ $protected ]]; then
     echo "pre-push: direct push to ${remote_ref#refs/heads/} is blocked; open a PR instead." >&2
@@ -39,8 +45,8 @@ while read -r local_ref _local_sha remote_ref _remote_sha; do
       exit 1
     fi
 
-    recorded=$(python3 -c 'import json;print(json.load(open("'"$receipt_file"'"))["plugin_fingerprint"])')
-    green=$(python3 -c 'import json;print(json.load(open("'"$receipt_file"'"))["green"])')
+    recorded=$(receipt_field plugin_fingerprint)
+    green=$(receipt_field green)
 
     # The receipt ships inside the release it certifies, so it cannot name its own commit,
     # and a squash merge would invalidate any sha it did name. It fingerprints what plugin/
@@ -58,7 +64,7 @@ while read -r local_ref _local_sha remote_ref _remote_sha; do
     # The release needs the whole suite, so count the cases that exist at the tag.
     expected=$(git ls-tree -r --name-only "$tagged" -- plugin/evals/ |
       grep -c '/case\.yaml$')
-    counted=$(python3 -c 'import json;print(json.load(open("'"$receipt_file"'"))["cases_total"])')
+    counted=$(receipt_field cases_total)
 
     if [[ "$counted" != "$expected" ]]; then
       echo "pre-push: the receipt covers $counted case(s) but the suite has $expected." >&2
@@ -105,7 +111,7 @@ PY
 
     # Consumers work on the session's default model, so that is the model a release is
     # measured on; a cheaper --model is for drafting cases, not for the gate.
-    model=$(python3 -c 'import json;print(json.load(open("'"$receipt_file"'")).get("model", ""))')
+    model=$(receipt_field model)
 
     if [[ -z "$model" ]]; then
       echo "pre-push: the receipt does not record the model it ran on; re-run:" >&2

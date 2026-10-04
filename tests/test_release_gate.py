@@ -6,6 +6,7 @@ so they cannot live in plugin/tests.
 """
 
 import hashlib
+import importlib.util
 import json
 import os
 import subprocess
@@ -20,6 +21,10 @@ RECEIPT = ROOT / "plugin" / "evals" / "last-run.json"
 EVAL_RECEIPT = ROOT / "scripts" / "eval_receipt.py"
 RESULT = ROOT / "tests" / "fixtures" / "eval-result.json"
 SHA = "0" * 40
+
+_spec = importlib.util.spec_from_file_location("eval_receipt", EVAL_RECEIPT)
+eval_receipt = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(eval_receipt)
 
 
 def push(ref: str, local_ref: str = "refs/heads/local") -> subprocess.CompletedProcess:
@@ -428,7 +433,8 @@ def test_a_partial_result_is_not_green(tmp_path):
 
 STUB_CLAUDE = """#!/usr/bin/env bash
 # Stands in for `claude plugin eval`: logs its arguments, then writes the canned result where
-# --json points, keeping only the case --case names when one is given.
+# --json points, keeping only the case --case names when one is given. A case named in
+# STUB_SKIP (space-separated) leaves no result file, as a call the CLI aborted.
 echo "$*" >> "$STUB_LOG"
 args=("$@")
 out=""
@@ -437,6 +443,7 @@ for ((i = 0; i < ${#args[@]}; i++)); do
   [[ "${args[i]}" == "--json" ]] && out="${args[i + 1]}"
   [[ "${args[i]}" == "--case" ]] && only="${args[i + 1]}"
 done
+[[ -n "$only" && " ${STUB_SKIP:-} " == *" $only "* ]] && exit 1
 python3 - "$STUB_RESULT" "$out" "$only" <<'PY'
 import fnmatch, json, sys
 
@@ -641,6 +648,45 @@ def test_eval_sh_rerun_errors_with_nothing_to_rerun_does_not_run(tmp_path):
     assert claude_calls(tmp_path) == []
 
 
+# A call that leaves no result file skips its case and the others still land.
+def test_eval_sh_rerun_errors_skips_a_call_without_a_result(tmp_path):
+    repo, env = eval_repo(
+        tmp_path, FOUR, result_of(ok="pass", bad="pass", limited="pass", new="pass")
+    )
+    receipt_path = stored_receipt(repo, ok="pass", bad="pass", limited="error")
+    run = run_eval(repo, {**env, "STUB_SKIP": "new"}, "--rerun-errors")
+    assert len(claude_calls(tmp_path)) == 2
+    assert "new produced no result" in run.stderr
+    written = json.loads(receipt_path.read_text())
+    assert written["cases"]["limited"]["verdict"] == "pass"
+    assert "new" not in written["cases"]
+    assert written["green"] is False
+    assert run.returncode == 1
+
+
+def test_eval_sh_with_no_result_at_all_leaves_the_receipt(tmp_path):
+    repo, env = eval_repo(tmp_path, FOUR)
+    receipt_path = stored_receipt(repo, ok="pass", bad="pass", limited="error")
+    before = receipt_path.read_text()
+    run = run_eval(repo, {**env, "STUB_SKIP": "limited new"}, "--rerun-errors")
+    assert len(claude_calls(tmp_path)) == 2
+    assert run.returncode == 1
+    assert "produced no result file; nothing to record" in run.stderr
+    assert receipt_path.read_text() == before
+
+
+# AC11: a re-run on another model would replace the default receipt and lose its results.
+def test_eval_sh_rerun_errors_refuses_another_model(tmp_path):
+    repo, env = eval_repo(tmp_path, FOUR)
+    receipt_path = stored_receipt(repo, ok="pass", limited="error")
+    before = receipt_path.read_text()
+    run = run_eval(repo, env, "--rerun-errors", "--model", "sonnet")
+    assert run.returncode == 1
+    assert "model" in run.stderr
+    assert claude_calls(tmp_path) == []
+    assert receipt_path.read_text() == before
+
+
 @pytest.mark.parametrize("other", [("--case", "x"), ("--case=x",), ("--changed",)])
 def test_eval_sh_rerun_errors_refuses_other_selections(tmp_path, other):
     repo, env = eval_repo(tmp_path, FOUR)
@@ -691,6 +737,34 @@ def test_eval_sh_without_the_option_runs_the_whole_suite(tmp_path):
     assert run.returncode == 0, run.stdout + run.stderr
 
 
+# A file moved out of a skill changed that skill: the old path counts, not only the new one.
+def test_eval_sh_changed_sees_a_file_moved_out_of_a_skill(tmp_path):
+    repo, env = eval_repo(tmp_path, CHANGE_CASES, changed_result())
+    skill = repo / "plugin" / "skills" / "init" / "notes.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("a long enough body for git to detect the rename\n" * 5)
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "add notes")
+    git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+    (repo / "plugin" / "docs").mkdir()
+    git(repo, "mv", "plugin/skills/init/notes.md", "plugin/docs/notes.md")
+    git(repo, "commit", "-q", "-m", "move notes")
+    run = run_eval(repo, env, "--changed")
+    calls = claude_calls(tmp_path)
+    assert len(calls) == 1, run.stderr
+    assert "--case init-keeps-manual-edits " in calls[0] + " "
+
+
+# git quotes a non-ASCII path by default, and a quoted path matches no rule at all.
+def test_eval_sh_changed_reads_a_non_ascii_path(tmp_path):
+    repo, env = eval_repo(tmp_path, CHANGE_CASES, changed_result())
+    commit_change(repo, "plugin/skills/init/café-ñ.md")
+    run = run_eval(repo, env, "--changed")
+    calls = claude_calls(tmp_path)
+    assert len(calls) == 1, run.stderr
+    assert "--case init-keeps-manual-edits " in calls[0] + " "
+
+
 # AC15: no origin/main, or no case to run, ends with a message and without a run.
 def test_eval_sh_changed_without_origin_main_does_not_run(tmp_path):
     repo, env = eval_repo(tmp_path, CHANGE_CASES, changed_result())
@@ -722,14 +796,24 @@ def test_the_hook_reads_the_receipt_from_the_tagged_commit(receipt):
     assert push("refs/tags/pipeline--v0.3.0", local_ref=tagged).returncode == 0
 
 
+def with_runs(data: dict, suite: dict[str, int]) -> dict:
+    """Give each case of a `result_of` result as many runs as its case.yaml asks."""
+    for case in data["cases"]:
+        case["runsPerCase"] = suite[case["name"]]
+        case["arms"]["with"] = case["arms"]["with"] * suite[case["name"]]
+    return data
+
+
 # AC10: a suite assembled from several runs on one plugin state is a release receipt.
-def test_a_suite_merged_from_several_runs_passes_the_hook(receipt, tmp_path):
-    names = sorted(path.parent.name for path in (ROOT / "plugin" / "evals").glob("*/case.yaml"))
+def test_a_suite_merged_from_several_runs_passes_the_hook(tmp_path):
+    suite = eval_receipt.suite_cases(str(ROOT / "plugin" / "evals"))
+    names = sorted(suite)
     assert len(names) >= 4
-    first = result_of(
-        **{n: ("pass" if i < len(names) - 3 else "error") for i, n in enumerate(names)}
+    first = with_runs(
+        result_of(**{n: ("pass" if i < len(names) - 3 else "error") for i, n in enumerate(names)}),
+        suite,
     )
-    second = result_of(**{n: "pass" for n in names[-3:]})
+    second = with_runs(result_of(**{n: "pass" for n in names[-3:]}), suite)
     out = tmp_path / "merged.json"
     for index, data in enumerate([first, second]):
         raw = tmp_path / f"raw{index}.json"

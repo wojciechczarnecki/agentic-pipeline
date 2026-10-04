@@ -21,6 +21,8 @@ metrics:
   final_review_blockers: 0
   final_review_worth_fixing: 7
   final_review_nits: 5
+  findings_accepted: 12
+  findings_rejected: 0
 ---
 
 # SPEC 013 — Cheaper eval runs
@@ -169,7 +171,9 @@ Receipt and merging
       least 5 runs that passed 5 of 5. A shorter run, or one that did not pass every time,
       leaves `fail` and the merge reports that the policy applies. A case recorded as
       `error`, missing or `pass` is replaced by any run with at least the number of runs
-      its `case.yaml` asks.
+      its `case.yaml` asks, except that a run with the verdict `error` does not replace a
+      `pass` (amended by the owner at the final review, 2026-10-04: an infrastructure error
+      says nothing about the plugin, so it must not cost an earlier pass).
 - [ ] AC9: A run on a different fingerprint or model writes a new receipt with only its
       own cases, as today.
 - [ ] AC10: A full suite assembled from several runs on the same fingerprint and the

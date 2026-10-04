@@ -42,6 +42,8 @@ def run(score=1, error=None, skipped=False, explanation="judge votes: PASS PASS 
         "exit 1: API Error: 500 internal",
         "exit 1: 503 Service Unavailable",
         "exit 1: 502 Bad Gateway",
+        'API Error: 429 {"type":"error","error":{"type":"rate_limit_error"}}',
+        'API Error: 529 {"type":"error","error":{"type":"overloaded_error"}}',
     ],
 )
 def test_infrastructure_error_is_an_error(message):
@@ -77,10 +79,28 @@ def test_no_verdict_is_an_error():
 # AC4: anything else is the plugin's problem, and the gate refuses in doubt.
 @pytest.mark.parametrize(
     "message",
-    ["timeout after 600s", "exit 1: something unknown", "exit 1: took 500s", "exit 1: 5000 files"],
+    [
+        "timeout after 600s",
+        "exit 1: something unknown",
+        "exit 1: took 500s",
+        "exit 1: 5000 files",
+        # a number or a word that only looks like an infrastructure error
+        "exit 1: wrote 429 lines",
+        "exit 1: test_rate_limit failed",
+        "exit 1: test_usage_limit failed",
+        "exit 1: overloaded",
+        "exit 1: API Error: 400 bad request",
+    ],
 )
 def test_other_errors_are_failures(message):
     assert eval_receipt.run_verdict(run(score=0, error=message)) == "fail"
+
+
+# Only a grader that threw is an infrastructure error: a judge that read about a rate limit
+# in the transcript and voted FAIL gave a verdict.
+def test_a_judge_explanation_without_grader_threw_is_a_verdict():
+    explanation = "judge votes: FAIL FAIL FAIL; the skill hit a rate limit and stopped"
+    assert eval_receipt.run_verdict(run(score=0, explanation=explanation)) == "fail"
 
 
 def test_a_score_decides_a_run_without_errors():
@@ -128,7 +148,9 @@ def write(tmp_path, *raws: dict, receipt=None, fingerprint="f1", eval_args=(), e
 
 def test_a_case_with_errors_is_not_passed():
     verdict = eval_receipt.case_verdict
-    assert verdict(passed=2, errors=1, runs=3) == "error"  # the error could decide it
+    # Already passed by majority, yet an error run keeps it from `pass`: re-runnable.
+    assert verdict(passed=2, errors=1, runs=3) == "error"
+    assert verdict(passed=1, errors=1, runs=3) == "error"  # the error could decide it
     assert verdict(passed=3, errors=0, runs=3) == "pass"
     assert verdict(passed=1, errors=0, runs=3) == "fail"
     # Already failed by majority: a session limit on the last run cannot rescue the case
@@ -275,6 +297,58 @@ def test_a_failed_case_needs_five_of_five(tmp_path, again, replaced):
         assert "kept b" in done.stdout
 
 
+# AC8: a later failing run replaces a pass, or a real failure would leave a stale green.
+def test_a_failing_run_replaces_a_pass(tmp_path):
+    suite = {"a": 1}
+    _, written = merged_write(tmp_path, suite, raw_result({"a": [PASS]}))
+    assert written["green"] is True
+    done, written = merged_write(tmp_path, suite, raw_result({"a": [FAIL]}))
+    assert written["cases"]["a"]["verdict"] == "fail"
+    assert written["green"] is False
+    assert done.returncode == 1
+
+
+# AC8 as amended by the owner: an infrastructure error says nothing about the plugin, so it
+# does not cost an earlier pass; a real verdict still replaces it.
+def test_an_error_run_does_not_replace_a_pass(tmp_path):
+    suite = {"a": 1, "b": 1}
+    merged_write(tmp_path, suite, raw_result({"a": [PASS], "b": [PASS]}))
+    done, written = merged_write(tmp_path, suite, raw_result({"a": [ERROR], "b": [PASS]}))
+    assert written["cases"]["a"] == {"runs": 1, "passed": 1, "errors": 0, "verdict": "pass"}
+    assert written["green"] is True
+    assert done.returncode == 0, done.stdout
+    assert "kept a" in done.stdout
+    assert "infrastructure error" in done.stdout
+    # An error still replaces an error.
+    merged_write(tmp_path, {"c": 3}, raw_result({"c": [ERROR] * 3}), fingerprint="f2")
+    _, written = merged_write(
+        tmp_path, {"c": 3}, raw_result({"c": [PASS, PASS, ERROR]}), fingerprint="f2"
+    )
+    assert written["cases"]["c"]["passed"] == 2
+
+
+# AC8: a case missing from the receipt is added only by a run as long as case.yaml asks.
+def test_a_short_run_does_not_add_a_missing_case(tmp_path):
+    suite = {"a": 1, "b": 3}
+    merged_write(tmp_path, suite, raw_result({"a": [PASS]}))
+    done, written = merged_write(tmp_path, suite, raw_result({"b": [PASS]}))
+    assert list(written["cases"]) == ["a"]
+    assert written["green"] is False
+    assert done.returncode == 1
+    assert "kept b out" in done.stdout
+    assert "missing: b" in done.stdout
+    _, written = merged_write(tmp_path, suite, raw_result({"b": [PASS] * 3}))
+    assert written["cases"]["b"]["verdict"] == "pass"
+    assert written["green"] is True
+
+
+def test_write_lists_the_missing_cases(tmp_path):
+    done, written = merged_write(tmp_path, {"a": 1, "b": 1, "c": 1}, raw_result({"a": [PASS]}))
+    assert written["green"] is False
+    assert "missing: b, c" in done.stdout
+    assert "bash scripts/eval.sh --rerun-errors" in done.stdout
+
+
 def test_a_short_run_does_not_replace_a_case(tmp_path):
     suite = {"a": 3}
     merged_write(tmp_path, suite, raw_result({"a": [PASS, ERROR, ERROR]}))
@@ -295,9 +369,11 @@ def test_a_short_run_does_not_replace_a_case(tmp_path):
 def test_a_different_fingerprint_or_model_starts_a_new_receipt(tmp_path, fingerprint, eval_args):
     suite = {"a": 3, "b": 1}
     merged_write(tmp_path, suite, raw_result({"a": [PASS] * 3, "b": [PASS]}))
-    _, written = merged_write(
+    done, written = merged_write(
         tmp_path, suite, raw_result({"a": [PASS]}), fingerprint=fingerprint, eval_args=eval_args
     )
+    assert "started a new receipt" in done.stdout
+    assert ("fingerprint" if fingerprint == "other" else "model") in done.stdout
     assert list(written["cases"]) == ["a"]
     # Even a case that ran fewer times than its case.yaml asks is written as it ran.
     assert written["cases"]["a"]["runs"] == 1
@@ -314,8 +390,10 @@ def test_an_old_format_receipt_is_not_merged(tmp_path):
         "cases": {"a": {"runs": 1, "passed": 1}, "b": {"runs": 1, "passed": 1}},
     }
     (tmp_path / "last-run.json").write_text(json.dumps(old))
-    _, written = merged_write(tmp_path, {"a": 1, "b": 1}, raw_result({"a": [PASS]}))
+    done, written = merged_write(tmp_path, {"a": 1, "b": 1}, raw_result({"a": [PASS]}))
     assert list(written["cases"]) == ["a"]
+    assert "started a new receipt" in done.stdout
+    assert "old format" in done.stdout
 
 
 def test_two_raw_files_in_one_write_both_land(tmp_path):
