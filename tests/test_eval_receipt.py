@@ -190,3 +190,155 @@ def test_summary_lists_errored_cases(tmp_path):
     assert "bash scripts/eval.sh --rerun-errors" in text
     assert "five-run measurement policy" in text
     assert lines[3].startswith("cost ")
+
+
+def evals_dir(tmp_path, runs: dict[str, int]) -> Path:
+    """A throwaway `plugin/evals/` of case.yaml files, as the pre-push hook reads them."""
+    root = tmp_path / "evals"
+    for name, asked in runs.items():
+        (root / name).mkdir(parents=True, exist_ok=True)
+        (root / name / "case.yaml").write_text(f"name: {name}\nruns: {asked}\n")
+    return root
+
+
+def merged_write(tmp_path, suite, *raws, fingerprint="f1", eval_args=()):
+    """Write onto the receipt already in tmp_path, with the suite named by `suite`."""
+    root = evals_dir(tmp_path, suite)
+    return write(
+        tmp_path,
+        *raws,
+        receipt=tmp_path / "last-run.json",
+        fingerprint=fingerprint,
+        eval_args=eval_args,
+        extra=["--evals-dir", str(root)],
+    )
+
+
+NAMES = [f"case-{index}" for index in range(12)]
+
+
+# AC7: a run cut short by a session limit, then only the errored cases again.
+def test_a_rerun_of_errored_cases_merges_into_a_green_receipt(tmp_path):
+    suite = {name: 1 for name in NAMES}
+    first = raw_result({name: [PASS if index < 9 else ERROR] for index, name in enumerate(NAMES)})
+    done, written = merged_write(tmp_path, suite, first)
+    assert done.returncode == 1
+    assert written["green"] is False
+    before = written["cases"]
+
+    second = raw_result({name: [PASS] for name in NAMES[9:]}, costUsd=0.5)
+    done, written = merged_write(tmp_path, suite, second)
+    assert done.returncode == 0, done.stdout
+    assert written["green"] is True
+    assert written["cases_total"] == 12
+    assert written["cases_passed"] == 12
+    assert {name: written["cases"][name] for name in NAMES[:9]} == {
+        name: before[name] for name in NAMES[:9]
+    }
+    assert written["cost_usd"] == 1.5
+
+
+def test_a_merged_receipt_equals_a_single_full_run(tmp_path):
+    suite = {name: 1 for name in NAMES}
+    full = tmp_path / "full"
+    full.mkdir()
+    _, single = merged_write(full, suite, raw_result({name: [PASS] for name in NAMES}))
+    split = tmp_path / "split"
+    split.mkdir()
+    merged_write(split, suite, raw_result({name: [PASS] for name in NAMES[:4]}))
+    _, merged = merged_write(split, suite, raw_result({name: [PASS] for name in NAMES[4:]}))
+    assert merged["cases"] == single["cases"]
+    assert (merged["green"], merged["cases_total"]) == (single["green"], single["cases_total"])
+
+
+# AC8: a failure is replaced only by the five-run measurement.
+@pytest.mark.parametrize(
+    ("again", "replaced"),
+    [
+        ([PASS], False),
+        ([PASS] * 4 + [FAIL], False),
+        ([PASS] * 5, True),
+        ([PASS] * 4 + [ERROR], False),
+    ],
+)
+def test_a_failed_case_needs_five_of_five(tmp_path, again, replaced):
+    suite = {"a": 1, "b": 1}
+    merged_write(tmp_path, suite, raw_result({"a": [PASS], "b": [FAIL]}))
+    done, written = merged_write(tmp_path, suite, raw_result({"b": again}))
+    if replaced:
+        assert written["cases"]["b"]["verdict"] == "pass"
+        assert written["green"] is True
+    else:
+        assert written["cases"]["b"] == {"runs": 1, "passed": 0, "errors": 0, "verdict": "fail"}
+        assert written["green"] is False
+        assert "five-run measurement policy" in done.stdout
+        assert "kept b" in done.stdout
+
+
+def test_a_short_run_does_not_replace_a_case(tmp_path):
+    suite = {"a": 3}
+    merged_write(tmp_path, suite, raw_result({"a": [PASS, ERROR, ERROR]}))
+    done, written = merged_write(tmp_path, suite, raw_result({"a": [PASS]}))
+    assert written["cases"]["a"]["verdict"] == "error"
+    assert written["cases"]["a"]["runs"] == 3
+    assert "kept a" in done.stdout
+    # A full run of the case replaces it.
+    _, written = merged_write(tmp_path, suite, raw_result({"a": [PASS] * 3}))
+    assert written["cases"]["a"]["verdict"] == "pass"
+    assert written["green"] is True
+
+
+# AC9: another plugin state or model is a new receipt with only its own cases.
+@pytest.mark.parametrize(
+    ("fingerprint", "eval_args"), [("other", ()), ("f1", ("--model", "sonnet"))]
+)
+def test_a_different_fingerprint_or_model_starts_a_new_receipt(tmp_path, fingerprint, eval_args):
+    suite = {"a": 3, "b": 1}
+    merged_write(tmp_path, suite, raw_result({"a": [PASS] * 3, "b": [PASS]}))
+    _, written = merged_write(
+        tmp_path, suite, raw_result({"a": [PASS]}), fingerprint=fingerprint, eval_args=eval_args
+    )
+    assert list(written["cases"]) == ["a"]
+    # Even a case that ran fewer times than its case.yaml asks is written as it ran.
+    assert written["cases"]["a"]["runs"] == 1
+    assert written["cases_total"] == 1
+    assert written["green"] is False  # the suite has a case the receipt lacks
+
+
+def test_an_old_format_receipt_is_not_merged(tmp_path):
+    old = {
+        "plugin_fingerprint": "f1",
+        "model": "default",
+        "cases_total": 2,
+        "green": True,
+        "cases": {"a": {"runs": 1, "passed": 1}, "b": {"runs": 1, "passed": 1}},
+    }
+    (tmp_path / "last-run.json").write_text(json.dumps(old))
+    _, written = merged_write(tmp_path, {"a": 1, "b": 1}, raw_result({"a": [PASS]}))
+    assert list(written["cases"]) == ["a"]
+
+
+def test_two_raw_files_in_one_write_both_land(tmp_path):
+    done, written = merged_write(
+        tmp_path,
+        {"a": 1, "b": 1},
+        raw_result({"a": [PASS]}),
+        raw_result({"b": [PASS]}),
+    )
+    assert done.returncode == 0, done.stdout
+    assert sorted(written["cases"]) == ["a", "b"]
+    assert written["cost_usd"] == 2.0
+
+
+def test_a_partial_input_is_not_green(tmp_path):
+    done, written = merged_write(tmp_path, {"a": 1}, raw_result({"a": [PASS]}, partial=True))
+    assert written["green"] is False
+    assert done.returncode == 1
+    # A later complete merge clears it.
+    _, written = merged_write(tmp_path, {"a": 1}, raw_result({"a": [PASS]}))
+    assert written["green"] is True
+
+
+def test_a_receipt_case_outside_the_suite_is_not_green(tmp_path):
+    _, written = merged_write(tmp_path, {"a": 1}, raw_result({"a": [PASS], "gone": [PASS]}))
+    assert written["green"] is False

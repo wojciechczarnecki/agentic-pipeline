@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 # Messages that say the infrastructure failed, not the plugin: the account's session or
 # usage limit, a rate limit, an overloaded API and an API 5xx. A bare 5xx number is not
@@ -121,21 +122,98 @@ def judge_cost(result: dict) -> float:
     )
 
 
-def receipt(result: dict, args: list[str], environ: dict[str, str], **recorded) -> dict:
-    entries = case_entries(result)
-    passed = sum(entry["verdict"] == "pass" for entry in entries.values())
-    model = model_override(args, environ) or result.get("suite", {}).get("modelOverride")
+def suite_cases(evals_dir: str) -> dict[str, int]:
+    """The suite on disk: case name -> the runs its case.yaml asks (the CLI's default is 3).
+    Read by regex, as the pre-push hook reads them, so both agree on what a case asks."""
+    suite = {}
+    for path in sorted(Path(evals_dir).glob("*/case.yaml")):
+        text = path.read_text()
+        name = re.search(r"^name:\s*(\S+)", text, re.M)
+        wanted = re.search(r"^runs:\s*(\d+)", text, re.M)
+        suite[name.group(1) if name else path.parent.name] = int(wanted.group(1)) if wanted else 3
+    return suite
+
+
+FAIL_REPLACED_BY = 5  # runs of the five-run measurement policy (docs/CONVENTIONS.md)
+
+
+def merge(
+    base: dict[str, dict], new: dict[str, dict], suite: dict[str, int] | None
+) -> tuple[dict[str, dict], list[str]]:
+    """Per case: a later run replaces the earlier result, except that a `fail` stays until a
+    measurement of five runs all passed, and a run shorter than case.yaml asks replaces
+    nothing. Returns the merged cases and a note per kept case."""
+    merged, notes = dict(base), []
+    for name, entry in new.items():
+        old = base.get(name)
+        if old is None:
+            merged[name] = entry
+        elif old["verdict"] == "fail":
+            if entry["runs"] >= FAIL_REPLACED_BY and entry["passed"] == entry["runs"]:
+                merged[name] = entry
+            else:
+                notes.append(
+                    f"kept {name}: it failed, and the five-run measurement policy applies "
+                    f"(replaced only by {FAIL_REPLACED_BY} runs that all passed; "
+                    f"this run: {entry['passed']}/{entry['runs']})"
+                )
+        elif entry["runs"] >= (suite or {}).get(name, 0):
+            merged[name] = entry
+        else:
+            notes.append(
+                f"kept {name}: this run has {entry['runs']} run(s), case.yaml asks "
+                f"{suite[name]}"
+            )
+    return merged, notes
+
+
+def usable_base(previous: dict | None, fingerprint: str, model: str) -> dict | None:
+    """The receipt a new run may merge into: the same plugin state and model, and per-case
+    verdicts (a receipt in the old format has none and is replaced, not merged)."""
+    if not previous or previous.get("plugin_fingerprint") != fingerprint:
+        return None
+    if previous.get("model") != model:
+        return None
+    cases = previous.get("cases") or {}
+    if not cases or any("verdict" not in entry for entry in cases.values()):
+        return None
+    return previous
+
+
+def receipt(
+    results: list[dict],
+    args: list[str],
+    environ: dict[str, str],
+    previous: dict | None = None,
+    suite: dict[str, int] | None = None,
+    **recorded,
+) -> tuple[dict, list[str]]:
+    new = {}
+    for result in results:
+        new.update(case_entries(result))
+    model = (
+        model_override(args, environ) or results[0].get("suite", {}).get("modelOverride")
+    ) or "default"
+    base = usable_base(previous, recorded["plugin_fingerprint"], model)
+    cases, notes = merge(base["cases"] if base else {}, new, suite) if base else (new, [])
+    passed = sum(entry["verdict"] == "pass" for entry in cases.values())
+    wanted = set(suite) if suite is not None else set(cases)
+    cost = sum(result["costUsd"] for result in results) + (base["cost_usd"] if base else 0)
     return {
         **recorded,
         "ran_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M"),
-        "cases_total": len(entries),
+        "cases_total": len(cases),
         "cases_passed": passed,
-        # A partial result (the cost ceiling or an abort cut the suite short) is no release.
-        "green": passed == len(entries) > 0 and not result.get("partial"),
-        "cost_usd": round(result["costUsd"], 4),
-        "model": model or "default",
-        "cases": entries,
-    }
+        # Green means every case of the suite has the verdict `pass`. A partial result (the
+        # cost ceiling or an abort cut the suite short) is no release.
+        "green": bool(wanted)
+        and set(cases) == wanted
+        and passed == len(cases)
+        and not any(result.get("partial") for result in results),
+        "cost_usd": round(cost, 4),
+        "model": model,
+        "cases": cases,
+    }, notes
 
 
 def write(argv: list[str]) -> int:
@@ -144,28 +222,44 @@ def write(argv: list[str]) -> int:
         split = argv.index("--")
         own, eval_args = argv[:split], argv[split + 1 :]
     parser = argparse.ArgumentParser(prog="eval_receipt.py write")
-    parser.add_argument("raw")
-    parser.add_argument("receipt")
+    parser.add_argument("paths", nargs="+")
+    parser.add_argument("--evals-dir")
     parser.add_argument("--commit", required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--fingerprint", required=True)
     options = parser.parse_args(own)
+    *raws, receipt_path = options.paths
+    if not raws:
+        parser.error("write needs at least one result file before the receipt")
 
-    with open(options.raw) as handle:
-        result = json.load(handle)
-    written = receipt(
-        result,
+    results = []
+    for raw in raws:
+        with open(raw) as handle:
+            results.append(json.load(handle))
+    previous = None
+    if os.path.exists(receipt_path):
+        try:
+            with open(receipt_path) as handle:
+                previous = json.load(handle)
+        except ValueError:
+            previous = None
+    written, notes = receipt(
+        results,
         eval_args,
         dict(os.environ),
+        previous=previous,
+        suite=suite_cases(options.evals_dir) if options.evals_dir else None,
         commit=options.commit,
         plugin_fingerprint=options.fingerprint,
         plugin_version=options.version,
     )
-    with open(options.receipt, "w") as handle:
+    with open(receipt_path, "w") as handle:
         json.dump(written, handle, indent=2)
         handle.write("\n")
     verdict = "green" if written["green"] else "NOT green"
-    print(f"\neval.sh: receipt written to {options.receipt} ({verdict})")
+    print(f"\neval.sh: receipt written to {receipt_path} ({verdict})")
+    for note in notes:
+        print(note)
     for line in problem_lines(written["cases"]):
         print(line)
     return 0 if written["green"] else 1

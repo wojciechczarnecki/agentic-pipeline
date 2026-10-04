@@ -164,9 +164,9 @@ Design:
 | AC4 | 1 | `tests/test_eval_receipt.py::test_other_errors_are_failures` (`timeout after 600s`, an unknown message) |  `uv run pytest -q tests/test_eval_receipt.py` (against a stub `run_verdict`) → `AssertionError: assert 'stub' == 'fail'` |
 | AC5 | 2, 7 | `tests/test_eval_receipt.py::test_an_errored_case_is_not_passed`, `::test_write_lists_errored_and_failed_cases`, `::test_summary_lists_errored_cases`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` (closing message) |  `uv run pytest -q tests/test_eval_receipt.py` → `AssertionError: assert 'errored: c' in '\neval.sh: receipt written to … (NOT green)\n'` |
 | AC6 | 2 | `tests/test_eval_receipt.py::test_receipt_keeps_a_verdict_per_case` |  `uv run pytest -q tests/test_eval_receipt.py::test_receipt_keeps_a_verdict_per_case` → `AssertionError: assert {'a': {'runs'... 'passed': 2}} == {'a': {'runs'...ict': 'pass'}}` |
-| AC7 | 3 | `tests/test_eval_receipt.py::test_a_rerun_of_errored_cases_merges_into_a_green_receipt` | |
-| AC8 | 3 | `tests/test_eval_receipt.py::test_a_failed_case_needs_five_of_five`, `::test_a_short_run_does_not_replace_a_case` | |
-| AC9 | 3 | `tests/test_eval_receipt.py::test_a_different_fingerprint_or_model_starts_a_new_receipt`, `::test_an_old_format_receipt_is_not_merged` | |
+| AC7 | 3 | `tests/test_eval_receipt.py::test_a_rerun_of_errored_cases_merges_into_a_green_receipt` |  `uv run pytest -q tests/test_eval_receipt.py` (`write` accepting several files, no merge yet) → `assert 3 == 12` |
+| AC8 | 3 | `tests/test_eval_receipt.py::test_a_failed_case_needs_five_of_five`, `::test_a_short_run_does_not_replace_a_case` |  `uv run pytest -q tests/test_eval_receipt.py` (`write` accepting several files, no merge yet) → `AssertionError: assert {'runs': 1, '...dict': 'pass'} == {'runs': 1, '...dict': 'fail'}` |
+| AC9 | 3 | `tests/test_eval_receipt.py::test_a_different_fingerprint_or_model_starts_a_new_receipt`, `::test_an_old_format_receipt_is_not_merged` |  `uv run pytest -q tests/test_eval_receipt.py` (`write` accepting several files, no merge yet) → `assert True is False` |
 | AC10 | 9 | `tests/test_release_gate.py::test_a_suite_merged_from_several_runs_passes_the_hook` | |
 | AC11 | 4, 7 | `tests/test_eval_receipt.py::test_rerun_selects_errored_and_missing_cases`, `::test_rerun_refuses_a_different_fingerprint_or_model`, `::test_rerun_has_nothing_to_rerun`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` | |
 | AC12 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_runs_the_cases_of_the_diff` | |
@@ -229,7 +229,7 @@ Design:
       since the fixture has no errors — files: `scripts/eval_receipt.py`,
       `tests/test_eval_receipt.py`, `tests/test_release_gate.py`.
       Automatic verification: `uv run pytest -q tests/test_eval_receipt.py tests/test_release_gate.py`
-- [ ] 3. Merging (AC7–AC9). Tests first, with a helper that builds a raw result from
+- [x] 3. Merging (AC7–AC9). Tests first, with a helper that builds a raw result from
       `{name: [run verdict shapes]}` and a temporary evals dir of `case.yaml` files:
       - receipt A (12 cases: 9 pass, 3 session-limit errors), then a run of those 3 that
         pass → green, `cases_total == 12`, the 9 entries unchanged;
