@@ -398,18 +398,52 @@ def test_a_partial_result_is_not_green(tmp_path):
 
 
 STUB_CLAUDE = """#!/usr/bin/env bash
-# Stands in for `claude plugin eval`: writes the canned result where --json points.
-while [[ $# -gt 0 ]]; do
-  if [[ "$1" == "--json" ]]; then cp "$STUB_RESULT" "$2"; shift; fi
-  shift
+# Stands in for `claude plugin eval`: logs its arguments, then writes the canned result where
+# --json points, keeping only the case --case names when one is given.
+echo "$*" >> "$STUB_LOG"
+args=("$@")
+out=""
+only=""
+for ((i = 0; i < ${#args[@]}; i++)); do
+  [[ "${args[i]}" == "--json" ]] && out="${args[i + 1]}"
+  [[ "${args[i]}" == "--case" ]] && only="${args[i + 1]}"
 done
+python3 - "$STUB_RESULT" "$out" "$only" <<'PY'
+import fnmatch, json, sys
+
+data = json.load(open(sys.argv[1]))
+if sys.argv[3]:
+    data["cases"] = [c for c in data["cases"] if fnmatch.fnmatch(c["name"], sys.argv[3])]
+json.dump(data, open(sys.argv[2], "w"))
+PY
 """
 
+GIT_ENV = {
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_AUTHOR_NAME": "t",
+    "GIT_AUTHOR_EMAIL": "t@example.com",
+    "GIT_COMMITTER_NAME": "t",
+    "GIT_COMMITTER_EMAIL": "t@example.com",
+}
 
-# `-- "$@"` is the only path by which `--model` reaches the receipt; run eval.sh itself,
-# with stubs for the CLI and the sandbox backend, in a copy of the repository layout.
-@pytest.mark.parametrize(("args", "model"), [((), "default"), (("--model", "sonnet"), "sonnet")])
-def test_eval_sh_passes_the_model_to_the_receipt(tmp_path, args, model):
+
+def git(repo: Path, *args: str, env: dict | None = None) -> str:
+    return subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        env=env or {**os.environ, **GIT_ENV},
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def eval_repo(tmp_path, cases: dict[str, int] | None = None, result: dict | None = None):
+    """A copy of the repository layout with stubs for `claude`, `socat` and `bwrap`, and one
+    commit. `cases` is {case name: runs asked}; returns (repo, env). The stub logs every
+    call to tmp_path/claude.log."""
+    cases = {"two-of-three": 3, "one-of-one": 1} if cases is None else cases
     repo = tmp_path / "repo"
     (repo / "scripts").mkdir(parents=True)
     (repo / "plugin" / ".claude-plugin").mkdir(parents=True)
@@ -417,17 +451,11 @@ def test_eval_sh_passes_the_model_to_the_receipt(tmp_path, args, model):
     for name in ["eval.sh", "eval_receipt.py"]:
         (repo / "scripts" / name).write_text((ROOT / "scripts" / name).read_text())
     (repo / "plugin" / ".claude-plugin" / "plugin.json").write_text('{"version": "9.9.9"}')
-    git_env = {
-        **os.environ,
-        "GIT_CONFIG_GLOBAL": os.devnull,
-        "GIT_CONFIG_NOSYSTEM": "1",
-        "GIT_AUTHOR_NAME": "t",
-        "GIT_AUTHOR_EMAIL": "t@example.com",
-        "GIT_COMMITTER_NAME": "t",
-        "GIT_COMMITTER_EMAIL": "t@example.com",
-    }
+    for name, runs in cases.items():
+        (repo / "plugin" / "evals" / name).mkdir()
+        (repo / "plugin" / "evals" / name / "case.yaml").write_text(f"name: {name}\nruns: {runs}\n")
     for command in (["init", "-q"], ["add", "-A"], ["commit", "-q", "-m", "init"]):
-        subprocess.run(["git", *command], cwd=repo, env=git_env, check=True)
+        git(repo, *command)
 
     stubs = tmp_path / "bin"
     stubs.mkdir()
@@ -435,17 +463,48 @@ def test_eval_sh_passes_the_model_to_the_receipt(tmp_path, args, model):
         (stubs / name).write_text(body)
         (stubs / name).chmod(0o755)
     result_file = tmp_path / "result.json"
-    result_file.write_text(json.dumps(green_result()))
-    env = {k: v for k, v in git_env.items() if k != "ANTHROPIC_MODEL"}
-    env.update(PATH=f"{stubs}{os.pathsep}{os.environ['PATH']}", STUB_RESULT=str(result_file))
+    result_file.write_text(json.dumps(green_result() if result is None else result))
+    (tmp_path / "claude.log").write_text("")
+    env = {k: v for k, v in {**os.environ, **GIT_ENV}.items() if k != "ANTHROPIC_MODEL"}
+    env.update(
+        PATH=f"{stubs}{os.pathsep}{os.environ['PATH']}",
+        STUB_RESULT=str(result_file),
+        STUB_LOG=str(tmp_path / "claude.log"),
+    )
+    return repo, env
 
-    run = subprocess.run(
+
+def run_eval(repo, env, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
         ["bash", str(repo / "scripts" / "eval.sh"), *args],
         capture_output=True,
         text=True,
         env=env,
+        cwd=repo,
     )
+
+
+def claude_calls(tmp_path) -> list[str]:
+    return (tmp_path / "claude.log").read_text().splitlines()
+
+
+# `-- "$@"` is the only path by which `--model` reaches the receipt; run eval.sh itself,
+# with stubs for the CLI and the sandbox backend, in a copy of the repository layout.
+@pytest.mark.parametrize(("args", "model"), [((), "default"), (("--model", "sonnet"), "sonnet")])
+def test_eval_sh_passes_the_model_to_the_receipt(tmp_path, args, model):
+    repo, env = eval_repo(tmp_path)
+    run = run_eval(repo, env, *args)
     assert run.returncode == 0, run.stderr
     written = json.loads((repo / "plugin" / "evals" / "last-run.json").read_text())
     assert written["model"] == model
     assert written["plugin_version"] == "9.9.9"
+
+
+# AC16: an untracked file is part of what ran, and the fingerprint would not see it.
+def test_eval_sh_refuses_untracked_files_under_plugin(tmp_path):
+    repo, env = eval_repo(tmp_path)
+    (repo / "plugin" / "new-file.md").write_text("not committed\n")
+    run = run_eval(repo, env)
+    assert run.returncode == 1
+    assert "uncommitted or untracked" in run.stderr
+    assert claude_calls(tmp_path) == []

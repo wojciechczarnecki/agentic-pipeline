@@ -173,7 +173,7 @@ Design:
 | AC13 | 5 | `tests/test_eval_receipt.py::test_changed_paths_map_to_cases` (one parameter per rule) |  `uv run pytest -q tests/test_eval_receipt.py -k "changed or rule"` (stub `cases_for_paths` returning an empty set) → `AssertionError: assert [] == ['init-keeps-manual-edits']` |
 | AC14 | 5 | `tests/test_eval_receipt.py::test_every_case_has_a_rule_of_its_own` |  `uv run pytest -q tests/test_eval_receipt.py -k "changed or rule"` (stub `cases_for_paths` returning an empty set) → `AssertionError` on `assert set(cases) - reachable(cases) == set()` in `test_every_case_has_a_rule_of_its_own` |
 | AC15 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_without_origin_main_does_not_run`, `::test_eval_sh_changed_with_no_case_does_not_run` | |
-| AC16 | 6 | `tests/test_release_gate.py::test_eval_sh_refuses_untracked_files_under_plugin` | |
+| AC16 | 6 | `tests/test_release_gate.py::test_eval_sh_refuses_untracked_files_under_plugin` |  `uv run pytest -q tests/test_release_gate.py -k eval_sh` → `assert 0 == 1` (`eval.sh` exited 0 with an untracked `plugin/new-file.md`) |
 | AC17 | 9 | `tests/test_release_gate.py::test_the_hook_reads_the_receipt_from_the_tagged_commit` (both directions) | |
 | AC18 | 10 | `tests/test_documents.py::test_conventions_describe_errors_and_merging`, `::test_roadmap_ticks_spec_013`, `::test_decisions_record_spec_013`, `::test_backlog_drops_the_delivered_eval_items` | |
 | AC19 | 11 | n/a — a final gate, not a behaviour: `bash scripts/check.sh` and `git diff --quiet origin/main -- plugin/` | |
@@ -285,7 +285,7 @@ Design:
 
 ### Group 2 — eval.sh, the release gate and documents
 
-- [ ] 6. `eval.sh` refuses untracked files (AC16). First refactor the harness of
+- [x] 6. `eval.sh` refuses untracked files (AC16). First refactor the harness of
       `test_eval_sh_passes_the_model_to_the_receipt` into a helper
       `eval_repo(tmp_path, cases=...)` that builds the repository copy (optionally with
       `plugin/evals/<case>/case.yaml`) and returns `(repo, env)`. Make the stub `claude`

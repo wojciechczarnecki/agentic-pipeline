@@ -21,9 +21,11 @@ plugin_fingerprint() {
   git ls-tree -r "$1" -- plugin/ | grep -v 'evals/last-run.json' | sha256sum | cut -d" " -f1
 }
 
-git diff --quiet HEAD -- plugin/ ":(exclude)$receipt" || {
-  echo "eval.sh: plugin/ has uncommitted changes; commit them first so the receipt can" >&2
-  echo "eval.sh: fingerprint what actually ran." >&2
+# `git diff` ignores untracked files, which are part of what runs yet absent from the
+# fingerprint, so the check is `git status`. The receipt itself may be dirty: it is output.
+[[ -z "$(git status --porcelain -- plugin/ ":(exclude)$receipt")" ]] || {
+  echo "eval.sh: plugin/ has uncommitted or untracked files; commit them first so the" >&2
+  echo "eval.sh: receipt can fingerprint what actually ran." >&2
   exit 1
 }
 raw="$(mktemp --suffix=.json)"
