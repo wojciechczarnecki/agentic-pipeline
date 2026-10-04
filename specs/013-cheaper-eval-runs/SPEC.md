@@ -25,6 +25,9 @@ metrics:
   findings_accepted: 12
   findings_rejected: 0
   finished_at: 2026-10-04T23:45
+  cost_plan_cents: 99
+  cost_plan_review_cents: 55
+  cost_final_review_cents: 405
 ---
 
 # SPEC 013 — Cheaper eval runs
