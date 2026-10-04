@@ -374,10 +374,19 @@ Design:
       Files: `docs/CONVENTIONS.md`, `docs/DECISIONS.md`, `docs/BACKLOG.md`,
       `docs/ROADMAP.md`, `CLAUDE.md`, `tests/test_documents.py`.
       Automatic verification: `uv run pytest -q tests/test_documents.py`
-- [ ] 11. Final gate (AC19) — files: none.
+- [x] 11. Final gate (AC19) — files: none.
       Automatic verification: `bash scripts/check.sh && git diff --quiet origin/main -- plugin/ && git status --porcelain -- plugin/ | wc -l` (expect `ALL GREEN`, exit 0 and `0`)
 
-## Risks and traps
+### Converge pass 1 — 2026-10-04
+
+A fresh subagent compared the diff with the SPEC. No `missing`, `partial` or `contradicts` gap. Findings and verdicts:
+
+- `unrequested`, `case_verdict` records a case with an error run that cannot reach a majority as `fail` — rejected: the plan's design asks for it (a majority-failed case stays `fail`), and the SPEC asks only that an errored case is not passed.
+- `unrequested`, `eval.sh` refuses `--rerun-errors`, `--changed` and `--case` together — rejected: the plan asks for it and a test covers it.
+- AC13 edge: `plugin/evals/results/…` (ignored output) selects no case — rejected: it is not tracked, and a path that is no case directory selects nothing by the plan's rule 2.
+
+Real gaps: 0. No step added, so no second pass.
+
 
 - The hook tests run the real `pre-push` against the real repository. Throwaway commits
   come from `commit-tree` with a temporary `GIT_INDEX_FILE` and never move a ref. The
@@ -412,6 +421,8 @@ Design:
   `implement-converge-finds-missing-ac` under `failed:`. Record the output here.
 - `git diff --name-only origin/main -- plugin/` → empty.
 
+Result (2026-10-04): `bash scripts/check.sh` → `ALL GREEN` (2318 passed). The `summary` command on the real 2026-09-24T08:40 result lists `init-without-questions`, `init-writes-the-chosen-language`, `plan-review-approves-polish-owner-decision` and `plan-review-escalates-on-dependency` under `errored:` (with the `--rerun-errors` command) and `implement-converge-finds-missing-ac` under `failed:` (with the five-run measurement policy). `git diff --name-only origin/main -- plugin/` is empty and `git status --porcelain -- plugin/` is empty.
+
 ### Manual (performed by the owner)
 
 - Optional, at the owner's cost: on a branch with a skill change, run
@@ -421,12 +432,12 @@ Design:
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/CONVENTIONS.md`,
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/CONVENTIONS.md`,
       `docs/BACKLOG.md`, `CLAUDE.md` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -505,7 +516,9 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- Minor: the stub `claude` of `tests/test_release_gate.py` filters by `--case` and logs its arguments already in step 6 (the plan has it in step 7), because the harness helper is built once.
+- Minor: `summary` prints the `errored:`/`failed:` lines after the `cost` line, not before it, so the existing `test_summary_prints_one_line_per_case` (cost on the fourth line) stays unchanged.
+- Minor: a merge reads `cost_usd` of the base with a default of 0, so a base without that key does not crash (found by the step 7 tests).
 
 ## Final review
 
