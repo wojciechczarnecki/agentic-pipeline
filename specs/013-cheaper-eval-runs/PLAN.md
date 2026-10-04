@@ -522,4 +522,109 @@ _(filled in by /pipeline:implement in chunk mode — one entry per chunk that en
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-10-04 — report
+
+Three independent perspectives (compliance, quality, tests). Each finding below was checked
+in the code. `uv run pytest -q tests/` is green, and `git diff origin/main -- plugin/` is
+empty.
+
+AC → evidence:
+
+| AC | Evidence | Status |
+|----|----------|--------|
+| AC1 | `scripts/eval_receipt.py` `INFRA_PATTERNS`, `run_verdict`; `tests/test_eval_receipt.py::test_infrastructure_error_is_an_error` (each class) | ok (patterns too loose, F4) |
+| AC2 | `run_verdict` grader branch; `::test_grader_threw_on_session_limit_is_an_error` on `tests/fixtures/eval-result-session-limit.json` | ok |
+| AC3 | `run_verdict` (skipped grader), `tally` (never started); `::test_no_verdict_is_an_error`, `tests/test_release_gate.py::test_runs_that_never_started_are_an_error` | ok |
+| AC4 | `run_verdict`; `::test_other_errors_are_failures` | ok |
+| AC5 | `case_verdict`, `problem_lines` in `write` and `summary`; `::test_write_lists_errored_and_failed_cases`, `::test_summary_lists_errored_cases`, `test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` | ok |
+| AC6 | `case_entries`, `receipt`; `::test_receipt_keeps_a_verdict_per_case`, the hook tests on the new shape | ok |
+| AC7 | `merge`, `receipt`; `::test_a_rerun_of_errored_cases_merges_into_a_green_receipt` | ok |
+| AC8 | `merge`; `::test_a_failed_case_needs_five_of_five`, `::test_a_short_run_does_not_replace_a_case` | gap: F1 (missing case), F5 (pass base untested) |
+| AC9 | `usable_base`; `::test_a_different_fingerprint_or_model_starts_a_new_receipt`, `::test_an_old_format_receipt_is_not_merged` | ok |
+| AC10 | `tests/test_release_gate.py::test_a_suite_merged_from_several_runs_passes_the_hook` | ok |
+| AC11 | `rerun`, `eval.sh` `--rerun-errors`; `tests/test_eval_receipt.py` `rerun` tests, `test_eval_sh_rerun_errors_*` | ok (F7: model refusal not tested through `eval.sh`) |
+| AC12 | `eval.sh` `--changed`; `test_eval_sh_changed_runs_the_cases_of_the_diff`, `test_eval_sh_without_the_option_runs_the_whole_suite` | ok (F3: renames) |
+| AC13 | `NO_CASES`, `PREFIX_RULES`, `cases_for_paths`; `::test_changed_paths_map_to_cases` | ok |
+| AC14 | `::test_every_case_has_a_rule_of_its_own`, `::test_a_case_with_an_unknown_prefix_fails_the_rule_check` | ok |
+| AC15 | `eval.sh` merge-base and empty selection; `test_eval_sh_changed_without_origin_main_does_not_run`, `test_eval_sh_changed_with_no_case_does_not_run` | ok |
+| AC16 | `eval.sh` clean check; `test_eval_sh_refuses_untracked_files_under_plugin` | ok |
+| AC17 | `scripts/git-hooks/pre-push` `git show "$tagged:$receipt"`; `test_the_hook_reads_the_receipt_from_the_tagged_commit` (both directions) | ok |
+| AC18 | `docs/CONVENTIONS.md`, `docs/DECISIONS.md`, `docs/BACKLOG.md`, `docs/ROADMAP.md`, `CLAUDE.md`; `tests/test_documents.py` spec 013 tests | ok |
+| AC19 | `git diff origin/main -- plugin/` empty; check.sh recorded green | ok |
+
+Findings:
+
+- **F1** `worth-fixing` `scripts/eval_receipt.py:152` — a case missing from a matching
+  base is added whatever its run count. For example, with suite `{a: 1, b: 3}` and a base
+  holding only `a`, a 1-run `b` is merged, and `write` reports `green` with exit 0.
+  `pre-push` would refuse that receipt, so the gate holds, but this goes against AC8 and
+  `docs/CONVENTIONS.md`. Fix: apply `entry["runs"] >= suite.get(name, 0)` when `old is None`
+  too, and test it with a missing `runs: 3` case re-run once.
+- **F2** `worth-fixing` `specs/013-cheaper-eval-runs/PLAN.md:380` — commit f374107
+  replaced the `## Risks and traps` heading with `### Converge pass 1`. The risk bullets
+  now read as part of the converge record, and the section map no longer finds the
+  section. Fix: restore `## Risks and traps` before "- The hook tests run the real
+  `pre-push`…".
+- **F3** `worth-fixing` `scripts/eval.sh:74` — `git diff --name-only` detects renames, so
+  a file moved out of a skill (for example `plugin/skills/implement/x.md` →
+  `plugin/docs/x.md`) lists only the new path. That path selects no case, although the
+  skill changed. Fix: `git diff --no-renames --name-only …`, with a test.
+- **F4** `worth-fixing` `scripts/eval_receipt.py:22-31` and
+  `tests/test_eval_receipt.py:65,78-83` — `INFRA_PATTERNS` is too loose.
+  `exit 1: wrote 429 lines`, `exit 1: test_rate_limit failed` and `exit 1: overloaded`
+  all classify as `error`, so a real failure becomes re-runnable and skips the 5/5 rule.
+  Nothing tests the negatives: widening `5\d\d` to `\d\d\d`, or dropping the
+  `startswith("grader threw:")` check, leaves the tests green. Fix: tie 429/529/rate
+  limit/overloaded to API context (e.g. `api error:?\s*(429|529|5\d\d)`,
+  `rate limit (exceeded|reached)`, `overloaded_error`). Add negative tests for these
+  strings, for `API Error: 400`, and for a judge explanation that mentions "rate limit"
+  without `grader threw:`.
+- **F5** `worth-fixing` `tests/test_eval_receipt.py:278` — no test covers a `pass` case
+  that a later failing run replaces (AC8). A mutation that never replaces a `pass`
+  survives, which would leave a stale green after a real failure. Fix: base `a: pass`,
+  then `[FAIL]` gives `verdict == "fail"` and `green is False`.
+- **F6** `worth-fixing` `tests/test_release_gate.py:590-650` — two `eval.sh` paths are
+  untested: a per-case call that leaves no result file (`scripts/eval.sh:106-110`), and
+  the exit when every call is empty (`:120`). Mutating either survives. Fix: a stub switch
+  that skips writing the file for one case. Then assert that the other case lands with the
+  stderr note, and that with all calls empty the exit is 1 and the receipt is unchanged.
+- **F7** `worth-fixing` `tests/test_release_gate.py:623` — no test covers
+  `eval.sh --rerun-errors --model sonnet` against a `default` receipt. If `eval.sh`
+  stopped forwarding the arguments to `rerun` (`scripts/eval.sh:63`), the selected cases
+  would run on sonnet and `write` would replace the default receipt, losing the earlier
+  results. That mutation survives. Fix: an `eval.sh` test that expects exit 1, "model" on
+  stderr, no CLI call, and the receipt unchanged.
+- **F8** `nit` `scripts/eval_receipt.py:163` — when a matching base has a `pass`, a later
+  run that hits the session limit replaces it with `error`, which then has to be paid for
+  again. AC8 allows this ("pass is replaced by any run"), so changing it needs an AC8
+  amendment. Fix: do not let an `error` entry replace a `pass` or `fail`, and report that
+  it was kept.
+- **F9** `nit` `scripts/eval.sh:74`, `scripts/eval_receipt.py:367` — with the default
+  `core.quotePath`, git prints a non-ASCII path quoted (`"plugin/…\305\274…"`), so no rule
+  matches it, not even "every case". Fix: `git -c core.quotePath=false diff …`, together
+  with F3.
+- **F10** `nit` `scripts/eval_receipt.py:200-267` — `write` gives no reason in two cases.
+  A receipt that is NOT green only because cases are missing gets no line about them. A
+  receipt replaced because the fingerprint or model differs (for example a stray
+  `ANTHROPIC_MODEL`) gets no note. Fix: a `missing:` line in `problem_lines` and a
+  "started a new receipt" note.
+- **F11** `nit` `scripts/eval.sh:63,105,120`, `scripts/git-hooks/pre-push:42`,
+  `scripts/eval_receipt.py` — two departures from `docs/CONVENTIONS.md` "Code style". Four
+  new or grown lines exceed 100 characters, and ten docstrings break "No docstrings". The
+  `case_verdict` docstring is also inaccurate: (2, 1, 3) is `error` although 2 of 3 is a
+  majority. Fix: wrap the lines, and turn the docstrings into `#` comments where they
+  state a constraint.
+- **F12** `nit` `tests/test_release_gate.py:726` — the AC10 test builds every real case
+  with one run and asks for the unused `receipt` fixture. It goes red as soon as a case
+  moves to `runs: 3`. Fix: take the runs from `suite_cases(...)` and drop the fixture.
+
+Rejected:
+
+- The AC19 row of the AC → steps matrix has no red record in the fourth column. Rejected:
+  the row carries an `n/a` mark with its reason, which the rule accepts.
+
+Left out: 14 nit findings
+(among them a redundant conditional in `receipt`, weak assertions on the refusal messages,
+`--changed --case` exclusion untested, cost untested on a new receipt, an even-run-count
+boundary, an unreadable receipt, `plugin/skills/README.md` in the mapping table, and the
+temp path spliced into Python source in `pre-push`).
