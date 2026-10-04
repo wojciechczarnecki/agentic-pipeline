@@ -168,7 +168,7 @@ Design:
 | AC8 | 3 | `tests/test_eval_receipt.py::test_a_failed_case_needs_five_of_five`, `::test_a_short_run_does_not_replace_a_case` |  `uv run pytest -q tests/test_eval_receipt.py` (`write` accepting several files, no merge yet) → `AssertionError: assert {'runs': 1, '...dict': 'pass'} == {'runs': 1, '...dict': 'fail'}` |
 | AC9 | 3 | `tests/test_eval_receipt.py::test_a_different_fingerprint_or_model_starts_a_new_receipt`, `::test_an_old_format_receipt_is_not_merged` |  `uv run pytest -q tests/test_eval_receipt.py` (`write` accepting several files, no merge yet) → `assert True is False` |
 | AC10 | 9 | `tests/test_release_gate.py::test_a_suite_merged_from_several_runs_passes_the_hook` | |
-| AC11 | 4, 7 | `tests/test_eval_receipt.py::test_rerun_selects_errored_and_missing_cases`, `::test_rerun_refuses_a_different_fingerprint_or_model`, `::test_rerun_has_nothing_to_rerun`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` |  `uv run pytest -q tests/test_eval_receipt.py -k rerun` (no `rerun` subcommand yet) → `assert 2 == 0` |
+| AC11 | 4, 7 | `tests/test_eval_receipt.py::test_rerun_selects_errored_and_missing_cases`, `::test_rerun_refuses_a_different_fingerprint_or_model`, `::test_rerun_has_nothing_to_rerun`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` |  `uv run pytest -q tests/test_eval_receipt.py -k rerun` (no `rerun` subcommand yet) → `assert 2 == 0`; `uv run pytest -q tests/test_release_gate.py -k eval_sh` (`eval.sh` passing `--rerun-errors` to the CLI) → `assert 1 == 2` (one CLI call instead of two) |
 | AC12 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_runs_the_cases_of_the_diff` | |
 | AC13 | 5 | `tests/test_eval_receipt.py::test_changed_paths_map_to_cases` (one parameter per rule) |  `uv run pytest -q tests/test_eval_receipt.py -k "changed or rule"` (stub `cases_for_paths` returning an empty set) → `AssertionError: assert [] == ['init-keeps-manual-edits']` |
 | AC14 | 5 | `tests/test_eval_receipt.py::test_every_case_has_a_rule_of_its_own` |  `uv run pytest -q tests/test_eval_receipt.py -k "changed or rule"` (stub `cases_for_paths` returning an empty set) → `AssertionError` on `assert set(cases) - reachable(cases) == set()` in `test_every_case_has_a_rule_of_its_own` |
@@ -297,7 +297,7 @@ Design:
       `git status --porcelain -- plugin/ ":(exclude)$receipt"` — files: `scripts/eval.sh`,
       `tests/test_release_gate.py`.
       Automatic verification: `uv run pytest -q tests/test_release_gate.py -k eval_sh`
-- [ ] 7. `eval.sh --rerun-errors` (AC11, AC5 closing message). The stub `claude` keeps only
+- [x] 7. `eval.sh --rerun-errors` (AC11, AC5 closing message). The stub `claude` keeps only
       the case named by `--case` when one is given (a short `python3` filter over
       `$STUB_RESULT`). Write the tests first:
       - with a committed harness repo of three cases and a receipt (same fingerprint,

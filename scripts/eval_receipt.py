@@ -201,7 +201,7 @@ def receipt(
     cases, notes = merge(base["cases"] if base else {}, new, suite) if base else (new, [])
     passed = sum(entry["verdict"] == "pass" for entry in cases.values())
     wanted = set(suite) if suite is not None else set(cases)
-    cost = sum(result["costUsd"] for result in results) + (base["cost_usd"] if base else 0)
+    cost = sum(result["costUsd"] for result in results) + (base.get("cost_usd", 0) if base else 0)
     return {
         **recorded,
         "ran_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M"),

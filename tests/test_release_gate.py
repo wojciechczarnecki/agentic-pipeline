@@ -82,11 +82,11 @@ def test_a_minor_or_major_tag_without_a_receipt_is_rejected(tag):
     assert "scripts/eval.sh" in result.stderr
 
 
-def fingerprint(ref: str = "HEAD") -> str:
+def fingerprint(ref: str = "HEAD", repo: Path = ROOT) -> str:
     """What plugin/ contains at `ref` — the receipt's own measure, recomputed."""
     listing = subprocess.run(
         ["git", "ls-tree", "-r", ref, "--", "plugin/"],
-        cwd=ROOT,
+        cwd=repo,
         capture_output=True,
         text=True,
     ).stdout
@@ -507,4 +507,116 @@ def test_eval_sh_refuses_untracked_files_under_plugin(tmp_path):
     run = run_eval(repo, env)
     assert run.returncode == 1
     assert "uncommitted or untracked" in run.stderr
+    assert claude_calls(tmp_path) == []
+
+
+def verdict_run(verdict: str) -> dict:
+    limit = "exit 1: You've hit your session limit"
+    return {
+        "pass": {"score": 1, "error": None, "skippedPaidGraders": False, "graders": []},
+        "fail": {"score": 0, "error": None, "skippedPaidGraders": False, "graders": []},
+        "error": {"score": 0, "error": limit, "skippedPaidGraders": False, "graders": []},
+    }[verdict]
+
+
+def result_of(**cases: str) -> dict:
+    """A raw result where each named case ran once with the given verdict."""
+    data = green_result()
+    data["cases"] = [
+        {"name": name, "runsPerCase": 1, "arms": {"with": [verdict_run(verdict)]}}
+        for name, verdict in cases.items()
+    ]
+    return data
+
+
+def stored_receipt(repo: Path, fingerprint_of: str = "HEAD", **cases: str) -> Path:
+    """Write a receipt of {case: verdict} for the repo's plugin/ as it is committed."""
+    path = repo / "plugin" / "evals" / "last-run.json"
+    path.write_text(
+        json.dumps(
+            {
+                "plugin_fingerprint": fingerprint(fingerprint_of, repo),
+                "model": "default",
+                "green": False,
+                "cases_total": len(cases),
+                "cases": {
+                    name: {
+                        "runs": 1,
+                        "passed": int(verdict == "pass"),
+                        "errors": int(verdict == "error"),
+                        "verdict": verdict,
+                    }
+                    for name, verdict in cases.items()
+                },
+            }
+        )
+    )
+    return path
+
+
+FOUR = {"ok": 1, "bad": 1, "limited": 1, "new": 1}
+
+
+# AC11 and AC5: only the errored and the missing cases run, and a failed one stays failed.
+def test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases(tmp_path):
+    repo, env = eval_repo(
+        tmp_path, FOUR, result_of(ok="pass", bad="pass", limited="pass", new="pass")
+    )
+    receipt_path = stored_receipt(repo, ok="pass", bad="fail", limited="error")
+    run = run_eval(repo, env, "--rerun-errors", "--max-cost-usd", "2")
+    calls = claude_calls(tmp_path)
+    assert len(calls) == 2, calls
+    assert " --case limited " in calls[0] + " " and " --case new " in calls[1] + " "
+    assert all("--rerun-errors" not in call and "--max-cost-usd 2" in call for call in calls)
+    written = json.loads(receipt_path.read_text())
+    assert {name: entry["verdict"] for name, entry in written["cases"].items()} == {
+        "ok": "pass",
+        "bad": "fail",
+        "limited": "pass",
+        "new": "pass",
+    }
+    assert written["green"] is False
+    assert run.returncode == 1
+    assert "failed: bad" in run.stdout
+    assert "five-run measurement policy" in run.stdout
+
+
+def test_eval_sh_rerun_errors_finishes_a_green_receipt(tmp_path):
+    repo, env = eval_repo(
+        tmp_path, FOUR, result_of(ok="pass", bad="pass", limited="pass", new="pass")
+    )
+    receipt_path = stored_receipt(repo, ok="pass", bad="pass", limited="error")
+    run = run_eval(repo, env, "--rerun-errors")
+    assert run.returncode == 0, run.stdout + run.stderr
+    assert json.loads(receipt_path.read_text())["green"] is True
+
+
+def test_eval_sh_rerun_errors_refuses_another_plugin_state(tmp_path):
+    repo, env = eval_repo(tmp_path, FOUR)
+    stored_receipt(repo, ok="pass", limited="error")
+    (repo / "plugin" / "changed.md").write_text("later\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "change plugin")
+    run = run_eval(repo, env, "--rerun-errors")
+    assert run.returncode == 1
+    assert "fingerprint" in run.stderr
+    assert claude_calls(tmp_path) == []
+
+
+def test_eval_sh_rerun_errors_with_nothing_to_rerun_does_not_run(tmp_path):
+    repo, env = eval_repo(tmp_path, FOUR)
+    stored_receipt(repo, ok="pass", bad="fail", limited="pass", new="pass")
+    run = run_eval(repo, env, "--rerun-errors")
+    assert run.returncode == 0
+    assert "nothing to re-run" in run.stderr
+    assert claude_calls(tmp_path) == []
+
+
+@pytest.mark.parametrize("other", [("--case", "x"), ("--case=x",), ("--changed",)])
+def test_eval_sh_rerun_errors_refuses_other_selections(tmp_path, other):
+    repo, env = eval_repo(tmp_path, FOUR)
+    stored_receipt(repo, ok="pass", limited="error")
+    run = run_eval(repo, env, "--rerun-errors", *other)
+    assert run.returncode == 1
+    assert "cannot be combined" in run.stderr
     assert claude_calls(tmp_path) == []
