@@ -175,7 +175,7 @@ Design:
 | AC15 | 8 | `tests/test_release_gate.py::test_eval_sh_changed_without_origin_main_does_not_run`, `::test_eval_sh_changed_with_no_case_does_not_run` |  `uv run pytest -q tests/test_release_gate.py -k "changed or whole_suite"` (`--changed` parsed, no selection yet) → `assert 0 == 1` (no `origin/main`) and `assert 'no eval case' in ''` |
 | AC16 | 6 | `tests/test_release_gate.py::test_eval_sh_refuses_untracked_files_under_plugin` |  `uv run pytest -q tests/test_release_gate.py -k eval_sh` → `assert 0 == 1` (`eval.sh` exited 0 with an untracked `plugin/new-file.md`) |
 | AC17 | 9 | `tests/test_release_gate.py::test_the_hook_reads_the_receipt_from_the_tagged_commit` (both directions) |  `uv run pytest -q tests/test_release_gate.py -k "tagged_commit or merged_from"` (hook still reading the working tree) → `assert 'not green' in 'Traceback … KeyError: \'plugin_fingerprint\'\npre-push: plugin/ changed since the eval ran.'` |
-| AC18 | 10 | `tests/test_documents.py::test_conventions_describe_errors_and_merging`, `::test_roadmap_ticks_spec_013`, `::test_decisions_record_spec_013`, `::test_backlog_drops_the_delivered_eval_items` | |
+| AC18 | 10 | `tests/test_documents.py::test_conventions_describe_errors_and_merging`, `::test_roadmap_ticks_spec_013`, `::test_decisions_record_spec_013`, `::test_backlog_drops_the_delivered_eval_items` |  `uv run pytest -q tests/test_documents.py -k "spec_013 or errors_and_merging or delivered_eval"` → `AssertionError: --rerun-errors`; `assert items[0].startswith("- [x]")`; `assert any("5 of 5" in row …)`; `assert 'reads the receipt from the working tree' not in '# Backlog…'` |
 | AC19 | 11 | n/a — a final gate, not a behaviour: `bash scripts/check.sh` and `git diff --quiet origin/main -- plugin/` | |
 
 ## Steps
@@ -346,7 +346,7 @@ Design:
       `sys.argv[1]` becomes that file — files:
       `scripts/git-hooks/pre-push`, `tests/test_release_gate.py`.
       Automatic verification: `uv run pytest -q tests/test_release_gate.py`
-- [ ] 10. Documents (AC18). Tests first in `tests/test_documents.py`:
+- [x] 10. Documents (AC18). Tests first in `tests/test_documents.py`:
       - `test_conventions_describe_errors_and_merging`: the "Tests" section names
         `--rerun-errors`, `--changed`, `5 of 5`, `error` and `session limit`, and the
         existing tokens of `test_conventions_state_the_eval_cost_policy` stay;

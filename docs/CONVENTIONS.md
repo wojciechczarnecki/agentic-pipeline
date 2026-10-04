@@ -79,6 +79,29 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   `--model`. Every eval call carries `--max-cost-usd`: the ceiling is checked before each
   run launches, so it bounds the number of runs, not the cost of one, and a run that
   breaches it has its grader skipped — paid for, with no verdict.
+- A run is a `pass`, a `fail` or an `error` (SPEC 013, `docs/DECISIONS.md`, 2026-10-04). An
+  `error` is an infrastructure failure, not a verdict on the plugin: the session limit or
+  usage limit, a rate limit or 429, overloaded or 529, an API 5xx (patterns in
+  `scripts/eval_receipt.py`, each with a test), the same message in a grader that threw
+  (`grader threw: judge call failed: …`), a run the cost ceiling never started, and a run
+  whose paid grader was skipped. Any other error, a timeout included, is a `fail`: in
+  doubt the gate refuses. A case with an `error` run is not passed and the receipt is not
+  green, and the closing message lists errored and failed cases apart. Errors are outside
+  the five-run policy: they are re-run, not measured.
+- A receipt keeps a verdict per case, and a run merges into it per case while the plugin
+  fingerprint and the model are the same (another one starts a new receipt). A `fail` is
+  replaced only by a measurement of 5 of 5 passing runs (the policy above), so a flaky
+  case cannot be retried until it passes; any other case is replaced by a run of at least
+  the runs its `case.yaml` asks. `bash scripts/eval.sh --rerun-errors` runs only the cases
+  the receipt records as an error, and those it does not have yet, and refuses when
+  `plugin/` or the model differs from the receipt's. `bash scripts/eval.sh --changed` is
+  for development: it runs the cases a diff against the merge-base with `origin/main`
+  touches, by the mapping in `scripts/eval_receipt.py` (a skill or agent selects the cases
+  with its stage prefix, `plugin/hooks/` the `guard-` cases, `plugin/bin/`,
+  `plugin/templates/` and unlisted paths every case, documentation and tests none).
+  Both options run one `--case` call per case, so `--max-cost-usd` bounds each call, not
+  the whole re-run. Only the full suite gives the release receipt, and `eval.sh` refuses to
+  run while `plugin/` has uncommitted or untracked files.
 - New eval cases are proven deterministic first: `plugin/tests/test_eval_cases.py` runs
   every `scaffold.sh` and checks that the fixture is what the case claims (the suite red
   where the case needs it red, the metrics check green), and a new case names its wrong
@@ -172,8 +195,10 @@ and the way out (for the guard: which configuration or approval unlocks the acti
   commit, because it ships inside the release it certifies and a squash merge would
   invalidate any sha it named. The `pre-push` hook refuses the tag without it, and
   refuses a receipt that does not record its model, was produced with `--model`, or ran a
-  case fewer times than its `case.yaml` asks (a `--runs` override); the receipt counts a
-  run the cost ceiling never started as failed and is not green on a partial result.
+  case fewer times than its `case.yaml` asks (a `--runs` override); it reads the receipt
+  from the tagged commit, not from the working tree. The receipt records a run the cost
+  ceiling never started as an error and is not green on a partial result; it can be
+  assembled from several runs on one fingerprint and the default model (`--rerun-errors`).
   Patches are exempt — a full suite costs real money and a patch is usually a hook or a
   documentation fix. The hook is the only layer that can enforce this: the `release tags`
   ruleset has no `creation` rule, so the server accepts a new tag from anyone who can

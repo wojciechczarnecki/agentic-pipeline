@@ -251,7 +251,7 @@ per significant finding, and a finding before code is the cheaper one to fix.
       since cost per step depends on the project. Cost is compared per plan step, since
       spec sizes differ; quality through the metrics and the eval suite on the candidate
       settings; the consumer's result goes into the root `README.md`
-- [ ] Cheaper eval runs, in `scripts/` (no plugin version bump): re-running only the
+- [x] Cheaper eval runs, in `scripts/` (no plugin version bump): re-running only the
       failed cases merges their results into the receipt while the plugin fingerprint is
       unchanged; a session limit or another infrastructure error is recorded as an error,
       not a FAIL, and does not trigger the five-run measurement policy (twice between
