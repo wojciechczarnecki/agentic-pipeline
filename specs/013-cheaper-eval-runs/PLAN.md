@@ -158,10 +158,10 @@ Design:
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 1 | `tests/test_eval_receipt.py::test_infrastructure_error_is_an_error` (parametrized over each pattern) | |
-| AC2 | 1 | `tests/test_eval_receipt.py::test_grader_threw_on_session_limit_is_an_error` (fixture `tests/fixtures/eval-result-session-limit.json`) | |
-| AC3 | 1 | `tests/test_eval_receipt.py::test_no_verdict_is_an_error` (skipped grader and never-started run) | |
-| AC4 | 1 | `tests/test_eval_receipt.py::test_other_errors_are_failures` (`timeout after 600s`, an unknown message) | |
+| AC1 | 1 | `tests/test_eval_receipt.py::test_infrastructure_error_is_an_error` (parametrized over each pattern) |  `uv run pytest -q tests/test_eval_receipt.py` (against a stub `run_verdict`) → `AssertionError: assert 'stub' == 'error'` |
+| AC2 | 1 | `tests/test_eval_receipt.py::test_grader_threw_on_session_limit_is_an_error` (fixture `tests/fixtures/eval-result-session-limit.json`) |  `uv run pytest -q tests/test_eval_receipt.py` (against a stub `run_verdict`) → `AssertionError: assert 'stub' == 'error'` |
+| AC3 | 1 | `tests/test_eval_receipt.py::test_no_verdict_is_an_error` (skipped grader and never-started run) |  `uv run pytest -q tests/test_eval_receipt.py` (against a stub `run_verdict`) → `AssertionError: assert 'stub' == 'error'` |
+| AC4 | 1 | `tests/test_eval_receipt.py::test_other_errors_are_failures` (`timeout after 600s`, an unknown message) |  `uv run pytest -q tests/test_eval_receipt.py` (against a stub `run_verdict`) → `AssertionError: assert 'stub' == 'fail'` |
 | AC5 | 2, 7 | `tests/test_eval_receipt.py::test_an_errored_case_is_not_passed`, `::test_write_lists_errored_and_failed_cases`, `::test_summary_lists_errored_cases`; `tests/test_release_gate.py::test_eval_sh_rerun_errors_runs_only_errored_and_missing_cases` (closing message) | |
 | AC6 | 2 | `tests/test_eval_receipt.py::test_receipt_keeps_a_verdict_per_case` | |
 | AC7 | 3 | `tests/test_eval_receipt.py::test_a_rerun_of_errored_cases_merges_into_a_green_receipt` | |
@@ -182,7 +182,7 @@ Design:
 
 ### Group 1 — Receipt verdicts, merging and case selection
 
-- [ ] 1. Run classification (AC1–AC4). First add the fixture
+- [x] 1. Run classification (AC1–AC4). First add the fixture
       `tests/fixtures/eval-result-session-limit.json`: a trimmed copy of the 2026-09-24T08:40
       raw result with three cases at `runsPerCase: 1`. `final-review-finds-planted-defect`
       passes, `init-without-questions` has `error: null` with the `grader threw: judge

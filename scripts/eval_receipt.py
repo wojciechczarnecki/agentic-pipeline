@@ -9,25 +9,60 @@ import argparse
 import datetime
 import json
 import os
+import re
 import sys
 
+# Messages that say the infrastructure failed, not the plugin: the account's session or
+# usage limit, a rate limit, an overloaded API and an API 5xx. A bare 5xx number is not
+# matched, so a duration such as `timeout after 500s` stays a failure.
+INFRA_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"session limit|usage limit",
+        r"rate.?limit|\b429\b",
+        r"overloaded|\b529\b",
+        r"api error:?\s*5\d\d"
+        r"|\b5\d\d\b.{0,3}(internal server error|bad gateway|service unavailable|gateway timeout)",
+    )
+]
 
-def run_passed(run: dict) -> bool:
-    # A run whose paid grader was skipped (the cost ceiling hit) has no verdict, and a
-    # run without a verdict is no evidence that the case passes.
+
+def is_infrastructure(message: str) -> bool:
+    return any(pattern.search(message) for pattern in INFRA_PATTERNS)
+
+
+def run_verdict(run: dict) -> str:
+    """`pass`, `fail` or `error`. An error is a known infrastructure failure or a run without
+    a verdict; anything else that is not a pass is a failure, so the gate refuses in doubt."""
+    error = run.get("error")
+    if error:
+        return "error" if is_infrastructure(error) else "fail"
+    # A run whose paid grader was skipped (the cost ceiling hit) has no verdict.
     if run.get("skippedPaidGraders"):
-        return False
-    return (run.get("score") or 0) >= 1
+        return "error"
+    for grader in run.get("graders") or []:
+        explanation = grader.get("explanation") or ""
+        if explanation.startswith("grader threw:") and is_infrastructure(explanation):
+            return "error"
+    return "pass" if (run.get("score") or 0) >= 1 else "fail"
 
 
 # `--max-cost-usd` stops launching runs, so a case can report fewer runs than it asked
-# for; a run that never started counts as failed, or one passing run of three reads 1/1.
+# for; a run that never started has no verdict, so it counts as an error.
+def tally(case: dict) -> tuple[int, int, int]:
+    """(passed, errors, planned runs) of one case."""
+    runs = case["arms"]["with"]
+    planned = max(len(runs), case.get("runsPerCase") or 0)
+    verdicts = [run_verdict(run) for run in runs]
+    errors = verdicts.count("error") + planned - len(runs)
+    return verdicts.count("pass"), errors, planned
+
+
 def case_runs(result: dict) -> dict[str, tuple[int, int]]:
     counted = {}
     for case in result["cases"]:
-        runs = case["arms"]["with"]
-        planned = max(len(runs), case.get("runsPerCase") or 0)
-        counted[case["name"]] = (sum(run_passed(run) for run in runs), planned)
+        passed, _errors, planned = tally(case)
+        counted[case["name"]] = (passed, planned)
     return counted
 
 
