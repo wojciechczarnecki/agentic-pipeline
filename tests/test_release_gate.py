@@ -32,26 +32,74 @@ def push(ref: str, local_ref: str = "refs/heads/local") -> subprocess.CompletedP
     )
 
 
+def commit_with(tmp_path: Path, files: dict[str, str | None], parent: str = "HEAD") -> str:
+    """A throwaway commit on `parent` with `files` ({path: text}; None removes the path) —
+    no ref and no checkout, so the working tree and the real branch stay as they are."""
+
+    def run_git(*args: str, **kwargs) -> str:
+        return subprocess.run(
+            ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True, **kwargs
+        ).stdout.strip()
+
+    # CI has no git identity, and commit-tree needs one.
+    env = {
+        **os.environ,
+        "GIT_INDEX_FILE": str(tmp_path / "index"),
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+    run_git("read-tree", parent, env=env)
+    for path, text in files.items():
+        if text is None:
+            run_git("update-index", "--force-remove", path, env=env)
+        else:
+            blob = run_git("hash-object", "-w", "--stdin", input=text)
+            run_git("update-index", "--add", "--cacheinfo", f"100644,{blob},{path}", env=env)
+    tree = run_git("write-tree", env=env)
+    return run_git("commit-tree", tree, "-p", parent, "-m", "release gate test", env=env)
+
+
+RECEIPT_PATH = RECEIPT.relative_to(ROOT).as_posix()
+
+
 @pytest.fixture
-def receipt():
-    """Swap in a receipt and restore whatever was there, so a real one is never lost."""
+def receipt(tmp_path):
+    """Commit a receipt on a throwaway commit and return it: the hook reads the receipt from
+    the tagged commit, never from the working tree. `working` also swaps a receipt into the
+    working tree, and whatever was there is restored, so a real one is never lost."""
     previous = RECEIPT.read_text() if RECEIPT.exists() else None
 
     names = [path.parent.name for path in (ROOT / "plugin" / "evals").glob("*/case.yaml")]
     total = len(names)
 
     def write(
-        fingerprint: str, green: bool, cases_total: int = None, model="default", runs: int = 3
-    ):
+        fingerprint: str,
+        green: bool,
+        cases_total: int = None,
+        model="default",
+        runs: int = 3,
+        parent: str = "HEAD",
+        edit=None,
+        working: str | None = None,
+    ) -> str:
         written = {
             "plugin_fingerprint": fingerprint,
             "green": green,
             "cases_total": total if cases_total is None else cases_total,
-            "cases": {name: {"runs": runs, "passed": runs} for name in names},
+            "cases": {
+                name: {"runs": runs, "passed": runs, "errors": 0, "verdict": "pass"}
+                for name in names
+            },
         }
         if model is not None:
             written["model"] = model
-        RECEIPT.write_text(json.dumps(written) + "\n")
+        if edit:
+            edit(written)
+        if working is not None:
+            RECEIPT.write_text(working)
+        return commit_with(tmp_path, {RECEIPT_PATH: json.dumps(written) + "\n"}, parent)
 
     yield write
 
@@ -76,9 +124,11 @@ def test_a_patch_tag_needs_no_eval():
 
 
 @pytest.mark.parametrize("tag", ["pipeline--v0.3.0", "pipeline--v1.0.0"])
-def test_a_minor_or_major_tag_without_a_receipt_is_rejected(tag):
-    result = push(f"refs/tags/{tag}")
+def test_a_minor_or_major_tag_without_a_receipt_is_rejected(tag, tmp_path):
+    tagged = commit_with(tmp_path, {RECEIPT_PATH: None})
+    result = push(f"refs/tags/{tag}", local_ref=tagged)
     assert result.returncode == 1
+    assert "tagged\npre-push: commit has no eval receipt" in result.stderr
     assert "scripts/eval.sh" in result.stderr
 
 
@@ -99,8 +149,8 @@ def fingerprint(ref: str = "HEAD", repo: Path = ROOT) -> str:
 # A sha would not survive the squash merge that lands the release, so the receipt
 # fingerprints plugin/'s contents and the hook recomputes them at tag time.
 def test_a_receipt_from_a_different_plugin_state_is_rejected(receipt):
-    receipt("0" * 64, green=True)
-    result = push("refs/tags/pipeline--v0.3.0", local_ref="HEAD")
+    tagged = receipt("0" * 64, green=True)
+    result = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
     assert result.returncode == 1
     assert "plugin/ changed since the eval ran" in result.stderr
 
@@ -108,42 +158,42 @@ def test_a_receipt_from_a_different_plugin_state_is_rejected(receipt):
 def test_the_fingerprint_ignores_the_receipt_itself(receipt):
     """Otherwise writing the receipt would invalidate the receipt."""
     before = fingerprint()
-    receipt("whatever", green=True)
-    assert fingerprint() == before
+    tagged = receipt("whatever", green=True)
+    assert fingerprint(tagged) == before
 
 
 def test_a_red_receipt_is_rejected(receipt):
-    receipt(fingerprint(), green=False)
-    result = push("refs/tags/pipeline--v0.3.0", local_ref="HEAD")
+    tagged = receipt(fingerprint(), green=False)
+    result = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
     assert result.returncode == 1
     assert "not green" in result.stderr
 
 
 def test_a_green_receipt_with_plugin_unchanged_passes(receipt):
-    receipt(fingerprint(), green=True)
-    assert push("refs/tags/pipeline--v0.3.0", local_ref="HEAD").returncode == 0
+    tagged = receipt(fingerprint(), green=True)
+    assert push("refs/tags/pipeline--v0.3.0", local_ref=tagged).returncode == 0
 
 
 # `eval.sh --case X` writes a receipt too, and a single-case run is trivially green.
 def test_a_receipt_covering_only_some_cases_is_rejected(receipt):
-    receipt(fingerprint(), green=True, cases_total=1)
-    result = push("refs/tags/pipeline--v0.3.0", local_ref="HEAD")
+    tagged = receipt(fingerprint(), green=True, cases_total=1)
+    result = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
     assert result.returncode == 1
     assert "run the whole suite" in result.stderr
 
 
 # The gate runs on the model consumers work on; a cheaper --model is for drafting cases.
 def test_a_model_override_receipt_is_rejected(receipt):
-    receipt(fingerprint(), green=True, model="sonnet")
-    result = push("refs/tags/pipeline--v0.3.0", local_ref="HEAD")
+    tagged = receipt(fingerprint(), green=True, model="sonnet")
+    result = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
     assert result.returncode == 1
     assert "--model sonnet" in result.stderr
     assert "default model" in result.stderr
 
 
 def test_a_receipt_without_a_model_is_rejected(receipt):
-    receipt(fingerprint(), green=True, model=None)
-    result = push("refs/tags/pipeline--v0.3.0", local_ref="HEAD")
+    tagged = receipt(fingerprint(), green=True, model=None)
+    result = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
     assert result.returncode == 1
     assert "does not record the model" in result.stderr
 
@@ -302,33 +352,13 @@ def commit_with_runs(runs: int, tmp_path: Path) -> str:
     """A throwaway commit of HEAD whose first case asks for `runs` — no ref, no checkout."""
     case = sorted((ROOT / "plugin" / "evals").glob("*/case.yaml"))[0]
     text = case.read_text().replace("runs: 1", f"runs: {runs}")
-
-    def git(*args: str, **kwargs) -> str:
-        return subprocess.run(
-            ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True, **kwargs
-        ).stdout.strip()
-
-    blob = git("hash-object", "-w", "--stdin", input=text)
-    # CI has no git identity, and commit-tree needs one.
-    env = {
-        **os.environ,
-        "GIT_INDEX_FILE": str(tmp_path / "index"),
-        "GIT_AUTHOR_NAME": "t",
-        "GIT_AUTHOR_EMAIL": "t@example.com",
-        "GIT_COMMITTER_NAME": "t",
-        "GIT_COMMITTER_EMAIL": "t@example.com",
-    }
-    git("read-tree", "HEAD", env=env)
-    path = case.relative_to(ROOT).as_posix()
-    git("update-index", "--cacheinfo", f"100644,{blob},{path}", env=env)
-    tree = git("write-tree", env=env)
-    return git("commit-tree", tree, "-p", "HEAD", "-m", "runs override test", env=env)
+    return commit_with(tmp_path, {case.relative_to(ROOT).as_posix(): text})
 
 
 # `eval.sh --runs 1` would measure a `runs: 3` case once — the bypass `--model` is refused for.
 def test_a_receipt_with_fewer_runs_than_case_yaml_is_rejected(receipt, tmp_path):
-    tagged = commit_with_runs(3, tmp_path)
-    receipt(fingerprint(tagged), green=True, runs=1)
+    parent = commit_with_runs(3, tmp_path)
+    tagged = receipt(fingerprint(parent), green=True, runs=1, parent=parent)
     result = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
     assert result.returncode == 1
     assert "ran 1 of 3" in result.stderr
@@ -336,18 +366,17 @@ def test_a_receipt_with_fewer_runs_than_case_yaml_is_rejected(receipt, tmp_path)
 
 
 def test_a_receipt_with_the_runs_case_yaml_asks_passes(receipt, tmp_path):
-    tagged = commit_with_runs(3, tmp_path)
-    receipt(fingerprint(tagged), green=True, runs=3)
+    parent = commit_with_runs(3, tmp_path)
+    tagged = receipt(fingerprint(parent), green=True, runs=3, parent=parent)
     assert push("refs/tags/pipeline--v0.3.0", local_ref=tagged).returncode == 0
 
 
 def test_a_receipt_missing_a_case_is_rejected(receipt):
-    receipt(fingerprint(), green=True)
-    written = json.loads(RECEIPT.read_text())
-    missing = sorted(written["cases"])[0]
-    del written["cases"][missing]
-    RECEIPT.write_text(json.dumps(written))
-    result = push("refs/tags/pipeline--v0.3.0", local_ref="HEAD")
+    missing = sorted(path.parent.name for path in (ROOT / "plugin" / "evals").glob("*/case.yaml"))[
+        0
+    ]
+    tagged = receipt(fingerprint(), green=True, edit=lambda written: written["cases"].pop(missing))
+    result = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
     assert result.returncode == 1
     assert f"{missing} ran 0 of 1" in result.stderr
 
@@ -678,3 +707,44 @@ def test_eval_sh_changed_with_no_case_does_not_run(tmp_path):
     assert run.returncode == 0
     assert "no eval case" in run.stderr
     assert claude_calls(tmp_path) == []
+
+
+# AC17: what ships is the tagged commit, not whatever the working tree holds.
+def test_the_hook_reads_the_receipt_from_the_tagged_commit(receipt):
+    red_tree = json.dumps({"plugin_fingerprint": fingerprint(), "green": False}) + "\n"
+    # A green receipt in the working tree cannot vouch for a red one in the tagged commit.
+    tagged = receipt(fingerprint(), green=False, working=json.dumps({"green": True}))
+    refused = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
+    assert refused.returncode == 1
+    assert "not green" in refused.stderr
+    # And a red working tree does not block a tagged commit with a green receipt.
+    tagged = receipt(fingerprint(), green=True, working=red_tree)
+    assert push("refs/tags/pipeline--v0.3.0", local_ref=tagged).returncode == 0
+
+
+# AC10: a suite assembled from several runs on one plugin state is a release receipt.
+def test_a_suite_merged_from_several_runs_passes_the_hook(receipt, tmp_path):
+    names = sorted(path.parent.name for path in (ROOT / "plugin" / "evals").glob("*/case.yaml"))
+    assert len(names) >= 4
+    first = result_of(
+        **{n: ("pass" if i < len(names) - 3 else "error") for i, n in enumerate(names)}
+    )
+    second = result_of(**{n: "pass" for n in names[-3:]})
+    out = tmp_path / "merged.json"
+    for index, data in enumerate([first, second]):
+        raw = tmp_path / f"raw{index}.json"
+        raw.write_text(json.dumps(data))
+        done = subprocess.run(
+            [sys.executable, str(EVAL_RECEIPT), "write", str(raw), str(out)]
+            + ["--commit", "c", "--version", "0.3.0", "--fingerprint", fingerprint()]
+            + ["--evals-dir", str(ROOT / "plugin" / "evals"), "--"],
+            capture_output=True,
+            text=True,
+        )
+        assert done.returncode == (1 if index == 0 else 0), done.stdout
+    merged = json.loads(out.read_text())
+    assert merged["green"] is True and merged["cases_total"] == len(names)
+
+    tagged = commit_with(tmp_path, {RECEIPT_PATH: out.read_text()})
+    result = push("refs/tags/pipeline--v0.3.0", local_ref=tagged)
+    assert result.returncode == 0, result.stderr
