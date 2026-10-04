@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.281",
+  "costUsd": 3.4231994,
+  "partial": false,
+  "suite": {
+    "ablation": "none",
+    "modelOverride": null,
+    "caseFilter": null,
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "pipeline",
+        "version": "0.0.0"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "final-review-finds-planted-defect",
+      "dir": "evals/final-review-finds-planted-defect",
+      "runsPerCase": 1,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 14,
+            "costUsd": 0.7136828,
+            "judgeCostUsd": 0.004011000000000001,
+            "durationSeconds": 76,
+            "error": null,
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": true,
+                "weight": 1,
+                "scored": true,
+                "explanation": "judge votes: PASS PASS PASS",
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "init-without-questions",
+      "dir": "evals/init-without-questions",
+      "runsPerCase": 1,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 10,
+            "costUsd": 0.326574,
+            "judgeCostUsd": 0,
+            "durationSeconds": 53,
+            "error": null,
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": false,
+                "weight": 1,
+                "scored": true,
+                "explanation": "grader threw: judge call failed: You've hit your session limit · resets 12:20pm (Europe/Warsaw)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "init-writes-the-chosen-language",
+      "dir": "evals/init-writes-the-chosen-language",
+      "runsPerCase": 1,
+      "graders": [
+        {
+          "name": "criteria",
+          "type": "llm",
+          "weight": 1
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 0,
+            "passed": false,
+            "turns": 1,
+            "costUsd": 0,
+            "judgeCostUsd": 0,
+            "durationSeconds": 2,
+            "error": "exit 1: You've hit your session limit · resets 12:20pm (Europe/Warsaw)",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "criteria",
+                "passed": false,
+                "weight": 1,
+                "scored": true,
+                "explanation": "grader threw: judge call failed: You've hit your session limit · resets 12:20pm (Europe/Warsaw)"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 3,
+    "casesPassed": 1,
+    "overallScore": 0.333,
+    "overallPassRate": 0.333
+  }
+}

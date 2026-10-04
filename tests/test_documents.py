@@ -605,3 +605,30 @@ def test_roadmap_ticks_spec_012():
 def test_decisions_record_spec_012():
     rows = [row for row in read("docs/DECISIONS.md").splitlines() if "SPEC 012" in row]
     assert any("chunk" in row and "group" in row for row in rows), rows
+
+
+# SPEC 013, AC18: error versus fail, merging, and both options are in the conventions.
+def test_conventions_describe_errors_and_merging():
+    tests = section(CONVENTIONS, "## Tests")
+    for token in ["--rerun-errors", "--changed", "5 of 5", "error", "session limit"]:
+        assert token in tests, token
+    releases = section(CONVENTIONS, "## Releases")
+    assert "tagged commit" in releases
+
+
+def test_roadmap_ticks_spec_013():
+    link = "specs/013-cheaper-eval-runs/SPEC.md"
+    items = [item for item in roadmap_items() if link in item]
+    assert len(items) == 1, items
+    assert items[0].startswith("- [x]"), items
+
+
+def test_decisions_record_spec_013():
+    rows = [row for row in read("docs/DECISIONS.md").splitlines() if "SPEC 013" in row]
+    assert any("5 of 5" in row and "infrastructure" in row for row in rows), rows
+
+
+def test_backlog_drops_the_delivered_eval_items():
+    backlog = read("docs/BACKLOG.md")
+    assert "reads the receipt from the working tree" not in backlog
+    assert "clean check ignores untracked files" not in backlog

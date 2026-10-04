@@ -251,7 +251,7 @@ per significant finding, and a finding before code is the cheaper one to fix.
       since cost per step depends on the project. Cost is compared per plan step, since
       spec sizes differ; quality through the metrics and the eval suite on the candidate
       settings; the consumer's result goes into the root `README.md`
-- [ ] Cheaper eval runs, in `scripts/` (no plugin version bump): re-running only the
+- [x] Cheaper eval runs, in `scripts/` (no plugin version bump): re-running only the
       failed cases merges their results into the receipt while the plugin fingerprint is
       unchanged; a session limit or another infrastructure error is recorded as an error,
       not a FAIL, and does not trigger the five-run measurement policy (twice between
@@ -259,6 +259,7 @@ per significant finding, and a finding before code is the cheaper one to fix.
       full re-run); development runs pick the cases whose skill, agent or fixture changed,
       and only the release receipt needs the full suite (a full run costs about $3.5–4.6
       and the three `init` cases are a quarter of it)
+      (`specs/013-cheaper-eval-runs/SPEC.md`)
 - [ ] Write-up, linked from the root `README.md`: the guard as a shell analyser rather than
       a regex, the measured LLM-judge noise, the before/after numbers and cost per spec
 

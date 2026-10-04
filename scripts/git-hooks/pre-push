@@ -18,6 +18,17 @@ release_needs_eval() {
   [[ "${BASH_REMATCH[3]}" == "0" ]]
 }
 
+# The receipt is read from the tagged commit, not the working tree: a green file on disk
+# says nothing about the commit that ships (docs/DECISIONS.md, 2026-10-04).
+receipt_file=$(mktemp)
+trap 'rm -f "$receipt_file"' EXIT
+
+# One field of the receipt, empty when it is absent; the path goes in as an argument.
+receipt_field() {
+  python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], ""))' \
+    "$receipt_file" "$1"
+}
+
 while read -r local_ref _local_sha remote_ref _remote_sha; do
   if [[ "$remote_ref" =~ $protected ]]; then
     echo "pre-push: direct push to ${remote_ref#refs/heads/} is blocked; open a PR instead." >&2
@@ -27,14 +38,15 @@ while read -r local_ref _local_sha remote_ref _remote_sha; do
   if release_needs_eval "$remote_ref"; then
     tagged=$(git rev-list -n 1 "$local_ref" 2>/dev/null)
 
-    if [[ ! -f "$receipt" ]]; then
-      echo "pre-push: ${remote_ref#refs/tags/} is a minor or major release and there is no" >&2
-      echo "pre-push: eval receipt. Run: bash scripts/eval.sh" >&2
+    # An empty `$tagged` would make `git show ":path"` read the index instead.
+    if [[ -z "$tagged" ]] || ! git show "$tagged:$receipt" >"$receipt_file" 2>/dev/null; then
+      echo "pre-push: ${remote_ref#refs/tags/} is a minor or major release and the tagged" >&2
+      echo "pre-push: commit has no eval receipt. Run: bash scripts/eval.sh, commit it" >&2
       exit 1
     fi
 
-    recorded=$(python3 -c 'import json;print(json.load(open("'"$receipt"'"))["plugin_fingerprint"])')
-    green=$(python3 -c 'import json;print(json.load(open("'"$receipt"'"))["green"])')
+    recorded=$(receipt_field plugin_fingerprint)
+    green=$(receipt_field green)
 
     # The receipt ships inside the release it certifies, so it cannot name its own commit,
     # and a squash merge would invalidate any sha it did name. It fingerprints what plugin/
@@ -52,7 +64,7 @@ while read -r local_ref _local_sha remote_ref _remote_sha; do
     # The release needs the whole suite, so count the cases that exist at the tag.
     expected=$(git ls-tree -r --name-only "$tagged" -- plugin/evals/ |
       grep -c '/case\.yaml$')
-    counted=$(python3 -c 'import json;print(json.load(open("'"$receipt"'"))["cases_total"])')
+    counted=$(receipt_field cases_total)
 
     if [[ "$counted" != "$expected" ]]; then
       echo "pre-push: the receipt covers $counted case(s) but the suite has $expected." >&2
@@ -63,7 +75,7 @@ while read -r local_ref _local_sha remote_ref _remote_sha; do
     # `eval.sh --runs 1` would measure a `runs: 3` case once, and one lucky run is not the
     # majority the case was set up for. Each case must have run as often as its case.yaml
     # at the tag asks (the CLI's default is 3).
-    short=$(python3 - "$receipt" "$tagged" <<'PY'
+    short=$(python3 - "$receipt_file" "$tagged" <<'PY'
 import json, re, subprocess, sys
 
 cases = json.load(open(sys.argv[1])).get("cases") or {}
@@ -99,7 +111,7 @@ PY
 
     # Consumers work on the session's default model, so that is the model a release is
     # measured on; a cheaper --model is for drafting cases, not for the gate.
-    model=$(python3 -c 'import json;print(json.load(open("'"$receipt"'")).get("model", ""))')
+    model=$(receipt_field model)
 
     if [[ -z "$model" ]]; then
       echo "pre-push: the receipt does not record the model it ran on; re-run:" >&2

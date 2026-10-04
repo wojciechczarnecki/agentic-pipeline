@@ -1,40 +1,122 @@
 #!/usr/bin/env python3
 # Turns a `claude plugin eval --json` result into the release receipt the pre-push hook
 # checks, and summarises a result per case. Repository tooling, not plugin runtime.
-# Usage: eval_receipt.py write <raw.json> <receipt.json> --commit C --version V
-#                              --fingerprint F -- <arguments eval.sh passed to the CLI>
+# Usage: eval_receipt.py write <raw.json>... <receipt.json> --commit C --version V
+#                              --fingerprint F [--evals-dir DIR] -- <arguments eval.sh passed>
 #        eval_receipt.py summary <raw.json>
-# Exit codes: write — 0 when the receipt is green, 1 when it is not; summary — 0.
+#        eval_receipt.py rerun <receipt.json> --fingerprint F --evals-dir DIR -- <eval args>
+#        eval_receipt.py changed --evals-dir DIR      (changed paths on stdin)
+# Exit codes: write — 0 when the receipt is green, 1 when it is not; summary — 0;
+# rerun — 0 with the case names on stdout (none = nothing to re-run), 1 on a refusal.
 import argparse
 import datetime
 import json
 import os
+import re
 import sys
+from pathlib import Path
+
+# Messages that say the infrastructure failed, not the plugin: the account's session or
+# usage limit, a rate limit or 429, an overloaded API or 529, and an API 5xx. A status
+# number counts only beside `API Error`, `HTTP` or `status`, or before its reason phrase,
+# and a word only on its own, so `wrote 429 lines`, `timeout after 500s` or
+# `test_rate_limit failed` stay failures.
+INFRA_PATTERNS = [
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\b(session|usage) limit\b",
+        r"\brate[ -]limit(ed)?\b|\brate_limit_error\b",
+        r"\boverloaded_error\b|\b(api|server) is overloaded\b",
+        r"\b(api error|http|status)\b:?\s*(429|5\d\d)\b",
+        r"\b(429 too many requests"
+        r"|5\d\d (internal server error|bad gateway|service unavailable|gateway timeout))\b",
+    )
+]
 
 
-def run_passed(run: dict) -> bool:
-    # A run whose paid grader was skipped (the cost ceiling hit) has no verdict, and a
-    # run without a verdict is no evidence that the case passes.
+def is_infrastructure(message: str) -> bool:
+    return any(pattern.search(message) for pattern in INFRA_PATTERNS)
+
+
+# An error is a known infrastructure failure or a run without a verdict; anything else that
+# is not a pass is a failure, so the gate refuses in doubt.
+def run_verdict(run: dict) -> str:
+    error = run.get("error")
+    if error:
+        return "error" if is_infrastructure(error) else "fail"
+    # A run whose paid grader was skipped (the cost ceiling hit) has no verdict.
     if run.get("skippedPaidGraders"):
-        return False
-    return (run.get("score") or 0) >= 1
+        return "error"
+    for grader in run.get("graders") or []:
+        explanation = grader.get("explanation") or ""
+        if explanation.startswith("grader threw:") and is_infrastructure(explanation):
+            return "error"
+    return "pass" if (run.get("score") or 0) >= 1 else "fail"
 
 
 # `--max-cost-usd` stops launching runs, so a case can report fewer runs than it asked
-# for; a run that never started counts as failed, or one passing run of three reads 1/1.
-def case_runs(result: dict) -> dict[str, tuple[int, int]]:
-    counted = {}
-    for case in result["cases"]:
-        runs = case["arms"]["with"]
-        planned = max(len(runs), case.get("runsPerCase") or 0)
-        counted[case["name"]] = (sum(run_passed(run) for run in runs), planned)
-    return counted
+# for; a run that never started has no verdict, so it counts as an error.
+def tally(case: dict) -> tuple[int, int, int]:
+    runs = case["arms"]["with"]
+    planned = max(len(runs), case.get("runsPerCase") or 0)
+    verdicts = [run_verdict(run) for run in runs]
+    errors = verdicts.count("error") + planned - len(runs)
+    return verdicts.count("pass"), errors, planned
 
 
 # The CLI's own aggregate is not the verdict: under its default threshold a case that
 # passed 2 of 3 runs scores below 1.0 and counts as failed.
 def majority(passed: int, runs: int) -> bool:
     return 2 * passed > runs
+
+
+# A case with an error run is never `pass`, even when its passes alone are a majority. It is
+# `error` (re-runnable) while its passes and errors together are a majority, and `fail` when
+# it failed by majority whatever the errored runs would have given.
+def case_verdict(passed: int, errors: int, runs: int) -> str:
+    if errors == 0:
+        return "pass" if majority(passed, runs) else "fail"
+    return "error" if majority(passed + errors, runs) else "fail"
+
+
+def case_entries(result: dict) -> dict[str, dict]:
+    entries = {}
+    for case in result["cases"]:
+        passed, errors, planned = tally(case)
+        entries[case["name"]] = {
+            "runs": planned,
+            "passed": passed,
+            "errors": errors,
+            "verdict": case_verdict(passed, errors, planned),
+        }
+    return entries
+
+
+# The missing, the errored and the failed cases, apart: a missing or errored case is re-run,
+# a failed one is not.
+def problem_lines(entries: dict[str, dict], suite: dict[str, int] | None = None) -> list[str]:
+    lines = []
+    missing = [name for name in suite or {} if name not in entries]
+    errored = [name for name, entry in entries.items() if entry["verdict"] == "error"]
+    failed = [name for name, entry in entries.items() if entry["verdict"] == "fail"]
+    if missing:
+        lines += [
+            f"missing: {', '.join(missing)}",
+            "  not run yet on this plugin state and model: bash scripts/eval.sh --rerun-errors",
+        ]
+    if errored:
+        lines += [
+            f"errored: {', '.join(errored)}",
+            "  infrastructure errors, not failures; re-run only these: "
+            "bash scripts/eval.sh --rerun-errors",
+        ]
+    if failed:
+        lines += [
+            f"failed: {', '.join(failed)}",
+            "  a failed case is not retried until it passes: the five-run measurement "
+            "policy applies (docs/CONVENTIONS.md)",
+        ]
+    return lines
 
 
 def model_override(args: list[str], environ: dict[str, str]) -> str | None:
@@ -53,21 +135,110 @@ def judge_cost(result: dict) -> float:
     )
 
 
-def receipt(result: dict, args: list[str], environ: dict[str, str], **recorded) -> dict:
-    counted = case_runs(result)
-    passed = sum(majority(*runs) for runs in counted.values())
-    model = model_override(args, environ) or result.get("suite", {}).get("modelOverride")
+# The suite on disk: case name -> the runs its case.yaml asks (the CLI's default is 3). Read
+# by regex, as the pre-push hook reads them, so both agree on what a case asks.
+def suite_cases(evals_dir: str) -> dict[str, int]:
+    suite = {}
+    for path in sorted(Path(evals_dir).glob("*/case.yaml")):
+        text = path.read_text()
+        name = re.search(r"^name:\s*(\S+)", text, re.M)
+        wanted = re.search(r"^runs:\s*(\d+)", text, re.M)
+        suite[name.group(1) if name else path.parent.name] = int(wanted.group(1)) if wanted else 3
+    return suite
+
+
+FAIL_REPLACED_BY = 5  # runs of the five-run measurement policy (docs/CONVENTIONS.md)
+
+
+# Per case: a later run replaces the earlier result or adds a missing one, except that a
+# `fail` stays until a measurement of five runs all passed, an `error` does not replace a
+# `pass`, and a run shorter than case.yaml asks replaces or adds nothing. Returns the merged
+# cases and a note per case kept as it was.
+def merge(
+    base: dict[str, dict], new: dict[str, dict], suite: dict[str, int] | None
+) -> tuple[dict[str, dict], list[str]]:
+    merged, notes = dict(base), []
+    for name, entry in new.items():
+        old = base.get(name)
+        asked = (suite or {}).get(name, 0)
+        if old is not None and old["verdict"] == "fail":
+            if entry["runs"] >= FAIL_REPLACED_BY and entry["passed"] == entry["runs"]:
+                merged[name] = entry
+            else:
+                notes.append(
+                    f"kept {name}: it failed, and the five-run measurement policy applies "
+                    f"(replaced only by {FAIL_REPLACED_BY} runs that all passed; "
+                    f"this run: {entry['passed']}/{entry['runs']})"
+                )
+        elif entry["runs"] < asked:
+            kept = f"kept {name}" if old is not None else f"kept {name} out"
+            notes.append(f"{kept}: this run has {entry['runs']} run(s), case.yaml asks {asked}")
+        elif old is not None and old["verdict"] == "pass" and entry["verdict"] == "error":
+            notes.append(
+                f"kept {name}: it passed, and this run hit an infrastructure error, "
+                "which says nothing about the plugin"
+            )
+        else:
+            merged[name] = entry
+    return merged, notes
+
+
+# Why a new run may not merge into the previous receipt, or None when it may: it needs the
+# same plugin state and model, and per-case verdicts (a receipt in the old format has none).
+def base_mismatch(previous: dict, fingerprint: str, model: str) -> str | None:
+    if previous.get("plugin_fingerprint") != fingerprint:
+        return "plugin/ changed since the receipt was written (the fingerprint differs)"
+    if previous.get("model") != model:
+        return f"the receipt ran on the model {previous.get('model')} and this run on {model}"
+    cases = previous.get("cases") or {}
+    if not cases or any("verdict" not in entry for entry in cases.values()):
+        return "the receipt is in the old format, without a verdict per case"
+    return None
+
+
+def usable_base(previous: dict | None, fingerprint: str, model: str) -> dict | None:
+    if not previous or base_mismatch(previous, fingerprint, model):
+        return None
+    return previous
+
+
+def receipt(
+    results: list[dict],
+    args: list[str],
+    environ: dict[str, str],
+    previous: dict | None = None,
+    suite: dict[str, int] | None = None,
+    **recorded,
+) -> tuple[dict, list[str]]:
+    new = {}
+    for result in results:
+        new.update(case_entries(result))
+    model = (
+        model_override(args, environ) or results[0].get("suite", {}).get("modelOverride")
+    ) or "default"
+    base = usable_base(previous, recorded["plugin_fingerprint"], model)
+    cases, notes = merge(base["cases"], new, suite) if base else (new, [])
+    if previous and not base:
+        reason = base_mismatch(previous, recorded["plugin_fingerprint"], model)
+        notes.append(f"started a new receipt: {reason}")
+    passed = sum(entry["verdict"] == "pass" for entry in cases.values())
+    wanted = set(suite) if suite is not None else set(cases)
+    cost = sum(result["costUsd"] for result in results) + (base.get("cost_usd", 0) if base else 0)
     return {
         **recorded,
         "ran_at": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M"),
-        "cases_total": len(counted),
+        "cases_total": len(cases),
         "cases_passed": passed,
-        # A partial result (the cost ceiling or an abort cut the suite short) is no release.
-        "green": passed == len(counted) > 0 and not result.get("partial"),
-        "cost_usd": round(result["costUsd"], 4),
-        "model": model or "default",
-        "cases": {name: {"runs": runs, "passed": ok} for name, (ok, runs) in counted.items()},
-    }
+        # Green means every case of the suite has the verdict `pass`. A partial result (the
+        # cost ceiling or an abort cut the suite short) is no release.
+        "green": bool(wanted)
+        and set(cases) == wanted
+        and passed == len(cases)
+        and not any(result.get("partial") for result in results),
+        "cost_usd": round(cost, 4),
+        "model": model,
+        "cases": cases,
+    }, notes
 
 
 def write(argv: list[str]) -> int:
@@ -76,28 +247,47 @@ def write(argv: list[str]) -> int:
         split = argv.index("--")
         own, eval_args = argv[:split], argv[split + 1 :]
     parser = argparse.ArgumentParser(prog="eval_receipt.py write")
-    parser.add_argument("raw")
-    parser.add_argument("receipt")
+    parser.add_argument("paths", nargs="+")
+    parser.add_argument("--evals-dir")
     parser.add_argument("--commit", required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--fingerprint", required=True)
     options = parser.parse_args(own)
+    *raws, receipt_path = options.paths
+    if not raws:
+        parser.error("write needs at least one result file before the receipt")
 
-    with open(options.raw) as handle:
-        result = json.load(handle)
-    written = receipt(
-        result,
+    results = []
+    for raw in raws:
+        with open(raw) as handle:
+            results.append(json.load(handle))
+    previous = None
+    if os.path.exists(receipt_path):
+        try:
+            with open(receipt_path) as handle:
+                previous = json.load(handle)
+        except ValueError:
+            previous = None
+    suite = suite_cases(options.evals_dir) if options.evals_dir else None
+    written, notes = receipt(
+        results,
         eval_args,
         dict(os.environ),
+        previous=previous,
+        suite=suite,
         commit=options.commit,
         plugin_fingerprint=options.fingerprint,
         plugin_version=options.version,
     )
-    with open(options.receipt, "w") as handle:
+    with open(receipt_path, "w") as handle:
         json.dump(written, handle, indent=2)
         handle.write("\n")
     verdict = "green" if written["green"] else "NOT green"
-    print(f"\neval.sh: receipt written to {options.receipt} ({verdict})")
+    print(f"\neval.sh: receipt written to {receipt_path} ({verdict})")
+    for note in notes:
+        print(note)
+    for line in problem_lines(written["cases"], suite):
+        print(line)
     return 0 if written["green"] else 1
 
 
@@ -107,21 +297,119 @@ def summary(argv: list[str]) -> int:
     options = parser.parse_args(argv)
     with open(options.raw) as handle:
         result = json.load(handle)
-    for name, (passed, runs) in case_runs(result).items():
-        print(f"{name} {passed}/{runs}")
+    entries = case_entries(result)
+    for name, entry in entries.items():
+        errors = f" ({entry['errors']} error)" if entry["errors"] else ""
+        print(f"{name} {entry['passed']}/{entry['runs']}{errors}")
     judged = judge_cost(result)
     print(
         f"cost {result['costUsd'] + judged:.4f} "
         f"(runs {result['costUsd']:.4f}, judge {judged:.4f}); "
         f"model {result.get('suite', {}).get('modelOverride') or 'default'}"
     )
+    for line in problem_lines(entries):
+        print(line)
+    return 0
+
+
+# Prints the suite cases to run again: errored in the receipt, or missing from it.
+def rerun(argv: list[str]) -> int:
+    own, eval_args = argv, []
+    if "--" in argv:
+        split = argv.index("--")
+        own, eval_args = argv[:split], argv[split + 1 :]
+    parser = argparse.ArgumentParser(prog="eval_receipt.py rerun")
+    parser.add_argument("receipt")
+    parser.add_argument("--fingerprint", required=True)
+    parser.add_argument("--evals-dir", required=True)
+    options = parser.parse_args(own)
+
+    def refuse(message: str) -> int:
+        print(f"eval.sh: {message}", file=sys.stderr)
+        return 1
+
+    try:
+        with open(options.receipt) as handle:
+            previous = json.load(handle)
+    except (OSError, ValueError):
+        return refuse("no receipt to re-run from; run the whole suite: bash scripts/eval.sh")
+    model = model_override(eval_args, dict(os.environ)) or "default"
+    reason = base_mismatch(previous, options.fingerprint, model)
+    if reason:
+        return refuse(
+            f"{reason}; a re-run merges only into a receipt of the same plugin state and "
+            "model, so run the whole suite: bash scripts/eval.sh"
+        )
+    cases = previous["cases"]
+    pending = [
+        name
+        for name in suite_cases(options.evals_dir)
+        if name not in cases or cases[name]["verdict"] == "error"
+    ]
+    if not pending:
+        print("eval.sh: nothing to re-run: no case is errored or missing.", file=sys.stderr)
+    for name in pending:
+        print(name)
+    return 0
+
+
+# Which cases a change under plugin/ can affect. The mapping lives here and not in
+# case.yaml, so a change to it needs no plugin version bump. A path no rule names selects
+# every case: in doubt, run the whole suite.
+NO_CASES = (
+    "plugin/README.md",
+    "plugin/CHANGELOG.md",
+    "plugin/docs/",
+    "plugin/tests/",
+    "plugin/evals/last-run.json",
+    "plugin/skills/idea/",
+    "plugin/skills/plan/",  # before the prefix rule, or `plan-` would pick `plan-review-`
+    "plugin/skills/ship/",
+    "plugin/agents/planner.md",
+)
+PREFIX_RULES = {
+    "plugin/agents/implementer.md": "implement-",
+    "plugin/agents/reviewer.md": "final-review-",
+    "plugin/agents/plan-reviewer.md": "plan-review-",
+}
+
+
+# The cases that need to run for the changed `paths`; the first rule that matches wins.
+def cases_for_paths(paths, cases) -> set[str]:
+    cases, selected = set(cases), set()
+    for path in paths:
+        parts = path.split("/")
+        if path.startswith(NO_CASES):
+            continue
+        if parts[:2] == ["plugin", "evals"] and len(parts) > 3:
+            selected |= {parts[2]} & cases
+        elif path in PREFIX_RULES:
+            selected |= {name for name in cases if name.startswith(PREFIX_RULES[path])}
+        elif parts[:2] == ["plugin", "skills"] and len(parts) > 3:
+            selected |= {name for name in cases if name.startswith(parts[2] + "-")}
+        elif parts[:2] == ["plugin", "hooks"]:
+            selected |= {name for name in cases if name.startswith("guard-")}
+        elif parts[0] == "plugin":
+            return cases
+    return selected
+
+
+# Prints the cases a list of changed paths (stdin, one per line) needs to run.
+def changed(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="eval_receipt.py changed")
+    parser.add_argument("--evals-dir", required=True)
+    options = parser.parse_args(argv)
+    suite = suite_cases(options.evals_dir)
+    paths = [line.strip() for line in sys.stdin.read().splitlines() if line.strip()]
+    for name in sorted(cases_for_paths(paths, suite)):
+        print(name)
     return 0
 
 
 def main(argv: list[str]) -> int:
-    commands = {"write": write, "summary": summary}
+    commands = {"write": write, "summary": summary, "rerun": rerun, "changed": changed}
     if len(argv) < 2 or argv[1] not in commands:
-        print("usage: eval_receipt.py write|summary …", file=sys.stderr)
+        print("usage: eval_receipt.py write|summary|rerun|changed …", file=sys.stderr)
         return 2
     return commands[argv[1]](argv[2:])
 

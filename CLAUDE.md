@@ -128,6 +128,7 @@ claude --plugin-dir ./plugin          # one-off session with the working-tree pl
 # Release — the owner only: tag a clean clone on main, move the channel, publish the Release
 # Minor/major first: eval receipt, then the canary — one real session in a consumer project
 bash scripts/eval.sh
+# bash scripts/eval.sh --rerun-errors   # or --changed for development runs
 claude --plugin-dir <clone>/plugin --debug-file /tmp/canary.log   # run from the consumer
 grep -E 'overrides installed version|Found [0-9]+ plugins' /tmp/canary.log   # count = plain session
 claude plugin tag plugin --push
