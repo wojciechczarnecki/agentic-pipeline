@@ -101,7 +101,10 @@ Design:
   - For each case of the new results: a base verdict `fail` is replaced only when the new
     entry has `runs >= 5`, `passed == runs` and `errors == 0`. Any other base (`error`,
     `pass`, missing) is replaced when the new `runs` is at least the `runs` its `case.yaml`
-    asks (0 without `--evals-dir`). A kept entry is reported.
+    asks (0 without `--evals-dir`). A kept entry is reported. The `runs` threshold and the
+    5/5 rule apply only when merging into a matching base: with an empty base (another
+    fingerprint or model, or the old format) every new case is written as it ran, as today
+    (AC9), and a short case is left for `pre-push`'s runs check to refuse.
   - `green` is true when every suite case has the verdict `pass`, every receipt case is in
     the suite (when a suite is known), and no input result is `partial`. A partial run
     therefore writes a red receipt, as today (`test_a_partial_result_is_not_green` stays),
@@ -196,12 +199,10 @@ Design:
       - `score` 1 → `pass`, `score` 0 → `fail`.
 
       Run the tests red, then add `INFRA_PATTERNS` and `run_verdict` to
-      `scripts/eval_receipt.py` and replace `run_passed`. In `tests/test_release_gate.py`,
-      update `test_a_run_without_a_grader_verdict_counts_as_failed` and
-      `test_runs_that_never_started_count_as_failed` to the new expectation (`error`, not a
-      failed run) and rename both (`…_is_an_error`) — files:
+      `scripts/eval_receipt.py` and replace `run_passed` (the receipt still counts
+      `run_verdict(run) == "pass"`, so the receipt tests stay green unchanged) — files:
       `scripts/eval_receipt.py`, `tests/test_eval_receipt.py`,
-      `tests/fixtures/eval-result-session-limit.json`, `tests/test_release_gate.py`.
+      `tests/fixtures/eval-result-session-limit.json`.
       Automatic verification: `uv run pytest -q tests/test_eval_receipt.py tests/test_release_gate.py`
 - [ ] 2. Case verdict, receipt shape and messages (AC5, AC6). Tests first:
       - every case entry is `{runs, passed, errors, verdict}`, and `cases_total`, `green`,
@@ -212,9 +213,16 @@ Design:
       - `write` prints the errored cases with `bash scripts/eval.sh --rerun-errors` and the
         failed cases with "five-run measurement policy" (`docs/CONVENTIONS.md`);
       - `summary` adds `(<n> error)` to a case line with errors and ends with `errored:`
-        and `failed:` lines naming the cases.
+        and `failed:` lines naming the cases; like `write`, it gives
+        `bash scripts/eval.sh --rerun-errors` for the errored cases and names the five-run
+        measurement policy for the failed ones (AC5 asks it of both).
 
-      Then implement `case_verdict` and the new entry shape. Update the dict assertions in
+      Then implement `case_verdict` and the new entry shape. In
+      `tests/test_release_gate.py`, update
+      `test_a_run_without_a_grader_verdict_counts_as_failed` and
+      `test_runs_that_never_started_count_as_failed` to the new expectation (`errors` 1 or
+      2 and the verdict `error`, not a failed run) and rename both (`…_is_an_error`); the
+      entry carrying errors exists only from this step. Update the dict assertions in
       `tests/test_release_gate.py` (`test_two_of_three_runs_count_as_passed`,
       `test_one_of_three_runs_counts_as_failed`) to the new entry shape. In
       `test_summary_prints_one_line_per_case` the first three lines stay as they are,
@@ -230,7 +238,8 @@ Design:
       - the same case re-run 5 of 5 → `pass`;
       - a `runs: 3` case re-run with 1 run is kept and reported;
       - a different fingerprint, or a different model (`--model sonnet` after `default`),
-        writes a receipt with only the new cases;
+        writes a receipt with only the new cases, including a case that ran fewer runs
+        than its `case.yaml` asks (as today, AC9);
       - an old-format receipt (cases without `verdict`, like the current
         `plugin/evals/last-run.json`) is not merged;
       - two raw files in one `write` both land;
@@ -261,9 +270,14 @@ Design:
         `plan-review-` case);
       - the subprocess form (paths on stdin);
       - AC14: for every case in the real `plugin/evals/` there is a path from
-        `PREFIX_RULES` whose selection contains it and is not the whole suite. A fake case
+        `PREFIX_RULES` whose selection contains it and is not the whole suite. The
+        candidate paths come from the real plugin tree, never from the case name:
+        `plugin/skills/<dir>/SKILL.md` for each existing directory under `plugin/skills/`,
+        the three mapped agent files and `plugin/hooks/hooks.json`. The own-directory rule
+        does not count, since it matches every case by construction. A fake case
         `zzz-unknown` in a temporary evals dir fails that check, which proves the test can
-        go red.
+        go red (a candidate built from the case name, `plugin/skills/zzz/`, would make the
+        test vacuous).
 
       Then implement `NO_CASES`, `PREFIX_RULES`, `cases_for_paths` and the subcommand —
       files: `scripts/eval_receipt.py`, `tests/test_eval_receipt.py`.
@@ -296,7 +310,9 @@ Design:
       - `--rerun-errors --case x` and `--rerun-errors --changed` are refused.
 
       Then implement the option parsing, the fingerprint before the run, the per-case
-      loop and `write` with every raw file and `--evals-dir plugin/evals` (also for the
+      loop (a call that leaves an empty raw file is skipped with a message naming the
+      case, which stays as the receipt had it; when no call produced a result, exit 1 with
+      today's "no result file" message) and `write` with every non-empty raw file and `--evals-dir plugin/evals` (also for the
       default full run) — files: `scripts/eval.sh`, `tests/test_release_gate.py`.
       Automatic verification: `uv run pytest -q tests/test_release_gate.py -k eval_sh`
 - [ ] 8. `eval.sh --changed` (AC12, AC15). Tests first, in the harness:
@@ -325,7 +341,9 @@ Design:
         then the 3 passing), with `--fingerprint` of HEAD and `--evals-dir plugin/evals`,
         committed and pushed as `pipeline--v0.3.0` → exit 0.
 
-      Then change `pre-push` to `git show "$tagged:$receipt"` into a temporary file — files:
+      Then change `pre-push` to `git show "$tagged:$receipt"` into a temporary file, read
+      by every check: the inline `json.load` calls and the runs-check script, whose
+      `sys.argv[1]` becomes that file — files:
       `scripts/git-hooks/pre-push`, `tests/test_release_gate.py`.
       Automatic verification: `uv run pytest -q tests/test_release_gate.py`
 - [ ] 10. Documents (AC18). Tests first in `tests/test_documents.py`:
@@ -416,7 +434,70 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-10-04 — plan review
+
+Findings (severity counted before the fixes):
+
+1. `major` — AC9: the merge design applied the `case.yaml` runs threshold to every case
+   whose base is missing, and with an empty base (another fingerprint or model) every case
+   is missing, so a `--runs 1` run of a `runs: 3` case would have written a receipt without
+   that case instead of a new receipt with its own cases "as today". Fixed: the threshold
+   and the 5/5 rule apply only when merging into a matching base; step 3 tests a short
+   case on a new fingerprint.
+2. `major` — AC14: the `plugin/skills/<stage>/` rule is generic, so a test that builds a
+   candidate path from the case name (`plugin/skills/zzz/`) selects any case and can never
+   go red. Fixed: step 5 takes candidate paths from the real plugin tree only and excludes
+   the own-directory rule.
+3. `major` — AC5 asks the summary and the closing message both to give the re-run command
+   for errored cases and the five-run policy for failed ones; step 2 required that only of
+   `write`. Fixed: the `summary` test asks for both.
+4. `minor` — step 1 renamed and re-asserted two receipt tests as `error`, but the entry
+   that carries errors arrives in step 2. Fixed: moved to step 2; step 1 keeps the receipt
+   counting `run_verdict == "pass"`.
+5. `minor` — step 7 did not say what happens when one per-case call leaves no raw file
+   (today's single-call check would abort the whole merge). Fixed: skip with a message,
+   exit 1 only when no call produced a result.
+6. `minor` — step 9 said every `json.load(open(...))` reads the temporary file, but the
+   runs check is a heredoc script that takes the receipt path as `sys.argv[1]`. Fixed:
+   named explicitly.
+
+Checked and found correct:
+
+- Coverage: AC1–AC19 each have steps and a named proving test; the matrix matches the
+  steps, and the fourth column is present (AC19 `n/a` with a reason).
+- Classification order against the real 2026-09-24T08:40 raw result: both error shapes
+  have `score` 0 and `skippedPaidGraders` false, `init-without-questions` has `error: null`
+  with a `grader threw:` session-limit explanation; the E2E expectation (four errored, one
+  failed among 11 cases) matches that file. The 5xx pattern is anchored so `600s` stays
+  `fail`.
+- Case verdict: a case with any error is never `pass` (AC5); keeping a majority-failed case
+  `fail` despite an error run is stricter than the SPEC, not looser, and consistent with
+  the owner decision that in doubt the gate refuses.
+- Decisions: 2026-09-20 (local eval, `pre-push` gate on contents, not shas) and 2026-09-22
+  (five-run policy, usage-limit abort as "no verdict") are kept; the new row is appended.
+  No plugin change, no version bump (AC19, roadmap condition).
+- Feasibility: `--case` takes one glob, so the per-case loop is the right call; `runs`
+  keeps its meaning, so `pre-push`'s runs and case-count checks work unchanged on merged
+  receipts; the fingerprint excludes the receipt, so committing the receipt or a
+  throwaway commit carrying it keeps the fingerprint of HEAD (AC10 test). Clean check by
+  `git status --porcelain` leaves the ignored `plugin/evals/results/` out.
+- Mapping: `plan` in `NO_CASES` before the prefix rules keeps `plugin/skills/plan/` from
+  picking `plan-review-` cases; skills on disk are `final-review`, `idea`, `implement`,
+  `init`, `plan`, `plan-review`, `ship`, and every current case prefix maps to one of them
+  or to `plugin/hooks/`.
+- Groups: two groups; Group 1 leaves `write` backward compatible with today's `eval.sh`
+  call and the hook, so no work is left half done at the boundary.
+- Test-first: every behaviour step writes its tests before the change; step 6 refactors
+  the harness first and keeps the existing parametrized test green.
+- Owner summary: no new dependency and no data migration, consistent with the SPEC's owner
+  decisions; the old receipt format is refused by `--rerun-errors` and replaced by the next
+  run (the SPEC's open question, resolved within the options it allows).
+- E2E: automatic part runs without a model (stubbed `claude`); the only manual scenario is
+  a real paid run, which cannot be automated without cost.
+- Language: English throughout, as `language: "en"` asks.
+
+The plan is ready: every AC has a proving test, the three majors were fixable and are
+fixed in place, and no escalation trigger (dependency, migration, SPEC gap) applies.
 
 ## Chunk notes
 
