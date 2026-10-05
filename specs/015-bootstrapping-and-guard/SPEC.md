@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-10-05"
   - "spec-ready — 2026-10-05"
   - "plan-draft — 2026-10-05"
   - "plan-approved — 2026-10-05"
+  - "implemented — 2026-10-05"
 metrics:
   started_at: 2026-10-05T15:33
   escalations: 0
@@ -12,6 +13,11 @@ metrics:
   plan_review_blockers: 0
   plan_review_majors: 2
   plan_changes: 14
+  implement_steps: 12
+  implement_iterations: 0
+  converge_gaps: 0
+  deviations_minor: 3
+  deviations_major: 0
 ---
 
 # SPEC 015 — Bootstrapping and the guard

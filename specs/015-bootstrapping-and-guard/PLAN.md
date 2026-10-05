@@ -588,6 +588,15 @@ What the plan rests on:
       total is ≤ $8, and `uv run pytest -q plugin/tests/test_eval_cases.py && bash scripts/check.sh`
       passes.
 
+### Converge pass 1 — 2026-10-05
+
+A fresh subagent compared the diff with the SPEC and found no `missing`, `partial` or `contradicts` gap, and two `unrequested` items. Verdicts:
+
+- `unrequested` AC16, `guard.py` (`-p`, `--eval`, `--print`): rejected — the plan's Approach (review finding 3) asks for `node -p`/`--print`, and the DECISIONS row records it; it is the same code-evaluating form as `-e`.
+- `unrequested` AC1, `init` SKILL step 1 (`<dir>-python` and `<dir>-node` for a directory with both manifests): rejected — the plan asks for unique job names, which the required check depends on (AC2, AC6); the SPEC is silent on the case, so this is a plan detail, not extra scope.
+
+Real gaps: 0. No steps added; no second pass.
+
 ## Risks and traps
 
 - **Heredoc renaming.** The marker must replace only the delimiter word on the opening line.
@@ -684,12 +693,12 @@ as intended), and its 5-run follow-up passed 5 of 5, so the case is unchanged. T
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md`, `plugin/README.md`,
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md`, `docs/BACKLOG.md`, `plugin/README.md`,
       `plugin/docs/GUARD.md` and `plugin/docs/NEW-PROJECT.md` updated
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
