@@ -1,11 +1,13 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-10-05"
   - "spec-ready — 2026-10-05"
+  - "plan-draft — 2026-10-05"
 metrics:
   started_at: 2026-10-05T12:48
   escalations: 0
+  plan_steps: 17
 ---
 
 # SPEC 014 — Fewer rituals, more code in the pipeline loop
