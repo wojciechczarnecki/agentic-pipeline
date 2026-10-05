@@ -18,17 +18,30 @@ initialisation into a design interview.
 
 ## Write scope (absolute)
 
-You write only in: `.claude/`, `CLAUDE.md`, `docs/`, `scripts/`, `.github/`.
-Nothing outside these prefixes — no source files, no tool configuration and no
-`.gitignore`. You do not commit; the commit belongs to the owner.
+You write only in: `.claude/`, `CLAUDE.md`, `docs/`, `scripts/`, `.github/`, and in
+`.gitignore`, which you only append to: you add the lines it lacks (creating the file when it
+is missing), and you never reorder or remove a line. Nothing outside these — no source
+files, no tool configuration, no `README.md` and no licence file. You do not commit; the
+commit belongs to the owner.
 
 ## Steps
 
 1. **Survey the ground.** Check whether the directory is a git repository (`git rev-parse
    --is-inside-work-tree`) and which of the files on the list already exist. Autodetect the
-   stack: `pyproject.toml` → Python, `package.json` → Node, both → both, neither → unknown.
-   Look into the detected files for the script names (`scripts` in `package.json`, the lint
-   and test tools in `pyproject.toml`) — that fills `verify` and `format` without asking.
+   layers: look for `pyproject.toml` and `package.json` at the repository root and in its
+   direct subdirectories (depth 1), skipping hidden directories and `node_modules`. Each
+   manifest is one layer. A layer at the root is named after its stack (`python`, `node`); a
+   layer in a subdirectory is named after the directory (`backend`, `frontend`), and a
+   directory holding both manifests gives the layers `<dir>-python` and `<dir>-node`, so
+   job names stay unique. No manifest → unknown stack. A project deeper than depth 1
+   (`apps/web`) is not detected: the owner names it in the stack question.
+   Look into each manifest for the script names (`scripts` in `package.json`, the lint and
+   test tools in `pyproject.toml`) — that fills `verify` and `format` without asking. Note
+   for each layer whether it declares its lint and test tools, whether it has a test file
+   (`test_*.py`, `*_test.py`, `*.test.*` or `*.spec.*` outside `.venv` and `node_modules`),
+   and whether a compose file (`compose.yaml`, `compose.yml`, `docker-compose.yml` or
+   `docker-compose.yaml`) or an `alembic.ini` sits at the root or in a layer directory. Note
+   too whether `.gitignore`, `README.md` and a licence file exist.
 2. **Check whether you have `AskUserQuestion`. If you do not — skip this step and go to
    step 3.** You then ask no questions by any route: neither with the tool nor in plain
    text, and you do not wait for an answer, because there is no one to get it from.
@@ -41,7 +54,8 @@ Nothing outside these prefixes — no source files, no tool configuration and no
       not change the project's language; the answer decides the documents, specs, plans and
       the PR description;
    2. the project name and the problem it solves (one sentence);
-   3. confirmation of the detected stack and of the full verification command;
+   3. confirmation of the detected layers (name and directory of each), the stack and the
+      full verification command;
    4. production out of the agent's reach — hosts and CLI commands (or "no production").
    You ask the questions in the Claude Code session language — the answer about `language`
    governs the files, not the conversation.
@@ -94,14 +108,31 @@ Nothing outside these prefixes — no source files, no tool configuration and no
      forces the marketplace to be registered again on every release. Take the `url` from the
      session's list of marketplaces. When the path has another shape or the url is unknown —
      leave `TODO:` at that value (in both places) and name it on the list of values to fill
-     in from step 7.
+     in from step 7. The template's `ask` and `deny` rules stay (an edit of
+     `.claude/workflow.json` asks, and detaching the plugin is denied). Add `allow` rules
+     for the stack you see in the repository, broad per tool: `Bash(uv *)` for a Python
+     layer, `Bash(npm *)` for a Node layer and `Bash(docker compose *)` only when a compose
+     file (`compose.yaml`, `compose.yml`, `docker-compose.yml` or `docker-compose.yaml`)
+     exists at the root or in a layer directory; no rule for a tool the repository does not
+     show.
      Like every file in `.claude/` (step 3), its write needs the owner's consent; when a
      non-interactive session does not get it, put the file on the list to add by hand
      (with its content) and finish with success — the rest of the scaffold stands anyway;
    - `.claude/workflow.json` — from `templates/workflow.example.json`, trimmed to this
      project: the `migrations` section stays only when the project has a migration tool;
      `production`, `verify`, `format`, `docs`, `gitHooksDir` filled with the answers
-     or `TODO:`; `language` is always `en` or `pl` (the answer, the argument, the existing
+     or `TODO:`. `verify.command` runs the checks of every layer in the layer's directory:
+     for a layer in `<dir>`, `cd <dir> && <the layer's checks>` (several layers: each `cd` and
+     its checks in a subshell of their own, the subshells joined with `&&`; a root layer
+     needs no `cd`), with the
+     tools the manifest declares (`uv run ruff check .`, `uv run black --check .`,
+     `uv run pytest -q`; the `npm run` scripts it has). Each `format[]` entry for a layer in
+     `<dir>` matches `<dir>/…` files and runs its tool for the project in `<dir>`:
+     `{"match": "<dir>/*.py", "command": "uv run --project <dir> black -q {file}"}` and the
+     same with `ruff check -q --fix` — a Node tool is run from `<dir>/node_modules/.bin/`;
+     a root layer keeps the plain form (`*.py`, `uv run black -q {file}`). The `migrations`
+     section is also written when an `alembic.ini` sits at the root or in a layer
+     directory; `language` is always `en` or `pl` (the answer, the argument, the existing
      value or `en`), never `TODO:`; you do not write the `protectedBranches` key (the
      release channel is protected by the owner by hand, after `/pipeline:init`), and
      you do not write the `implement` section (it was retired in 0.9.0);
@@ -110,20 +141,51 @@ Nothing outside these prefixes — no source files, no tool configuration and no
      yet measured, which the plugin README marks as such;
    - `CLAUDE.md` — from `templates/CLAUDE.<language>.md` (the template in the language from
      `language`), with the document map rewritten to the paths from `docs.*` (otherwise the
-     instructions for agents point at other files than the configuration);
+     instructions for agents point at other files than the configuration), and the
+     verification command in its commands block (the line under the `TODO` comment)
+     set to the same string as `verify.command`;
    - `docs/PROJECT.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/DECISIONS.md`,
      `docs/CONVENTIONS.md` — each from `templates/docs/<NAME>.<language>.md`, written under
-     the target name without the language suffix;
+     the target name without the language suffix. In `docs/CONVENTIONS.md` the "Full
+     verification" line carries the same string as `verify.command` too, so `CLAUDE.md`,
+     `docs/CONVENTIONS.md` and the configuration never disagree about the commands;
    - `scripts/git-hooks/pre-push` — from `templates/pre-push`, **with the executable bit**
-     (`chmod +x`); the directory path matching `gitHooksDir`;
-   - `.github/workflows/ci.yml` — assembled from variants by the detected stack:
-     Python → the job from `templates/github/workflows/ci-python.yml`, Node → the job
-     from `ci-node.yml`, both → both jobs in one file, neither → `ci-placeholder.yml`;
+     (`chmod +x`), in the directory `gitHooksDir` names. The template has the literal
+     `<gitHooksDir>` in a comment: replace it while copying, with
+     `sed 's|<gitHooksDir>|<the configured directory>|' templates/pre-push > <hook path>`
+     and then `chmod +x`. Never edit the copied hook in place: the guard refuses a shell
+     change to an existing hook. No `<gitHooksDir>` stays in any generated file;
+   - `.github/workflows/ci.yml` — one job per layer, assembled into one file (a single
+     `name: CI` and one trigger block). Per layer, write the real job (`ci-python.yml`,
+     `ci-node.yml`) only when its manifest declares the lint and test tools — for Python
+     `ruff` and `pytest` (the `black` step stays only when `black` is declared), for Node a
+     `lint` and a test script (the build step stays only with a `build` script) — and the
+     layer has a test file. Otherwise write the placeholder job (`ci-python-placeholder.yml`,
+     `ci-node-placeholder.yml`): it passes, so the required check exists from the first
+     push, and it lists the real steps as comments. Neither layer → `ci-placeholder.yml`
+     (job `verify`). Render each template mechanically: for a root layer, delete the lines
+     that end in `# subdirectory layer`, strip the ` # root layer` markers and replace
+     `<layer>` with the stack name; for a subdirectory layer, delete the lines that end in
+     `# root layer`, strip the ` # subdirectory layer` markers and replace `<layer>` and
+     `<dir>` with the directory. The job is named after the layer, because the job name is
+     the required check in the repository ruleset;
    - `.github/workflows/security.yml` — the same from `security-python.yml` /
      `security-node.yml`; with an unknown stack a file with one job to fill in;
-   - `.github/dependabot.yml` — from `templates/github/dependabot.yml`, with entries
-     for the ecosystems of the detected stack; the `github-actions` entry stays always,
-     whatever the stack.
+   - `.github/dependabot.yml` — from `templates/github/dependabot.yml`, with one entry per
+     layer for its ecosystem (`uv`, `npm`): the entry is copied once per layer with
+     `directory: /<dir>` filled in — the layer's directory, nothing for a root layer, which
+     gives `/`. The `github-actions` entry stays always, whatever the stack;
+   - `.github/repository/ruleset.json` and `.github/repository/settings.json` — from
+     `templates/github/repository/`. In the ruleset, replace the single `<job>` entry of
+     `required_status_checks` with one `{"context": "<job name>"}` entry per job you wrote
+     in `ci.yml`, so the required checks are the jobs that exist. The owner applies both
+     files with `gh api --input` (the commands are in
+     `${CLAUDE_PLUGIN_ROOT}/docs/NEW-PROJECT.md`): the guard refuses those writes to an
+     agent;
+   - `.gitignore` — append only the lines it lacks: always `.claude/settings.local.json`;
+     for a Python layer `.venv/`, `__pycache__/`, `.pytest_cache/` and `.ruff_cache/`; for
+     a Node layer `node_modules/`. Check each line with `grep -qxF`, add a newline first
+     when the file does not end in one, and create the file when it is missing.
 5. **Existing files.**
    - interactive mode: show the difference (what you add / change) and ask before
      overwriting — separately for every file;
@@ -133,7 +195,10 @@ Nothing outside these prefixes — no source files, no tool configuration and no
    by the user (a new section in `CLAUDE.md`, a row in the decision register, an item
    in the backlog) stays untouched. You change only what follows from new answers;
    files the new answers do not concern you do not write at all — `git status`
-   has to stay silent about them after such a run. An answer on the language other than the
+   has to stay silent about them after such a run. The files in `.github/repository/` are
+   written only when missing — you never overwrite one, in interactive mode too, because the
+   owner may have changed them or applied them already. `.gitignore` gets only the lines it
+   lacks, so a second run adds nothing. An answer on the language other than the
    existing `language` changes only `language` in `.claude/workflow.json`: you do not
    translate or replace existing documents with the template in the new language (only a
    file that was missing is created in the new one), and at the closing you tell the owner
@@ -141,6 +206,21 @@ Nothing outside these prefixes — no source files, no tool configuration and no
 7. **Closing.** List for the owner:
    - the list of created, updated and skipped files;
    - the `TODO:` values to fill in;
+   - for every placeholder job written into `ci.yml`: `TODO:` replace the job `<layer>`
+     with the real steps (the comment in the job lists them) once the layer has tests and
+     its tools — the job name stays, so the ruleset does not change;
+   - when `production.hosts` stays empty: a warning that the production-host rule is
+     inactive until hosts are added (the plugin README, configuration table); you offer no
+     list of hosting providers;
+   - when the repository has no `README.md`: `TODO:` add a `README.md`; when it has no
+     licence file: `TODO:` add a licence file — you write neither;
+   - the repository settings: the owner applies `.github/repository/ruleset.json` and
+     `settings.json` with the `gh api --input` commands from
+     `${CLAUDE_PLUGIN_ROOT}/docs/NEW-PROJECT.md`, after the first push (GitHub offers a
+     required check only after the workflow has run once);
+   - the architecture decision record template: `${CLAUDE_PLUGIN_ROOT}/templates/docs/adr/`
+     holds one per language, and you do not copy it; when the project wants one decision
+     record per file, copy `ADR.<language>.md` from there into `docs/adr/`;
    - on a change of `language` — that existing documents stayed in their previous language;
    - the instruction for enabling the git hook: `git config core.hooksPath <gitHooksDir>`
      (once per clone — otherwise `pre-push` does not work);
@@ -152,6 +232,9 @@ Nothing outside these prefixes — no source files, no tool configuration and no
   is for.
 - Do not add to `.claude/settings.json` a `hooks` section or permission entries specific
   to tools that cannot be seen in the repository.
+- Do not write a `README.md`, a licence file, source files or a project skeleton (dev
+  tools, a lock file, a smoke test): `init` is an installer, and the placeholder job keeps
+  CI green until the project has tests.
 - Do not create the specs directory with a sample spec — the first spec is created by
   `/pipeline:idea`.
 - Do not run `git config core.hooksPath` yourself — it is a change to the clone's

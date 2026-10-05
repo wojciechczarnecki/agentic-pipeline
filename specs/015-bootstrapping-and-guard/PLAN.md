@@ -237,21 +237,21 @@ What the plan rests on:
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 8, 10 | `plugin/tests/test_init_skill.py::test_layers_are_detected_at_depth_one`; eval `init-subdirectory-project` (step 12) | |
-| AC2 | 5, 6, 8, 10 | `plugin/tests/test_init_layers.py::test_ci_renders_a_subdirectory_layer`, `::test_ci_renders_a_root_layer_as_today`, `::test_dependabot_renders_the_layer_directory`; `test_init_skill.py::test_verify_and_format_follow_the_layer_directory`; eval `init-subdirectory-project` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert "    defaults:\n      run:\n        working-directory: backend\n" in python` (CI part, step 5; Dependabot and skill parts follow in steps 6 and 8); `uv run pytest -q plugin/tests/test_init_layers.py -k dependabot` → `assert directory_of(layer, "uv") == "/backend"` (Dependabot part, step 6) |
+| AC1 | 8, 10 | `plugin/tests/test_init_skill.py::test_layers_are_detected_at_depth_one`; eval `init-subdirectory-project` (step 12) | `uv run pytest -q plugin/tests/test_init_skill.py` → `assert token in survey, token` (`depth 1`) and `assert "layers" in third` |
+| AC2 | 5, 6, 8, 10 | `plugin/tests/test_init_layers.py::test_ci_renders_a_subdirectory_layer`, `::test_ci_renders_a_root_layer_as_today`, `::test_dependabot_renders_the_layer_directory`; `test_init_skill.py::test_verify_and_format_follow_the_layer_directory`; eval `init-subdirectory-project` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert "    defaults:\n      run:\n        working-directory: backend\n" in python` (CI part, step 5; Dependabot and skill parts follow in steps 6 and 8); `uv run pytest -q plugin/tests/test_init_layers.py -k dependabot` → `assert directory_of(layer, "uv") == "/backend"` (Dependabot part, step 6); `uv run pytest -q plugin/tests/test_init_skill.py` → `assert token in generating, token` (`uv run --project <dir>`, skill part, step 8) |
 | AC3 | 10, 12 | `plugin/tests/test_eval_cases.py::test_the_subdirectory_fixture_has_only_a_backend_manifest`, `::test_criteria_name_the_wrong_behaviour[init-subdirectory-project]`; eval measurement ledger (step 12) | |
-| AC4 | 5, 8 | `plugin/tests/test_init_layers.py::test_placeholder_jobs_pass_and_list_the_real_steps`; `test_init_skill.py::test_the_real_job_needs_tools_and_a_test_file` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert len(runs) == 1 and runs[0].startswith("echo"), runs` (placeholder stubs added first) |
+| AC4 | 5, 8 | `plugin/tests/test_init_layers.py::test_placeholder_jobs_pass_and_list_the_real_steps`; `test_init_skill.py::test_the_real_job_needs_tools_and_a_test_file` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert len(runs) == 1 and runs[0].startswith("echo"), runs` (placeholder stubs added first); `uv run pytest -q plugin/tests/test_init_skill.py` → `assert token in generating, token` (`ci-python-placeholder.yml`, skill part, step 8) |
 | AC5 | 5 | `plugin/tests/test_init_layers.py::test_every_ci_template_names_the_required_check` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert any("required check" in line and "ruleset" in line for line in comments), path.name` |
 | AC6 | 6 | `plugin/tests/test_init_layers.py::test_the_ruleset_template`, `::test_the_repository_settings_template` |  `uv run pytest -q plugin/tests/test_init_layers.py -k 'ruleset or repository_settings'` → `KeyError: 'target'` and `assert {} == {'allow_squash_merge': …}` (stub files `{}` first) |
-| AC7 | 8 | `plugin/tests/test_init_skill.py::test_init_copies_the_repository_settings` (GENERATED entries + idempotence wording) | |
+| AC7 | 8 | `plugin/tests/test_init_skill.py::test_init_copies_the_repository_settings` (GENERATED entries + idempotence wording) | `uv run pytest -q plugin/tests/test_init_skill.py` → `assert "`<job>`" in block`; the `GENERATED` entries failed on the missing template mapping until the skill named them |
 | AC8 | 9 | `plugin/tests/test_new_project_doc.py::test_the_first_push_comes_before_the_hook`, `::test_the_scaffold_through_a_pr_path`, `::test_the_repository_settings_commands`, `::test_the_required_check_appears_after_the_first_run` | |
 | AC9 | 7 | `plugin/tests/test_init_templates.py::test_settings_template_protects_the_guardrail_files` (rewritten), `::test_settings_template_denies_detaching_the_plugin` |  `uv run pytest -q plugin/tests/test_init_templates.py -k settings_template` → `assert 'Edit(**/.claude/workflow.json)' in ask` and `assert 'Bash(claude plugin disable*)' in deny` |
-| AC10 | 8 | `plugin/tests/test_init_skill.py::test_allow_rules_follow_the_seen_stack` | |
-| AC11 | 8 | `plugin/tests/test_init_skill.py::test_the_closing_warns_about_empty_hosts` | |
-| AC12 | 8, 10 | `plugin/tests/test_init_skill.py::test_the_hooks_dir_is_substituted_in_pre_push`; eval criterion | |
-| AC13 | 8 | `plugin/tests/test_init_skill.py::test_gitignore_is_append_only` (write scope + entries) | |
-| AC14 | 8 | `plugin/tests/test_init_skill.py::test_readme_and_licence_are_closing_todos` | |
-| AC15 | 7, 8, 9 | `plugin/tests/test_init_templates.py::test_the_adr_template_has_twins`; `test_init_skill.py::test_the_adr_template_is_offered_not_copied`; `test_new_project_doc.py::test_the_adr_template_is_described` |; `uv run pytest -q plugin/tests/test_init_templates.py -k adr` → `FileNotFoundError` on `ADR.en.md` (template part; a missing file is the red here, there is no symbol to stub); skill and `NEW-PROJECT.md` parts follow in steps 8 and 9 |
+| AC10 | 8 | `plugin/tests/test_init_skill.py::test_allow_rules_follow_the_seen_stack` | `uv run pytest -q plugin/tests/test_init_skill.py` → `assert token in block, token` (`Bash(uv *)`) |
+| AC11 | 8 | `plugin/tests/test_init_skill.py::test_the_closing_warns_about_empty_hosts` | `uv run pytest -q plugin/tests/test_init_skill.py` → `assert "`production.hosts`" in closing and "inactive" in closing` |
+| AC12 | 8, 10 | `plugin/tests/test_init_skill.py::test_the_hooks_dir_is_substituted_in_pre_push`; eval criterion | `uv run pytest -q plugin/tests/test_init_skill.py` → `assert "<gitHooksDir>" in hook` |
+| AC13 | 8 | `plugin/tests/test_init_skill.py::test_gitignore_is_append_only` (write scope + entries) | `uv run pytest -q plugin/tests/test_init_skill.py` → `assert ".gitignore" in scope and "append" in scope` |
+| AC14 | 8 | `plugin/tests/test_init_skill.py::test_readme_and_licence_are_closing_todos` | `uv run pytest -q plugin/tests/test_init_skill.py` → `assert "`TODO:` add a `README.md`" in closing` |
+| AC15 | 7, 8, 9 | `plugin/tests/test_init_templates.py::test_the_adr_template_has_twins`; `test_init_skill.py::test_the_adr_template_is_offered_not_copied`; `test_new_project_doc.py::test_the_adr_template_is_described` |; `uv run pytest -q plugin/tests/test_init_templates.py -k adr` → `FileNotFoundError` on `ADR.en.md` (template part; a missing file is the red here, there is no symbol to stub); skill and `NEW-PROJECT.md` parts follow in steps 8 and 9; `uv run pytest -q plugin/tests/test_init_skill.py` → `assert "templates/docs/adr/" in closing and "docs/adr/" in closing` (skill part, step 8) |
 | AC16 | 2 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_naming_a_guardrail_file_is_refused` (parametrised: heredoc, here-string, `-c`, `-e`, `-E`, wrappers, plugin root, install state) `uv run pytest -q plugin/tests/test_guard_interpreters.py` → `assert reason is not None, command` (24 refused cases red) |
 | AC17 | 2, 4 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_without_a_guardrail_path_passes`, `::test_a_heredoc_to_a_non_interpreter_keeps_todays_rules`, `::test_guard_doc_narrows_the_interpreter_limit` `uv run pytest -q plugin/tests/test_guard_interpreters.py -k guard_doc` → `assert "names a guardrail" in text` (doc test, red before the GUARD.md edit); the other AC17 tests are regression pins, `n/a — kept behaviour` |
 | AC18 | 3, 4 | `plugin/tests/test_guard_alembic_notice.py` (root, subdirectory, once per session, never blocks, silent with `migrations`, silent without `workflow.json`, silent at depth 2) `uv run pytest -q plugin/tests/test_guard_alembic_notice.py` → `assert NOTICE in notice["systemMessage"]` (5 notice cases red; the silent cases are regression pins) |
@@ -420,7 +420,7 @@ What the plan rests on:
       Then edit the templates. The ADR has Status, Context, Decision and Consequences.
       Automatic verification: `uv run pytest -q plugin/tests/test_init_templates.py plugin/tests/test_english_only.py`
 
-- [ ] 8. **The `init` skill (AC1, AC2, AC4, AC7, AC10–AC15).** Files:
+- [x] 8. **The `init` skill (AC1, AC2, AC4, AC7, AC10–AC15).** Files:
       `plugin/skills/init/SKILL.md`, `plugin/tests/test_init_skill.py`.
       The tests come first. They pin identifiers, not prose, like the file's own header.
       Run them red:
@@ -742,6 +742,10 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   `templates/docs/adr/*.pl.md`. The plan names `test_english_only.py` as the place where Polish is
   allowed in `*.pl.md`, but the allowlist globs match only `templates/docs/*.pl.md`, so the new
   Polish ADR twin needs its own entry (the allowlist test also requires the entry to be live).
+- Step 8 (minor): `plugin/tests/test_language_contract.py` gets `# root layer` and
+  `# subdirectory layer` in `OTHER_HEADINGS`. The skill has to name the two CI template markers
+  in code spans, and the contract test reads a span that starts with `#` as a quoted section
+  heading; the set exists for such non-section markers (`TODO:`, `KIND:`).
 
 ## Final review
 

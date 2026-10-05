@@ -203,8 +203,16 @@ FILES = [f"skills/{name}/SKILL.md" for name in STAGE_SKILLS + sorted(NOT_STAGES)
     f"agents/{name}.md" for name in AGENTS
 ]
 # Heading-like spans that are not SPEC/PLAN sections: frontmatter keys, the init scaffold's
-# placeholder marker and the RESULT key an escalation carries (SPEC 014).
-OTHER_HEADINGS: set[str] = {"metrics:", "status:", "TODO:", "KIND:"}
+# placeholder marker, the RESULT key an escalation carries (SPEC 014) and the two layer
+# markers `init` strips from the CI templates (SPEC 015).
+OTHER_HEADINGS: set[str] = {
+    "metrics:",
+    "status:",
+    "TODO:",
+    "KIND:",
+    "# root layer",
+    "# subdirectory layer",
+}
 
 
 # A stage names a section by its English heading only (SPEC 008): the Polish twin comes from
