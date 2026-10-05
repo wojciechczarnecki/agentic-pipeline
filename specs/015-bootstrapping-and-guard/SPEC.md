@@ -1,11 +1,13 @@
 ---
-status: spec-ready
+status: plan-draft
 stage_history:
   - "spec-draft — 2026-10-05"
   - "spec-ready — 2026-10-05"
+  - "plan-draft — 2026-10-05"
 metrics:
   started_at: 2026-10-05T15:33
   escalations: 0
+  plan_steps: 12
 ---
 
 # SPEC 015 — Bootstrapping and the guard
