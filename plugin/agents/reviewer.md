@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: The final review stage in /pipeline:ship — report mode (three independent perspectives, a findings report) or apply (fixes per the owner's decisions, PR, green CI, status done). Started by the /pipeline:ship orchestrator.
+description: The final review stage in /pipeline:ship — report mode (three independent perspectives, a findings report) or apply (fixes per the owner's decisions, PR, green CI; the status stays implemented). Started by the /pipeline:ship orchestrator.
 skills:
   - final-review
 model: inherit
@@ -17,10 +17,13 @@ end with a RESULT block.
 METRICS of this stage:
 - `report`: `final_review_blockers`, `final_review_worth_fixing`, `final_review_nits`;
   in SUMMARY the findings table `id | severity | one sentence` and the sentence stating how
-  many `nit` findings were left out (`Left out: N nit findings`);
-- `apply`: `findings_accepted`, `findings_rejected`; in SUMMARY the link to the open PR, the
-  CI status (after `gh pr checks --watch`) and the link to the run with the visual
-  artifacts.
+  many `nit` findings were left out (`Left out: N nit findings`); when you had no `Agent`
+  tool, SUMMARY also says in one sentence that the three perspectives ran in one context
+  and are not independent;
+- `apply`: `findings_accepted`, `findings_rejected`, with `STATUS: implemented`; in SUMMARY
+  the link to the open PR, the CI status (after `gh pr checks --watch`) and the link to the
+  run with the visual artifacts. `workflow_metrics.py --close` runs after you, and sets
+  `done`.
 
 ## Stage agent contract
 

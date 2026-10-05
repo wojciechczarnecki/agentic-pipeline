@@ -135,5 +135,7 @@ def test_nit_cap_reaches_reviewer_and_ship():
     assert "left out" in collapse(section("ship", "Gate: final review"))
 
 
-def test_compliance_checks_the_red_column():
-    assert "red record" in report_step(2)
+# SPEC 014, AC2: the compliance perspective checks no red record any more.
+def test_compliance_checks_no_red_record():
+    text = report_step(2)
+    assert "red record" not in text and "fourth column" not in text

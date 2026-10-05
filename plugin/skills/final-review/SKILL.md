@@ -1,6 +1,6 @@
 ---
 name: final-review
-description: Pipeline stage 5 — the final code review of the feature branch (status implemented). Report mode — three independent perspectives as parallel subagents and a findings report; apply mode — fixes per the owner's decisions, opening the PR, green CI and only then status done.
+description: Pipeline stage 5 — the final code review of the feature branch (status implemented). Report mode — three independent perspectives as parallel subagents and a findings report; apply mode — fixes per the owner's decisions, opening the PR and green CI; the spec is closed afterwards by workflow_metrics.py --close.
 argument-hint: <spec number or slug> [report|apply]
 ---
 
@@ -60,8 +60,8 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
 
 - Input: `<docs.specsDir>/NNN-<slug>/` with status `implemented`; the feature branch.
 - Output of `report`: the report in `## Final review` in PLAN.md (committed).
-- Output of `apply`: the accepted fixes made, an open PR with green CI, spec status →
-  `done` (only after green CI).
+- Output of `apply`: the accepted fixes made, an open PR with green CI, spec status stays
+  `implemented`; `workflow_metrics.py --close` then sets `done`.
 
 ## Report mode
 
@@ -77,10 +77,7 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    report less finds less.
    - **Compliance with the SPEC/PLAN:** for every AC the evidence — the file/test that
      delivers it (the AC → evidence matrix); the plan's steps ticked with good reason;
-     `## Deviations` justified; nothing outside the scope got into the branch; every AC
-     row of the AC → steps matrix has its red record in the fourth column or a `manual` /
-     `n/a` mark (a matrix without the fourth column, from a plan carried out before 0.7.0,
-     is not a finding).
+     `## Deviations` justified; nothing outside the scope got into the branch.
    - **Quality and maintainability:** the `/code-review` skill on the diff (bugs, edge
      cases, security); on top of that compliance with `<docs.conventions>` (code patterns,
      user-facing texts only through the mechanism named there, style and line length limit)
@@ -89,13 +86,17 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    - **Tests:** are the key paths and edge cases covered (authorisation errors, missing
      resource, validation, empty lists, duplicates, length limits)? are the assertions
      concrete — not just the status code where the content matters? do the interface tests
-     use the same text keys as the code? When `verify.scopes` has a UI scope and the change
-     touches the interface — require in PLAN.md an entry on `<verify.command> <UI scope>`
+     use the same text keys as the code? Do they prove anything? Break the code a key test
+     covers (comment out the line or flip the condition), run the test and see it fail, then
+     restore the file; a test that stays green on broken code is a finding. When
+     `verify.scopes` has a UI scope and the change touches the interface — require in PLAN.md an entry on `<verify.command> <UI scope>`
      and on the visual artifacts looked at and the review scenario required by
      `<docs.conventions>`.
    The finding format from a perspective:
    `[blocker|worth-fixing|nit] file:line — scenario (input → wrong behaviour) — fix`.
-   Severities are tokens written as code in every language, like metric keys.
+   Severities are tokens written as code in every language, like metric keys. Without the
+   `Agent` tool you run the three perspectives one after another in your own context, and
+   step 4 says what the report then states.
 3. **Merge and verify.** Merge duplicates. Check every finding yourself in the code —
    reject the false ones with a one-sentence reason. Set the final severity by the real
    risk. Then the report keeps at most five `nit` findings, the ones with the highest risk
@@ -103,22 +104,25 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    `Left out: N nit findings` (also with N = 0, so the line is always there). A long list
    of nits buries the findings that matter, and the count keeps the report honest.
 4. **Write the report** in `## Final review` in PLAN.md: the date; the AC → evidence matrix;
-   the findings with ids `F1…Fn` (severity, file:line, scenario, fix); the rejected ones
-   with a reason; the `Left out: N nit findings` sentence. The report's length follows the
-   findings: a review with none is the matrix and one line. In the `metrics:` block of
-   SPEC.md: `final_review_blockers`, `final_review_worth_fixing`, `final_review_nits`;
-   `final_review_nits` counts the reported nits, not the left-out ones, so the `--check`
-   balance holds.
-   The flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
-   success `workflow_metrics.py --check <spec-dir>`.
+   the findings, one line each in the form `- **F<n>** `<blocker|worth-fixing|nit>` — file:line —
+   scenario — fix` with ids `F1…Fn`; the rejected ones with a reason, listed without that
+   form; the `Left out: N nit findings` sentence. The report's length follows the
+   findings: a review with none is the matrix and one line. When you had no `Agent` tool,
+   the report and the SUMMARY of your RESULT say in one sentence that the three
+   perspectives ran in one context and are not independent. Then run
+   `workflow_metrics.py --derive <spec-dir>`, which counts the findings into the `metrics:`
+   block (`final_review_nits` counts the reported nits, not the left-out ones, so the
+   `--check` balance holds), and `workflow_metrics.py --check <spec-dir>` before reporting
+   success.
    A red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
    STOP with a question) with the names of the missing keys; you do not invent a value you
    did not measure. Commit (`docs: add final review of NNN <slug>`).
 5. **Decisions:**
    - a session on its own → show the findings table and ask the owner (`AskUserQuestion`,
      in the session language; recommendation: accept `blocker` and `worth-fixing`, reject
-     `nit`); record the decisions in PLAN.md → `## Owner decisions` and go on
-     to apply mode;
+     `nit`); record the decisions in PLAN.md → `## Owner decisions` as one entry of kind
+     `gate`, `- YYYY-MM-DD — final-review — `gate` — <question> — `accepted`: F1, F2;
+     `rejected`: F3` (`none` for an empty list), and go on to apply mode;
    - `/pipeline:ship` → end with the RESULT block; its SUMMARY carries the findings table
      and the `Left out: N nit findings` sentence; the decisions are collected by the
      orchestrator.
@@ -129,13 +133,17 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    on the final review).
    No entry → escalation, do not guess.
 2. **Fixes:** make the accepted ones, repeat the full verification (`<verify.command>`), add
-   to the report what was fixed (id → change). In the `metrics:` block: `findings_accepted`,
-   `findings_rejected`; a finding deferred to `<docs.backlog>` counts as
-   `findings_rejected` (reason: "backlog"), otherwise the `--check` balance does not add up.
+   to the report what was fixed (id → change). A finding deferred to `<docs.backlog>` is
+   listed under `rejected` in the `gate` entry (reason: "backlog"), otherwise the `--check`
+   balance does not add up.
 3. **PR** — the spec status stays `implemented`:
    - `<docs.roadmap>` ticked, `<docs.decisions>` if applicable; `<docs.backlog>`
      updated: new items with a priority and a trigger, delivered ones removed,
      items whose trigger has fired listed in the report for the owner;
+   - `workflow_metrics.py --derive <spec-dir>`, which counts the accepted and rejected
+     findings from the `gate` entry, then `workflow_metrics.py --check <spec-dir>` — a red
+     that cannot be fixed = `RESULT: ESCALATE`; a counter measured as zero is recorded as
+     `0`, which is a measurement and not an invented value;
    - commit (`fix: address final review of NNN <slug>`, and with no code changes —
      `docs: record final review of NNN <slug>`), `git push`;
    - the PR already exists (`gh pr view --json url`, e.g. when resuming after an escalation)
@@ -154,25 +162,25 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    On escalation the status stays `implemented`, and the PR is not reported as ready to
    merge. **A test green only after a retry (flaky)** does not block the PR, but it does not
    vanish: add it to `<docs.backlog>` (the test name, the CI run number, the symptom, the
-   trigger) and list it in the report. The entry goes into the closing commit of step 5 —
-   otherwise the trace is lost after the merge.
-5. **Closing — only with green CI:** `status: done` + an entry in `stage_history`;
-   `metrics.finished_at` (`date +%Y-%m-%dT%H:%M`). Before `done` run
-   `workflow_metrics.py --check <spec-dir>` — while it ends with an error, `done` does not
-   happen; a red that cannot be fixed = `RESULT: ESCALATE`. A counter measured as zero you
-   record as `0` — that is a measurement, not an invented value.
-   Commit (`docs: close SPEC NNN <slug>`), `git push`, `gh pr checks <nr> --watch` again
-   — the PR's last commit must have green CI as well. A red after the status commit alone is
-   instability, not a defect: re-run the run (`gh run rerun <id> --failed`), do not revert
-   the status.
+   trigger) and list it in the report. The entry goes into the stage's own commit of step 3
+   — otherwise the trace is lost after the merge.
+5. **The end of the stage is a PR with green CI and the status `implemented`.** You never
+   set `done`: `workflow_metrics.py --close` does, with the cost, the derived counters, the
+   closing commit and the green CI of the new head. A red after your last push is a defect
+   to fix in the loop, as above; a flaky run is handled there too.
 6. Give the PR link, the CI status and the link to the run with the visual artifacts
    (`gh pr checks <nr> --json name,workflow,link` — `link` leads to the run); when
-   you edit the PR description, include the same there. The owner does the merge.
+   you edit the PR description, include the same there. Under `/pipeline:ship` the
+   orchestrator runs `--close` after you return. Run on its own, your last step is
+   `workflow_metrics.py --close <spec-dir>` as a background Bash call (`run_in_background`):
+   the wait for CI outlasts the foreground Bash limit. On a non-zero exit its stderr says
+   which step stopped and what state is left; run it again to resume from the push or the
+   wait. The owner does the merge.
 
 ## Guardrails
 
 - In report mode you fix nothing — the report first, changes after the decision.
-- `done` means "a PR with green CI waits for the merge" — you do not set it earlier.
+- `done` means "a PR with green CI waits for the merge" — `workflow_metrics.py --close` sets it, never you.
 - Do not report cosmetic nits as blockers — the severity has to match the real risk.
 - You do not merge the PR (also enforced by this plugin's command guard).
 

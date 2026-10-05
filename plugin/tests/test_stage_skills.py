@@ -90,10 +90,7 @@ CLOSING_STEPS = {
     "plan": ("8. ", ["started_at"]),
     "plan-review": ("6. ", ["plan_changes"]),
     "implement": ("5. **Finish", []),
-    "final-review": (
-        "4. **Write the report",
-        ["final_review_blockers", "final_review_worth_fixing", "final_review_nits"],
-    ),
+    "final-review": ("4. **Write the report", []),
 }
 METRIC_SKILLS = sorted(CLOSING_STEPS)
 
@@ -114,11 +111,11 @@ def closing_step(name: str) -> str:
     return "\n".join(lines[start:end])
 
 
-def apply_closing_step() -> str:
+def apply_commit_step() -> str:
     text = skill_text("final-review").split("## Apply mode", 1)[1]
     lines = text.splitlines()
-    start = next(i for i, line in enumerate(lines) if line.startswith("5. "))
-    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("6. ")), len(lines))
+    start = next(i for i, line in enumerate(lines) if line.startswith("3. "))
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("4. ")), len(lines))
     return "\n".join(lines[start:end])
 
 
@@ -148,10 +145,11 @@ def test_closing_step_names_the_escalation_path(name):
     assert "RESULT: ESCALATE" in closing_step(name)
 
 
-def test_apply_mode_gates_done_on_the_checker():
-    step = apply_closing_step()
-    assert "--check" in step
-    assert "done" in step
+# SPEC 014: apply runs `--derive` and `--check` before its commit; `done` is set by `--close`.
+def test_apply_mode_runs_derive_and_check_before_its_commit():
+    step = " ".join(apply_commit_step().split())
+    assert "workflow_metrics.py --derive <spec-dir>" in step
+    assert step.index("--derive") < step.index("--check") < step.index("commit (")
     assert "RESULT: ESCALATE" in step
 
 

@@ -15,7 +15,7 @@ import workflow_metrics  # noqa: E402
 DERIVE = "`workflow_metrics.py --derive <spec-dir>`"
 CHECK = "`workflow_metrics.py --check <spec-dir>`"
 # Skills whose closing step runs --derive and then --check; the others join as their step lands.
-CLOSING_SKILLS = ["plan", "plan-review", "implement"]
+CLOSING_SKILLS = ["plan", "plan-review", "implement", "final-review"]
 
 
 def collapse(text: str) -> str:
@@ -168,3 +168,45 @@ def test_plan_no_longer_sets_the_derived_counters():
     step = collapse(closing_step("plan"))
     assert "`started_at`" in step
     assert "set `escalations: 0`" not in step
+
+
+def final_review_step(mode: str, number: int) -> str:
+    block = skill("final-review").split(f"\n## {mode}\n", 1)[1].split("\n## ", 1)[0]
+    return collapse(f"\n{block}".split(f"\n{number}. ", 1)[1].split(f"\n{number + 1}. ", 1)[0])
+
+
+# AC3: the tests perspective still proves that tests test something by breaking the code.
+def test_final_review_tests_break_the_code():
+    step = final_review_step("Report mode", 2)
+    tests = step.split("**Tests:**", 1)[1].split("The finding format", 1)[0]
+    assert "Break the code" in tests
+    assert "see it fail" in tests and "restore" in tests
+
+
+# AC27: without the Agent tool the perspectives are not independent, and the report says so.
+def test_final_review_notes_one_context():
+    sentence = "the three perspectives ran in one context and are not independent"
+    assert "`Agent` tool" in final_review_step("Report mode", 2)
+    report = final_review_step("Report mode", 4)
+    assert sentence in report and "SUMMARY" in report
+    assert sentence in collapse(agent_body("reviewer"))
+
+
+def test_final_review_finding_form():
+    assert "`- **F<n>** `<blocker|worth-fixing|nit>` — " in final_review_step("Report mode", 4)
+
+
+# AC23: apply ends at a PR with green CI; `--close` sets `done`.
+def test_final_review_apply_ends_at_green_ci():
+    text = collapse(skill("final-review"))
+    apply = collapse(skill("final-review").split("\n## Apply mode\n", 1)[1].split("\n## ", 1)[0])
+    assert "status stays `implemented`" in apply
+    assert "never set `done`" in text
+    third = final_review_step("Apply mode", 3)
+    assert "`workflow_metrics.py --derive <spec-dir>`" in third
+    assert third.index("--derive") < third.index("--check") < third.index("commit")
+    assert "own commit" in final_review_step("Apply mode", 4)
+    sixth = final_review_step("Apply mode", 6)
+    assert "`workflow_metrics.py --close <spec-dir>`" in sixth
+    assert "`run_in_background`" in sixth
+    assert "status `done`" not in collapse(agent(("reviewer")))
