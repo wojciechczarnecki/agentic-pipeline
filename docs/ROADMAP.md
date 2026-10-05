@@ -234,23 +234,18 @@ per significant finding, and a finding before code is the cheaper one to fix.
       threshold, since every chunk pays its cache writes again; the converge pass and the
       Definition of Done run in the chunk with the last group, as today
       (`specs/012-chunked-implementer/SPEC.md`)
-- [ ] Before/after comparison of model, effort and the chunked implementer: the transcripts
-      from the audit are the reference from before Stage 6 (and show what the converge
-      pass added); the baseline is the consumer's next 2–3 ordinary specs on 0.8.1 with
-      its default settings — no `models`, no chunking, every stage on the session model at
-      its default effort — so that the baseline and the candidates differ only in
-      configuration, not in the plugin version (0.8.0 already reads documents by topic);
-      no spec runs only for the baseline; then 3–5 specs with the candidates, one change at
-      a time so each effect can be told apart — Sonnet for the implementer, then the
-      chunked implementer on plans with several groups, Opus at `low` effort for the stages
-      that follow a checklist or a script — and the chosen defaults. The plugin's own
-      repository runs a side series: SPEC 011 and 012 ran on 0.7.0 with every stage on the
-      session model and are its baseline (012's final review ran twice after a session
-      limit, so only its other stages count), and its next specs run with
-      `"models": {"implement": "sonnet"}`; this series compares within the repository only,
-      since cost per step depends on the project. Cost is compared per plan step, since
-      spec sizes differ; quality through the metrics and the eval suite on the candidate
-      settings; the consumer's result goes into the root `README.md`
+- [x] Before/after comparison, closed on the data already recorded — no spec runs only to
+      measure (`docs/DECISIONS.md`, 2026-10-05). The consumer never ran the planned
+      no-`models` baseline: `/pipeline:init` wrote `"implement": "sonnet"`, so all nine of
+      its specs (001–009) ran the implementer on Sonnet 5.5. Implementer cost per plan step,
+      from `--record-cost` (0.8.2 backfilled the Sonnet 5.5 stages; 008 and 009 ran in cloud
+      sessions, whose transcripts are not local, so their implementer cost is lost): in the
+      consumer, chunked 86 / 72 / 83 cents (002–004, mean 80) against unchunked 56 / 64 /
+      34 / 104 (001, 005–007, mean 64), with no fewer loop iterations or final-review
+      findings — the chunked implementer costs about a quarter more and is removed in Stage
+      10; in this repository, Opus 27 / 47 / 71 cents (010–012) against Sonnet 17 (013).
+      Sonnet stays the implementer default; Opus at `low` effort for the checklist stages
+      was never measured and stays in `docs/BACKLOG.md` (P3)
 - [x] Cheaper eval runs, in `scripts/` (no plugin version bump): re-running only the
       failed cases merges their results into the receipt while the plugin fingerprint is
       unchanged; a session limit or another infrastructure error is recorded as an error,
@@ -262,6 +257,84 @@ per significant finding, and a finding before code is the cheaper one to fix.
       (`specs/013-cheaper-eval-runs/SPEC.md`)
 - [ ] Write-up, linked from the root `README.md`: the guard as a shell analyser rather than
       a regex, the measured LLM-judge noise, the before/after numbers and cost per spec
+
+## Stage 10 — Lessons from the first public consumer
+
+Nine specs in the owner's public demo repository (001–009, 0.8.1, implementer on Sonnet 5.5)
+and a written report from its spec 005 and its `/pipeline:init` run. Placed before Stage 9,
+like Stage 8 before Stage 6, because every following spec runs on it. As few specs as
+possible: one for the pipeline loop, one for bootstrapping — split because they share no
+code, are verified differently (a pipeline run against a fresh-repository canary and the
+`init` eval cases), and the second spec should already run on the first one's pipeline.
+
+- [x] 0.8.2 (patch): a rate for `claude-sonnet-5-5` and a test that every `models.*` alias
+      has one; the missing costs backfilled from the local transcripts (this repository's
+      010–013, the consumer's 004, 005, 007); the guard's `Read`-rule notice no longer fires
+      in a session started in a subdirectory (`backend/`)
+- [ ] 0.9.0, one spec — fewer rituals, more code in the pipeline loop:
+      - **remove the converge pass**: 0 real gaps kept in the consumer's nine specs and in
+        013, every gap it reported was rejected by the implementer as already decided, while
+        the final review still found 1–14 `worth-fixing` findings per spec — it costs a
+        subagent and finds nothing the compliance perspective does not
+      - **remove the red-record column and its stub ritual**: implementers wrote code first
+        and then stubbed it to record a red (consumer 007, 009 deviations), and the empty
+        column itself became final-review findings (004 F13, 007 F5). Test-first stays as
+        guidance; proof that a test tests something stays with the final review's tests
+        perspective, which breaks the code (004 F8)
+      - **remove the chunked implementer** (Stage 7 result above)
+      - **metrics derived by code**: `workflow_metrics.py` reads every counter it can from
+        the spec files — steps from checkboxes, deviations, findings from the report table,
+        decisions and escalations from `## Owner decisions`; agents write only what needs
+        judgement. Metrics then survive an escalated stage (consumer 005, implement ran as
+        four agents and lost its counts)
+      - **the spec lint in `--check`**: every AC has a row in the AC → steps matrix, every
+        manual scenario says how the owner sees that it passed — a command, a query or a
+        place in the UI with the expected result (consumer 005: AC22 had none)
+      - **escalations with a kind** (`decision` | `permission` | `tooling`): only `decision`
+        counts toward the third-time STOP; the metrics show the rest apart (consumer 005: 3
+        of 4 escalations were tooling)
+      - **dependencies the implementer can actually install**: a dependency the SPEC's
+        owner decisions accept is added by the implementer as before (only an unaccepted one
+        escalates; none is added beyond what the change needs). Each package-manager command
+        runs as its own Bash call, never chained with a file edit, so the project's allow
+        rules (`Bash(uv lock*)`, `Bash(uv sync*)`) match it and the auto-mode classifier is
+        not asked — in consumer 005 one chained call was refused twice, and the owner had
+        to run the install by hand
+      - **a scripted close** for `ship`: `--record-cost`, push, `gh pr checks --watch`, a
+        re-run of failed jobs and the flaky-retry check (attempt numbers) before the closing
+        commit; "resume the closing step only" as a standard option after an escalation
+        there (consumer 005: a whole reviewer run spent on the closing commit)
+      - the `ship` start message lists the model of every stage; the metrics summary labels
+        the cost as a lower bound while output tokens are undercounted (`docs/BACKLOG.md`)
+      - a stage without the `Agent` tool (a cloud session) says in its report that the
+        perspectives ran in one context — no restructuring (`docs/BACKLOG.md`, P3)
+- [ ] 0.10.0, one spec — bootstrapping and the guard (from the consumer's `init` report):
+      - a project in a subdirectory (`backend/`, later `frontend/`): CI
+        `working-directory` (also for `setup-uv`), the Dependabot `directory`,
+        `verify.command`, `format[].command` (`uv run --project backend …`) and the
+        verification commands in `CLAUDE.md` and `docs/CONVENTIONS.md`, filled consistently
+      - a CI template that is green on a new project: a minimal skeleton (pinned dev tools,
+        a lock file, one smoke test — `pytest` exits 5 without tests) or a passing
+        placeholder job; jobs named after layers (`backend`, `frontend`), and a note that a
+        renamed job must be renamed in the ruleset
+      - `NEW-PROJECT.md`: the first push before enabling the `pre-push` hook, the "scaffold
+        through a PR" path (an empty initial commit on `main`), and the repository settings
+        as files shipped with the plugin and applied with `gh api --input`: the ruleset,
+        squash-only merges with PR title and body, `delete_branch_on_merge`,
+        `allow_update_branch`, Dependabot alerts and security updates, private
+        vulnerability reporting
+      - the `settings.json` template: `ask` on `Edit(**/.claude/workflow.json)`, `deny` on
+        detaching the plugin, `allow` for the stack's tools (`uv *`, `docker compose *`)
+      - `production`: a warning when `hosts` stays empty, and the known domains and CLI
+        offered when the owner names a hosting provider (Railway, Vercel, Fly, Render)
+      - `<gitHooksDir>` substituted in the copied `pre-push` (`docs/BACKLOG.md` P3, its
+        trigger has fired), `.ruff_cache/` in `.gitignore`, an optional README and licence
+        question for a public repository, an optional ADR template
+      - the guard: a guardrail file path in a heredoc fed to an interpreter (`python3 -`,
+        `node -e`, `perl -e`) is refused (the consumer edited `.claude/workflow.json` that
+        way); the once-per-session check warns when `alembic.ini` exists and
+        `workflow.json` has no `migrations` section; a refused compound command suggests
+        separate calls
 
 ## Stage 9 — Evidence
 

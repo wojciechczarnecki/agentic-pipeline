@@ -22,6 +22,7 @@ def test_the_rate_table_is_dated_and_frozen():
         "claude-opus-5-5": (400, 500, 800, 20, 2000),
         "claude-opus-5": (500, 625, 1000, 50, 2500),
         "claude-sonnet-5": (200, 250, 400, 20, 1000),
+        "claude-sonnet-5-5": (200, 250, 400, 20, 1000),
         "claude-haiku-4-5": (100, 125, 200, 10, 500),
         "claude-fable-5-1": (1000, 1250, 2000, 25, 5000),
     }
@@ -53,6 +54,22 @@ def test_a_dated_model_id_finds_its_rate():
     assert workflow_metrics.rate_for("claude-opus-5-5") == (400, 500, 800, 20, 2000)
     assert workflow_metrics.rate_for("claude-nope-1") is None
     assert workflow_metrics.stage_cents({"claude-nope-1": [1, 0, 0, 0, 0]}) is None
+
+
+# The model IDs the `models.*` aliases resolve to today. A run on a model without a rate
+# writes no cost for its stage (0.8.1: the Sonnet 5.5 implementer of every spec), so a new
+# model is added here and in RATES together.
+ALIAS_MODELS = {
+    "opus": "claude-opus-5-5",
+    "sonnet": "claude-sonnet-5-5",
+    "haiku": "claude-haiku-4-5",
+    "fable": "claude-fable-5-1",
+}
+
+
+@pytest.mark.parametrize("alias", sorted(ALIAS_MODELS))
+def test_every_stage_model_alias_has_a_rate(alias):
+    assert workflow_metrics.rate_for(ALIAS_MODELS[alias]) is not None
 
 
 def test_usage_without_the_ttl_split_counts_as_5m():

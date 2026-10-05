@@ -23,6 +23,10 @@ metrics:
   findings_accepted: 10
   findings_rejected: 5
   finished_at: 2026-09-24T09:36
+  cost_plan_cents: 184
+  cost_plan_review_cents: 109
+  cost_implement_cents: 267
+  cost_final_review_cents: 397
 ---
 
 # SPEC 010 — Test-first evidence, a converge pass and proportional review

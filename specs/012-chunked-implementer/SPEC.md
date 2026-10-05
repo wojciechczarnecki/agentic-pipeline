@@ -23,6 +23,10 @@ metrics:
   findings_accepted: 11
   findings_rejected: 0
   finished_at: 2026-09-24T23:01
+  cost_plan_cents: 239
+  cost_plan_review_cents: 87
+  cost_implement_cents: 571
+  cost_final_review_cents: 535
 ---
 
 # SPEC 012 — The chunked implementer

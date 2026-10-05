@@ -279,3 +279,22 @@ def test_a_broken_config_still_gets_the_notice(cache):
     assert result.returncode == 0
     assert "falling back to the defaults" in result.stderr
     assert NOTICE in notice_of(result)["systemMessage"]
+
+
+# 0.8.2: a session started in a subdirectory of the repository (`backend/`) has it as
+# CLAUDE_PROJECT_DIR; the rule in the root's .claude/settings.json still covers the plugin.
+def test_a_session_in_a_subdirectory_sees_the_root_settings(cache):
+    write_settings(
+        cache.repo / ".claude" / "settings.json",
+        allow("Read(~/.claude/plugins/cache/mkt/pipeline/**)"),
+    )
+    backend = cache.repo / "backend"
+    backend.mkdir(exist_ok=True)
+    env = cache.env() | {"CLAUDE_PROJECT_DIR": str(backend)}
+    payload = json.dumps(
+        {"tool_input": {"command": "git status"}, "cwd": str(backend), "session_id": cache.session}
+    )
+    result = subprocess.run(
+        [sys.executable, str(GUARD_PATH)], input=payload, text=True, capture_output=True, env=env
+    )
+    assert NOTICE not in result.stdout + result.stderr

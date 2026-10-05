@@ -77,6 +77,7 @@ RATES: dict[str, tuple[int, int, int, int, int]] = {
     "claude-opus-5-5": (400, 500, 800, 20, 2000),
     "claude-opus-5": (500, 625, 1000, 50, 2500),
     "claude-sonnet-5": (200, 250, 400, 20, 1000),
+    "claude-sonnet-5-5": (200, 250, 400, 20, 1000),
     "claude-haiku-4-5": (100, 125, 200, 10, 500),
     "claude-fable-5-1": (1000, 1250, 2000, 25, 5000),
 }
