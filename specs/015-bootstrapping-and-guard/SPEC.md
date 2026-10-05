@@ -25,6 +25,10 @@ metrics:
   final_review_nits: 5
   findings_accepted: 13
   findings_rejected: 0
+  cost_plan_cents: 221
+  cost_plan_review_cents: 116
+  cost_implement_cents: 542
+  cost_final_review_cents: 655
 ---
 
 # SPEC 015 — Bootstrapping and the guard
