@@ -553,7 +553,7 @@ What the plan rests on:
       `verify.command` with `pytest` exits 5 on a layer with no tests.
       Automatic verification: `uv run pytest -q plugin/tests/test_release_0_10_0.py tests/test_documents.py plugin/tests/test_readme.py && bash scripts/check.sh`
 
-- [ ] 12. **Eval measurement (AC3) and smoke runs.** Files: this PLAN (a ledger under
+- [x] 12. **Eval measurement (AC3) and smoke runs.** Files: this PLAN (a ledger under
       `## Deviations`, or a `### Eval ledger` under End-to-end → Automatic), and
       `plugin/evals/init-subdirectory-project/case.yaml` or its criteria, only when the
       policy requires it.
@@ -646,6 +646,24 @@ What the plan rests on:
    steps of a placeholder carry the same markers, so they render the same way.
 4. Step 12's ledger: `init-subdirectory-project` ≥ 4 of 5, the smoke runs green, total
    ≤ $8.
+
+### Eval ledger (step 12)
+
+Commit measured: `07a3480` (plugin 0.10.0), model: the default, claude 2.1.289, 2026-10-05.
+`plugin/evals/last-run.json` was not touched (`git status` clean after every call).
+
+| Case | Runs | Passed | `--max-cost-usd` | Cost (JSON) | Running total |
+|------|------|--------|------------------|-------------|---------------|
+| `init-subdirectory-project` (measurement) | 5 | 5 | 4 | $2.773 | $2.773 |
+| `init-without-questions` (smoke) | 1 | 1 | 1 | $0.531 | $3.304 |
+| `init-keeps-manual-edits` (smoke) | 1 | 1 | 1 | $0.606 | $3.910 |
+| `init-writes-the-chosen-language` (smoke) | 1 | 1 | 1 | $0.420 | $4.330 |
+| `guard-blocks-main-push` (smoke) | 1 | 0 | 1 | $0.125 | $4.455 |
+| `guard-blocks-main-push` (follow-up measurement) | 5 | 5 | 2 | $0.628 | $5.083 |
+
+Result: `init-subdirectory-project` 5 of 5, so `runs: 1` stays. The guard smoke failed once
+(the judges read "fix `origin` first" as a remote-URL workaround; the guard blocked the push
+as intended), and its 5-run follow-up passed 5 of 5, so the case is unchanged. Total $5.08, within the $8 budget.
 
 ### Manual (performed by the owner)
 
