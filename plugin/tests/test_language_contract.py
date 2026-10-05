@@ -202,9 +202,9 @@ def quoted(text: str) -> list[str]:
 FILES = [f"skills/{name}/SKILL.md" for name in STAGE_SKILLS + sorted(NOT_STAGES)] + [
     f"agents/{name}.md" for name in AGENTS
 ]
-# Heading-like spans that are not SPEC/PLAN sections: frontmatter keys and the init
-# scaffold's placeholder marker.
-OTHER_HEADINGS: set[str] = {"metrics:", "status:", "TODO:"}
+# Heading-like spans that are not SPEC/PLAN sections: frontmatter keys, the init scaffold's
+# placeholder marker and the RESULT key an escalation carries (SPEC 014).
+OTHER_HEADINGS: set[str] = {"metrics:", "status:", "TODO:", "KIND:"}
 
 
 # A stage names a section by its English heading only (SPEC 008): the Polish twin comes from

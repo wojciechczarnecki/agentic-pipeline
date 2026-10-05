@@ -38,20 +38,26 @@ Binding on every agent started by `/pipeline:ship`:
 - Language: spec files and the PR description in `language`; commits, the PR title and the
   RESULT block keys in English; the orchestrator shows the ESCALATION and SUMMARY text to
   the owner in the session language.
-- You write the stage metrics yourself into the flat `metrics:` block in the SPEC.md
-  frontmatter: counters are integers, timestamps `%Y-%m-%dT%H:%M`, `escalations` from the
-  start. `escalations` is incremented only by the orchestrator — a stage agent does not
-  change it.
+- The counters of the flat `metrics:` block in the SPEC.md frontmatter that
+  `workflow_metrics.py --derive <spec-dir>` can read — `escalations` among them — come from
+  the fixed forms in SPEC.md and PLAN.md, not from a count of yours: you run `--derive` and
+  write only the keys your skill names itself. Counters are integers, timestamps
+  `%Y-%m-%dT%H:%M`.
 - The final reply starts with the block:
 
 ```
 RESULT: DONE | ESCALATE
 STATUS: <spec status after the stage>
-CHUNK: <group>/<groups> — only the implementer in chunk mode
 METRICS: <key=value; …>
+KIND: <only on ESCALATE — decision | permission | tooling>
 ESCALATION: <only on ESCALATE — problem; options (≤ 4); recommendation; why>
 SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severity | one sentence>
 ```
+
+`KIND` says what the escalation is. `decision` is a question about the product or the plan.
+`permission` is a tool call refused or left unanswered by a permission rule or the auto-mode
+classifier. `tooling` is a broken tool, environment or CI. A RESULT with `ESCALATE` and no
+valid `KIND:` counts as `decision`.
 
 ## Escalation triggers (binding on every agent)
 
@@ -63,7 +69,4 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
 - the self-correction loop exhausted (the 4th iteration on the same error),
 - a test finds a product defect whose fix goes beyond the plan's scope or the owner
   decisions — instead of working around it by changing the test or the test data,
-- a proving test from the owner or the plan that is green before the change it is meant to
-  prove,
-- a real gap left after the second converge pass,
 - a conflict on `git merge origin/main`.

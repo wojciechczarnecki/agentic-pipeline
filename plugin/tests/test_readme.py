@@ -318,8 +318,8 @@ def test_the_result_block_matches_the_contract():
     assert result_fields(result_block(README)) == result_fields(result_block(ship))
     assert result_fields(result_block(README)) == [
         "STATUS",
-        "CHUNK",
         "METRICS",
+        "KIND",
         "ESCALATION",
         "SUMMARY",
     ]

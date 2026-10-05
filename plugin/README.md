@@ -150,8 +150,8 @@ Every stage agent launched by `/pipeline:ship` ends its reply with this block:
 ```
 RESULT: DONE | ESCALATE
 STATUS: <spec status after the stage>
-CHUNK: <group>/<groups> — only the implementer in chunk mode
 METRICS: <key=value; …>
+KIND: <only with ESCALATE — decision | permission | tooling>
 ESCALATION: <only with ESCALATE — problem; options (≤ 4); recommendation; why>
 SUMMARY: <≤ 10 lines; for reviewer/report — findings table: id | severity | one sentence>
 ```
@@ -161,12 +161,11 @@ appears only with `ESCALATE` — the problem, up to four options, a recommendati
 `SUMMARY` is at most ten lines, and for the reviewer in `report` mode a findings table
 (id, severity, one sentence).
 
-In chunk mode the implementer adds a line `CHUNK: <group>/<groups>` right after `STATUS`:
-the group it carried out and the number of groups. `ship` reads `DONE` with
-`STATUS: plan-approved` as the end of a chunk and starts the next implementer with the same
-prompt; a chunk end that repeats the group of the previous chunk that returned `DONE`, or
-has no `CHUNK:` line, counts as a missing RESULT (one re-run per chunk, then an
-escalation).
+`KIND` says what the escalation is: `decision` is a question about the product or the plan,
+`permission` a tool call refused or left unanswered by a permission rule or the auto-mode
+classifier, and `tooling` a broken tool, environment or CI. A RESULT with `ESCALATE` and no
+valid `KIND:` counts as `decision`. Only `decision` escalations count toward the third
+escalation of one stage that stops the pipeline.
 
 A stage agent cannot ask the owner: wherever a skill says to ask or to STOP, it ends with a
 `RESULT: ESCALATE` block. The orchestrator turns that into a question for the owner and
@@ -182,9 +181,6 @@ records the decision in the owner decisions section of PLAN.md.
 - an exhausted self-correction loop (the 4th iteration on the same error),
 - a test finds a product defect whose fix goes beyond the plan's scope or the owner's
   decisions — instead of working around it by changing the test or the test data,
-- a proving test from the owner or the plan that is green before the change it is meant to
-  prove,
-- a real gap left after the second converge pass,
 - a conflict on `git merge origin/main`.
 
 ### Implementation and review

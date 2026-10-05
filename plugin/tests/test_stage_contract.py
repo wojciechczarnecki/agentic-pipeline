@@ -62,10 +62,27 @@ def test_the_contract_states_the_metrics_format():
     assert "README" not in block
 
 
-# A stage agent that bumps `escalations` itself double-counts the orchestrator's escalation.
-def test_the_contract_leaves_escalations_to_the_orchestrator():
-    block = section(SHIP, "## Stage agent contract")
-    assert "`escalations` is incremented only by the orchestrator" in block
+# SPEC 014: the counters `workflow_metrics.py --derive` can read come from the fixed forms, not
+# from a count the agent makes; `escalations` is one of them, so no agent increments it.
+def test_the_contract_says_where_the_derived_counters_come_from():
+    block = " ".join(section(SHIP, "## Stage agent contract").split())
+    assert "`workflow_metrics.py --derive <spec-dir>`" in block
+    assert "fixed forms" in block
+    assert "`escalations`" in block
+    assert "incremented only by the orchestrator" not in block
+
+
+# SPEC 014, AC15: an escalation carries its kind as a RESULT key.
+def test_the_result_block_has_kind():
+    readme = (PLUGIN / "README.md").read_text()
+    for text in (SHIP, readme):
+        block = text.split("```\nRESULT: DONE | ESCALATE", 1)[1].split("```", 1)[0]
+        fields = [line.split(":", 1)[0] for line in block.splitlines() if line.strip()]
+        assert fields == ["STATUS", "METRICS", "KIND", "ESCALATION", "SUMMARY"], fields
+        prose = " ".join(text.split())
+        for kind in ("`decision`", "`permission`", "`tooling`"):
+            assert kind in prose, kind
+        assert "no valid `KIND:` counts as `decision`" in prose
 
 
 # The harness may run agents in the background; what matters is waiting for the result.
@@ -89,18 +106,17 @@ def test_ship_step_three_states_the_metrics_format():
     assert "README" not in step
 
 
-# SPEC 010 adds two escalations to `implement`; the binding list every stage agent reads must
-# name them too, in the skill and in the README (final review F7).
-NEW_TRIGGERS = ["green before the change", "second converge pass"]
+# SPEC 014, AC1, AC2: the two triggers of the removed rituals are gone from the binding list.
+REMOVED_TRIGGERS = ["green before the change", "converge pass"]
 
 
-@pytest.mark.parametrize("trigger", NEW_TRIGGERS)
-def test_the_trigger_list_names_the_spec_010_escalations(trigger):
+@pytest.mark.parametrize("trigger", REMOVED_TRIGGERS)
+def test_the_removed_triggers_are_gone(trigger):
     ship = " ".join(section(SHIP, "## Escalation triggers").split())
     readme = (PLUGIN / "README.md").read_text()
     readme = readme.split("\n### Escalation triggers\n", 1)[1].split("\n### ", 1)[0]
-    assert trigger in ship, trigger
-    assert trigger in " ".join(readme.split()), trigger
+    assert trigger not in ship, trigger
+    assert trigger not in " ".join(readme.split()), trigger
 
 
 # SPEC 014: the implementer reports what `--derive` wrote.
