@@ -17,8 +17,8 @@
   those cases. `init` is skill prose: whether it fills `backend/` into all six places is
   measured only by the eval case. The case costs money, and the budget is capped at $8.
   `security.yml` is not in the six places of AC2, so it still runs at the root of a
-  subdirectory project and stays red without a lock file. This is a backlog proposal, not
-  a step.
+  subdirectory project and stays red without a lock file. It is not fixed here; step 11
+  records it in `docs/BACKLOG.md`.
 - **New dependency:** no
 - **Data migration:** no
 - **Manual scenarios for the owner:** 1. The canary (AC22): `/pipeline:init` on the
@@ -109,7 +109,14 @@ What the plan rests on:
   - the bodies whose marker follows a `<<`/`<<-` token in the segment's raw tokens;
   - the word after a `<<<` token;
   - the argument after `-c` (Python), or after `-e`, `-E` or `--eval` (Perl, Ruby, Node),
-    for each occurrence.
+    and after `-p`/`--print` (Node, which evaluates its argument like `-e`), for each
+    occurrence.
+
+  Two details found at review. `tokenize` turns `<<-'EOF'` into `<<` and `-<marker>` (the
+  quotes go, the `-` stays), so the marker is looked up in the word after `<<` by a
+  search, not by equality. The code is matched both as written and after
+  `expand_variables(code, env)`, because the shell expands an unquoted heredoc body and a
+  double-quoted `-c` argument, so `$CLAUDE_PLUGIN_ROOT/…` names the plugin directory.
 
   The code is refused when it matches any of these patterns, all built in `Rules`:
   - `rules.protected_file` (`.claude/settings*.json`, `.claude/workflow.json`, and the
@@ -193,7 +200,12 @@ What the plan rests on:
   - `settings.json` template (AC9): new `ask` and `deny` rules.
   - Stack `allow` rules (AC10): added by the skill, not the template, because they depend
     on what the repository holds.
-  - `<gitHooksDir>` (AC12): the skill substitutes it in the copied `pre-push` with `sed`.
+  - `<gitHooksDir>` (AC12): the skill substitutes it while copying, before the hook
+    exists: `sed 's|<gitHooksDir>|<dir>|' <template> > <gitHooksDir>/pre-push`, then
+    `chmod +x`. It never runs `sed -i` on the copied hook: the guard refuses a shell
+    change to an existing hook under `gitHooksDir` ("an existing git hook changes only
+    through Edit/Write"; checked at review on `guard.evaluate`), so a copy-then-`sed -i`
+    order fails. An existing hook on a re-run is left alone (step 5 of the skill).
   - `.gitignore` (AC13): append-only through the shell. The skill gives the check
     (`grep -qxF` per line, and a newline first when the file does not end in one).
   - Closing list: the `hosts` warning (AC11), the README and licence TODOs (AC14) and how
@@ -243,7 +255,7 @@ What the plan rests on:
 | AC16 | 2 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_naming_a_guardrail_file_is_refused` (parametrised: heredoc, here-string, `-c`, `-e`, `-E`, wrappers, plugin root, install state) | |
 | AC17 | 2, 4 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_without_a_guardrail_path_passes`, `::test_a_heredoc_to_a_non_interpreter_keeps_todays_rules`, `::test_guard_doc_narrows_the_interpreter_limit` | |
 | AC18 | 3, 4 | `plugin/tests/test_guard_alembic_notice.py` (root, subdirectory, once per session, never blocks, silent with `migrations`, silent without `workflow.json`, silent at depth 2) | |
-| AC19 | 1 | `plugin/tests/test_guard.py::test_a_chained_uv_call_with_a_refused_part_suggests_separate_calls`, `::test_a_call_with_every_part_refused_suggests_separate_calls` | |
+| AC19 | 1 | `plugin/tests/test_guard.py::test_a_chained_uv_call_with_a_refused_part_suggests_separate_calls`, `::test_a_call_with_every_part_refused_suggests_separate_calls` | only `::test_a_call_with_every_part_refused_suggests_separate_calls`; the chained `uv` test is a regression pin, green today |
 | AC20 | 11 | `plugin/tests/test_release_0_10_0.py`; `tests/test_documents.py::test_spec_015_decisions_rows`, `::test_spec_015_roadmap_and_backlog` | |
 | AC21 | 11, 12 | `bash scripts/check.sh` | n/a — the gate over every other test |
 | AC22 | — | manual (owner), End-to-end → Manual 1 | manual |
@@ -254,11 +266,15 @@ What the plan rests on:
 
 - [ ] 1. **The compound suggestion (AC19).** Files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard.py`.
-      Tests first, then run them red:
-      - `test_a_chained_uv_call_with_a_refused_part_suggests_separate_calls`:
-        `uv lock && uv sync && gh pr merge 1`. The reason names `` `gh pr merge 1` `` and
-        contains "separate call".
-      - `test_a_call_with_every_part_refused_suggests_separate_calls`:
+      Tests first. Only the second test is the proving test and must be seen red; the
+      first is a regression pin the SPEC asks for, and it is green before the change,
+      because the some-parts-passed suffix already says "run them as a separate call"
+      (checked at review on `guard.evaluate`). A green first test is expected and is not
+      the "proving test green before the change" escalation.
+      - `test_a_chained_uv_call_with_a_refused_part_suggests_separate_calls` (regression
+        pin): `uv lock && uv sync && gh pr merge 1`. The reason names
+        `` `gh pr merge 1` `` and contains "separate call".
+      - `test_a_call_with_every_part_refused_suggests_separate_calls` (proving, red today):
         `gh pr merge 1 && sudo ls`. The reason contains "separate calls" and has no
         "passed".
 
@@ -274,8 +290,10 @@ What the plan rests on:
       - `python3 - <<'EOF'` with a body that reads `.claude/workflow.json`;
       - `node <<EOF` with a body naming `.claude/settings.local.json`;
       - `python3 -c "open('.claude/workflow.json', 'w')"`;
-      - `perl -e`, `perl -E`, `ruby -e` and `node -e`/`--eval` naming
+      - `perl -e`, `perl -E`, `ruby -e` and `node -e`/`--eval`/`-p`/`--print` naming
         `.claude/settings.json`;
+      - an unquoted heredoc body to `python3` that names `$CLAUDE_PLUGIN_ROOT/hooks/x`,
+        with `CLAUDE_PLUGIN_ROOT` set in the test env;
       - `python3 <<< "…workflow.json…"`;
       - `uv run python -c …`, `env python3 -c …` and `timeout 5 python3 -c …`;
       - `bash -c "python3 -c '…workflow.json…'"`;
@@ -284,7 +302,8 @@ What the plan rests on:
       - the same heredoc in the second part of a compound call, which is refused as a
         compound.
 
-      Allowed cases:
+      Allowed cases (regression pins, green before the change; only the refused cases
+      above must be seen red):
       - `python3 - <<'EOF'` printing 1;
       - `python3 -c "print(1)"`;
       - `cat <<EOF > notes.md` whose body names `.claude/workflow.json`;
@@ -302,7 +321,9 @@ What the plan rests on:
 - [ ] 3. **Alembic notice (AC18).** Files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard_alembic_notice.py` (new).
       Tests first, built on `test_guard_read_rule.Setup`, with a covering `Read` rule
-      written so that the read-rule notice stays out of the way, then run them red:
+      written so that the read-rule notice stays out of the way, then run them red. The
+      silent cases (second call, `migrations` present, depth 2, no `workflow.json`) are
+      regression pins and pass before the change; the notice cases must be seen red:
       - root `alembic.ini` with no `migrations`: the notice is in `systemMessage` and
         `additionalContext`, names `alembic.ini` and `migrations`, and the exit code is 0;
       - a second call in the same session is silent;
@@ -329,7 +350,8 @@ What the plan rests on:
       - the README guard paragraph names the Alembic notice and `migrations`.
 
       Then edit the docs. Line 21 of GUARD.md ("call an interpreter") is narrowed the same
-      way.
+      way, and so are the interpreter mentions at lines 218 and 228 (the release-tag and
+      evasion notes), so no passage still says every interpreter call goes unseen.
       Automatic verification: `uv run pytest -q plugin/tests/test_guard_interpreters.py plugin/tests/test_readme.py`
 
 ### Group 2 — `init`: templates, skill, documentation, eval case
@@ -417,7 +439,8 @@ What the plan rests on:
         `Bash(npm *)`, `Bash(docker compose *)` and the four compose file names.
       - `test_the_closing_warns_about_empty_hosts`: step 7 names `production.hosts`.
       - `test_the_hooks_dir_is_substituted_in_pre_push`: step 4 names `<gitHooksDir>` in
-        the pre-push bullet.
+        the pre-push bullet, and the bullet has no `sed -i` (Approach → Other `init`
+        points: the guard refuses a shell edit of an existing hook).
       - `test_gitignore_is_append_only`: the write scope names `.gitignore` and "append".
         Step 4 or 6 names `.claude/settings.local.json`, `.venv/`, `__pycache__/`,
         `.pytest_cache/`, `.ruff_cache/` and `node_modules/`.
@@ -523,7 +546,11 @@ What the plan rests on:
         cuts of Owner decisions 6 and 7, and the Guard P3 backlog row mentions the
         narrowed interpreter case.
 
-      Then edit. The CHANGELOG follows the 0.9.0 section's shape.
+      Then edit. The CHANGELOG follows the 0.9.0 section's shape. `docs/BACKLOG.md` also
+      gains the two debts this plan leaves on purpose (Risks and traps), each with a
+      priority and a trigger: the security templates have no subdirectory and no
+      lock-file-less form (`security.yml` red on a fresh subdirectory project), and
+      `verify.command` with `pytest` exits 5 on a layer with no tests.
       Automatic verification: `uv run pytest -q plugin/tests/test_release_0_10_0.py tests/test_documents.py plugin/tests/test_readme.py && bash scripts/check.sh`
 
 - [ ] 12. **Eval measurement (AC3) and smoke runs.** Files: this PLAN (a ledger under
@@ -579,16 +606,20 @@ What the plan rests on:
   already needs the owner's consent for every `.claude/` write, so unattended runs are
   unchanged. The eval sandbox blocks `.claude/` anyway, which is why the graders accept the
   printed content.
+- **`sed -i` on the copied `pre-push`** is refused by the guard once the hook exists
+  under `gitHooksDir`. The substitution happens in the copy itself (Approach → Other
+  `init` points).
 - **Placeholder job without checkout** fails with `defaults.run.working-directory` on a
   missing directory, so the placeholder keeps `actions/checkout`.
 - **Node real job**: `npm run build` and `test:run` are not universal. The skill drops the
   build step without a `build` script and uses the test script the manifest has.
 - **`verify.command` with `pytest` on a layer without tests** exits 5 locally, like CI did.
-  The SPEC does not cover it, so it is a backlog proposal, not a step.
+  The SPEC does not cover it, so step 11 records it in `docs/BACKLOG.md` instead.
 - **`security.yml`** is not among AC2's six places. For a subdirectory layer it still runs
   at the root, and `uv export --frozen` fails without a lock file. This is why the canary's
-  pass condition names the CI workflow explicitly. Backlog proposal: a subdirectory form
-  and a no-lock-file form for the security templates.
+  pass condition names the CI workflow explicitly. Step 11 records the debt in
+  `docs/BACKLOG.md`: a subdirectory form and a no-lock-file form for the security
+  templates.
 - **Eval cost and flakiness.** `init` runs are long, at about $0.4–0.5 each (PLAN 006
   ledger). `--max-cost-usd` bounds the number of runs, not the cost of one, so keep it at
   the values in step 12.
@@ -648,7 +679,56 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+### 2026-10-05 — plan review
+
+Anti-anchoring notes, made from the SPEC alone: (1) heredoc bodies are dropped by
+`strip_heredocs` today, so the interpreter rule needs the bodies tied to their command;
+(2) the compound suffix is one line in `Analyzer.run`; (3) the Alembic notice belongs beside
+`read_rule_notice`; (4) `init` is prose, so the templates need a mechanically testable
+subdirectory form and the eval case carries the rest; (5) the pre-push substitution must
+survive the guard's own hook rule. The plan matched (1)–(4); (5) was the first lead.
+
+Findings (severity counted before the fixes):
+
+| # | Severity | Finding | Change |
+|---|----------|---------|--------|
+| 1 | `major` | Step 1 asked to run both AC19 tests red, but `uv lock && uv sync && gh pr merge 1` already yields "the other 2 of 3 parts passed — run them as a separate call" (checked on `guard.evaluate`). The implementer would hit the "proving test green before the change" escalation on a regression pin. The same holds for the allowed cases of step 2 and the silent cases of step 3. | Step 1 marks the chained test as a regression pin and the every-part-refused test as the proving one; the AC19 matrix row's fourth column says so; steps 2 and 3 mark their allowed/silent cases as regression pins. |
+| 2 | `major` | The plan had the skill substitute `<gitHooksDir>` "in the copied `pre-push` with `sed`". The guard refuses `sed -i` on an existing hook under `gitHooksDir` (checked: "an existing git hook changes only through Edit/Write…"), so AC12 would fail in the eval and for consumers. | Approach → Other `init` points: substitute while copying (`sed … <template> > <hook>`, then `chmod +x`), never `sed -i`; step 8's test pins the absence of `sed -i`; a Risks entry. |
+| 3 | `minor` | The interpreter rule missed `node -p`/`--print`, which evaluates code like `-e`, and the shell expands `$CLAUDE_PLUGIN_ROOT` inside an unquoted heredoc or a double-quoted `-c`; `tokenize` also leaves `<<-` delimiters as `-<word>`. | Approach → Guard: `-p`/`--print` added, code matched raw and after `expand_variables`, marker looked up by search; step 2 gains the two test cases. |
+| 4 | `minor` | Step 4 narrowed GUARD.md lines 21 and 234–238 but not the interpreter mentions at lines 218 and 228. | Step 4 covers them. |
+| 5 | `minor` | The `security.yml` and `pytest`-exit-5 debts were "backlog proposals" with no step writing them. | Step 11 adds both to `docs/BACKLOG.md`; Owner summary and Risks point there. |
+
+Checked and found sound (later stages need not repeat it):
+
+- **Coverage:** every AC1–AC22 has steps and a proving test; the matrix matches the steps;
+  AC22 is the manual canary with a `Pass when:` line; AC3's six grader places are AC2's.
+- **Compliance:** standard library only; the guard tested through `evaluate` and as a
+  subprocess; tests pin identifiers, not prose; ADR twins; the eval cost policy (5 runs,
+  `--max-cost-usd`, wrong behaviour named, receipt and canary left to the owner). DECISIONS
+  searched for "interpreter", "write scope", "placeholder", "unattended", "ask": the
+  2026-09-21 interpreter limit is narrowed with a new row (AC20); no row binds keeping
+  `.claude/workflow.json` out of `ask` (the test comment dates from the 0.2.0 import), and
+  only `init` writes that file, so a stage subagent never stalls on the new `ask`.
+- **Minimality:** the delimiter-marker design is the smallest one that keeps AC17's
+  attribution; per-stack placeholder templates reuse the real steps as comments.
+- **Feasibility:** confirmed in code — `GUARDRAIL_FILES` already says "Edit/Write";
+  `config.root`, `first_in_session` and the `read_rule_notice` order exist as described;
+  `<<<` tokenizes as one token; a heredoc inside unquoted `$(…)` is already refused as
+  unparseable, so nested analyzers lose no bodies; the commit-message heredoc inside `"…"`
+  stays with the nested `cat` analyzer. The only `<gitHooksDir>` in the templates is
+  `pre-push` line 5.
+- **E2E:** automatic part runs on the real hook and on scratchpad renderings; the manual
+  part is only the canary, which cannot be automated (a real GitHub repository and CI).
+- **Testability:** every step has exact `Automatic verification:` commands.
+- **Groups:** three groups, no boundary leaves work half done; step 12 needs every prior
+  step committed and sits last.
+- **Test-first:** every AC step writes its tests first; the fourth matrix column is present.
+- **Summary:** no new dependency, no data migration, consistent with SPEC Owner
+  decision 11.
+- **Language:** `en`, matching `.claude/workflow.json`.
+
+Decision: the plan is ready — both majors were fixed in the plan itself, no blocker
+remains, and it adds no dependency or migration, so it is set to `plan-approved`.
 
 ## Chunk notes
 
