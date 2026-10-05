@@ -241,7 +241,7 @@ def test_init_writes_the_implement_model_guess():
     assert '"models": {"implement": "sonnet"}' in generating
 
 
-# SPEC 012, AC5: chunking stays off in new projects until the Stage 7 comparison measures it.
+# SPEC 014, AC5: the `implement` section was retired in 0.9.0 and init does not write it.
 def test_init_does_not_write_the_implement_section():
     generating = " ".join(step(4).split())
     assert "you do not write the `implement` section" in generating
