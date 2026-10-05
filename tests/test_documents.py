@@ -633,3 +633,38 @@ def test_backlog_drops_the_delivered_eval_items():
     backlog = read("docs/BACKLOG.md")
     assert "reads the receipt from the working tree" not in backlog
     assert "clean check ignores untracked files" not in backlog
+
+
+# SPEC 014, AC29: the roadmap ticks the Stage 10 item, the decisions record the close and the
+# derived metrics, and the backlog drops what the spec delivered.
+def test_roadmap_ticks_spec_014():
+    link = "specs/014-pipeline-loop-fewer-rituals/SPEC.md"
+    items = [item for item in roadmap_items() if link in item]
+    assert len(items) == 1, items
+    assert items[0].startswith("- [x]"), items
+
+
+def test_decisions_record_spec_014():
+    rows = [row for row in read("docs/DECISIONS.md").splitlines() if "SPEC 014" in row]
+    close = [row for row in rows if "--close" in row]
+    assert len(close) == 1, rows
+    for token in ["`done`", "reviewer", "protectedBranches", "outside the guard"]:
+        assert token in close[0], token
+    derived = [row for row in rows if "--derive" in row]
+    assert len(derived) == 1, rows
+    assert "frontmatter" in derived[0]
+    assert any("converge" in row and "chunk" in row for row in rows), rows
+
+
+def test_backlog_after_spec_014():
+    backlog = read("docs/BACKLOG.md")
+    p2 = backlog.split("## P2", 1)[1].split("## P3", 1)[0]
+    assert "by its path" not in p2
+    cost = [row for row in p2.splitlines() if "lower bound" in row and "cost_" in row]
+    assert len(cost) == 1, cost
+    assert "label is done" in cost[0] and "waits" in cost[0]
+
+
+def test_conventions_say_close_runs_the_cost():
+    metrics = section(CONVENTIONS, "## Workflow metrics")
+    assert "--close" in metrics and "--record-cost" in metrics

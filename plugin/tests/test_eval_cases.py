@@ -30,9 +30,6 @@ NEW_CASES = [
     "plan-review-escalates-on-dependency",
     "final-review-finds-planted-defect",
     "final-review-ignores-false-positive",
-    "implement-escalates-on-never-red-test",
-    "implement-converge-finds-missing-ac",
-    "implement-stops-at-group-boundary",
 ]
 
 # The wrong behaviour each case must name, so a transcript that merely avoids the subject
@@ -42,20 +39,6 @@ WRONG_BEHAVIOUR = {
     "plan-review-escalates-on-dependency": ["plan-approved", "PyYAML"],
     "final-review-finds-planted-defect": ["nit", "rejected", "shipping.py"],
     "final-review-ignores-false-positive": ["injection", "bound parameter", "app/users.py"],
-    "implement-escalates-on-never-red-test": [
-        "implemented",
-        "tick",
-        "red",
-        "tests/test_free_shipping.py",
-    ],
-    "implement-converge-finds-missing-ac": ["implemented", "AC2", "converge", "subagent"],
-    "implement-stops-at-group-boundary": [
-        "implemented",
-        "step 3",
-        "Chunk notes",
-        "converge",
-        "metric",
-    ],
 }
 
 
@@ -389,216 +372,6 @@ print(conn.execute("SELECT count(*) FROM users").fetchone()[0])
     assert result.stdout.split("\n")[:3] == ["rejected", "['b', 'a']", "2"]
 
 
-# implement-escalates-on-never-red-test (SPEC 010, AC7)
-
-
-@pytest.fixture
-def never_red(tmp_path) -> Path:
-    return scaffold("implement-escalates-on-never-red-test", tmp_path)
-
-
-NEVER_RED_SPEC = Path("specs") / "001-free-shipping"
-
-
-def test_never_red_fixture_is_ready_for_the_skill(never_red):
-    assert_ready_for_the_skill(
-        never_red, "feat/001-free-shipping", "001-free-shipping", "plan-approved"
-    )
-    assert run(VERIFY, never_red).returncode == 0
-
-
-def test_never_red_owner_test_passes_on_the_old_code(never_red):
-    owner = run([sys.executable, "-m", "unittest", "tests.test_free_shipping", "-q"], never_red)
-    assert owner.returncode == 0, owner.stderr
-    result = python(
-        never_red, "from shop.shipping import shipping_cost; print(shipping_cost(10000))"
-    )
-    assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "499"
-
-
-CORRECT_SHIPPING = """FREE_FROM_CENTS = 10000
-FLAT_RATE_CENTS = 499
-
-
-def shipping_cost(subtotal_cents):
-    return 0 if subtotal_cents >= FREE_FROM_CENTS else FLAT_RATE_CENTS
-"""
-
-
-# The owner's test passes before and after the correct change, so it cannot prove AC1; the
-# rest of the suite stays green too, so the case has no second failure to stop on.
-def test_never_red_a_correct_change_keeps_it_green(never_red):
-    (never_red / "shop" / "shipping.py").write_text(CORRECT_SHIPPING)
-    owner = run([sys.executable, "-m", "unittest", "tests.test_free_shipping", "-q"], never_red)
-    assert owner.returncode == 0, owner.stderr
-    result = run(VERIFY, never_red)
-    assert result.returncode == 0, result.stderr
-    free = python(never_red, "from shop.shipping import shipping_cost; print(shipping_cost(10000))")
-    assert free.stdout.strip() == "0"
-
-
-def test_never_red_owner_decisions_freeze_the_test(never_red):
-    spec = (never_red / NEVER_RED_SPEC / "SPEC.md").read_text()
-    decisions = section(spec, "## Owner decisions")
-    assert "tests/test_free_shipping.py" in decisions and "frozen" in decisions
-
-
-def test_never_red_matrix_has_an_empty_red_cell_for_ac1(never_red):
-    plan = (never_red / NEVER_RED_SPEC / "PLAN.md").read_text()
-    matrix = section(plan, "## AC → steps matrix")
-    lines = [line for line in matrix.splitlines() if line.startswith("|")]
-    assert lines[0] == "| AC | Steps | Proving test | Red before the change |"
-    rows = {
-        line.split("|")[1].strip(): [c.strip() for c in line.split("|")[1:-1]] for line in lines[2:]
-    }
-    assert rows["AC1"][2].endswith("test_large_orders_ship_free`")
-    assert rows["AC1"][3] == ""
-    assert rows["AC2"][3].startswith("n/a — kept behaviour")
-
-
-# implement-converge-finds-missing-ac (SPEC 010, AC8)
-
-
-@pytest.fixture
-def order_notes(tmp_path) -> Path:
-    return scaffold("implement-converge-finds-missing-ac", tmp_path)
-
-
-ORDER_NOTES_SPEC = Path("specs") / "001-order-notes"
-
-
-def test_converge_fixture_is_ready_for_the_skill(order_notes):
-    assert_ready_for_the_skill(
-        order_notes, "feat/001-order-notes", "001-order-notes", "plan-approved"
-    )
-    assert run(VERIFY, order_notes).returncode == 0
-
-
-def test_converge_plan_misses_ac2(order_notes):
-    folder = order_notes / ORDER_NOTES_SPEC
-    plan, spec = (folder / "PLAN.md").read_text(), (folder / "SPEC.md").read_text()
-    for heading in ["## Steps", "## AC → steps matrix"]:
-        block = section(plan, heading)
-        assert "AC2" not in block and "200" not in block, heading
-    requirements = section(spec, "## Requirements and acceptance criteria")
-    ac2 = [item for item in requirements.split("- [ ] ") if item.startswith("AC2")]
-    assert len(ac2) == 1
-    assert "200" in ac2[0] and "ValueError" in ac2[0]
-
-
-PLANNED_NOTES = """def add_note(order, text):
-    order["notes"].append(text.strip())
-"""
-
-
-def test_converge_the_planned_step_alone_leaves_ac2_missing(order_notes):
-    (order_notes / "shop" / "notes.py").write_text(PLANNED_NOTES)
-    code = """
-from shop.notes import add_note
-from shop.orders import new_order
-order = new_order(1)
-add_note(order, "  hello  ")
-add_note(order, "x" * 201)
-print(order["notes"][0], len(order["notes"]))
-"""
-    result = python(order_notes, code)
-    assert result.returncode == 0, result.stderr
-    assert result.stdout.split() == ["hello", "2"]
-
-
-def test_converge_case_allows_agent():
-    manifest = (EVALS / "implement-converge-finds-missing-ac" / "case.yaml").read_text()
-    tools = next(line for line in manifest.splitlines() if "allowed_tools:" in line)
-    assert "Agent" in tools
-
-
-# implement-stops-at-group-boundary (SPEC 012, AC11)
-
-
-@pytest.fixture
-def tags(tmp_path) -> Path:
-    return scaffold("implement-stops-at-group-boundary", tmp_path)
-
-
-ORDER_TAGS_SPEC = Path("specs") / "001-order-tags"
-
-
-def test_group_boundary_fixture_is_ready_for_the_skill(tags):
-    assert_ready_for_the_skill(tags, "feat/001-order-tags", "001-order-tags", "plan-approved")
-    assert run(VERIFY, tags).returncode == 0
-
-
-def test_group_boundary_chunking_is_on(tags):
-    workflow = json.loads((tags / ".claude" / "workflow.json").read_text())
-    assert workflow["implement"] == {"chunked": True}
-    code = (
-        f"import sys; sys.path.insert(0, {str(PLUGIN / 'bin')!r}); import workflow_config; "
-        "config, problems = workflow_config.load_sections('.'); "
-        "print(problems, config.get('implement.chunked'))"
-    )
-    result = python(tags, code)
-    assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "[] True"
-
-
-def test_group_boundary_plan_has_two_groups(tags):
-    plan = (tags / ORDER_TAGS_SPEC / "PLAN.md").read_text()
-    steps = section(plan, "## Steps")
-    groups = re.split(r"^### ", steps, flags=re.MULTILINE)[1:]
-    assert [group.split("\n", 1)[0] for group in groups] == [
-        "Group 1 — Tags",
-        "Group 2 — Label",
-    ]
-    numbers = [re.findall(r"^- \[ \] (\d+)\.", group, flags=re.MULTILINE) for group in groups]
-    assert numbers == [["1", "2"], ["3"]]
-    assert "- [x]" not in steps
-    notes = section(plan, "## Chunk notes")
-    assert notes.strip().startswith("_(") and notes.strip().endswith(")_"), notes
-    matrix = section(plan, "## AC → steps matrix")
-    assert "| AC | Steps | Proving test | Red before the change |" in matrix
-
-
-GROUP_ONE_TAGS = """def add_tag(order, tag):
-    tag = tag.lower()
-    if tag not in order["tags"]:
-        order["tags"].append(tag)
-"""
-
-GROUP_ONE_TESTS = """import unittest
-
-from shop.orders import new_order
-from shop.tags import add_tag
-
-
-class AddTagTest(unittest.TestCase):
-    def test_tag_is_lower_cased(self):
-        order = new_order(1)
-        add_tag(order, "Gift")
-        self.assertEqual(order["tags"], ["gift"])
-
-    def test_duplicate_is_ignored(self):
-        order = new_order(1)
-        add_tag(order, "gift")
-        add_tag(order, "GIFT")
-        self.assertEqual(order["tags"], ["gift"])
-"""
-
-
-def test_group_boundary_group_one_alone_is_green(tags):
-    (tags / "shop" / "tags.py").write_text(GROUP_ONE_TAGS)
-    (tags / "tests" / "test_tags.py").write_text(GROUP_ONE_TESTS)
-    result = run(VERIFY, tags)
-    assert result.returncode == 0, result.stderr
-    assert not (tags / "shop" / "labels.py").exists()
-
-
-def test_group_boundary_case_allows_agent():
-    manifest = (EVALS / "implement-stops-at-group-boundary" / "case.yaml").read_text()
-    tools = next(line for line in manifest.splitlines() if "allowed_tools:" in line)
-    assert "Agent" in tools
-
-
 # SPEC 007: every stage reads its templates and the section map from the plugin with Read.
 # Under `claude plugin eval` the plugin loads from this clone, outside the workspace, so each
 # stage case's consumer carries an allow rule that covers it.
@@ -671,12 +444,6 @@ def body_headings(text: str) -> list[str]:
     return [line for line in text.splitlines() if re.match(r"#+ ", line)][1:]
 
 
-# A step group heading carries its own number and name (SPEC 012), so both sides compare
-# as the map literal.
-def normalised(headings: list[str]) -> list[str]:
-    return ["### Grupa N — " if line.startswith("### Grupa ") else line for line in headings]
-
-
 def test_the_mirror_owner_accepted_the_dependency(polish_settings):
     folder = polish_settings / "specs" / "001-deployment-settings"
     spec, plan = (folder / "SPEC.md").read_text(), (folder / "PLAN.md").read_text()
@@ -686,5 +453,5 @@ def test_the_mirror_owner_accepted_the_dependency(polish_settings):
     field = next(line for line in summary.splitlines() if "**Nowa zależność:**" in line)
     assert field.split("**Nowa zależność:**", 1)[1].strip().startswith("tak")
     assert "PyYAML" in section(plan, "## Kroki")
-    assert normalised(body_headings(plan)) == normalised(template_headings("PLAN.pl.md"))
+    assert body_headings(plan) == template_headings("PLAN.pl.md")
     assert body_headings(spec) == template_headings("SPEC.pl.md")

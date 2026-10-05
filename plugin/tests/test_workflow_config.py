@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -292,22 +293,35 @@ def test_models_errors_are_readable(repo, models, fragment):
     assert fragment in result.stderr
 
 
-# SPEC 012, AC4: `implement.chunked` turns the chunked implementer on; anything but a boolean
-# warns and counts as off, and the guard never blocks on it.
+# SPEC 014, AC5: `implement.chunked` is retired in 0.9.0. A boolean is accepted and ignored with
+# a notice on `--check`; the hooks stay silent; anything else is still a validation error.
 @pytest.mark.parametrize("value", [True, False])
-def test_implement_chunked_accepts_a_boolean(repo, value):
+def test_retired_chunked_passes_with_a_notice(repo, value):
     write_config(repo, {"implement": {"chunked": value}})
-    assert run_cli(repo, "--check").returncode == 0
-    assert workflow_config.load(repo).get("implement.chunked") is value
+    result = run_cli(repo, "--check")
+    assert result.returncode == 0
+    for fragment in ("`implement.chunked`", "retired in 0.9.0", "ignored", "remove"):
+        assert fragment in result.stderr, result.stderr
 
 
-def test_implement_chunked_is_off_without_the_section(repo):
-    assert workflow_config.defaults()["implement"] == {"chunked": False}
-    write_config(repo, {"language": "en"})
-    assert workflow_config.load(repo).get("implement.chunked") is False
+def test_retired_chunked_is_silent_for_the_hooks(repo):
+    write_config(repo, {"implement": {"chunked": True}})
     config, problems = workflow_config.load_sections(repo)
     assert problems == []
-    assert config.get("implement.chunked") is False
+    assert "implement" not in workflow_config.defaults()
+    payload = json.dumps({"tool_input": {"command": "ls"}, "cwd": str(repo)})
+    guard = MODULE.parent / "guard.py"
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(repo)}
+    result = subprocess.run(
+        [sys.executable, str(guard)], input=payload, text=True, capture_output=True, env=env
+    )
+    assert result.returncode == 0
+    assert "implement" not in result.stderr
+
+
+def test_a_config_without_the_section_prints_no_notice(repo):
+    write_config(repo, {"language": "en"})
+    assert run_cli(repo, "--check").stderr == ""
 
 
 @pytest.mark.parametrize(
@@ -319,11 +333,10 @@ def test_implement_chunked_is_off_without_the_section(repo):
         ("on", "`implement` has to be an object"),
     ],
 )
-def test_implement_bad_values_warn_and_count_as_off(repo, section, fragment):
+def test_implement_bad_values_still_fail(repo, section, fragment):
     write_config(repo, {"implement": section, "language": "en"})
     config, problems = workflow_config.load_sections(repo)
     assert len(problems) == 1 and fragment in problems[0], problems
-    assert config.get("implement.chunked") is False
     assert config.get("language") == "en"
     result = run_cli(repo, "--check")
     assert result.returncode == 1

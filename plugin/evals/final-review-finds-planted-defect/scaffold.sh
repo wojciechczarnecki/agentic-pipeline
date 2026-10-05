@@ -128,7 +128,7 @@ cat > specs/001-free-shipping/PLAN.md <<'EOF'
 - **New dependency:** no.
 - **Data migration:** no.
 
-## AC -> steps matrix
+## AC → steps matrix
 
 | AC | Steps | Proving test |
 |----|-------|--------------|
@@ -172,7 +172,7 @@ _(none yet)_
 
 ### 2026-09-01 - plan review
 
-No findings. The plan is ready.
+- `none` — no findings; the plan is ready.
 
 ## Deviations
 

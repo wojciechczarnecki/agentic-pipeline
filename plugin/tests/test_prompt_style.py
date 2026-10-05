@@ -16,6 +16,7 @@ ALLOWED = frozenset(
         "ESCALATE",
         "STATUS",
         "METRICS",
+        "KIND",
         "ESCALATION",
         "SUMMARY",
         "SPEC",

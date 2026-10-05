@@ -502,7 +502,7 @@ SUITE = [
     "final-review-finds-planted-defect",
     "guard-blocks-main-push",
     "implement-escalates-on-failing-test",
-    "implement-stops-at-group-boundary",
+    "implement-example-case",
     "init-keeps-manual-edits",
     "plan-review-escalates-on-dependency",
 ]
@@ -520,7 +520,7 @@ SUITE = [
         ("plugin/skills/init/SKILL.md", ["init-keeps-manual-edits"]),
         (
             "plugin/skills/implement/SKILL.md",
-            ["implement-escalates-on-failing-test", "implement-stops-at-group-boundary"],
+            ["implement-escalates-on-failing-test", "implement-example-case"],
         ),
         ("plugin/skills/final-review/SKILL.md", ["final-review-finds-planted-defect"]),
         # `plan-review-` must not be picked by the `plan` skill (it has no case of its own)
@@ -529,7 +529,7 @@ SUITE = [
         # the stage agents
         (
             "plugin/agents/implementer.md",
-            ["implement-escalates-on-failing-test", "implement-stops-at-group-boundary"],
+            ["implement-escalates-on-failing-test", "implement-example-case"],
         ),
         ("plugin/agents/reviewer.md", ["final-review-finds-planted-defect"]),
         ("plugin/agents/plan-reviewer.md", ["plan-review-escalates-on-dependency"]),
@@ -608,3 +608,18 @@ def test_every_case_has_a_rule_of_its_own():
 def test_a_case_with_an_unknown_prefix_fails_the_rule_check():
     cases = [*real_cases(), "zzz-unknown"]
     assert set(cases) - reachable(cases) == {"zzz-unknown"}
+
+
+# SPEC 014, AC1, AC2, AC4: the cases of the removed rituals are gone, and nothing maps to them.
+REMOVED_CASES = (
+    "implement-converge-finds-missing-ac",
+    "implement-escalates-on-never-red-test",
+    "implement-stops-at-group-boundary",
+)
+
+
+def test_no_rule_names_a_removed_case():
+    for name in REMOVED_CASES:
+        assert not (ROOT / "plugin" / "evals" / name).exists(), name
+        assert name not in (ROOT / "scripts" / "eval_receipt.py").read_text(), name
+        assert f'"{name}"' not in Path(__file__).read_text().split("REMOVED_CASES = (")[0], name

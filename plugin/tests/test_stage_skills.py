@@ -87,25 +87,10 @@ def test_no_agent_enumerates_views(name):
 
 
 CLOSING_STEPS = {
-    "plan": ("8. ", ["started_at", "escalations", "plan_steps"]),
-    "plan-review": (
-        "6. ",
-        ["plan_review_blockers", "plan_review_majors", "plan_changes"],
-    ),
-    "implement": (
-        "6. **Finish",
-        [
-            "implement_steps",
-            "implement_iterations",
-            "converge_gaps",
-            "deviations_minor",
-            "deviations_major",
-        ],
-    ),
-    "final-review": (
-        "4. **Write the report",
-        ["final_review_blockers", "final_review_worth_fixing", "final_review_nits"],
-    ),
+    "plan": ("8. ", ["started_at"]),
+    "plan-review": ("6. ", ["plan_changes"]),
+    "implement": ("5. **Finish", []),
+    "final-review": ("4. **Write the report", []),
 }
 METRIC_SKILLS = sorted(CLOSING_STEPS)
 
@@ -126,11 +111,11 @@ def closing_step(name: str) -> str:
     return "\n".join(lines[start:end])
 
 
-def apply_closing_step() -> str:
+def apply_commit_step() -> str:
     text = skill_text("final-review").split("## Apply mode", 1)[1]
     lines = text.splitlines()
-    start = next(i for i, line in enumerate(lines) if line.startswith("5. "))
-    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("6. ")), len(lines))
+    start = next(i for i, line in enumerate(lines) if line.startswith("3. "))
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("4. ")), len(lines))
     return "\n".join(lines[start:end])
 
 
@@ -138,17 +123,10 @@ def apply_closing_step() -> str:
 def test_closing_step_states_the_metrics_format(name):
     step = closing_step(name)
     assert "metrics:" in step
-    assert "%Y-%m-%dT%H:%M" in step
+    if "started_at" in CLOSING_STEPS[name][1]:
+        assert "%Y-%m-%dT%H:%M" in step
     for key in CLOSING_STEPS[name][1]:
         assert key in step, f"{name}: the closing step must name `{key}`"
-
-
-def test_implement_steps_counts_the_planned_steps_too():
-    # The 0.8.0 canary: a Sonnet implementer read "counts the added steps" as "only the
-    # converge-added steps" and wrote `implement_steps: 0` after three planned steps.
-    step = closing_step("implement")
-    assert "`implement_steps` (every step carried out: the planned steps" in step
-    assert "`implement_steps` counts the added steps" not in skill_text("implement")
 
 
 @pytest.mark.parametrize("name", METRIC_SKILLS)
@@ -167,10 +145,11 @@ def test_closing_step_names_the_escalation_path(name):
     assert "RESULT: ESCALATE" in closing_step(name)
 
 
-def test_apply_mode_gates_done_on_the_checker():
-    step = apply_closing_step()
-    assert "--check" in step
-    assert "done" in step
+# SPEC 014: apply runs `--derive` and `--check` before its commit; `done` is set by `--close`.
+def test_apply_mode_runs_derive_and_check_before_its_commit():
+    step = " ".join(apply_commit_step().split())
+    assert "workflow_metrics.py --derive <spec-dir>" in step
+    assert step.index("--derive") < step.index("--check") < step.index("commit (")
     assert "RESULT: ESCALATE" in step
 
 
@@ -191,16 +170,6 @@ def test_final_review_takes_the_run_link_from_the_pr_checks():
     assert "gh pr checks <nr> --json name,workflow,link" in text
 
 
-# SPEC 011, AC11: `implement` writes the split deviations and `converge_gaps`; the old
-# `deviations` key is no longer one it writes (a word boundary keeps `deviations_minor` out
-# of the match).
-def test_implement_records_the_split_metrics():
-    step = closing_step("implement")
-    for key in ["converge_gaps", "deviations_minor", "deviations_major"]:
-        assert f"`{key}`" in step, key
-    assert not re.search(r"\bdeviations\b", step), "the closing step still names `deviations`"
-
-
 def test_implement_defines_major_and_minor_deviations():
     procedure = " ".join(section("implement", "Procedure").split())
     step = procedure.split("3. **Deviations:**", 1)[1].split(" 4. ", 1)[0]
@@ -210,5 +179,6 @@ def test_implement_defines_major_and_minor_deviations():
         "data schema",
         "`deviations_major`",
         "`deviations_minor`",
+        "`- `major` — ",
     ]:
         assert token in step, token

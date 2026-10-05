@@ -104,8 +104,7 @@ Nothing outside these prefixes — no source files, no tool configuration and no
      or `TODO:`; `language` is always `en` or `pl` (the answer, the argument, the existing
      value or `en`), never `TODO:`; you do not write the `protectedBranches` key (the
      release channel is protected by the owner by hand, after `/pipeline:init`), and
-     you do not write the `implement` section (chunking stays off until the Stage 7
-     comparison measures it);
+     you do not write the `implement` section (it was retired in 0.9.0);
      `models` is written as `"models": {"implement": "sonnet"}` and nothing else, so the
      implementer runs on Sonnet and every other stage on the session model — a guess not
      yet measured, which the plugin README marks as such;

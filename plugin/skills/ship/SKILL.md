@@ -55,9 +55,10 @@ by hand stage by stage.
 |-----------------|-----------------|----------|-----------------------------------------|
 | `spec-ready`    | `planner`       | —        | `plan-draft`                            |
 | `plan-draft`    | `plan-reviewer` | —        | `plan-approved` (itself, when there is no escalation) |
-| `plan-approved` | `implementer`   | —        | `implemented`; a chunk ended: `plan-approved` → the next `implementer` |
+| `plan-approved` | `implementer`   | —        | `implemented`                           |
 | `implemented`   | `reviewer`      | `report` | findings report → **owner gate**        |
-| `implemented` + decisions recorded | `reviewer` | `apply` | PR with green CI + `done` |
+| `implemented` + decisions recorded | `reviewer` | `apply` | PR with green CI; the status stays `implemented` |
+| `implemented` + the `apply` RESULT in hand | `workflow_metrics.py --close` (Closing) | — | `done` |
 | `done`          | —               | —        | STOP: nothing to do (give the PR link, if it exists) |
 
 Status `spec-draft` or no SPEC → STOP: `/pipeline:idea` first.
@@ -70,10 +71,13 @@ Status `spec-draft` or no SPEC → STOP: `/pipeline:idea` first.
    does not exist →
    `git switch main && git pull --ff-only && git switch -c feat/NNN-<slug>`. In parallel
    work the session already runs in the lane's worktree — do not switch branches.
-3. No `metrics.started_at` in the SPEC → add it (`date +%Y-%m-%dT%H:%M`) together with
-   `escalations: 0` and commit. The flat `metrics:` block holds counters as integers, and
-   timestamps in the format `%Y-%m-%dT%H:%M`. The counter has to exist from the start, so
-   that the metrics summary shows `0`, not `-` (no measurement).
+3. No `metrics.started_at` in the SPEC → add it (`date +%Y-%m-%dT%H:%M`) and commit. The
+   flat `metrics:` block holds counters as integers, and timestamps in the format
+   `%Y-%m-%dT%H:%M`.
+4. Tell the owner which model each stage runs on, in one message before the first stage
+   agent starts: `plan`, `plan-review`, `implement` and `final-review`, each with the alias
+   you will pass to `Agent` as `model` (from `models.<stage>`, as the next section says).
+   `inherit`, a missing entry or any other value shows as "session model".
 
 ## Starting a stage agent
 
@@ -86,9 +90,9 @@ a session they are visible under prefixed names: `pipeline:planner`,
 The prompt contains only: the spec number and path, the mode (for `reviewer`), the working
 directory and a reminder of the contract below. Do not pass the history of this conversation
 or your own hypotheses — a fresh context is part of the method. The path is written as
-`<docs.specsDir>/NNN-<slug>/SPEC.md`, because `--record-cost` in Closing attributes a stage
-agent to its spec by the spec directory named in its prompt; an agent started without it is
-left out of the cost.
+`<docs.specsDir>/NNN-<slug>/SPEC.md`, because `--close` in Closing, which runs
+`--record-cost`, attributes a stage agent to its spec by the spec directory named in its
+prompt; an agent started without it is left out of the cost.
 
 The model per stage comes from `models.<stage>` in `.claude/workflow.json`, with the stage
 keys `plan` → `planner`, `plan-review` → `plan-reviewer`, `implement` → `implementer` and
@@ -97,7 +101,7 @@ keys `plan` → `planner`, `plan-review` → `plan-reviewer`, `implement` → `i
 other value, pass no `model`: the agent then runs on the session model. The guard's warning
 about a bad value goes to stderr, which a normal session does not show, so name every
 `models` entry you ignored, with its value, in the summary for the owner. The same holds for
-a stage run again under the Result protocol, and for every chunk of the implementer.
+a stage run again under the Result protocol.
 
 You wait for the stage agent's result before you go on.
 
@@ -114,46 +118,45 @@ Binding on every agent started by `/pipeline:ship`:
 - Language: spec files and the PR description in `language`; commits, the PR title and the
   RESULT block keys in English; the orchestrator shows the ESCALATION and SUMMARY text to
   the owner in the session language.
-- You write the stage metrics yourself into the flat `metrics:` block in the SPEC.md
-  frontmatter: counters are integers, timestamps `%Y-%m-%dT%H:%M`, `escalations` from the
-  start. `escalations` is incremented only by the orchestrator — a stage agent does not
-  change it.
+- The counters of the flat `metrics:` block in the SPEC.md frontmatter that
+  `workflow_metrics.py --derive <spec-dir>` can read — `escalations` among them — come from
+  the fixed forms in SPEC.md and PLAN.md, not from a count of yours: you run `--derive` and
+  write only the keys your skill names itself. Counters are integers, timestamps
+  `%Y-%m-%dT%H:%M`.
 - The final reply starts with the block:
 
 ```
 RESULT: DONE | ESCALATE
 STATUS: <spec status after the stage>
-CHUNK: <group>/<groups> — only the implementer in chunk mode
 METRICS: <key=value; …>
+KIND: <only on ESCALATE — decision | permission | tooling>
 ESCALATION: <only on ESCALATE — problem; options (≤ 4); recommendation; why>
 SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severity | one sentence>
 ```
+
+`KIND` says what the escalation is. `decision` is a question about the product or the plan.
+`permission` is a tool call refused or left unanswered by a permission rule or the auto-mode
+classifier. `tooling` is a broken tool, environment or CI. A RESULT with `ESCALATE` and no
+valid `KIND:` counts as `decision`.
 
 ## Result protocol
 
 - No RESULT block, or a `STATUS` that does not match the file → run the stage again once;
   the second time → escalate yourself, describing what the agent returned.
-- `implementer` with `DONE` and `STATUS: plan-approved` → a chunk ended (the skill's chunk
-  mode, which the implementer turns on itself from `implement.chunked`): start the next
-  implementer with the same prompt and the same `models` entry. In chunk mode the RESULT
-  carries a line `CHUNK: <group>/<groups>` after `STATUS`. A chunk end whose chunk line
-  names the same group as the previous chunk that returned `DONE`, or that has no chunk
-  line, made no progress: treat it as a missing RESULT — run it again once, the second
-  time escalate yourself, describing what the agent returned. The one re-run is counted per
-  chunk: the chunk after each `DONE` has its own, whatever earlier chunks used. An
-  `ESCALATE` result is not a chunk end: the agent started after the owner's decision is
-  simply the next chunk and continues the same group, so its `DONE` is compared with the
-  last chunk that returned `DONE`, never with the escalated one. `STATUS: implemented`
-  means the stage is done and is not checked for progress.
-- **ESCALATE** → `AskUserQuestion`: the question from `ESCALATION`, the options from the
-  agent, the recommended one first with the label suffix "(Recommended)" — asked in the
-  session language, whatever the language the agent wrote them in. Append the answer (date,
-  stage, question, decision) in the language from `language` to PLAN.md →
-  `## Owner decisions`, and when PLAN.md does not exist yet — to the same section of
-  SPEC.md. Increment `metrics.escalations`, commit (`docs: record owner decision for NNN`)
-  and start a new agent of the same stage.
-- The same stage escalates for the third time → STOP. Describe the situation to the owner
-  and ask them to take over.
+- **ESCALATE** → read `KIND` (a missing or invalid `KIND:` counts as `decision`) and ask
+  with `AskUserQuestion`: the question from `ESCALATION`, the options from the agent, the
+  recommended one first with the label suffix "(Recommended)" — asked in the session
+  language, whatever the language the agent wrote them in. Append the answer to PLAN.md →
+  `## Owner decisions` (when PLAN.md does not exist yet — to the same section of SPEC.md)
+  in the language from `language`, as one entry in the fixed form
+  `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the `KIND` of the
+  RESULT as `<kind>`: `--derive` counts these entries into `escalations`, so you do not
+  touch `metrics.escalations`. Commit (`docs: record owner decision for NNN`) and start a
+  new agent of the same stage.
+- The same stage escalates with kind `decision` for the third time → STOP. Describe the
+  situation to the owner and ask them to take over. Only the `decision` entries of the same
+  stage count toward the third one: `permission` or `tooling` escalations do not count,
+  because a refused tool call or a broken runner is not a question the stage keeps asking.
 
 ## Escalation triggers (binding on every agent)
 
@@ -165,9 +168,6 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
 - the self-correction loop exhausted (the 4th iteration on the same error),
 - a test finds a product defect whose fix goes beyond the plan's scope or the owner
   decisions — instead of working around it by changing the test or the test data,
-- a proving test from the owner or the plan that is green before the change it is meant to
-  prove,
-- a real gap left after the second converge pass,
 - a conflict on `git merge origin/main`.
 
 ## Gate: final review
@@ -179,39 +179,46 @@ SUMMARY: <≤ 10 lines; for reviewer/report — the findings table: id | severit
    "Accept `blocker` and `worth-fixing`, reject `nit` (Recommended)" / "Accept
    all" / "I will choose one by one" / "Only `blocker`". On "I will choose one by one" ask
    for the list of ids.
-3. Record the decisions (accepted and rejected ids) in `## Owner decisions`
-   in the language from `language`, commit.
-4. `reviewer` in `apply` mode → fixes, push, PR, green CI, only then `done`.
+3. Record the decisions in `## Owner decisions` in the language from `language`, commit:
+   one entry of kind `gate`,
+   `- YYYY-MM-DD — final-review — `gate` — <question> — `accepted`: F1, F2; `rejected`: F3`
+   (`none` for an empty list); `--derive` counts the accepted and rejected ids from it.
+4. `reviewer` in `apply` mode → fixes, push, PR, green CI; the status stays `implemented`
+   (`--close` in Closing sets `done`).
 
-No findings in the report → skip the gate: record in the decisions, in the language from
-`language`, that there were no findings, and go on to `apply`.
+No findings in the report → skip the question, not the entry: record one `gate` entry with
+two empty lists, `- YYYY-MM-DD — final-review — `gate` — <question> — `accepted`: none;
+`rejected`: none`, commit, and go on to `apply`. Without it `--derive` writes no
+`findings_accepted`/`findings_rejected` and `--close` stops at the check.
 
 ## Closing
 
 1. From the `reviewer/apply` RESULT take the PR link, the CI status and the link to the
    visual artifacts of the CI run.
-2. Record the cost of the stages, now that all of them have finished: run
-   `workflow_metrics.py --record-cost <docs.specsDir>/NNN-<slug>` by name, through `PATH`.
-   When `git status --porcelain` shows SPEC.md changed, `git add` that file, commit
-   `chore: record stage cost for NNN`, run `git push`, and wait for
-   `gh pr checks <number> --watch`, because the notification below promises green CI on the
-   PR's last commit. A red check after this metrics-only commit is re-run like the
-   reviewer's status commit (`gh run rerun <id> --failed`). Still red after that one rerun:
-   skip steps 3 and 4, put the red check and its run link into the summary for the owner
-   (step 5), and end Closing there. A non-zero exit or a warning
-   goes into the summary for the owner and does not stop Closing: a missing cost must not
-   hold back a finished spec.
-3. `PushNotification`: "PR NNN ready to merge: <title>" — only with green CI. A PR
-   with red CI does not get this notification; the reviewer then returns ESCALATE, which
-   you handle through "Result protocol".
-4. Green CI with a test passed only after a retry (flaky) → check that the reviewer added
-   it to `<docs.backlog>`; if not, run `reviewer` (`apply` mode)
-   again with that task. You do not edit spec files or documents yourself, except for the
-   cost keys of step 2, which the `--record-cost` script writes.
+2. Close the spec: run `workflow_metrics.py --close <docs.specsDir>/NNN-<slug>` by name,
+   through `PATH`, as a background Bash call (`run_in_background`) and wait for it to end.
+   It records the cost, sets `done`, derives and checks the metrics, commits
+   `docs: close SPEC NNN <slug>`, pushes and waits for the CI of the new head, re-running
+   failed jobs once. The wait (3600 s by default, twice with the re-run) outlasts the
+   foreground Bash limit, so a foreground call would be killed. When the call ends, read its
+   exit code and its stop line (the last line of stderr).
+3. Exit code 0 → `PushNotification`: "PR NNN ready to merge: <title>" — only with green CI.
+   A job that `--close` printed as passed only on a re-run goes into the summary.
+4. A non-zero exit → the stop line says which step stopped and what state is left: ask the
+   owner with `AskUserQuestion`, in the session language, with the options "resume the
+   closing step only" — run `--close` again, which resumes from the push or the wait, with
+   no new `reviewer` — / "`reviewer` `apply` again" with the stop line as its task / "I will
+   take over". The recommended option, first and marked "(Recommended)", follows the exit
+   code. Exit 4 (the commit or the push failed) and exit 5 (red after the re-run, or the
+   wait timed out) → resume, because the close commit is made or the spec is unchanged and a
+   second run picks up from there. Exit 1 (refused, or derive/check red, SPEC.md restored)
+   and exit 3 (a job passed only on a later attempt and `<docs.backlog>` does not name it)
+   → `reviewer` `apply` again, because a resume would repeat the same stop: the reviewer
+   fixes the spec files or adds the backlog entry, naming the job as a code span.
 5. Summary for the owner: the PR link, the CI status, the link to the visual artifacts, the
    manual scenarios to check before the merge (from PLAN.md →
    `### Manual (performed by the owner)` in `## End-to-end verification`), the spec metrics,
-   and the `models` entries you ignored.
+   a job `--close` named, and the `models` entries you ignored.
 
 ## Guardrails
 
@@ -219,4 +226,6 @@ No findings in the report → skip the gate: record in the decisions, in the lan
   guard).
 - You do not skip stages and do not do a stage's work in your own context, not even "small"
   work.
-- You do not set spec statuses for the agents — the stages do that; you only read.
+- You never set a spec status: the stages do, and `workflow_metrics.py --close` sets `done`.
+  You do not edit spec files or documents yourself, except for `started_at` and the entries
+  of `## Owner decisions`.

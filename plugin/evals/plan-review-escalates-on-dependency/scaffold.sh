@@ -190,7 +190,7 @@ cat > specs/001-deployment-settings/PLAN.md <<'EOF'
 - **New dependency:** no.
 - **Data migration:** no.
 
-## AC -> steps matrix
+## AC → steps matrix
 
 | AC | Steps | Proving test |
 |----|-------|--------------|
@@ -198,8 +198,6 @@ cat > specs/001-deployment-settings/PLAN.md <<'EOF'
 | AC2 | 2 | `tests/test_settings.py::test_missing_file_names_the_path` |
 
 ## Steps
-
-### Group 1 — Settings
 
 - [ ] 1. Tests first - `tests/test_settings.py` with the AC1 and AC2 cases, reading a copy
       of `settings.yaml` from a temporary directory.
@@ -236,10 +234,6 @@ _(none yet)_
 ## Review log
 
 _(filled in by the plan review)_
-
-## Chunk notes
-
-_(filled in by /pipeline:implement in chunk mode — one entry per chunk that ends at a group boundary)_
 
 ## Deviations
 

@@ -271,7 +271,8 @@ code, are verified differently (a pipeline run against a fresh-repository canary
       has one; the missing costs backfilled from the local transcripts (this repository's
       010–013, the consumer's 004, 005, 007); the guard's `Read`-rule notice no longer fires
       in a session started in a subdirectory (`backend/`)
-- [ ] 0.9.0, one spec — fewer rituals, more code in the pipeline loop:
+- [x] 0.9.0, one spec — fewer rituals, more code in the pipeline loop
+      (`specs/014-pipeline-loop-fewer-rituals/SPEC.md`):
       - **remove the converge pass**: 0 real gaps kept in the consumer's nine specs and in
         013, every gap it reported was rejected by the implementer as already decided, while
         the final review still found 1–14 `worth-fixing` findings per spec — it costs a

@@ -28,7 +28,7 @@ SCHEMA: dict[str, object] = {
     "protectedBranches": list,
     "language": str,
     "models": {"plan": str, "plan-review": str, "implement": str, "final-review": str},
-    "implement": {"chunked": bool},
+    "implement": {"chunked": bool},  # retired in 0.9.0: accepted, ignored
 }
 
 
@@ -56,7 +56,6 @@ def defaults() -> dict:
         },
         "gitHooksDir": "scripts/git-hooks",
         "language": "en",
-        "implement": {"chunked": False},
     }
 
 
@@ -241,6 +240,12 @@ def main(argv: list[str]) -> int:
         except ConfigError as exc:
             print(f"workflow.json: {exc}", file=sys.stderr)
             return 1
+        if config.get("implement.chunked") is not None:
+            print(
+                "workflow.json: `implement.chunked` was retired in 0.9.0 and is ignored; "
+                "you can remove the `implement` section",
+                file=sys.stderr,
+            )
         where = config.path if config.found else "not found — using defaults"
         print(f"workflow.json: {where}")
         return 0

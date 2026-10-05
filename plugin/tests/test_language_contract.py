@@ -202,9 +202,9 @@ def quoted(text: str) -> list[str]:
 FILES = [f"skills/{name}/SKILL.md" for name in STAGE_SKILLS + sorted(NOT_STAGES)] + [
     f"agents/{name}.md" for name in AGENTS
 ]
-# Heading-like spans that are not SPEC/PLAN sections: frontmatter keys and the init
-# scaffold's placeholder marker.
-OTHER_HEADINGS: set[str] = {"metrics:", "status:", "TODO:"}
+# Heading-like spans that are not SPEC/PLAN sections: frontmatter keys, the init scaffold's
+# placeholder marker and the RESULT key an escalation carries (SPEC 014).
+OTHER_HEADINGS: set[str] = {"metrics:", "status:", "TODO:", "KIND:"}
 
 
 # A stage names a section by its English heading only (SPEC 008): the Polish twin comes from
@@ -234,7 +234,7 @@ def heading_like(span: str) -> bool:
 
 # Every quoted heading or map literal (`## …`, `**…:**`, `…:`, `(…)`) is the English literal
 # of a map row, so a stage cannot name a section the templates do not have. A literal that
-# ends in "— " is a prefix (`### Group N — <name>`, SPEC 012) and matches a span that starts
+# ends in "— " is a prefix (`## Topic — <name>`) and matches a span that starts
 # with it.
 def is_english_literal(span: str, english: set[str]) -> bool:
     return span in english or any(
@@ -253,10 +253,10 @@ def test_quoted_headings_are_english_map_literals(path):
 
 
 def test_a_prefix_literal_admits_only_its_own_headings():
-    english = {"### Group N — ", "## Steps"}
-    assert is_english_literal("### Group N — <name>", english)
+    english = {"## Topic — ", "## Steps"}
+    assert is_english_literal("## Topic — <name>", english)
     assert is_english_literal("## Steps", english)
-    assert not is_english_literal("### Grupa N — <nazwa>", english)
+    assert not is_english_literal("## Temat — <nazwa>", english)
     assert not is_english_literal("## Steps and more", english)
 
 

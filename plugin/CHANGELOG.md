@@ -2,6 +2,79 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.9.0
+
+SPEC 014, from the first public consumer's nine specs: the pipeline loses three rituals that
+cost tokens and produced paperwork findings instead of catching defects — the converge pass,
+the "Red before the change" column with its Test-first evidence procedure, and the chunked
+implementer — and moves bookkeeping into code. `workflow_metrics.py` gains `--derive`, a spec
+lint in `--check` and `--close`; escalations carry a `KIND`.
+
+**consumer impact:** update as usual. A `.claude/workflow.json` with `"implement":
+{"chunked": …}` still passes `workflow_config.py --check` (exit `0`), with a notice that the
+key was retired and can be removed; the guard prints nothing for it, and any other key in
+`implement` is still an error. Specs recorded before 0.9.0 are `done` and still pass
+`--check`, `converge_gaps` and `implement_chunks` included. A spec in `plan-draft`,
+`plan-approved` or `implemented` is now linted: every AC needs a row in the AC → steps
+matrix and every manual scenario a `Pass when:` line (a spec in flight on an older plan
+fails `--check` until it has them). `final-review` in `apply` mode now ends at a PR with
+green CI and the status `implemented`; `/pipeline:ship` runs `workflow_metrics.py --close`
+afterwards, which commits and pushes `docs: close SPEC NNN <slug>` and waits for CI, so the
+consumer needs CI checks on its PRs and the existing rule `Bash(workflow_metrics.py *)`. The
+`implement` stage may now install a dependency that the SPEC or PLAN accepts.
+
+### Removed
+
+- The converge pass of `implement`, its escalation trigger ("a real gap left after the
+  second converge pass") and the eval case `implement-converge-finds-missing-ac`.
+- The "Red before the change" column of the AC → steps matrix (the PLAN templates have three
+  columns), the Test-first evidence procedure with its trigger ("a proving test … green
+  before the change") and the eval case `implement-escalates-on-never-red-test`. Test-first
+  stays as one paragraph of guidance in `implement`; the final review's tests perspective
+  still proves that tests test something by breaking the code.
+- The chunked implementer: chunk mode, the chunk protocol in `ship`, step groups in `plan`
+  and `plan-review`, the `CHUNK:` RESULT line, `## Chunk notes`, the `implement_chunks`
+  metric and the eval case `implement-stops-at-group-boundary`. `implement.chunked` is a
+  retired key, accepted and ignored. `converge_gaps` and `implement_chunks` stay valid
+  counters for the specs that carry them.
+
+### Added
+
+- `workflow_metrics.py --derive <spec-dir>` writes the counters it can read from the fixed
+  forms of SPEC.md and PLAN.md (steps, iteration notes, deviations, review and final-review
+  findings, the gate entry, escalations by kind), names every key it did not write and can
+  be run again after an escalated stage. Every stage closes with `--derive` and then
+  `--check`, called by name through `PATH`.
+- A spec lint in `--check` for the statuses `plan-draft`, `plan-approved` and `implemented`
+  (AC rows, `Pass when:` lines). The manual section's items may be `- ` or numbered, its
+  `n/a — <reason>` line may be a list item, and prose with no item is read as one scenario.
+- Fixed forms for the cases with nothing to count: a review log with no finding has the item
+  `- `none` — no findings`, and a final review with no findings still gets a `gate` entry
+  with `accepted`: none; `rejected`: none. A source that is missing or in another form
+  leaves its counters unwritten rather than zero.
+- `workflow_metrics.py --close <spec-dir>`, run by `ship` after the reviewer's `apply`: cost,
+  `done`, derive, check, the closing commit, the push, the wait for the CI of the new head
+  and one re-run of failed jobs, with its own exit codes and a one-line stop report, and a
+  resume after a stop. It refuses `main`, `master` and `protectedBranches` itself, never
+  pushes with force, gives every `git` and `gh` call a deadline
+  (`PIPELINE_CLOSE_CALL_TIMEOUT_SECONDS`, default 300) with prompts disabled, judges a
+  re-run only once its attempt has grown, restores SPEC.md on any stop before the commit (a
+  SIGTERM included), and accepts a flaky job only when a `docs.backlog` entry names it as a
+  code span (`` `plugin` ``).
+- An `ESCALATE` RESULT carries `KIND: decision | permission | tooling`; only `decision`
+  escalations count toward the third-time STOP. `escalations_permission` and
+  `escalations_tooling` are optional metric keys, and the report shows a counter column only
+  when some spec carries it.
+- The `ship` start message names the model of every stage, and every cost line of the
+  report is labelled a lower bound. A final-review report written without the `Agent` tool
+  says that its perspectives ran in one context.
+
+### Changed
+
+- `plan` writes no step for the owner to perform, and `plan-review` fixes one as a `major`
+  finding. `implement` may add a dependency the SPEC or PLAN accepts and runs every
+  package-manager command as its own Bash call.
+
 ## 0.8.2
 
 `workflow_metrics.py --record-cost` prices Claude Sonnet 5.5, and the guard stops warning

@@ -76,7 +76,8 @@ def test_settings_template_protects_the_guardrail_files():
 
 def test_workflow_example_covers_every_key_and_validates(tmp_path):
     example = json.loads((TEMPLATES / "workflow.example.json").read_text())
-    assert set(example) == set(workflow_config.SCHEMA)
+    # `implement` is a retired key (0.9.0): the schema still accepts it, the example omits it.
+    assert set(example) == set(workflow_config.SCHEMA) - {"implement"}
     (tmp_path / ".git").mkdir()
     (tmp_path / ".claude").mkdir()
     (tmp_path / ".claude" / "workflow.json").write_text(json.dumps(example))
@@ -245,7 +246,7 @@ def test_settings_template_allows_reading_the_plugin():
     assert [match.group(1)] == list(settings["extraKnownMarketplaces"])
 
 
-# SPEC 012, AC5: the example shows the switch, off.
-def test_the_example_shows_chunking_off():
+# SPEC 014, AC5: the retired `implement` section is not in the example any more.
+def test_the_example_has_no_implement_section():
     example = json.loads((TEMPLATES / "workflow.example.json").read_text())
-    assert example["implement"] == {"chunked": False}
+    assert "implement" not in example
