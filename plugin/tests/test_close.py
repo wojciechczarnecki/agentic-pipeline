@@ -30,6 +30,9 @@ if args[:2] == ["pr", "view"]:
         sys.exit("no pull requests found for this branch")
     print(json.dumps(state["pr"]))
 elif args[:2] == ["run", "list"]:
+    if args[args.index("--commit") + 1] == state["pr"]["headRefOid"]:
+        print(json.dumps(state.get("head_runs", [])))
+        sys.exit(0)
     queue = state["run_list"]
     answer = queue.pop(0) if len(queue) > 1 else queue[0]
     with open(state_path, "w") as handle:
@@ -248,3 +251,135 @@ def test_close_is_exclusive(lane):
     )
     assert result.returncode == 2
     assert "separate runs" in result.stderr
+
+
+def head_subject(lane: Lane) -> str:
+    return lane.git("log", "-1", "--format=%s")
+
+
+def commit_count(lane: Lane) -> int:
+    return int(lane.git("rev-list", "--count", "HEAD"))
+
+
+def queue(lane: Lane, *answers: list[dict]) -> None:
+    lane.write_state(run_list=list(answers))
+
+
+def reruns(lane: Lane) -> list[str]:
+    return [call for call in lane.gh_calls() if call.startswith("run rerun")]
+
+
+# SPEC 014, AC20: cost, `done`, derive, check, the closing commit, the push and the wait.
+def test_close_green_path(lane):
+    before = commit_count(lane)
+    result = lane.close()
+    assert result.returncode == 0, result.stderr
+    assert head_subject(lane) == "docs: close SPEC 001 demo"
+    assert commit_count(lane) == before + 1
+    assert lane.git("show", "--name-only", "--format=", "HEAD").splitlines() == [f"{SPEC}/SPEC.md"]
+    text = (lane.repo / SPEC / "SPEC.md").read_text()
+    assert "\nstatus: done\n" in text
+    today = __import__("datetime").datetime.now().strftime("%Y-%m-%d")
+    assert f'  - "done — {today}"\n' in text
+    assert re.search(r"\n  finished_at: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}\n", text)
+    assert lane.remote_head() == lane.git("rev-parse", "HEAD")
+    head = lane.git("rev-parse", "HEAD")
+    assert any(call.startswith(f"run list --commit {head}") for call in lane.gh_calls())
+    assert lane.git("status", "--porcelain") == ""
+
+
+def test_the_close_leaves_a_checkable_spec(lane):
+    assert lane.close().returncode == 0
+    check = subprocess.run(
+        [sys.executable, str(SCRIPT), "--check", SPEC],
+        cwd=lane.repo,
+        capture_output=True,
+        text=True,
+    )
+    assert check.returncode == 0, check.stderr
+
+
+def test_a_red_check_restores_the_spec(lane):
+    plan = lane.repo / SPEC / "PLAN.md"
+    plan.write_text(plan.read_text().replace("; `rejected`: F4", "; `rejected`: none"))
+    lane.git("commit", "-q", "-am", "unbalance the gate")
+    lane.git("push", "-q")
+    spec_before, head_before = lane.spec_bytes(), lane.git("rev-parse", "HEAD")
+    result = lane.close()
+    assert result.returncode != 0
+    assert lane.spec_bytes() == spec_before
+    assert lane.git("rev-parse", "HEAD") == head_before
+    assert lane.git("status", "--porcelain") == ""
+    assert len(stop_lines(result)) == 1
+    assert stop_lines(result)[0].startswith("close stopped at check:")
+    assert stop_lines(result)[0].endswith("committed: no, pushed: no")
+
+
+def test_red_then_green_after_one_rerun(lane):
+    failed = run("ci", conclusion="failure", databaseId=11)
+    jobs = {"11": {"latest": [{"name": "plugin", "conclusion": "failure"}]}}
+    lane.write_state(jobs=jobs)
+    queue(lane, [failed], [run("ci", attempt=2)])
+    result = lane.close()
+    assert result.returncode == 0, result.stderr
+    assert reruns(lane) == ["run rerun 11 --failed"]
+    assert "plugin" in result.stdout
+
+
+def test_red_twice_stops(lane):
+    failed = run("ci", conclusion="failure", databaseId=11)
+    lane.write_state(jobs={"11": {"latest": [{"name": "plugin", "conclusion": "failure"}]}})
+    queue(lane, [failed], [failed])
+    result = lane.close()
+    assert result.returncode == 5, result.stderr
+    assert len(reruns(lane)) == 1
+    assert stop_lines(result)[0].endswith("committed: yes, pushed: yes")
+    assert head_subject(lane) == "docs: close SPEC 001 demo"
+
+
+def test_a_timeout_stops_at_the_wait(lane):
+    lane.env["PIPELINE_CLOSE_TIMEOUT_SECONDS"] = "1"
+    queue(lane, [run("ci", status="in_progress", conclusion="")])
+    result = lane.close()
+    assert result.returncode == 5, result.stderr
+    assert "timed out" in result.stderr
+    assert stop_lines(result)[0].endswith("committed: yes, pushed: yes")
+
+
+def test_a_failed_push_stops(lane):
+    lane.git("remote", "set-url", "origin", str(lane.root / "nowhere.git"))
+    result = lane.close()
+    assert result.returncode == 4, result.stderr
+    assert stop_lines(result)[0].endswith("committed: yes, pushed: no")
+    assert head_subject(lane) == "docs: close SPEC 001 demo"
+
+
+def test_every_stop_prints_one_state_line(lane):
+    lane.git("remote", "set-url", "origin", str(lane.root / "nowhere.git"))
+    result = lane.close()
+    assert len(stop_lines(result)) == 1
+    assert STOP_LINE.match(stop_lines(result)[0])
+    assert stop_lines(result)[0].startswith("close stopped at push:")
+
+
+def test_cost_warnings_do_not_stop_the_close(lane):
+    result = lane.close()
+    assert result.returncode == 0
+    assert "no stage transcripts" in result.stderr
+    assert stop_lines(result) == []
+
+
+def test_a_failed_commit_restores_the_spec(lane):
+    hooks = lane.root / "hooks"
+    hooks.mkdir()
+    hook = hooks / "pre-commit"
+    hook.write_text("#!/bin/sh\nexit 1\n")
+    hook.chmod(hook.stat().st_mode | stat.S_IEXEC)
+    lane.git("config", "core.hooksPath", str(hooks))
+    spec_before, head_before = lane.spec_bytes(), lane.git("rev-parse", "HEAD")
+    result = lane.close()
+    assert result.returncode == 4, result.stderr
+    assert stop_lines(result)[0].endswith("committed: no, pushed: no")
+    assert lane.spec_bytes() == spec_before
+    assert lane.git("rev-parse", "HEAD") == head_before
+    assert lane.git("status", "--porcelain") == ""

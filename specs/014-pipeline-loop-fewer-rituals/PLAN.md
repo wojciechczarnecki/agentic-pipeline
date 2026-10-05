@@ -169,7 +169,7 @@ Design choices:
 | AC17 | 10 | `plugin/tests/test_pipeline_loop.py::test_implement_installs_accepted_dependencies` | |
 | AC18 | 11 | `plugin/tests/test_pipeline_loop.py::test_plan_writes_no_owner_step` | |
 | AC19 | 5 | `plugin/tests/test_close.py::test_close_refuses` (each case) |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 1, result.stderr` (--close unknown, exit 2) |
-| AC20 | 6 | `plugin/tests/test_close.py::test_close_green_path`, `::test_a_red_check_restores_the_spec`, `::test_red_then_green_after_one_rerun` | |
+| AC20 | 6 | `plugin/tests/test_close.py::test_close_green_path`, `::test_a_red_check_restores_the_spec`, `::test_red_then_green_after_one_rerun` |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 0, result.stderr` (test_close_green_path, with the close steps stubbed to a stop) |
 | AC21 | 7 | `plugin/tests/test_close.py::test_a_flaky_job_without_a_backlog_entry_stops`, `::test_a_flaky_job_in_the_backlog_passes` | |
 | AC22 | 5, 6, 7 | `plugin/tests/test_close.py::test_every_stop_prints_one_state_line`, `::test_resume_after_a_stop_at_the_wait`, `::test_resume_after_a_failed_push` |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 1, result.stderr` (--close unknown, exit 2) |
 | AC23 | 12, 14, 15 | `plugin/tests/test_pipeline_loop.py::test_final_review_apply_ends_at_green_ci`, `plugin/tests/test_ship_cost_and_models.py::test_closing_runs_close_after_apply`, `plugin/tests/test_readme.py::test_the_status_table_names_close` | |
@@ -355,7 +355,7 @@ text, and a step that left them for later would end red.
       `--close <spec-dir>` in `main`, exclusive with the other modes.
       Automatic verification: `uv run pytest -q plugin/tests/test_close.py &&
       uv run pytest -q`
-- [ ] 6. `--close` from cost to green (AC20, AC22). Files: `plugin/bin/workflow_close.py`,
+- [x] 6. `--close` from cost to green (AC20, AC22). Files: `plugin/bin/workflow_close.py`,
       `plugin/tests/test_close.py`.
       Tests first:
       - `test_close_green_path`: exit 0. HEAD's subject is `docs: close SPEC 001 demo`,
