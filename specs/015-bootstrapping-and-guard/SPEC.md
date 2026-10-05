@@ -1,13 +1,15 @@
 ---
-status: implemented
+status: done
 stage_history:
   - "spec-draft — 2026-10-05"
   - "spec-ready — 2026-10-05"
   - "plan-draft — 2026-10-05"
   - "plan-approved — 2026-10-05"
   - "implemented — 2026-10-05"
+  - "done — 2026-10-05"
 metrics:
   started_at: 2026-10-05T15:33
+  finished_at: 2026-10-05T20:07
   escalations: 0
   plan_steps: 12
   plan_review_blockers: 0
