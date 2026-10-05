@@ -103,10 +103,10 @@ def test_the_trigger_list_names_the_spec_010_escalations(trigger):
     assert trigger in " ".join(readme.split()), trigger
 
 
-# SPEC 011, AC11: the implementer reports the split deviations and `converge_gaps`.
+# SPEC 014: the implementer reports what `--derive` wrote.
 def test_the_implementer_metrics_line():
     text = " ".join(agent_text("implementer").split())
     assert (
-        "METRICS of this stage: `implement_steps`, `implement_iterations`, `converge_gaps`, "
-        "`deviations_minor`, `deviations_major`, and in chunk mode `implement_chunks`." in text
+        "METRICS of this stage: `implement_steps`, `implement_iterations`, "
+        "`deviations_minor`, `deviations_major`" in text
     )

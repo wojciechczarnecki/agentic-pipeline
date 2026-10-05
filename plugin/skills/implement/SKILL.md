@@ -72,6 +72,12 @@ correct only when the verification commands say so — never because it "looks g
 - Edits within the plan's scope — without asking. Escalation before: adding a dependency or
   a migration the plan does not provide for (or that `## Owner decisions` does not
   accept); deleting files outside the plan's scope.
+- Dependencies: a dependency that SPEC or PLAN `## Owner decisions` accepts you add
+  yourself; an unaccepted one escalates, as above. You add nothing beyond what the change
+  needs. Every package-manager command (`uv add`, `uv lock`, `uv sync`, `npm install` and
+  the like) runs as its own Bash call, never chained with a file edit or another command,
+  because the auto-mode classifier judges a chain as a whole and refuses what it cannot
+  read.
 - Escalation in a session on its own: `AskUserQuestion` with options and a recommendation,
   the decision appended to PLAN.md → `## Owner decisions`. Under
   `/pipeline:ship`: the RESULT block.
@@ -84,161 +90,42 @@ correct only when the verification commands say so — never because it "looks g
    has commits the branch does not have — `git merge origin/main` (not rebase: the branch
    may already be pushed, and force-push is blocked). A conflict → escalation.
    If the PLAN already has ticked steps (resuming work) — trust them and continue from
-   the first unticked one. In chunk mode (the Chunk mode section), read `## Chunk notes` and
-   carry out one group, as that section says.
-2. **Step by step, in order:** the step's proving test first → its red record (the
-   test-first evidence section below) → the product change and the step's other tests →
-   **the self-correction loop** (below) → green → tick the checkbox in PLAN.md → commit the
-   step (`<type>: <message>` in English, the format from `<docs.conventions>`; the step's
-   files + PLAN.md) → the next step.
+   the first unticked one.
+2. **Step by step, in order:** the step's proving test first (the Test first section below)
+   → the product change and the step's other tests → **the self-correction loop** (below)
+   → green → tick the checkbox in PLAN.md and end the step line with the note
+   `iterations: <k>` in backticks, where `<k>` counts the loop iterations beyond the first
+   attempt (0 when the step was green at once); a step ticked without the note leaves its
+   count unwritten, and a missing note is never zero → commit the step (`<type>: <message>`
+   in English, the format from `<docs.conventions>`; the step's files + PLAN.md) → the next
+   step.
 3. **Deviations:** minor and necessary (a different file name, a small helper) → do it
-   and add it to `## Deviations` with a rationale. Ones that change the scope, the
-   architecture or the data schema → escalation; do not carry on on your own. In the
-   metrics, `deviations_major` counts the entries of the second kind (the ones that
-   escalate) and `deviations_minor` every other entry in `## Deviations`.
+   and add it to `## Deviations` as a list item `- `minor` — <what and why>`. Ones that
+   change the scope, the architecture or the data schema → escalation; do not carry on on
+   your own, and an entry for one reads `- `major` — <what and why>`. `--derive` counts
+   `deviations_major` from the entries with the `major` token (the ones that escalate) and
+   `deviations_minor` from every other entry in `## Deviations`.
 4. **Screen:** when `verify.scopes` has a UI scope and the change touches the interface —
    run `<verify.command> <UI scope>` and look at the visual artifacts required by
    `<docs.conventions>`; without it the step is not green, and record the result in PLAN.md.
-5. **Converge pass:** after the last planned step, before the Definition of Done — the
-   converge pass section below.
-6. **Finish — the plan's Definition of Done:**
+5. **Finish — the plan's Definition of Done:**
    - `<verify.command>` fully green;
    - the plan's end-to-end verification (the automatic section) really performed,
      the result recorded in PLAN.md; the manual items you leave to the owner — list them;
    - `<docs.roadmap>` updated (checkboxes!), `<docs.decisions>` and the domain documents
      from the map in `CLAUDE.md`, if applicable;
-   - `status: implemented` + an entry in `stage_history`; in the `metrics:` block of
-     SPEC.md: `implement_steps` (every step carried out: the planned steps plus the steps
-     the converge passes added, over all chunks), `implement_iterations` (the sum of loop
-     iterations beyond the first attempt, over all steps), `converge_gaps` (the real gaps kept after your
-     verdicts, summed over the passes; `0` when a pass found none), `deviations_minor` and
-     `deviations_major` (step 3); whenever `## Chunk notes` has entries — also when chunking
-     was turned off after them — `implement_iterations` is the running total from the last
-     entry plus your own, and `implement_chunks` the entries plus one; with no entries
-     `implement_chunks` is not written;
-   - the flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
-     success `workflow_metrics.py --check <spec-dir>`;
-     a red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
-     STOP with a question) with the names of the missing keys; you do not invent an
-     unmeasured value;
+   - `status: implemented` + an entry in `stage_history`;
+   - `workflow_metrics.py --derive <spec-dir>`, which writes the counters of the `metrics:`
+     block from the forms in SPEC.md and PLAN.md and names on stderr every key whose source
+     is not in the expected form, then `workflow_metrics.py --check <spec-dir>` before
+     reporting success; a red you cannot fix from your own artifacts = `RESULT: ESCALATE`
+     (on its own: STOP with a question) with the names of the missing keys; you do not
+     invent an unmeasured value;
    - the closing commit, then `git push -u origin feat/NNN-<slug>`.
 
-## Test-first evidence
+## Test first
 
-A test that was never red proves nothing: it may pass for a reason that has nothing to do
-with the change. So each AC's proving test is seen failing before the change that is meant
-to make it pass.
-
-- Before that change, run the AC's proving test. Record the command and the failing
-  assertion line in the fourth column of the AC → steps matrix, as
-  `` `<command>` → `<failing assertion line>` ``.
-- Red means a failed assertion about the AC's behaviour. An import, collection or syntax
-  error is not red, because such an error is red for any reason. When the symbol under
-  test does not exist yet, add a stub first (a function that returns a placeholder value),
-  so that the test reaches its assertion, and record that assertion failure.
-- The step that makes an AC's proving test pass is not green and is not ticked while that
-  AC has no red record, unless the row is marked `manual` (the owner checks it by hand) or
-  `n/a — <reason>`. Earlier steps that deliver part of the same AC are ticked on their own
-  verification.
-- A proving test that is green before the change:
-  - when the step writes the test and the test does not exercise the AC's behaviour,
-    rewrite it until it fails on the assertion — a test that passes on the old code does
-    not check the new behaviour;
-  - when the step writes the test and the test does exercise the AC's behaviour, the
-    behaviour already exists: that is a gap in the SPEC, so escalate
-    (Expected / Found / Why it matters) and leave the step unticked instead of bending the
-    test away from the AC;
-  - when the test existed before, or the plan gives it verbatim, escalate
-    (Expected / Found / Why it matters), leave the test unchanged and the step unticked —
-    that test belongs to the owner or to the plan, and changing it is the owner's call.
-- An AC whose own words require existing behaviour to stay as it is (a regression guard)
-  is green before the change by design; its row is marked `n/a — kept behaviour`. An AC
-  that asks for new behaviour never gets this mark.
-- A plan written before 0.7.0 has no fourth column: add it, with the heading taken from
-  `${CLAUDE_PLUGIN_ROOT}/templates/PLAN.<language>.md`, and mark the kept-behaviour rows
-  yourself, quoting the AC's words. A plan with no matrix at all gets one the same way.
-
-## Converge pass
-
-A plan can miss an AC, and the implementer who carried it out shares the plan's blind
-spots. So before the Definition of Done a fresh reader compares the code with the SPEC.
-
-- An AC that the SPEC has and the plan leaves out is not a plan mismatch to escalate at
-  the start: carry out the planned steps and leave that AC to the converge pass.
-- Start a fresh subagent with `Agent`. Give it the path of SPEC.md, the diff command
-  `git diff origin/main...HEAD -- . ':(exclude)<docs.specsDir>/NNN-<slug>'`, the four gap
-  classes and the finding format
-  `` [missing|partial|contradicts|unrequested] AC<n> or file:line — what — evidence ``.
-  Give it not your reasoning, your hypotheses or PLAN.md: it judges the code against the
-  ACs, not against the plan. The diff leaves out the spec directory, because the
-  committed spec directory holds PLAN.md. The classes: `missing` (an AC with no code),
-  `partial` (an AC delivered in part), `contradicts` (code that does the opposite of an
-  AC), `unrequested` (code no AC asks for).
-- When the subagent reports, check each gap in the code yourself and reject a false one
-  with a one-sentence reason; the subagent reads the diff cold and can be wrong.
-- For each real gap, the pass adds a step at the end of the steps list in PLAN.md and you
-  carry it out like any other step: test-first evidence, the self-correction loop, a tick
-  and a commit. An added step for an AC adds or updates that AC's row in the AC → steps
-  matrix, so its red record has a place. A gap of the class `unrequested` that no plan step
-  and no `## Deviations` entry covers gets a removal step; code a plan step asked for stays.
-- The escalation triggers apply to added steps as to planned ones. A step that delivers an
-  AC of the SPEC stays within the SPEC's scope, so it is not a change of scope by itself;
-  escalate for work beyond the SPEC, a new dependency, a migration, or a change of
-  architecture or data schema.
-- When the first pass added steps, run a second pass with a new fresh subagent, because
-  one pass never checks the steps it added. There are at most two passes, which bounds the
-  cost: a real gap after the second pass is an escalation.
-- Record each pass in PLAN.md, below the last step, under a level-3 heading
-  Converge pass N — <date>, followed by the gaps with your verdicts and the added steps.
-  A resumed run then sees which pass ran. The added steps count in `implement_steps`
-  together with the planned ones, and `converge_gaps` counts the real gaps.
-- A resumed run with two passes recorded carries out the steps the owner decided on and
-  then goes to the Definition of Done, without a third pass. A run with one recorded pass
-  that added steps still runs the second pass after them.
-
-## Chunk mode
-
-One implementer context re-reads its whole history on every turn, and that history grows
-with every step. In chunk mode each group of steps runs in a fresh context that starts from
-the committed state and a short note, instead of re-reading one long context.
-
-- A group is a `### Group N — <name>` heading inside `## Steps` (either literal from the
-  section map). A level-3 heading of a converge pass is not a group.
-- Chunk mode is on when `implement.chunked` in `.claude/workflow.json` is the literal
-  `true` and the `implement` section has no other key, and `## Steps` has more than one group.
-  Any other value, or an unknown key in the section, counts as off, as the configuration
-  loader decides. When `.claude/workflow.json` has an `implement` section the loader ignores,
-  name it with its content in your summary — the Handoff, or SUMMARY under `/pipeline:ship`
-  — because the loader's warning goes to stderr, which a normal session does not show.
-  Chunking off, or a PLAN with one group or none: you run the whole plan in one context,
-  exactly as in 0.7.0, with no `## Chunk notes` entry and no `implement_chunks`.
-- On start, read `## Chunk notes` in full: the chunks before you left there what the plan
-  does not say. Compare it with the groups whose steps are all ticked: a finished group
-  other than the last one with no entry means the chunk before you ended after its last
-  commit but before its note. Append that group's entry first, from its commits and the
-  PLAN: the running `implement_iterations` total carried over unchanged, and a sentence that
-  that chunk's iterations are unknown. Then carry out the group that holds the first
-  unticked step, step by step as the Procedure says.
-- The group ends when its last step is green, ticked and committed. You then append one
-  entry to `## Chunk notes`: the group you carried out, the decisions taken within the
-  plan's latitude, the traps the next group will meet too, and the running
-  `implement_iterations` total (the previous entry's total plus the iterations of this
-  chunk). Deviations stay in `## Deviations`. Commit the note
-  (`docs: add chunk note N for NNN`), push the branch (`git push -u origin feat/NNN-<slug>`,
-  as in Procedure step 6: the lane branch may not have an upstream yet), and end with the
-  spec status left at `plan-approved`; you write no metric into SPEC.md. A chunk never
-  ends on a red or uncommitted step: it goes on, or it escalates as in any other step.
-- The chunk that holds the last group runs its steps, then the converge pass, the steps it
-  adds and the Definition of Done, as one context does. The converge-resume rules apply
-  unchanged (the last two bullets of the Converge pass section). Steps a converge pass adds
-  belong to this chunk and to no group.
-- A chunk whose first unticked step lies after the last group (a step a converge pass
-  added), or which finds every step ticked, is the final chunk too: it resumes the converge
-  pass or the Definition of Done by the converge-resume rules. That is the state after an
-  escalation inside the final chunk.
-- The final chunk writes the metrics once, as Procedure step 6 says: the running total of
-  `implement_iterations` and `implement_chunks`. The other keys are counted over the whole
-  plan, as in one context.
+Write the step's proving test before the product change and run it. A test that passes before the change either does not exercise the AC, so you rewrite it until it fails on an assertion about the AC's behaviour, or it shows that the behaviour already exists, which is a gap in the SPEC: escalate (Expected / Found / Why it matters) under the trigger for a gap in the SPEC and leave the step unticked. A proving test the owner or the plan gives verbatim is not rewritten, because it belongs to them: you escalate instead. The final review's tests perspective still proves that tests test something, by breaking the code they cover.
 
 ## Self-correction loop (mandatory for every step)
 
@@ -278,9 +165,6 @@ test you suspect is flaky is still red, and a skipped test is not green.
 
 ## Handoff
 
-- **Run on its own:** summarise what was done, the deviations, the converge passes with
-  their gaps and verdicts, the verification result and the manual scenarios; the next
-  stage is `/pipeline:final-review NNN` after `/clear`. A chunk that ended at a group
-  boundary summarises its group and its chunk note, and tells the owner to
-  run `/pipeline:implement NNN` again after `/clear`.
+- **Run on its own:** summarise what was done, the deviations, the verification result and
+  the manual scenarios; the next stage is `/pipeline:final-review NNN` after `/clear`.
 - **Under `/pipeline:ship`:** end with the RESULT block from the stage agent contract.

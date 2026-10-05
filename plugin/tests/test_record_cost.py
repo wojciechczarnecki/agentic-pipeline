@@ -885,10 +885,9 @@ def test_a_spec_costed_from_inside_a_real_lane(repo, tmp_path):
     assert stages == {"plan": {OPUS: [0, 0, 0, 0, 3]}, "implement": {OPUS: [0, 0, 0, 0, 4]}}
 
 
-# SPEC 012, AC15: every chunk of the chunked implementer is an `implementer` subagent whose
-# prompt names the spec, so their usage adds up into one `cost_implement_cents`. This pins
-# behaviour that already works, so chunking cannot break it later.
-def test_three_implementer_chunks_add_up(repo, tmp_path):
+# Several implementer agents (one after each escalation) are `implementer` subagents whose
+# prompt names the spec, so their usage adds up into one `cost_implement_cents`.
+def test_three_implementer_agents_add_up(repo, tmp_path):
     source = tmp_path / "projects"
     for index, output in enumerate([1000, 2000, 3000], start=1):
         write_agent(
