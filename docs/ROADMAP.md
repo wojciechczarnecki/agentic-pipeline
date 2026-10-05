@@ -293,11 +293,13 @@ code, are verified differently (a pipeline run against a fresh-repository canary
       - **escalations with a kind** (`decision` | `permission` | `tooling`): only `decision`
         counts toward the third-time STOP; the metrics show the rest apart (consumer 005: 3
         of 4 escalations were tooling)
-      - **dependency changes as owner-performed steps**: the plan gives the edit and the
-        exact `! <package manager>` command, the orchestrator asks the owner to run it
-        before the implementer starts, the implementer only verifies — the auto-mode
-        classifier refuses a subagent's install whatever PLAN.md says; implementers never
-        chain a file edit and a package-manager command in one Bash call
+      - **dependencies the implementer can actually install**: a dependency the SPEC's
+        owner decisions accept is added by the implementer as before (only an unaccepted one
+        escalates; none is added beyond what the change needs). Each package-manager command
+        runs as its own Bash call, never chained with a file edit, so the project's allow
+        rules (`Bash(uv lock*)`, `Bash(uv sync*)`) match it and the auto-mode classifier is
+        not asked — in consumer 005 one chained call was refused twice, and the owner had
+        to run the install by hand
       - **a scripted close** for `ship`: `--record-cost`, push, `gh pr checks --watch`, a
         re-run of failed jobs and the flaky-retry check (attempt numbers) before the closing
         commit; "resume the closing step only" as a standard option after an escalation
