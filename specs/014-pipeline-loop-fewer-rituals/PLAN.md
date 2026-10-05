@@ -190,7 +190,7 @@ text, and a step that left them for later would end red.
 
 ### Group 1 — Configuration and the metrics script
 
-- [x] 1. Retire `implement.chunked` (AC5). Files: `plugin/bin/workflow_config.py`,
+- [x] 1. Retire `implement.chunked` (AC5). Files: `plugin/bin/workflow_config.py`, — `iterations: 1`
       `plugin/templates/workflow.example.json`, `plugin/skills/init/SKILL.md`,
       `plugin/tests/test_workflow_config.py`, `plugin/tests/test_init_templates.py`,
       `plugin/tests/test_init_skill.py`.
@@ -216,7 +216,7 @@ text, and a step that left them for later would end red.
       Automatic verification: `uv run pytest -q plugin/tests/test_workflow_config.py
       plugin/tests/test_init_templates.py plugin/tests/test_init_skill.py
       plugin/tests/test_guard.py && uv run pytest -q`
-- [x] 2. The report: columns with data only, and cost as a lower bound (AC26, AC28, AC16).
+- [x] 2. The report: columns with data only, and cost as a lower bound (AC26, AC28, AC16). — `iterations: 1`
       Files: `plugin/bin/workflow_metrics.py`, `plugin/tests/test_workflow_metrics.py`.
       Tests first:
       - `test_a_column_without_data_is_left_out`: two specs with `COMPLETE` give no
@@ -238,7 +238,7 @@ text, and a step that left them for later would end red.
       the summary lines. `per_unit` appends the label.
       Automatic verification: `uv run pytest -q plugin/tests/test_workflow_metrics.py &&
       uv run pytest -q`
-- [x] 3. `--derive` (AC7, AC8, AC9, AC11, AC15, AC16). Files: new
+- [x] 3. `--derive` (AC7, AC8, AC9, AC11, AC15, AC16). Files: new — `iterations: 0`
       `plugin/bin/spec_forms.py`, `plugin/bin/workflow_metrics.py`, new
       `plugin/tests/test_derive.py`, new fixtures `plugin/tests/fixtures/derive/{en,pl}/`
       `{SPEC.md,PLAN.md}`.
@@ -291,7 +291,7 @@ text, and a step that left them for later would end red.
       Automatic verification: `uv run pytest -q plugin/tests/test_derive.py
       plugin/tests/test_workflow_metrics.py plugin/tests/test_record_cost.py &&
       uv run pytest -q`
-- [x] 4. The spec lint in `--check` (AC12, AC13, AC14, AC6). Files:
+- [x] 4. The spec lint in `--check` (AC12, AC13, AC14, AC6). Files: — `iterations: 2`
       `plugin/bin/workflow_metrics.py`, `plugin/bin/spec_forms.py`, new
       `plugin/tests/test_spec_lint.py`, new fixtures
       `plugin/tests/fixtures/consumer-specs/00{1..9}-spec/SPEC.md`, and the eval scaffolds
@@ -328,7 +328,7 @@ text, and a step that left them for later would end red.
 
 ### Group 2 — The scripted close
 
-- [x] 5. `--close` preconditions and the test harness (AC19, AC22, AC24). Files: new
+- [x] 5. `--close` preconditions and the test harness (AC19, AC22, AC24). Files: new — `iterations: 0`
       `plugin/bin/workflow_close.py`, `plugin/bin/workflow_metrics.py`, new
       `plugin/tests/test_close.py`.
       The harness:
@@ -355,7 +355,7 @@ text, and a step that left them for later would end red.
       `--close <spec-dir>` in `main`, exclusive with the other modes.
       Automatic verification: `uv run pytest -q plugin/tests/test_close.py &&
       uv run pytest -q`
-- [x] 6. `--close` from cost to green (AC20, AC22). Files: `plugin/bin/workflow_close.py`,
+- [x] 6. `--close` from cost to green (AC20, AC22). Files: `plugin/bin/workflow_close.py`, — `iterations: 2`
       `plugin/tests/test_close.py`.
       Tests first:
       - `test_close_green_path`: exit 0. HEAD's subject is `docs: close SPEC 001 demo`,
@@ -393,7 +393,7 @@ text, and a step that left them for later would end red.
       Print the name of a job that passed only on that re-run on stdout, and exit 0.
       Automatic verification: `uv run pytest -q plugin/tests/test_close.py &&
       uv run pytest -q`
-- [x] 7. The flaky check and resuming (AC21, AC22). Files: `plugin/bin/workflow_close.py`,
+- [x] 7. The flaky check and resuming (AC21, AC22). Files: `plugin/bin/workflow_close.py`, — `iterations: 0`
       `plugin/tests/test_close.py`.
       Tests first:
       - `test_a_flaky_job_without_a_backlog_entry_stops`: the PR head's run has attempt 2,
@@ -417,7 +417,7 @@ text, and a step that left them for later would end red.
 
 ### Group 3 — Removing the rituals from the stage text
 
-- [x] 8. Delete the three eval cases (AC1, AC2, AC4). Files:
+- [x] 8. Delete the three eval cases (AC1, AC2, AC4). Files: — `iterations: 1`
       `plugin/evals/implement-converge-finds-missing-ac/`,
       `plugin/evals/implement-escalates-on-never-red-test/` and
       `plugin/evals/implement-stops-at-group-boundary/` (deleted),
@@ -440,7 +440,7 @@ text, and a step that left them for later would end red.
       remove.
       Automatic verification: `uv run pytest -q tests/test_eval_receipt.py
       plugin/tests/test_eval_cases.py && uv run pytest -q`
-- [x] 9. Templates and the section map (AC2, AC4, AC11, AC13). Files:
+- [x] 9. Templates and the section map (AC2, AC4, AC11, AC13). Files: — `iterations: 1`
       `plugin/templates/{PLAN.en.md,PLAN.pl.md,sections.md}`,
       `plugin/tests/test_templates_language.py`, `plugin/tests/test_language_contract.py`,
       `plugin/tests/test_derive.py`, the PLAN fixtures in
@@ -475,7 +475,7 @@ text, and a step that left them for later would end red.
       Automatic verification: `uv run pytest -q plugin/tests/test_templates_language.py
       plugin/tests/test_language_contract.py plugin/tests/test_derive.py
       plugin/tests/test_eval_cases.py && uv run pytest -q`
-- [x] 10. `implement` and the implementer's body (AC1–AC4, AC8, AC10, AC17). Files:
+- [x] 10. `implement` and the implementer's body (AC1–AC4, AC8, AC10, AC17). Files: — `iterations: 0`
       `plugin/skills/implement/SKILL.md`, `plugin/agents/implementer.md` (outside its
       contract sections), new `plugin/tests/test_pipeline_loop.py`,
       `plugin/tests/test_stage_skills.py`, `plugin/tests/test_stage_contract.py`,
@@ -516,7 +516,7 @@ text, and a step that left them for later would end red.
       Automatic verification: `uv run pytest -q plugin/tests/test_pipeline_loop.py
       plugin/tests/test_stage_skills.py plugin/tests/test_stage_contract.py
       plugin/tests/test_prompt_audit.py plugin/tests/test_prompt_style.py && uv run pytest -q`
-- [x] 11. `plan` and `plan-review` (AC2, AC4, AC10, AC13, AC18). Files:
+- [x] 11. `plan` and `plan-review` (AC2, AC4, AC10, AC13, AC18). Files: — `iterations: 0`
       `plugin/skills/plan/SKILL.md`, `plugin/skills/plan-review/SKILL.md`,
       `plugin/tests/test_pipeline_loop.py`, `plugin/tests/test_stage_skills.py`.
       Tests first:
@@ -548,7 +548,7 @@ text, and a step that left them for later would end red.
       Automatic verification: `uv run pytest -q plugin/tests/test_pipeline_loop.py
       plugin/tests/test_stage_skills.py plugin/tests/test_prompt_audit.py
       plugin/tests/test_language_contract.py && uv run pytest -q`
-- [x] 12. `final-review` and the reviewer's body (AC2, AC3, AC10, AC23, AC27). Files:
+- [x] 12. `final-review` and the reviewer's body (AC2, AC3, AC10, AC23, AC27). Files: — `iterations: 0`
       `plugin/skills/final-review/SKILL.md`, `plugin/agents/reviewer.md` (outside the
       contract sections), `plugin/tests/test_pipeline_loop.py`,
       `plugin/tests/test_stage_skills.py`, `plugin/tests/test_review_depth.py`.
@@ -577,7 +577,7 @@ text, and a step that left them for later would end red.
       line and the Input/output. Update `CLOSING_STEPS`.
       Automatic verification: `uv run pytest -q plugin/tests/test_pipeline_loop.py
       plugin/tests/test_stage_skills.py plugin/tests/test_review_depth.py && uv run pytest -q`
-- [x] 13. The stage contract in five files (AC1, AC2, AC4, AC10, AC15). Files:
+- [x] 13. The stage contract in five files (AC1, AC2, AC4, AC10, AC15). Files: — `iterations: 1`
       `plugin/skills/ship/SKILL.md` and `plugin/agents/{planner,plan-reviewer,implementer,
       reviewer}.md` (the `## Stage agent contract` and `## Escalation triggers` sections),
       `plugin/README.md` (only `### The \`RESULT\` contract` and `### Escalation triggers`),
@@ -600,7 +600,7 @@ text, and a step that left them for later would end red.
       `KIND` sentence in. Add `KIND` to `ALLOWED` in `test_prompt_style.py`.
       Automatic verification: `uv run pytest -q plugin/tests/test_stage_contract.py
       plugin/tests/test_readme.py plugin/tests/test_prompt_style.py && uv run pytest -q`
-- [x] 14. `ship`: state, result protocol, start and closing (AC1, AC4, AC10, AC16, AC23,
+- [x] 14. `ship`: state, result protocol, start and closing (AC1, AC4, AC10, AC16, AC23, — `iterations: 1`
       AC25). Files: `plugin/skills/ship/SKILL.md`,
       `plugin/tests/test_ship_cost_and_models.py`, `plugin/tests/test_pipeline_loop.py`.
       Tests first:
@@ -645,7 +645,7 @@ text, and a step that left them for later would end red.
 
 ### Group 4 — README and release
 
-- [x] 15. The README (AC1, AC2, AC4, AC5, AC23, mechanics of AC7–AC28). Files:
+- [x] 15. The README (AC1, AC2, AC4, AC5, AC23, mechanics of AC7–AC28). Files: — `iterations: 3`
       `plugin/README.md`, `plugin/tests/test_readme.py`.
       Tests first:
       - `test_the_readme_has_no_ritual`: no "converge pass", "Red before the change",
@@ -668,7 +668,7 @@ text, and a step that left them for later would end red.
       the PR and the background call), the lower-bound label, legacy keys).
       Automatic verification: `uv run pytest -q plugin/tests/test_readme.py &&
       uv run pytest -q`
-- [x] 16. Release 0.9.0 and the documents (AC29). Files:
+- [x] 16. Release 0.9.0 and the documents (AC29). Files: — `iterations: 0`
       `plugin/.claude-plugin/plugin.json`, `plugin/CHANGELOG.md`, `docs/DECISIONS.md`,
       `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/CONVENTIONS.md` (the Workflow metrics
       paragraph: `--close` runs the cost), new `plugin/tests/test_release_0_9_0.py`,
@@ -691,7 +691,7 @@ text, and a step that left them for later would end red.
       `--record-cost`.
       Automatic verification: `uv run pytest -q plugin/tests/test_release_0_9_0.py
       tests/test_documents.py plugin/tests/test_readme.py && uv run pytest -q`
-- [x] 17. Full verification (AC30). No new files.
+- [x] 17. Full verification (AC30). No new files. — `iterations: 0`
       Automatic verification: `bash scripts/check.sh`, then `git grep -n -i -E "converge
       pass|Red before the change|Chunk notes|CHUNK:" -- plugin/skills plugin/agents
       plugin/templates`, expecting no output.
@@ -754,6 +754,13 @@ text, and a step that left them for later would end red.
 - `python3 plugin/bin/workflow_config.py --check` in a scratch copy of a repository whose
   `workflow.json` has `"implement": {"chunked": false}` exits 0 with the notice.
 
+### Results
+
+- 2026-10-05: `bash scripts/check.sh` -> ALL GREEN (2380 tests, `claude plugin validate --strict` for plugin and marketplace). `git grep` for the ritual words in skills, agents and templates -> no output.
+- `workflow_metrics.py --derive` on a copy of this spec at `implemented` -> named `implement_iterations` (steps 1-17 ticked without an `iterations` note) and the five `final_review_*`/`findings_*` keys as unwritten, exit 0; the diff showed only metric lines (`implement_steps`, `deviations_*`, `escalations_*`). The notes were then added and the real run wrote the values.
+- `workflow_metrics.py specs` -> report rendered; `converge_gaps` shows only because old specs carry it; all three cost lines end with the lower-bound label.
+- `workflow_config.py --check` on a scratch repository with `"implement": {"chunked": false}` -> exit 0 and the retired-key notice on stderr.
+
 ### Manual (performed by the owner)
 
 - The canary (AC31): before the tag, follow `docs/CONVENTIONS.md`. Run one small spec
@@ -766,12 +773,12 @@ text, and a step that left them for later would end red.
 
 ## Definition of Done
 
-- [ ] all steps ticked
-- [ ] `bash scripts/check.sh` fully green
-- [ ] end-to-end verification (automatic) performed, result recorded here
-- [ ] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` / domain documents from the map
+- [x] all steps ticked
+- [x] `bash scripts/check.sh` fully green
+- [x] end-to-end verification (automatic) performed, result recorded here
+- [x] `docs/ROADMAP.md` updated; `docs/DECISIONS.md` / domain documents from the map
       in `CLAUDE.md`, if applicable
-- [ ] spec status: `implemented`
+- [x] spec status: `implemented`
 
 ## Owner decisions
 
@@ -855,13 +862,24 @@ Checked and found sound:
 Decision: the plan is approved. All seven findings were fixed in the plan itself, none is
 a blocker, and it adds no dependency and no migration, so nothing needs the owner.
 
-## Chunk notes
+### Converge pass 1 — 2026-10-05
 
-_(filled in by /pipeline:implement in chunk mode — one entry per chunk that ends at a group boundary)_
+A fresh subagent compared the diff with the SPEC and reported two gaps; I rejected both, so no step was added.
+
+- `[contradicts] AC3 implement/SKILL.md:128` (a proving test the owner or plan gives verbatim is not rewritten, you escalate) — rejected: AC3 only asks that a test green before the change is rewritten or escalated as a SPEC gap; leaving an owner's test unrewritten and escalating is the same existing trigger, not the removed one.
+- `[unrequested] workflow_close.py:227-247` (`PIPELINE_CLOSE_TIMEOUT_SECONDS`, `PIPELINE_CLOSE_POLL_SECONDS`) — rejected: the plan asks for them, AC24's tests need a zero poll, and a wait with no timeout could not end with the exit 5 AC20 and AC22 require; the README documents both.
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+- `minor` — Step 1: `test_workflow_example_covers_every_key_and_validates` in `test_init_templates.py` now expects the example to hold every schema key except the retired `implement` (the schema keeps the key so `--check` accepts it, the example omits it). The plan did not name that test, and it failed otherwise.
+- `minor` — Step 3: the derive fixtures are one `plugin/tests/fixtures/derive/{SPEC,PLAN}.md`, and the Polish copy is built from `templates/sections.md` at test time, instead of a static `{en,pl}/` pair. `test_english_only.py` keeps Polish letters out of every file outside its allowlist, and the generated copy tests the same headings and pass literal without adding an allowlist entry.
+- `minor` — Step 3: `spec_forms.steps()` treats a step line whose text starts with `<` or `…` as the template's placeholder, so a PLAN copied from a template counts no step (the plan's step 9 test needs it).
+- `minor` — Step 4: the lint turned more eval scaffolds red than the plan listed. Three scaffolds spelled the matrix heading `## AC -> steps matrix` (the literal has `→`), `implement-escalates-on-failing-test` had no matrix, and the Polish mirror listed `brak — …` as a manual item; each was brought to the form the lint reads (`n/a — …` for the last), and nothing else in a case changed.
+- `minor` — Order: step 8 was carried out before step 4's commit, because the lint made the converge eval fixture red by design (its plan misses AC2) and that case is deleted in step 8. Steps 10 and 11 were carried out before step 9, because step 9 removes the `step-group` and `chunk-notes` map rows while `plan`, `plan-review` and `implement` still quoted them, which turned the language-contract test red. Each commit is green on its own.
+- `minor` — Steps 5 and 6: `workflow_close.close(spec_dir, metrics)` takes the `workflow_metrics` module as an argument rather than importing it, so there is no import cycle and the script runs as `__main__`. The stub `gh` answers `run list` for the PR head from its own `head_runs` entry, apart from the queue for the new head, so the flaky check and the wait do not consume each other's answers.
+- `minor` — Step 13: `KIND:` was added to `OTHER_HEADINGS` in `test_language_contract.py`, because the contract text names the RESULT key in backticks with a colon and the test reads that as a heading.
+- `minor` — Step 15: the README gained the sections `Deriving counters (--derive)` and `Closing a spec (--close)` (pinned in the heading list of `test_readme.py`), and `test_metrics_block_lists_every_counter` exempts the two legacy keys, which the README names once, in one sentence.
+- `minor` — Metrics: this plan's ticks were made on 0.8.2 without `iterations` notes, so `--derive` left `implement_iterations` unwritten, as the end-to-end check expects. The notes were added at the end from the agent's own record of red runs after the first attempt of each step.
 
 ## Final review
 

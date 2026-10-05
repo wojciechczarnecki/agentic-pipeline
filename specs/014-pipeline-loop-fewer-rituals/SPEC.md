@@ -1,10 +1,11 @@
 ---
-status: plan-approved
+status: implemented
 stage_history:
   - "spec-draft — 2026-10-05"
   - "spec-ready — 2026-10-05"
   - "plan-draft — 2026-10-05"
   - "plan-approved — 2026-10-05"
+  - "implemented — 2026-10-05"
 metrics:
   started_at: 2026-10-05T12:48
   escalations: 0
@@ -12,6 +13,12 @@ metrics:
   plan_review_blockers: 0
   plan_review_majors: 4
   plan_changes: 7
+  implement_steps: 17
+  implement_iterations: 13
+  deviations_minor: 9
+  deviations_major: 0
+  escalations_permission: 0
+  escalations_tooling: 0
 ---
 
 # SPEC 014 — Fewer rituals, more code in the pipeline loop
