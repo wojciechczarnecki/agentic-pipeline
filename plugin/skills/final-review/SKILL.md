@@ -89,9 +89,9 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
      use the same text keys as the code? Do they prove anything? Break the code a key test
      covers (comment out the line or flip the condition), run the test and see it fail, then
      restore the file; a test that stays green on broken code is a finding. When
-     `verify.scopes` has a UI scope and the change touches the interface — require in PLAN.md an entry on `<verify.command> <UI scope>`
-     and on the visual artifacts looked at and the review scenario required by
-     `<docs.conventions>`.
+     `verify.scopes` has a UI scope and the change touches the interface — require in PLAN.md
+     an entry on `<verify.command> <UI scope>` and on the visual artifacts looked at and the
+     review scenario required by `<docs.conventions>`.
    The finding format from a perspective:
    `[blocker|worth-fixing|nit] file:line — scenario (input → wrong behaviour) — fix`.
    Severities are tokens written as code in every language, like metric keys. Without the
