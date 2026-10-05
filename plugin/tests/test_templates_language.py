@@ -9,8 +9,8 @@ TEMPLATES = PLUGIN / "templates"
 DOCUMENTS = ("SPEC", "PLAN")
 
 # The headings and frontmatter of the inline templates `idea` and `plan` carried before 0.5.0
-# (SPEC 006, AC17): a Polish consumer's new specs have to look exactly like its old ones. SPEC 012
-# adds two PLAN headings on purpose: the step group heading and the chunk notes section.
+# (SPEC 006, AC17): a Polish consumer's new specs have to look exactly like its old ones. SPEC 014
+# removed the step group heading and the chunk notes section again.
 POLISH_SNAPSHOT = {
     "SPEC": {
         "frontmatter": [
@@ -41,7 +41,6 @@ POLISH_SNAPSHOT = {
             "## Podejście",
             "## Macierz AC → kroki",
             "## Kroki",
-            "### Grupa N — <nazwa>",
             "## Ryzyka i pułapki",
             "## Weryfikacja end-to-end",
             "### Automatyczna (wykonuje /pipeline:implement)",
@@ -49,7 +48,6 @@ POLISH_SNAPSHOT = {
             "## Definition of Done",
             "## Decyzje właściciela",
             "## Review log",
-            "## Notatki chunków",
             "## Deviations",
             "## Final review",
         ],
@@ -78,7 +76,6 @@ ENGLISH_HEADINGS = {
         "## Approach",
         "## AC → steps matrix",
         "## Steps",
-        "### Group N — <name>",
         "## Risks and traps",
         "## End-to-end verification",
         "### Automatic (performed by /pipeline:implement)",
@@ -86,7 +83,6 @@ ENGLISH_HEADINGS = {
         "## Definition of Done",
         "## Owner decisions",
         "## Review log",
-        "## Chunk notes",
         "## Deviations",
         "## Final review",
     ],
@@ -135,7 +131,6 @@ MAP_SNAPSHOT = [
     ("approach", "PLAN", "## Podejście", "## Approach"),
     ("ac-matrix", "PLAN", "## Macierz AC → kroki", "## AC → steps matrix"),
     ("steps", "PLAN", "## Kroki", "## Steps"),
-    ("step-group", "PLAN", "### Grupa N — ", "### Group N — "),
     ("step-verification", "PLAN", "Weryfikacja automatyczna:", "Automatic verification:"),
     ("risks", "PLAN", "## Ryzyka i pułapki", "## Risks and traps"),
     ("e2e", "PLAN", "## Weryfikacja end-to-end", "## End-to-end verification"),
@@ -155,7 +150,6 @@ MAP_SNAPSHOT = [
     ("definition-of-done", "PLAN", "## Definition of Done", "## Definition of Done"),
     ("owner-decisions", "PLAN", "## Decyzje właściciela", "## Owner decisions"),
     ("review-log", "PLAN", "## Review log", "## Review log"),
-    ("chunk-notes", "PLAN", "## Notatki chunków", "## Chunk notes"),
     ("deviations", "PLAN", "## Deviations", "## Deviations"),
     ("final-review", "PLAN", "## Final review", "## Final review"),
 ]
@@ -276,21 +270,50 @@ def test_template_pairs_have_the_same_structure(document):
     check_structure(document)
 
 
-# SPEC 010, AC1: the AC matrix carries the red record `implement` fills in, in both languages,
-# as a table column, so the section map stays as it is.
+# SPEC 014, AC2: the AC matrix has three columns, in both languages.
 @pytest.mark.parametrize(
     "language, header",
     [
-        ("en", "| AC | Steps | Proving test | Red before the change |"),
-        ("pl", "| AC | Kroki | Test dowodzący | Czerwony przed zmianą |"),
+        ("en", "| AC | Steps | Proving test |"),
+        ("pl", "| AC | Kroki | Test dowodzący |"),
     ],
 )
-def test_the_ac_matrix_has_the_red_column(language, header):
+def test_the_ac_matrix_has_three_columns(language, header):
     lines = template("PLAN", language).splitlines()
     assert header in lines, (language, header)
     separator = lines[lines.index(header) + 1]
     assert re.fullmatch(r"\|(-+\|)+", separator), separator
-    assert separator.count("|") == 5, separator
+    assert separator.count("|") == 4, separator
+
+
+# SPEC 014, AC4: no group or chunk rows in the map, and the pass condition is there.
+def test_the_section_map_has_no_group_rows():
+    keys = {row[0] for row in section_map()}
+    assert not keys & {"step-group", "chunk-notes"}
+    pass_rows = [row for row in section_map() if row[0] == "pass-condition"]
+    assert [(row[2], row[3]) for row in pass_rows] == [("Zaliczony, gdy:", "Pass when:")]
+
+
+# SPEC 014, AC11: the fixed forms `workflow_metrics.py --derive` reads are in the templates.
+@pytest.mark.parametrize(
+    "language, pass_literal", [("en", "Pass when:"), ("pl", "Zaliczony, gdy:")]
+)
+def test_templates_give_the_fixed_forms(language, pass_literal):
+    text = template("PLAN", language)
+    for form in (
+        "`iterations: ",
+        "`major`",
+        "- **F",
+        "`gate`",
+        "`accepted`:",
+        "`decision`",
+        "`permission`",
+        "`tooling`",
+        pass_literal,
+    ):
+        assert form in text, (language, form)
+    assert "### Group" not in text and "### Grupa" not in text
+    assert "chunk" not in text.lower() and "chunków" not in text
 
 
 @pytest.mark.parametrize("document", DOCUMENTS)

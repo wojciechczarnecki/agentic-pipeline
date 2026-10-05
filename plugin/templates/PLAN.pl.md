@@ -14,15 +14,15 @@
 
 ## Macierz AC → kroki
 
-| AC | Kroki | Test dowodzący | Czerwony przed zmianą |
-|----|-------|----------------|-----------------------|
+| AC | Kroki | Test dowodzący |
+|----|-------|----------------|
 
 ## Kroki
 
-### Grupa N — <nazwa>
-
 - [ ] 1. <co> — pliki: `…`
       Weryfikacja automatyczna: `<dokładne komendy, np. uruchomienie konkretnego pliku testów>`
+      (po odhaczeniu kroku jego linia kończy się notatką `iterations: <k>` w backtickach:
+      iteracje pętli ponad pierwszą próbę, 0, gdy krok był zielony od razu)
 - [ ] 2. …
 
 ## Ryzyka i pułapki
@@ -53,20 +53,16 @@ przeglądowe — z oczekiwanymi wynikami>
 
 ## Decyzje właściciela
 
-_(dopisuje /pipeline:ship lub etap przy eskalacji: data, etap, pytanie, decyzja)_
+_(dopisuje /pipeline:ship lub etap przy eskalacji, jeden wpis w linii: `- YYYY-MM-DD — <etap> — `<rodzaj>` — <pytanie> — <decyzja>`, rodzaj to `decision`, `permission` albo `tooling`; wpis bramki final-review ma rodzaj `gate` i kończy się `accepted`: F1, F2; `rejected`: F3, `none` dla pustej listy)_
 
 ## Review log
 
-_(wypełnia /pipeline:plan-review)_
-
-## Notatki chunków
-
-_(wypełnia /pipeline:implement w trybie chunków — jeden wpis na chunk kończący się na granicy grupy)_
+_(wypełnia /pipeline:plan-review — jedna pozycja listy na ustalenie, zaczynająca się od wagi w backtickach: `- `blocker` — …`, `major` albo `minor`)_
 
 ## Deviations
 
-_(wypełnia /pipeline:implement — każde odstępstwo od planu z uzasadnieniem)_
+_(wypełnia /pipeline:implement — jeden wpis na odstępstwo, z uzasadnieniem: `- `minor` — …` albo `- `major` — …`)_
 
 ## Final review
 
-_(wypełnia /pipeline:final-review)_
+_(wypełnia /pipeline:final-review — jedna linia na ustalenie: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_

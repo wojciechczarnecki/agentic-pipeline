@@ -244,8 +244,6 @@ cat > specs/001-deployment-settings/PLAN.md <<'EOF'
 
 ## Kroki
 
-### Grupa 1 — Ustawienia
-
 - [ ] 1. Najpierw testy — pliki: `tests/test_settings.py` z przypadkami AC1 i AC2,
       czytającymi kopię `settings.yaml` z katalogu tymczasowego.
       Weryfikacja automatyczna: `python3 -m unittest tests.test_settings -q` → dwa nowe
@@ -288,10 +286,6 @@ _(dopisuje /pipeline:ship lub etap przy eskalacji: data, etap, pytanie, decyzja)
 ## Review log
 
 _(wypełnia /pipeline:plan-review)_
-
-## Notatki chunków
-
-_(wypełnia /pipeline:implement w trybie chunków — jeden wpis na chunk kończący się na granicy grupy)_
 
 ## Deviations
 

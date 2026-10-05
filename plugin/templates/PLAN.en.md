@@ -14,15 +14,15 @@
 
 ## AC → steps matrix
 
-| AC | Steps | Proving test | Red before the change |
-|----|-------|--------------|-----------------------|
+| AC | Steps | Proving test |
+|----|-------|--------------|
 
 ## Steps
 
-### Group N — <name>
-
 - [ ] 1. <what> — files: `…`
       Automatic verification: `<exact commands, e.g. running a specific test file>`
+      (when the step is ticked, its line ends with `iterations: <k>` in backticks: the loop
+      iterations beyond the first attempt, 0 when the step was green at once)
 - [ ] 2. …
 
 ## Risks and traps
@@ -53,20 +53,16 @@ visual review tests — with the expected results>
 
 ## Owner decisions
 
-_(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
+_(appended by /pipeline:ship or a stage on escalation, one entry per line: `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`, `permission` or `tooling`; a final-review gate entry has the kind `gate` and ends with `accepted`: F1, F2; `rejected`: F3, `none` for an empty list)_
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
-
-## Chunk notes
-
-_(filled in by /pipeline:implement in chunk mode — one entry per chunk that ends at a group boundary)_
+_(filled in by /pipeline:plan-review — one list item per finding, starting with its severity in backticks: `- `blocker` — …`, `major` or `minor`)_
 
 ## Deviations
 
-_(filled in by /pipeline:implement — every deviation from the plan with its rationale)_
+_(filled in by /pipeline:implement — one entry per deviation, with its rationale: `- `minor` — …` or `- `major` — …`)_
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+_(filled in by /pipeline:final-review — one line per finding: `- **F<n>** `<blocker|worth-fixing|nit>` — …`)_

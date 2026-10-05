@@ -230,3 +230,27 @@ def test_a_copy_without_a_plan_still_derives_escalations(tmp_path):
     shutil.copy(FIXTURE / "SPEC.md", spec / "SPEC.md")
     assert derive(spec).returncode == 0
     assert metrics_of(spec)["escalations"] == "1"
+
+
+# SPEC 014, AC11: a plan copied from a template counts nothing.
+@pytest.mark.parametrize("language", ["en", "pl"])
+def test_the_bare_template_derives_nothing(tmp_path, language):
+    spec = make_spec(tmp_path, language)
+    template = BIN.parent / "templates" / f"PLAN.{language}.md"
+    (spec / "PLAN.md").write_text(template.read_text())
+    text = (spec / "SPEC.md").read_text().replace("status: implemented", "status: plan-draft")
+    (spec / "SPEC.md").write_text(text)
+    result = derive(spec)
+    assert result.returncode == 0
+    metrics = metrics_of(spec)
+    for key in (
+        "plan_steps",
+        "implement_steps",
+        "implement_iterations",
+        "plan_review_blockers",
+        "final_review_nits",
+        "findings_accepted",
+        "deviations_minor",
+    ):
+        assert key not in metrics, key
+    assert metrics["escalations"] == "1"

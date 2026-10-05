@@ -199,8 +199,6 @@ cat > specs/001-deployment-settings/PLAN.md <<'EOF'
 
 ## Steps
 
-### Group 1 — Settings
-
 - [ ] 1. Tests first - `tests/test_settings.py` with the AC1 and AC2 cases, reading a copy
       of `settings.yaml` from a temporary directory.
       Automatic verification: `python3 -m unittest discover -s tests -q` -> the two new
@@ -236,10 +234,6 @@ _(none yet)_
 ## Review log
 
 _(filled in by the plan review)_
-
-## Chunk notes
-
-_(filled in by /pipeline:implement in chunk mode — one entry per chunk that ends at a group boundary)_
 
 ## Deviations
 
