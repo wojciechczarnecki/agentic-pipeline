@@ -26,6 +26,10 @@ metrics:
   final_review_nits: 5
   findings_accepted: 16
   findings_rejected: 0
+  cost_plan_cents: 246
+  cost_plan_review_cents: 101
+  cost_implement_cents: 869
+  cost_final_review_cents: 854
 ---
 
 # SPEC 014 — Fewer rituals, more code in the pipeline loop
