@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from test_guard import WORKFLOW, evaluate, git, make_repo
 
@@ -112,3 +114,40 @@ def test_a_heredoc_to_a_non_interpreter_keeps_todays_rules(repo):
 
 def test_the_shell_c_flag_is_not_interpreter_code(repo):
     assert evaluate("sh -c 'echo .claude/other.json'", repo) is None
+
+
+PLUGIN = Path(__file__).resolve().parents[1]
+
+
+def bullet(document: str, marker: str) -> str:
+    start = document.index(marker)
+    end = document.find("\n- **", start + 1)
+    return document[start : end if end != -1 else len(document)]
+
+
+def test_guard_doc_has_the_interpreter_rule():
+    text = bullet((PLUGIN / "docs" / "GUARD.md").read_text(), "- **Interpreter code")
+    for word in ["python", "node", "perl", "ruby", "-c", "-e", "heredoc", "here-string"]:
+        assert word in text, word
+    assert "Edit/Write" in text
+
+
+def test_guard_doc_narrows_the_interpreter_limit():
+    text = bullet(
+        (PLUGIN / "docs" / "GUARD.md").read_text(), "- **Scripts, interpreters and shell functions"
+    )
+    assert "names a guardrail" in text
+    assert "run time" in text and "script file" in text
+
+
+def test_guard_doc_says_to_send_separate_calls():
+    text = bullet((PLUGIN / "docs" / "GUARD.md").read_text(), "- **How the refusal reads")
+    assert "separate calls" in text
+
+
+def test_readme_guard_paragraph_names_the_new_rules():
+    readme = (PLUGIN / "README.md").read_text()
+    section = readme[readme.index("### Command guard") :]
+    section = section[: section.index("\n## ")]
+    assert "alembic.ini" in section and "migrations" in section
+    assert "interpreter" in section.lower()
