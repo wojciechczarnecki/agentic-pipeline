@@ -150,10 +150,10 @@ Design choices:
 
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
-| AC1 | 8, 10, 13, 14, 15 | `plugin/tests/test_pipeline_loop.py::test_no_ritual_returns`, `tests/test_eval_receipt.py::test_no_rule_names_a_removed_case` | |
-| AC2 | 8, 9, 10, 11, 12, 13, 15 | `plugin/tests/test_templates_language.py::test_the_ac_matrix_has_three_columns`, `plugin/tests/test_pipeline_loop.py::test_no_ritual_returns`, `plugin/tests/test_stage_contract.py::test_the_removed_triggers_are_gone` | |
+| AC1 | 8, 10, 13, 14, 15 | `plugin/tests/test_pipeline_loop.py::test_no_ritual_returns`, `tests/test_eval_receipt.py::test_no_rule_names_a_removed_case` |  `uv run pytest -q tests/test_eval_receipt.py` → `assert not (ROOT / "plugin" / "evals" / name).exists(), name` |
+| AC2 | 8, 9, 10, 11, 12, 13, 15 | `plugin/tests/test_templates_language.py::test_the_ac_matrix_has_three_columns`, `plugin/tests/test_pipeline_loop.py::test_no_ritual_returns`, `plugin/tests/test_stage_contract.py::test_the_removed_triggers_are_gone` |  `uv run pytest -q tests/test_eval_receipt.py` → `assert not (ROOT / "plugin" / "evals" / name).exists(), name` |
 | AC3 | 10, 12 | `plugin/tests/test_pipeline_loop.py::test_implement_keeps_test_first_guidance`, `::test_final_review_tests_break_the_code` | |
-| AC4 | 8, 9, 10, 11, 13, 14, 15 | `plugin/tests/test_pipeline_loop.py::test_no_ritual_returns`, `plugin/tests/test_templates_language.py::test_the_section_map_has_no_group_rows` | |
+| AC4 | 8, 9, 10, 11, 13, 14, 15 | `plugin/tests/test_pipeline_loop.py::test_no_ritual_returns`, `plugin/tests/test_templates_language.py::test_the_section_map_has_no_group_rows` |  `uv run pytest -q tests/test_eval_receipt.py` → `assert not (ROOT / "plugin" / "evals" / name).exists(), name` |
 | AC5 | 1, 15 | `plugin/tests/test_workflow_config.py::test_retired_chunked_passes_with_a_notice`, `::test_retired_chunked_is_silent_for_the_hooks`, `::test_implement_bad_values_still_fail`, `plugin/tests/test_init_templates.py::test_the_example_has_no_implement_section` |  `uv run pytest -q plugin/tests/test_workflow_config.py plugin/tests/test_init_templates.py` → `assert "retired in 0.9.0" in result.stderr` (and `assert "implement" not in example`) |
 | AC6 | 4 | `plugin/tests/test_spec_lint.py::test_consumer_specs_pass_the_check`, `tests/test_spec_metrics.py` | |
 | AC7 | 3 | `plugin/tests/test_derive.py::test_derive_writes_every_key` |  `uv run pytest -q plugin/tests/test_derive.py` → `assert result.returncode == 0, result.stderr` (--derive unknown, argparse exit 2) |
@@ -417,7 +417,7 @@ text, and a step that left them for later would end red.
 
 ### Group 3 — Removing the rituals from the stage text
 
-- [ ] 8. Delete the three eval cases (AC1, AC2, AC4). Files:
+- [x] 8. Delete the three eval cases (AC1, AC2, AC4). Files:
       `plugin/evals/implement-converge-finds-missing-ac/`,
       `plugin/evals/implement-escalates-on-never-red-test/` and
       `plugin/evals/implement-stops-at-group-boundary/` (deleted),
