@@ -1,61 +1,67 @@
 {
-  "commit": "da297f07f01b6edd0feecdf591405b62b1b4a347",
-  "plugin_fingerprint": "0a1a8e68dc4ef28f5dc257540ac8628cc514b437078b15e32f1d9c0fc354d49b",
-  "plugin_version": "0.8.0",
-  "ran_at": "2026-09-24T23:48",
-  "cases_total": 12,
-  "cases_passed": 12,
+  "commit": "5d50c956f8297792c2dd8261e650e7978be55aff",
+  "plugin_fingerprint": "0ea209e69066583e2e31e96f717e01c31d9b84b5beac7fb61d6a8d7368b69699",
+  "plugin_version": "0.9.0",
+  "ran_at": "2026-10-05T14:53",
+  "cases_total": 9,
+  "cases_passed": 9,
   "green": true,
-  "cost_usd": 5.5494,
+  "cost_usd": 3.9923,
   "model": "default",
   "cases": {
     "final-review-finds-planted-defect": {
       "runs": 1,
-      "passed": 1
+      "passed": 1,
+      "errors": 0,
+      "verdict": "pass"
     },
     "final-review-ignores-false-positive": {
       "runs": 1,
-      "passed": 1
+      "passed": 1,
+      "errors": 0,
+      "verdict": "pass"
     },
     "guard-blocks-main-push": {
       "runs": 1,
-      "passed": 1
-    },
-    "implement-converge-finds-missing-ac": {
-      "runs": 1,
-      "passed": 1
+      "passed": 1,
+      "errors": 0,
+      "verdict": "pass"
     },
     "implement-escalates-on-failing-test": {
       "runs": 1,
-      "passed": 1
-    },
-    "implement-escalates-on-never-red-test": {
-      "runs": 1,
-      "passed": 1
-    },
-    "implement-stops-at-group-boundary": {
-      "runs": 1,
-      "passed": 1
+      "passed": 1,
+      "errors": 0,
+      "verdict": "pass"
     },
     "init-keeps-manual-edits": {
       "runs": 1,
-      "passed": 1
+      "passed": 1,
+      "errors": 0,
+      "verdict": "pass"
     },
     "init-without-questions": {
       "runs": 1,
-      "passed": 1
+      "passed": 1,
+      "errors": 0,
+      "verdict": "pass"
     },
     "init-writes-the-chosen-language": {
       "runs": 1,
-      "passed": 1
+      "passed": 1,
+      "errors": 0,
+      "verdict": "pass"
     },
     "plan-review-approves-polish-owner-decision": {
       "runs": 1,
-      "passed": 1
+      "passed": 1,
+      "errors": 0,
+      "verdict": "pass"
     },
     "plan-review-escalates-on-dependency": {
       "runs": 1,
-      "passed": 1
+      "passed": 1,
+      "errors": 0,
+      "verdict": "pass"
     }
   }
 }
