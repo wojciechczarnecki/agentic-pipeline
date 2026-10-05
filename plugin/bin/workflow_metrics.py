@@ -465,13 +465,18 @@ def lint(spec_dir: Path, spec_text: str) -> list[str]:
     covered = spec_forms.matrix_acs(plan)
     missing = [f"AC{number}" for number in spec_forms.spec_acs(spec_text) if number not in covered]
     if missing:
+        names, verb = ", ".join(missing), "has" if len(missing) == 1 else "have"
         problems.append(
-            f"{', '.join(missing)} have no row in the PLAN.md AC → steps matrix"
+            f"{names} {verb} no row in the PLAN.md AC → steps matrix; add a row for each"
             if plan is not None
-            else f"no PLAN.md, so {', '.join(missing)} have no row in an AC → steps matrix"
+            else f"no PLAN.md, so {names} {verb} no row in an AC → steps matrix; write the plan"
         )
+    pass_line = spec_forms.literals("PLAN", "pass-condition")[1]
     for item in spec_forms.manual_without_pass(plan):
-        problems.append(f'the manual scenario "{item[:60]}" has no pass-condition line')
+        problems.append(
+            f'the manual scenario "{item[:60]}" has no pass-condition line; add a '
+            f"`{pass_line}` line with the command, query or UI place and the expected result"
+        )
     return problems
 
 
@@ -748,11 +753,12 @@ def derive(spec_dir: Path) -> int:
         split = spec_forms.deviations(plan)
         if split is not None and (status in DEVIATIONS_DUE or split != (0, 0)):
             values["deviations_minor"], values["deviations_major"] = split
-        elif status in DEVIATIONS_DUE:
-            values["deviations_minor"] = values["deviations_major"] = 0
         else:
+            reason = (
+                "no `## Deviations` section" if split is None else "no entry in `## Deviations`"
+            )
             for key in ("deviations_minor", "deviations_major"):
-                left[key] = "no entry in `## Deviations`"
+                left[key] = reason
         for key, kind, source in (
             ("plan_review_blockers", "blocker", "review"),
             ("plan_review_majors", "major", "review"),
@@ -765,8 +771,12 @@ def derive(spec_dir: Path) -> int:
                 if source == "review"
                 else spec_forms.final_review(plan, kind)
             )
-            where = "`## Review log`" if source == "review" else "`## Final review`"
-            put(key, count, f"{where} holds only the placeholder")
+            reason = (
+                "`## Review log` holds no finding item and no `none` item"
+                if source == "review"
+                else "`## Final review` holds only the placeholder"
+            )
+            put(key, count, reason)
         gates = [d for d in spec_forms.decisions(plan, "PLAN")[0] if d.kind == "gate"]
         ids = spec_forms.gate_ids(gates[-1]) if gates else None
         if ids is None:

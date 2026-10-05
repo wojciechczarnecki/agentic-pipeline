@@ -109,7 +109,9 @@ implementation — the owner steps in only when the decision is not yours (step 
 4. **Make the fixes directly in PLAN.md.** In `## Review log` record: the date; the
    findings, each a list item that starts with its severity token in backticks —
    `- `blocker` — <what, and what was changed>`, or `major`, or `minor` — which
-   `--derive` counts; what was checked and found correct (so that the later stages do not
+   `--derive` counts, and with no finding the one item `- `none` — no findings`, so a
+   review without findings counts as zero instead of a log `--derive` cannot read; what
+   was checked and found correct (so that the later stages do not
    repeat that work), in a list whose items do not start with a severity token.
 5. **The approval decision.** Escalate (do not set `plan-approved`) when:
    - a blocker remains that you cannot fix in the plan itself;
@@ -120,7 +122,10 @@ implementation — the owner steps in only when the decision is not yours (step 
    In the remaining cases set `status: plan-approved` yourself + an entry in
    `stage_history`, and in the Review log justify in one sentence why the plan is ready.
    Escalation in a session on its own: `AskUserQuestion` with options and a recommendation
-   (the first, "(Recommended)"), the decision appended to PLAN.md → `## Owner decisions`,
+   (the first, "(Recommended)"), the decision appended to PLAN.md → `## Owner decisions`
+   as one entry in the fixed form
+   `- YYYY-MM-DD — plan-review — `<kind>` — <question> — <decision>`, the kind `decision`,
+   `permission` or `tooling` (an entry in another form leaves `escalations` unwritten),
    then finish step 5.
 6. **Closing the stage:** in the `metrics:` block of SPEC.md set `plan_changes` (the number
    of changes made in the plan), then run `workflow_metrics.py --derive <spec-dir>`, which

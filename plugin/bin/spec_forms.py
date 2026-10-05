@@ -108,18 +108,21 @@ def deviations(plan: str) -> tuple[int, int] | None:
 
 
 REVIEW_FINDING = re.compile(r"^(?:- |\d+\. )`(blocker|major|minor)`")
+REVIEW_NONE = re.compile(r"^(?:- |\d+\. )`none`")
 FINAL_FINDING = re.compile(r"^\s*- \*\*F(\d+)\*\*\s+`(blocker|worth-fixing|nit)`")
 
 
+# A review log with no finding in the form counts only when it says so with a `none` item; a log
+# kept in another form leaves the counters unwritten instead of turning them into a silent zero.
 def review_log(plan: str, severity: str) -> int | None:
     body = section(plan, "PLAN", "review-log")
     if not has_content(body):
         return None
-    return sum(
-        1
-        for line in (body or "").splitlines()
-        if (match := REVIEW_FINDING.match(line)) and match.group(1) == severity
-    )
+    lines = (body or "").splitlines()
+    found = [match.group(1) for line in lines if (match := REVIEW_FINDING.match(line))]
+    if not found and not any(REVIEW_NONE.match(line) for line in lines):
+        return None
+    return found.count(severity)
 
 
 def final_review(plan: str, severity: str) -> int | None:
@@ -134,8 +137,9 @@ def final_review(plan: str, severity: str) -> int | None:
     return sum(1 for found in seen.values() if found == severity)
 
 
+DASH = "[—–-]"
 ENTRY = re.compile(
-    rf"^(\d{{4}}-\d{{2}}-\d{{2}}) [—-] ({'|'.join(STAGES)}) [—-] `([a-z]+)`(?: [—-] (.*))?$"
+    rf"^(\d{{4}}-\d{{2}}-\d{{2}}) {DASH} ({'|'.join(STAGES)}) {DASH} `([a-z]+)`(?: {DASH} (.*))?$"
 )
 IDS = r"(?:F\d+(?:\s*,\s*F\d+)*|none)"
 
@@ -187,19 +191,24 @@ def matrix_acs(plan: str | None) -> set[int]:
     return found
 
 
+ITEM = re.compile(r"^(?:- |\d+\. )")
+
+
 # The items of `### Manual` that carry no pass-condition line. A section of the single line
-# `n/a — <reason>` has no items to report.
+# `n/a — <reason>` (a list item or not) has no items to report. Items are `- ` or numbered
+# list items; text with no item at all is read as one scenario, so prose without a pass line
+# is reported too.
 def manual_without_pass(plan: str | None) -> list[str]:
     body = section(plan, "PLAN", "e2e-manual") if plan else None
     if body is None:
         return []
-    lines = [line for line in body.splitlines() if line.strip()]
-    if len(lines) == 1 and re.match(r"n/a\s+[—-]\s+\S", lines[0]):
+    lines = [line.strip() for line in body.splitlines() if line.strip()]
+    if len(lines) == 1 and re.match(rf"(?:- )?n/a\s+{DASH}\s+\S", lines[0]):
         return []
     marks = literals("PLAN", "pass-condition")
     missing = []
-    for item in _items(body):
-        stripped = [re.sub(r"^(- )?", "", line.strip()) for line in item]
+    for item in _items(body) or ([lines] if lines else []):
+        stripped = [ITEM.sub("", line.strip()) for line in item]
         if not any(line.startswith(marks) for line in stripped):
             missing.append(stripped[0])
     return missing
@@ -208,7 +217,7 @@ def manual_without_pass(plan: str | None) -> list[str]:
 def _items(body: str) -> list[list[str]]:
     items: list[list[str]] = []
     for line in body.splitlines():
-        if line.startswith("- "):
+        if ITEM.match(line):
             items.append([line])
         elif items and line.strip():
             items[-1].append(line)

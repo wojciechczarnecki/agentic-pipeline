@@ -215,7 +215,7 @@ _(none yet)_
 
 ### 2026-09-01 - plan review
 
-No findings. The plan is ready.
+- `none` — no findings; the plan is ready.
 
 ## Deviations
 

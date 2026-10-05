@@ -309,6 +309,7 @@ def test_templates_give_the_fixed_forms(language, pass_literal):
         "`decision`",
         "`permission`",
         "`tooling`",
+        "- `none` — ",
         pass_literal,
     ):
         assert form in text, (language, form)

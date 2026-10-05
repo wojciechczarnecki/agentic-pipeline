@@ -284,3 +284,42 @@ def test_no_ritual_returns():
             text = path.read_text().lower()
             found += [(path.name, word) for word in RITUAL_WORDS if word.lower() in text]
     assert not found, found
+
+
+# Final review of SPEC 014. F1: a report with no findings still records a gate entry with two
+# empty lists, which --derive needs and --close checks.
+def test_a_review_without_findings_records_an_empty_gate():
+    gate = collapse(ship_section("Gate: final review"))
+    assert "`accepted`: none; `rejected`: none" in gate
+    report = collapse(final_review_step("Report mode", 5))
+    assert "`accepted`: none; `rejected`: none" in report
+
+
+# F4: the flaky entry names the CI job as a code span and gets its own commit and push.
+def test_the_flaky_entry_names_the_job_and_is_committed():
+    wait = collapse(final_review_step("Apply mode", 4))
+    assert "names the CI job as a code span" in wait
+    assert "`docs: record flaky job of NNN <slug>`" in wait
+
+
+# F8: run on their own, implement and plan-review append escalations in the fixed form.
+@pytest.mark.parametrize("name", ["implement", "plan-review"])
+def test_a_standalone_escalation_uses_the_fixed_form(name):
+    text = collapse(skill(name))
+    assert f"`- YYYY-MM-DD — {name} — `<kind>` — <question> — <decision>`" in text
+
+
+# F9: a review log without findings says so with a `none` item.
+def test_plan_review_writes_none_without_findings():
+    assert "`- `none` — no findings`" in collapse(skill("plan-review"))
+
+
+# F14: a verbatim test green before the change is the SPEC-gap trigger, not a trigger of its own.
+def test_a_verbatim_green_test_is_a_spec_gap():
+    first = collapse(heading_block(skill("implement"), "## Test first"))
+    assert "the same gap in the SPEC, escalated under the same trigger" in first
+
+
+# F15: the implementer agent repeats the minimality rule of AC17.
+def test_the_implementer_adds_nothing_beyond_the_change():
+    assert "nothing beyond what the change needs" in collapse(agent_body("implementer"))

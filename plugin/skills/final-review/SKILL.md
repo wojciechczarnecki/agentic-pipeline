@@ -122,7 +122,9 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
      in the session language; recommendation: accept `blocker` and `worth-fixing`, reject
      `nit`); record the decisions in PLAN.md → `## Owner decisions` as one entry of kind
      `gate`, `- YYYY-MM-DD — final-review — `gate` — <question> — `accepted`: F1, F2;
-     `rejected`: F3` (`none` for an empty list), and go on to apply mode;
+     `rejected`: F3` (`none` for an empty list), and go on to apply mode; a report with no
+     findings skips the question but not the entry: `accepted`: none; `rejected`: none,
+     because `--derive` counts the findings from it and `--close` stops without it;
    - `/pipeline:ship` → end with the RESULT block; its SUMMARY carries the findings table
      and the `Left out: N nit findings` sentence; the decisions are collected by the
      orchestrator.
@@ -161,9 +163,14 @@ turn with the owner's question in between; in `/pipeline:ship` each mode is a se
    accepted decisions → escalation; never fit a test or test data to the defect.
    On escalation the status stays `implemented`, and the PR is not reported as ready to
    merge. **A test green only after a retry (flaky)** does not block the PR, but it does not
-   vanish: add it to `<docs.backlog>` (the test name, the CI run number, the symptom, the
-   trigger) and list it in the report. The entry goes into the stage's own commit of step 3
-   — otherwise the trace is lost after the merge.
+   vanish: add it to `<docs.backlog>` and list it in the report. The entry names the CI job
+   as a code span (`` `plugin` ``) — the name `gh pr checks` shows, which `--close` looks
+   for — with the test name, the CI run number, the symptom and the trigger; a job the
+   backlog does not name that way stops `--close` with exit 3. The flaky run is seen here,
+   after step 3 was pushed, so the entry gets its own commit
+   (`docs: record flaky job of NNN <slug>`) and push, and you wait for CI on that new head
+   as above — a dirty tree would make `--close` refuse, and otherwise the trace is lost
+   after the merge.
 5. **The end of the stage is a PR with green CI and the status `implemented`.** You never
    set `done`: `workflow_metrics.py --close` does, with the cost, the derived counters, the
    closing commit and the green CI of the new head. A red after your last push is a defect

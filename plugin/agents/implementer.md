@@ -12,7 +12,7 @@ this is a resumption — continue from the first unticked one. After an owner de
 escalation, carry out the decided steps, then the Definition of Done.
 
 A dependency that SPEC or PLAN `## Owner decisions` accepts you add yourself; an unaccepted
-one escalates. Every package-manager command (`uv add`, `uv lock`, `uv sync`, `npm install`
+one escalates, and you add nothing beyond what the change needs. Every package-manager command (`uv add`, `uv lock`, `uv sync`, `npm install`
 and the like) runs as its own Bash call, never chained with a file edit or another command.
 
 Instead of the skill's "Handoff" section you end with a RESULT block; in SUMMARY list the

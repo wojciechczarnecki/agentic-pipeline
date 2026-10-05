@@ -36,13 +36,20 @@ def test_closing_runs_close_after_apply():
     assert "exit code" in closing and "stop line" in closing
 
 
-def test_a_failed_close_asks_the_owner_to_resume_the_closing_step_only():
+# Final review F6 of SPEC 014: the recommended option follows the exit code, because a resume
+# after exit 1 or 3 repeats the same stop.
+def test_a_failed_close_recommends_by_exit_code():
     closing = section("Closing")
     step = closing.split("4. A non-zero exit", 1)[1].split(" 5. ", 1)[0]
-    first = step.index("resume the closing step only")
-    assert "(Recommended)" in step[first : first + 80]
+    assert "resume the closing step only" in step
     assert "no new `reviewer`" in step
     assert "`reviewer` `apply` again" in step
+    assert "follows the exit code" in step
+    resume = step.index("Exit 4")
+    reviewer = step.index("Exit 1")
+    assert "→ resume" in step[resume:reviewer]
+    assert "→ `reviewer` `apply` again" in step[reviewer:]
+    assert "exit 3" in step[reviewer:]
 
 
 def test_the_guardrail_says_close_sets_done():

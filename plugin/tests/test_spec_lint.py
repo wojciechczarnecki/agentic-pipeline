@@ -165,3 +165,88 @@ def test_consumer_specs_pass_the_check(path):
 
 def test_there_are_nine_consumer_fixtures():
     assert len(CONSUMER_SPECS) == 9
+
+
+def map_literals(key: str) -> tuple[str, str]:
+    for line in SECTIONS.read_text(encoding="utf-8").splitlines():
+        if line.startswith(f"| `{key}` | PLAN"):
+            cells = [cell.strip().strip("`") for cell in line.strip("|").split("|")]
+            return cells[2], cells[3]
+    raise AssertionError(f"no {key} row in the section map")
+
+
+GOOD_PLAN = PLAN_BODY.replace("| AC3 |", "| AC2, AC3 |").replace(
+    "- Press the button.\n", "- Press the button.\n  Pass when: a toast appears.\n"
+)
+
+
+def test_the_good_plan_passes(tmp_path):
+    result = run_check(make_spec(tmp_path, "implemented", GOOD_PLAN))
+    assert result.returncode == 0, result.stderr
+
+
+# Final review F10: AC10 is not AC1, and an AC named in another cell is not a row of its own.
+def test_ac10_does_not_cover_ac1(tmp_path):
+    spec = SPEC_BODY + "- [ ] AC10: tenth\n"
+    plan = GOOD_PLAN.replace("| AC1 | 1 | `t1` |", "| AC10 | 1 | `t10` |")
+    result = run_check(make_spec(tmp_path, "implemented", plan, spec))
+    assert result.returncode == 1
+    assert "AC1 has no row" in result.stderr
+
+
+def test_an_ac_in_the_proving_test_cell_is_not_a_row(tmp_path):
+    plan = GOOD_PLAN.replace("| AC1 | 1 | `t1` |", "| AC2 | 1 | covers AC1 too |")
+    result = run_check(make_spec(tmp_path, "implemented", plan))
+    assert result.returncode == 1
+    assert "AC1 has no row" in result.stderr
+
+
+# Final review F16: the message agrees in number and names the way out.
+def test_the_lint_messages_name_the_way_out(tmp_path):
+    result = run_check(make_spec(tmp_path, "implemented"))
+    assert "AC2 has no row in the PLAN.md AC → steps matrix; add a row for each" in result.stderr
+    assert "add a `Pass when:` line" in result.stderr
+
+
+def test_a_polish_plan_without_a_pass_line_is_reported(tmp_path):
+    plan = PLAN_BODY.replace("| AC3 |", "| AC2, AC3 |")
+    for key in ("ac-matrix", "e2e-manual", "e2e"):
+        polish, english = map_literals(key)
+        plan = plan.replace(english + "\n", polish + "\n")
+    polish_pass, english_pass = pass_literals()
+    plan = plan.replace(english_pass, polish_pass)
+    assert english_pass not in plan
+    result = run_check(make_spec(tmp_path, "implemented", plan))
+    assert result.returncode == 1, result.stderr
+    assert "Press the button" in result.stderr
+    assert "Open the page" not in result.stderr
+
+
+# Final review F7: the template's bullets also hold the n/a line, numbered items are items, and
+# prose without a pass line is a scenario without one.
+def manual(tmp_path: Path, body: str) -> subprocess.CompletedProcess:
+    plan = GOOD_PLAN.split("- Open the page.")[0] + body + "\n\n## Owner decisions\n"
+    return run_check(make_spec(tmp_path, "implemented", plan))
+
+
+def test_a_bulleted_na_line_passes(tmp_path):
+    result = manual(tmp_path, "- n/a — nothing a person has to check.")
+    assert result.returncode == 0, result.stderr
+
+
+def test_a_numbered_item_without_a_pass_line_is_reported(tmp_path):
+    result = manual(tmp_path, "1. Open the page.\n   Pass when: it loads.\n2. Press the button.")
+    assert result.returncode == 1
+    assert "Press the button" in result.stderr
+    assert "Open the page" not in result.stderr
+
+
+def test_prose_without_a_pass_line_is_reported(tmp_path):
+    result = manual(tmp_path, "Open the page and press the button.")
+    assert result.returncode == 1
+    assert "Open the page and press the button" in result.stderr
+
+
+def test_prose_with_a_pass_line_passes(tmp_path):
+    result = manual(tmp_path, "Open the page and press the button.\nPass when: a toast appears.")
+    assert result.returncode == 0, result.stderr

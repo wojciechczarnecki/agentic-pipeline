@@ -46,11 +46,21 @@ consumer needs CI checks on its PRs and the existing rule `Bash(workflow_metrics
   be run again after an escalated stage. Every stage closes with `--derive` and then
   `--check`, called by name through `PATH`.
 - A spec lint in `--check` for the statuses `plan-draft`, `plan-approved` and `implemented`
-  (AC rows, `Pass when:` lines).
+  (AC rows, `Pass when:` lines). The manual section's items may be `- ` or numbered, its
+  `n/a — <reason>` line may be a list item, and prose with no item is read as one scenario.
+- Fixed forms for the cases with nothing to count: a review log with no finding has the item
+  `- `none` — no findings`, and a final review with no findings still gets a `gate` entry
+  with `accepted`: none; `rejected`: none. A source that is missing or in another form
+  leaves its counters unwritten rather than zero.
 - `workflow_metrics.py --close <spec-dir>`, run by `ship` after the reviewer's `apply`: cost,
   `done`, derive, check, the closing commit, the push, the wait for the CI of the new head
   and one re-run of failed jobs, with its own exit codes and a one-line stop report, and a
-  resume after a stop. It refuses `main`, `master` and `protectedBranches` itself.
+  resume after a stop. It refuses `main`, `master` and `protectedBranches` itself, never
+  pushes with force, gives every `git` and `gh` call a deadline
+  (`PIPELINE_CLOSE_CALL_TIMEOUT_SECONDS`, default 300) with prompts disabled, judges a
+  re-run only once its attempt has grown, restores SPEC.md on any stop before the commit (a
+  SIGTERM included), and accepts a flaky job only when a `docs.backlog` entry names it as a
+  code span (`` `plugin` ``).
 - An `ESCALATE` RESULT carries `KIND: decision | permission | tooling`; only `decision`
   escalations count toward the third-time STOP. `escalations_permission` and
   `escalations_tooling` are optional metric keys, and the report shows a counter column only

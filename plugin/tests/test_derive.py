@@ -16,10 +16,10 @@ EXPECTED = {
     "plan_steps": 4,
     "implement_steps": 4,
     "implement_iterations": 3,
-    "deviations_minor": 1,
+    "deviations_minor": 2,
     "deviations_major": 1,
     "plan_review_blockers": 1,
-    "plan_review_majors": 2,
+    "plan_review_majors": 3,
     "final_review_blockers": 1,
     "final_review_worth_fixing": 2,
     "final_review_nits": 1,
@@ -90,20 +90,23 @@ def test_derive_writes_every_key(tmp_path, language):
 
 def test_derive_keeps_every_other_byte(tmp_path):
     spec = make_spec(tmp_path)
-    before = (spec / "SPEC.md").read_text()
+    before = (spec / "SPEC.md").read_bytes()
     derive(spec)
-    after = (spec / "SPEC.md").read_text()
+    after = (spec / "SPEC.md").read_bytes()
 
-    def others(text: str) -> list[str]:
+    def others(data: bytes) -> list[bytes]:
         return [
             line
-            for line in text.splitlines()
-            if not (re.match(r"  [a-z_]+: ", line) and line.split(":")[0].strip() in EXPECTED)
+            for line in data.splitlines(keepends=True)
+            if not (
+                re.match(rb"  [a-z_]+: ", line) and line.split(b":")[0].strip().decode() in EXPECTED
+            )
         ]
 
     assert metrics_of(spec)["plan_steps"] == "4"
     assert others(after) == others(before)
-    assert "  plan_changes: 3" in after and "  started_at: 2026-10-05T09:00" in after
+    assert after.endswith(b"\n") and b"\r" not in after
+    assert b"  plan_changes: 3\n" in after and b"  started_at: 2026-10-05T09:00\n" in after
     assert (spec / "PLAN.md").read_text() == (FIXTURE / "PLAN.md").read_text()
 
 
@@ -254,3 +257,95 @@ def test_the_bare_template_derives_nothing(tmp_path, language):
     ):
         assert key not in metrics, key
     assert metrics["escalations"] == "1"
+
+
+# Final review F1: a final review with no findings records a gate entry with two empty lists,
+# and the counters balance at zero.
+def test_a_review_without_findings_derives_zeros(tmp_path):
+    spec = make_spec(tmp_path)
+    plan = (spec / "PLAN.md").read_text()
+    head, _ = plan.split("## Final review")
+    head = head.replace(
+        "`accepted`: F1, F2, F3; `rejected`: F4", "`accepted`: none; `rejected`: none"
+    )
+    (spec / "PLAN.md").write_text(
+        head + "## Final review\n\nNo findings.\n\nLeft out: 0 nit findings\n"
+    )
+    result = derive(spec)
+    assert result.returncode == 0, result.stderr
+    metrics = metrics_of(spec)
+    for key in (
+        "final_review_blockers",
+        "final_review_worth_fixing",
+        "final_review_nits",
+        "findings_accepted",
+        "findings_rejected",
+    ):
+        assert metrics[key] == "0", (key, result.stderr)
+    assert metrics["escalations"] == "4"
+    assert check(spec).returncode == 0, check(spec).stderr
+
+
+# Final review F9: a source that is missing or kept in another form leaves its keys unwritten,
+# never a silent zero.
+def test_a_missing_deviations_section_is_not_zero(tmp_path):
+    spec = make_spec(tmp_path)
+    plan = (spec / "PLAN.md").read_text()
+    start, rest = plan.split("## Deviations")
+    (spec / "PLAN.md").write_text(start + "## Final review" + rest.split("## Final review")[1])
+    result = derive(spec)
+    metrics = metrics_of(spec)
+    for key in ("deviations_minor", "deviations_major"):
+        assert key not in metrics, key
+        assert f"not written: {key} — no `## Deviations` section" in result.stderr
+
+
+def test_an_empty_deviations_section_is_zero_when_due(tmp_path):
+    spec = make_spec(tmp_path)
+    plan = (spec / "PLAN.md").read_text()
+    start, rest = plan.split("## Deviations")
+    rest = "## Final review" + rest.split("## Final review")[1]
+    (spec / "PLAN.md").write_text(start + "## Deviations\n\n_(filled in)_\n\n" + rest)
+    derive(spec)
+    assert metrics_of(spec)["deviations_minor"] == "0"
+    assert metrics_of(spec)["deviations_major"] == "0"
+
+
+def replace_review_log(spec: Path, body: str) -> None:
+    plan = (spec / "PLAN.md").read_text()
+    start, rest = plan.split("## Review log")
+    rest = "## Deviations" + rest.split("## Deviations")[1]
+    (spec / "PLAN.md").write_text(start + "## Review log\n\n" + body + "\n\n" + rest)
+
+
+def test_a_review_log_in_another_form_is_not_zero(tmp_path):
+    spec = make_spec(tmp_path)
+    text = (spec / "SPEC.md").read_text()
+    (spec / "SPEC.md").write_text(
+        text.replace("  escalations: 0\n", "  escalations: 0\n  plan_review_majors: 1\n")
+    )
+    replace_review_log(spec, "Findings:\n\n- [major] A step was out of order.\n- [minor] A typo.")
+    result = derive(spec)
+    metrics = metrics_of(spec)
+    assert "plan_review_blockers" not in metrics
+    assert metrics["plan_review_majors"] == "1"
+    assert "not written: plan_review_majors" in result.stderr
+
+
+def test_a_review_log_with_a_none_item_is_zero(tmp_path):
+    spec = make_spec(tmp_path)
+    replace_review_log(spec, "- `none` — no findings; the plan is ready.")
+    derive(spec)
+    assert metrics_of(spec)["plan_review_blockers"] == "0"
+    assert metrics_of(spec)["plan_review_majors"] == "0"
+
+
+# Final review F13: an en dash, common in model output, is a dash of the fixed form too.
+def test_an_en_dash_entry_is_in_the_form(tmp_path):
+    spec = make_spec(tmp_path)
+    plan = (spec / "PLAN.md").read_text()
+    extra = "- 2026-10-06 – implement – `decision` – Split the step? – Yes.\n"
+    (spec / "PLAN.md").write_text(plan.replace("## Review log", extra + "\n## Review log"))
+    result = derive(spec)
+    assert "escalations" not in result.stderr, result.stderr
+    assert metrics_of(spec)["escalations"] == "5"

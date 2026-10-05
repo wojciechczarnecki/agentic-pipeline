@@ -79,8 +79,11 @@ correct only when the verification commands say so — never because it "looks g
   because the auto-mode classifier judges a chain as a whole and refuses what it cannot
   read.
 - Escalation in a session on its own: `AskUserQuestion` with options and a recommendation,
-  the decision appended to PLAN.md → `## Owner decisions`. Under
-  `/pipeline:ship`: the RESULT block.
+  the decision appended to PLAN.md → `## Owner decisions` as one entry in the fixed form
+  `- YYYY-MM-DD — implement — `<kind>` — <question> — <decision>`, the kind `decision`,
+  `permission` or `tooling`: `--derive` counts these entries, and one entry in another form
+  leaves `escalations` unwritten for the rest of the spec. Under `/pipeline:ship`: the
+  RESULT block.
 
 ## Procedure
 
@@ -125,7 +128,7 @@ correct only when the verification commands say so — never because it "looks g
 
 ## Test first
 
-Write the step's proving test before the product change and run it. A test that passes before the change either does not exercise the AC, so you rewrite it until it fails on an assertion about the AC's behaviour, or it shows that the behaviour already exists, which is a gap in the SPEC: escalate (Expected / Found / Why it matters) under the trigger for a gap in the SPEC and leave the step unticked. A proving test the owner or the plan gives verbatim is not rewritten, because it belongs to them: you escalate instead. The final review's tests perspective still proves that tests test something, by breaking the code they cover.
+Write the step's proving test before the product change and run it. A test that passes before the change either does not exercise the AC, so you rewrite it until it fails on an assertion about the AC's behaviour, or it shows that the behaviour already exists, which is a gap in the SPEC: escalate (Expected / Found / Why it matters) under the trigger for a gap in the SPEC and leave the step unticked. A proving test the owner or the plan gives verbatim is not rewritten, because it belongs to them: a pass before the change is then the same gap in the SPEC, escalated under the same trigger. The final review's tests perspective still proves that tests test something, by breaking the code they cover.
 
 ## Self-correction loop (mandatory for every step)
 

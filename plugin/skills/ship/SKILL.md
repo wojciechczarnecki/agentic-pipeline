@@ -186,8 +186,10 @@ valid `KIND:` counts as `decision`.
 4. `reviewer` in `apply` mode → fixes, push, PR, green CI; the status stays `implemented`
    (`--close` in Closing sets `done`).
 
-No findings in the report → skip the gate: record in the decisions, in the language from
-`language`, that there were no findings, and go on to `apply`.
+No findings in the report → skip the question, not the entry: record one `gate` entry with
+two empty lists, `- YYYY-MM-DD — final-review — `gate` — <question> — `accepted`: none;
+`rejected`: none`, commit, and go on to `apply`. Without it `--derive` writes no
+`findings_accepted`/`findings_rejected` and `--close` stops at the check.
 
 ## Closing
 
@@ -204,10 +206,15 @@ No findings in the report → skip the gate: record in the decisions, in the lan
    A job that `--close` printed as passed only on a re-run goes into the summary.
 4. A non-zero exit → the stop line says which step stopped and what state is left: ask the
    owner with `AskUserQuestion`, in the session language, with the options "resume the
-   closing step only (Recommended)" — run `--close` again, which resumes from the push or
-   the wait, with no new `reviewer` — / "`reviewer` `apply` again" with the stop line as its
-   task / "I will take over". A job that passed only on a later attempt (exit code 3) and is
-   not in `<docs.backlog>` is the case for the second option: the reviewer adds it.
+   closing step only" — run `--close` again, which resumes from the push or the wait, with
+   no new `reviewer` — / "`reviewer` `apply` again" with the stop line as its task / "I will
+   take over". The recommended option, first and marked "(Recommended)", follows the exit
+   code. Exit 4 (the commit or the push failed) and exit 5 (red after the re-run, or the
+   wait timed out) → resume, because the close commit is made or the spec is unchanged and a
+   second run picks up from there. Exit 1 (refused, or derive/check red, SPEC.md restored)
+   and exit 3 (a job passed only on a later attempt and `<docs.backlog>` does not name it)
+   → `reviewer` `apply` again, because a resume would repeat the same stop: the reviewer
+   fixes the spec files or adds the backlog entry, naming the job as a code span.
 5. Summary for the owner: the PR link, the CI status, the link to the visual artifacts, the
    manual scenarios to check before the merge (from PLAN.md →
    `### Manual (performed by the owner)` in `## End-to-end verification`), the spec metrics,

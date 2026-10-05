@@ -57,7 +57,7 @@ _(dopisuje /pipeline:ship lub etap przy eskalacji, jeden wpis w linii: `- YYYY-M
 
 ## Review log
 
-_(wypełnia /pipeline:plan-review — jedna pozycja listy na ustalenie, zaczynająca się od wagi w backtickach: `- `blocker` — …`, `major` albo `minor`)_
+_(wypełnia /pipeline:plan-review — jedna pozycja listy na ustalenie, zaczynająca się od wagi w backtickach: `- `blocker` — …`, `major` albo `minor`; bez ustaleń jedna pozycja `- `none` — brak ustaleń`)_
 
 ## Deviations
 

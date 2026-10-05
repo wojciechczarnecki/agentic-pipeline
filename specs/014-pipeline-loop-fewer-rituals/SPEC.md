@@ -22,6 +22,8 @@ metrics:
   final_review_blockers: 1
   final_review_worth_fixing: 10
   final_review_nits: 5
+  findings_accepted: 16
+  findings_rejected: 0
 ---
 
 # SPEC 014 — Fewer rituals, more code in the pipeline loop

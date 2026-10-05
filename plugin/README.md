@@ -343,7 +343,9 @@ final_review_worth_fixing + final_review_nits` (computed only once all five are 
 For a spec in status `plan-draft`, `plan-approved` or `implemented` it also lints the plan:
 every AC of the SPEC has a row in the PLAN's AC → steps matrix, and every item of
 `### Manual (performed by the owner)` has a line starting with `Pass when:` (the Polish
-literal comes from the section map), or the section is the single line `n/a — <reason>`.
+literal comes from the section map), or the section is the single line `n/a — <reason>`
+(as a list item or not). Items are `- ` or numbered list items; text with no item at all is
+read as one scenario, so prose needs its pass line too.
 Specs in the other statuses are not linted, so everything closed before 0.9.0 still passes.
 Exit code: `0` and silence when everything holds; `1` with a description of EVERY problem on
 stderr (never a traceback); `2` when the arguments are wrong. The closing step of every
@@ -378,19 +380,23 @@ the same exact line edit as `--record-cost`. It reads fixed forms, which the tem
 carry and the skills write: a ticked step ends with the note `iterations: <k>` in
 backticks (the iterations beyond the first attempt, 0 when green at once); a deviation is
 `- `minor` — …` or `- `major` — …`; a review-log finding is a list item that starts with
-`blocker`, `major` or `minor` in backticks; a final-review finding is
+`blocker`, `major` or `minor` in backticks, and a review with no finding says so with the
+item `- `none` — no findings`; a final-review finding is
 `- **F<n>** `<blocker|worth-fixing|nit>` — …`; an owner-decision entry is
 `- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`, with the kind `decision`,
 `permission`, `tooling` or `gate`, and a `gate` entry ends with `accepted`: F1, F2;
-`rejected`: F3 (`none` for an empty list). Headings are found in either language through
-the section map.
+`rejected`: F3 (`none` for an empty list; a review with no findings records
+`accepted`: none; `rejected`: none). The dashes of an entry may be `—`, `–` or `-`.
+Headings are found in either language through the section map.
 
 It writes only the keys whose source it finds in the expected form, names every key it did
 not write on stderr with the reason, leaves every other byte of SPEC.md as it was, and
 exits `0`; run twice, it writes the same values, so a stage agent started after an
 escalation gets back the counts of the agents before it. A ticked step without its
 `iterations` note leaves `implement_iterations` unwritten, and a missing note is never
-counted as zero. `escalations` counts the non-gate entries of SPEC.md and PLAN.md and
+counted as zero. In the same way a PLAN with no `## Deviations` section leaves the
+deviation counters unwritten, and a review log with neither a finding item nor a `none`
+item leaves the plan-review counters unwritten. `escalations` counts the non-gate entries of SPEC.md and PLAN.md and
 `escalations_permission` and `escalations_tooling` the same entries by kind; a top-level
 entry of PLAN.md's owner decisions that is not in the fixed form leaves all three
 unwritten. It exits `1` only for a SPEC.md it cannot read.
@@ -453,19 +459,25 @@ for the checks of the new head and re-runs the failed jobs once (`gh run rerun <
 --failed`). A consumer needs CI checks on the PR: a branch with no Actions run never goes
 green, so the wait ends at its timeout. The poll interval and the timeout come from
 `PIPELINE_CLOSE_POLL_SECONDS` (default 15) and `PIPELINE_CLOSE_TIMEOUT_SECONDS` (default
-3600).
+3600); a re-run run is judged only once its attempt number has grown. Every `git` and `gh`
+call ends after `PIPELINE_CLOSE_CALL_TIMEOUT_SECONDS` (default 300) and never prompts
+(`GIT_TERMINAL_PROMPT=0`, `GH_PROMPT_DISABLED=1`). The backlog excuses a flaky job only
+when an entry names it as a code span, as `gh pr checks` shows it (`` `plugin` ``): a bare
+word in prose does not.
 
 | exit | meaning |
 |---|---|
 | `0` | the checks of the new head are green; a job that passed only on the re-run is printed |
 | `1` | refused, or derive or check was red; nothing was changed or committed |
-| `3` | a job on the PR head passed only on a later attempt and `docs.backlog` does not name it; nothing committed |
+| `3` | a job on the PR head passed only on a later attempt and `docs.backlog` does not name it as a code span; nothing committed |
 | `4` | the commit or the push failed |
 | `5` | the checks are red after the one re-run, or the wait timed out |
 
 Every non-zero exit prints one line, `close stopped at <step>: <reason>; committed:
-yes|no, pushed: yes|no`. Every stop before the commit restores SPEC.md, so a second run is
-not refused. A second `--close` after a stop that committed does not commit again: it
+yes|no, pushed: yes|no`, and names the way out. Every stop before the commit restores
+SPEC.md, so a second run is not refused. An unexpected error or a SIGTERM stops the same
+way, with the code of the state it left: `1` before the commit (SPEC.md restored), `4`
+before the push, `5` after it. A second `--close` after a stop that committed does not commit again: it
 resumes from the push or the wait. The script runs `git push` and `gh` itself, outside the
 command guard's view, so it checks the protected branches on its own, pushes only
 `origin <current branch>` and never uses force.

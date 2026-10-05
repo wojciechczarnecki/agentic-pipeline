@@ -642,3 +642,21 @@ def test_calls_never_prompt(monkeypatch, tmp_path):
     script = "import os; print(os.environ['GIT_TERMINAL_PROMPT'], os.environ['GH_PROMPT_DISABLED'])"
     result = workflow_close.command([sys.executable, "-c", script], tmp_path)
     assert result.stdout.split() == ["0", "1"]
+
+
+# Final review F1: a final review with no findings records a gate entry with empty lists, and the
+# close goes green on it instead of stopping at the check.
+def test_a_review_without_findings_closes(lane):
+    plan = lane.repo / SPEC / "PLAN.md"
+    head = plan.read_text().split("## Final review")[0]
+    head = head.replace(
+        "`accepted`: F1, F2, F3; `rejected`: F4", "`accepted`: none; `rejected`: none"
+    )
+    plan.write_text(head + "## Final review\n\nNo findings.\n\nLeft out: 0 nit findings\n")
+    lane.git("commit", "-q", "-am", "a clean final review")
+    lane.git("push", "-q")
+    result = lane.close()
+    assert result.returncode == 0, result.stderr
+    assert head_subject(lane) == "docs: close SPEC 001 demo"
+    text = (lane.repo / SPEC / "SPEC.md").read_text()
+    assert "\n  findings_accepted: 0\n" in text and "\n  final_review_nits: 0\n" in text

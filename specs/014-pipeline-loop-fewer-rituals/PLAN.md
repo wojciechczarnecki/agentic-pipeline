@@ -1026,3 +1026,64 @@ Rejected: none. Duplicates across the perspectives were merged (F1 came from two
 F3 from three).
 
 Left out: 20 nit findings
+
+### Fixes (apply, 2026-10-05)
+
+All sixteen findings were accepted (owner decision of 2026-10-05). `bash scripts/check.sh`
+is green after them (2417 tests, `claude plugin validate --strict` for the plugin and the
+marketplace).
+
+- F1 → `ship` (Gate: final review) and `final-review` (report step 5) record a report
+  with no findings as a `gate` entry with `accepted`: none; `rejected`: none.
+  `test_derive.py::test_a_review_without_findings_derives_zeros`,
+  `test_close.py::test_a_review_without_findings_closes`,
+  `test_pipeline_loop.py::test_a_review_without_findings_records_an_empty_gate`.
+- F2 → `workflow_close.flaky_jobs` accepts a job only when the backlog names it as a code
+  span; the stop line says so. `test_close.py::test_the_word_in_backlog_prose_does_not_excuse_the_job`.
+- F3 → `wait_for` judges a re-run run only once its `attempt` has grown.
+  `test_the_old_attempt_after_a_rerun_is_not_judged`, `test_a_rerun_that_never_starts_times_out`;
+  `test_red_twice_stops` now answers with attempt 2.
+- F4 → `final-review` apply step 4: the flaky entry names the CI job as a code span, gets its
+  own commit (`docs: record flaky job of NNN <slug>`) and push, and CI is awaited on that head.
+  `test_pipeline_loop.py::test_the_flaky_entry_names_the_job_and_is_committed`.
+- F5 → `close()` turns any exception, `KeyboardInterrupt` and SIGTERM into a stop line with
+  the code of the state left; every stop before the commit restores SPEC.md (the `try` now
+  covers the commit too, with `BaseException`). `failed_jobs` tolerates non-dict jobs.
+  `test_a_sigterm_before_the_commit_restores_the_spec`.
+- F6 → `ship` Closing step 4: resume is recommended for exits 4 and 5, `reviewer` `apply`
+  for exits 1 and 3. `test_ship_cost_and_models.py::test_a_failed_close_recommends_by_exit_code`.
+- F7 → `spec_forms.manual_without_pass`: a bulleted `- n/a — …` line passes, numbered items
+  are items, prose with no item is one scenario. `test_spec_lint.py::test_a_bulleted_na_line_passes`,
+  `test_a_numbered_item_without_a_pass_line_is_reported`, `test_prose_without_a_pass_line_is_reported`,
+  `test_prose_with_a_pass_line_passes`.
+- F8 → `implement` and `plan-review` give the fixed escalation entry form when run on their
+  own. `test_pipeline_loop.py::test_a_standalone_escalation_uses_the_fixed_form`.
+- F9 → `--derive` leaves the deviation counters unwritten without a `## Deviations` section,
+  and the plan-review counters unwritten for a log with neither a finding item nor the new
+  `- `none` — no findings` item (templates, `plan-review`, README, three eval scaffolds
+  moved to that item). `test_derive.py::test_a_missing_deviations_section_is_not_zero`,
+  `test_an_empty_deviations_section_is_zero_when_due`, `test_a_review_log_in_another_form_is_not_zero`,
+  `test_a_review_log_with_a_none_item_is_zero`, `test_plan_review_writes_none_without_findings`.
+- F10 → the derive fixture has one line of each form (a repeated `F2`, an untokened
+  deviation, a numbered review finding, ASCII- and en-dash entries, an earlier gate, `[X]`);
+  the byte test compares bytes with line ends. New lint cases: AC1 against AC10, an AC in the
+  proving-test cell, a Polish plan without a pass line.
+- F11 → new close tests: a remote moved ahead (exit 4, remote unchanged), an empty run list
+  (timeout), runs that appear late, a failed re-run, a `gh` failure in the flaky check
+  (SPEC.md restored) and after the push, a resume after an unrelated commit, and a
+  detached-HEAD refusal.
+- F12 → `command()` runs every call with `PIPELINE_CLOSE_CALL_TIMEOUT_SECONDS` (default 300),
+  `GIT_TERMINAL_PROMPT=0` and `GH_PROMPT_DISABLED=1`. `test_a_stalled_call_ends_at_its_deadline`,
+  `test_calls_never_prompt`.
+- F13 → `spec_forms.DASH` accepts `—`, `–` and `-` in decision entries and the n/a line.
+  `test_derive.py::test_an_en_dash_entry_is_in_the_form`.
+- F14 → the Test first paragraph of `implement` ties a verbatim test green before the change
+  to the SPEC-gap trigger. `test_a_verbatim_green_test_is_a_spec_gap`.
+- F15 → `agents/implementer.md` says that nothing is added beyond what the change needs.
+  `test_the_implementer_adds_nothing_beyond_the_change`.
+- F16 → the lint agrees in number ("AC2 has no row") and every lint and stop message names
+  the way out. `test_spec_lint.py::test_the_lint_messages_name_the_way_out`.
+
+README (`--check`, `--derive`, `--close`) and the `## 0.9.0` CHANGELOG section describe the
+new forms and the close's call deadline. No backlog item is delivered or fired by these
+fixes, and no flaky job was seen.
