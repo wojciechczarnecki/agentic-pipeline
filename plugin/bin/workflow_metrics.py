@@ -7,9 +7,12 @@
 # With --derive it counts the keys of DERIVED from the fixed forms in SPEC.md and PLAN.md and
 # writes them into the `metrics:` block; a key whose source is not in the expected form is
 # named on stderr and left as it was.
+# With --close it closes the spec (cost, `done`, derive, check, commit, push, green CI); the
+# steps and exit codes are in workflow_close.py.
 # Usage: python3 workflow_metrics.py [dir]
 #        python3 workflow_metrics.py --check <spec-dir>
 #        python3 workflow_metrics.py --derive <spec-dir>
+#        python3 workflow_metrics.py --close <spec-dir>
 #        python3 workflow_metrics.py --record-cost <spec-dir> [--transcripts <dir>]
 # Exit codes: 0 — report rendered, --check found nothing wrong, --derive finished (keys it
 # cannot read only warn), or --record-cost finished (missing transcripts and unknown models
@@ -802,13 +805,24 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--record-cost", action="store_true")
     parser.add_argument("--derive", action="store_true")
+    parser.add_argument("--close", action="store_true")
     parser.add_argument("--transcripts")
     parser.add_argument("directory", nargs="?")
     args = parser.parse_args(argv[1:])
-    if sum([args.check, args.record_cost, args.derive]) > 1:
-        parser.error("--check, --record-cost and --derive are separate runs; pass one of them")
+    if sum([args.check, args.record_cost, args.derive, args.close]) > 1:
+        parser.error(
+            "--check, --record-cost, --derive and --close are separate runs; pass one of them"
+        )
     if args.transcripts and not args.record_cost:
         parser.error("--transcripts only works with --record-cost")
+
+    if args.close:
+        if not args.directory:
+            print("usage: workflow_metrics.py --close <spec-dir>", file=sys.stderr)
+            return 1
+        import workflow_close
+
+        return workflow_close.close(Path(args.directory), sys.modules[__name__])
 
     if args.derive:
         if not args.directory:

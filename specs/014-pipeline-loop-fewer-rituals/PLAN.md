@@ -168,12 +168,12 @@ Design choices:
 | AC16 | 2, 3, 14 | `plugin/tests/test_derive.py::test_escalations_by_kind`, `plugin/tests/test_workflow_metrics.py::test_escalation_kinds_are_optional`, `plugin/tests/test_pipeline_loop.py::test_ship_stops_on_the_third_decision` |  `uv run pytest -q plugin/tests/test_derive.py plugin/tests/test_workflow_metrics.py` → `assert key in workflow_metrics.COUNTERS` and `assert metrics["escalations"] == "4"` |
 | AC17 | 10 | `plugin/tests/test_pipeline_loop.py::test_implement_installs_accepted_dependencies` | |
 | AC18 | 11 | `plugin/tests/test_pipeline_loop.py::test_plan_writes_no_owner_step` | |
-| AC19 | 5 | `plugin/tests/test_close.py::test_close_refuses` (each case) | |
+| AC19 | 5 | `plugin/tests/test_close.py::test_close_refuses` (each case) |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 1, result.stderr` (--close unknown, exit 2) |
 | AC20 | 6 | `plugin/tests/test_close.py::test_close_green_path`, `::test_a_red_check_restores_the_spec`, `::test_red_then_green_after_one_rerun` | |
 | AC21 | 7 | `plugin/tests/test_close.py::test_a_flaky_job_without_a_backlog_entry_stops`, `::test_a_flaky_job_in_the_backlog_passes` | |
-| AC22 | 5, 6, 7 | `plugin/tests/test_close.py::test_every_stop_prints_one_state_line`, `::test_resume_after_a_stop_at_the_wait`, `::test_resume_after_a_failed_push` | |
+| AC22 | 5, 6, 7 | `plugin/tests/test_close.py::test_every_stop_prints_one_state_line`, `::test_resume_after_a_stop_at_the_wait`, `::test_resume_after_a_failed_push` |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 1, result.stderr` (--close unknown, exit 2) |
 | AC23 | 12, 14, 15 | `plugin/tests/test_pipeline_loop.py::test_final_review_apply_ends_at_green_ci`, `plugin/tests/test_ship_cost_and_models.py::test_closing_runs_close_after_apply`, `plugin/tests/test_readme.py::test_the_status_table_names_close` | |
-| AC24 | 5, 6, 7 | `plugin/tests/test_close.py` (the whole file) | |
+| AC24 | 5, 6, 7 | `plugin/tests/test_close.py` (the whole file) |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 1, result.stderr` (--close unknown, exit 2) |
 | AC25 | 14 | `plugin/tests/test_ship_cost_and_models.py::test_the_start_message_names_every_stage_model` | |
 | AC26 | 2 | `plugin/tests/test_workflow_metrics.py::test_cost_lines_are_labelled_a_lower_bound` |  `uv run pytest -q plugin/tests/test_workflow_metrics.py` → `assert line.endswith(" — a lower bound: output tokens are undercounted")` |
 | AC27 | 12 | `plugin/tests/test_pipeline_loop.py::test_final_review_notes_one_context` | |
@@ -328,7 +328,7 @@ text, and a step that left them for later would end red.
 
 ### Group 2 — The scripted close
 
-- [ ] 5. `--close` preconditions and the test harness (AC19, AC22, AC24). Files: new
+- [x] 5. `--close` preconditions and the test harness (AC19, AC22, AC24). Files: new
       `plugin/bin/workflow_close.py`, `plugin/bin/workflow_metrics.py`, new
       `plugin/tests/test_close.py`.
       The harness:
