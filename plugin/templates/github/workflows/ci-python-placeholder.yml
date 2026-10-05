@@ -1,0 +1,47 @@
+# CI for a Python layer that has no tests or dev tools yet: the job passes, so the required
+# check exists from the first push. `init` renders this file like ci-python.yml (a line that
+# ends in a layer marker comment belongs to one form only).
+# The job name is the required check in the repository ruleset
+# (`.github/repository/ruleset.json`): renaming the job means renaming it there and on GitHub.
+# Once the layer declares ruff and pytest and has a test file, replace the echo step with the
+# commented steps below (the real job of ci-python.yml) and delete this comment.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  <layer>:
+    runs-on: ubuntu-latest
+    defaults:  # subdirectory layer
+      run:  # subdirectory layer
+        working-directory: <dir>  # subdirectory layer
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Placeholder
+        run: echo "TODO - this layer has no tests yet; restore the real steps from the comment"
+
+      # - name: Install uv
+      #   uses: astral-sh/setup-uv@v7
+      #   with:  # subdirectory layer
+      #     working-directory: <dir>  # subdirectory layer
+      #
+      # - name: Set up Python
+      #   run: uv python install
+      #
+      # - name: Install dependencies
+      #   run: uv sync --all-extras
+      #
+      # - name: Lint with ruff
+      #   run: uv run ruff check .
+      #
+      # - name: Check formatting with black
+      #   run: uv run black --check .
+      #
+      # - name: Run tests
+      #   run: uv run pytest -q

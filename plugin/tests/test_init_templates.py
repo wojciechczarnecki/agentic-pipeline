@@ -154,6 +154,8 @@ GITHUB = TEMPLATES / "github"
 CI_VARIANTS = {
     "ci-python.yml": ["uv sync", "uv run pytest", "uv run ruff check"],
     "ci-node.yml": ["npm ci", "npm run test", "npm run lint", "npm run build"],
+    "ci-python-placeholder.yml": ["uv sync", "uv run pytest", "echo"],
+    "ci-node-placeholder.yml": ["npm ci", "npm run test", "echo"],
     "ci-placeholder.yml": ["TODO:"],
 }
 
@@ -179,10 +181,14 @@ def job_names(name: str) -> list[str]:
     return names
 
 
-def test_ci_variants_carry_separate_job_names():
-    names = [name for variant in CI_VARIANTS for name in job_names(variant)]
-    assert names
-    assert len(names) == len(set(names)), names
+# The job of a layer is named after the layer (SPEC 015): the real template and its
+# placeholder share `<layer>`, and only the generic skeleton for an unknown stack keeps a
+# fixed name.
+def test_ci_variants_name_their_job_after_the_layer():
+    assert job_names("ci-placeholder.yml") == ["verify"]
+    for name in CI_VARIANTS:
+        if name != "ci-placeholder.yml":
+            assert job_names(name) == ["<layer>"], name
 
 
 @pytest.mark.parametrize(

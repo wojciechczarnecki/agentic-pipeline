@@ -238,10 +238,10 @@ What the plan rests on:
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
 | AC1 | 8, 10 | `plugin/tests/test_init_skill.py::test_layers_are_detected_at_depth_one`; eval `init-subdirectory-project` (step 12) | |
-| AC2 | 5, 6, 8, 10 | `plugin/tests/test_init_layers.py::test_ci_renders_a_subdirectory_layer`, `::test_ci_renders_a_root_layer_as_today`, `::test_dependabot_renders_the_layer_directory`; `test_init_skill.py::test_verify_and_format_follow_the_layer_directory`; eval `init-subdirectory-project` | |
+| AC2 | 5, 6, 8, 10 | `plugin/tests/test_init_layers.py::test_ci_renders_a_subdirectory_layer`, `::test_ci_renders_a_root_layer_as_today`, `::test_dependabot_renders_the_layer_directory`; `test_init_skill.py::test_verify_and_format_follow_the_layer_directory`; eval `init-subdirectory-project` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert "    defaults:\n      run:\n        working-directory: backend\n" in python` (CI part, step 5; Dependabot and skill parts follow in steps 6 and 8) |
 | AC3 | 10, 12 | `plugin/tests/test_eval_cases.py::test_the_subdirectory_fixture_has_only_a_backend_manifest`, `::test_criteria_name_the_wrong_behaviour[init-subdirectory-project]`; eval measurement ledger (step 12) | |
-| AC4 | 5, 8 | `plugin/tests/test_init_layers.py::test_placeholder_jobs_pass_and_list_the_real_steps`; `test_init_skill.py::test_the_real_job_needs_tools_and_a_test_file` | |
-| AC5 | 5 | `plugin/tests/test_init_layers.py::test_every_ci_template_names_the_required_check` | |
+| AC4 | 5, 8 | `plugin/tests/test_init_layers.py::test_placeholder_jobs_pass_and_list_the_real_steps`; `test_init_skill.py::test_the_real_job_needs_tools_and_a_test_file` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert len(runs) == 1 and runs[0].startswith("echo"), runs` (placeholder stubs added first) |
+| AC5 | 5 | `plugin/tests/test_init_layers.py::test_every_ci_template_names_the_required_check` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert any("required check" in line and "ruleset" in line for line in comments), path.name` |
 | AC6 | 6 | `plugin/tests/test_init_layers.py::test_the_ruleset_template`, `::test_the_repository_settings_template` | |
 | AC7 | 8 | `plugin/tests/test_init_skill.py::test_init_copies_the_repository_settings` (GENERATED entries + idempotence wording) | |
 | AC8 | 9 | `plugin/tests/test_new_project_doc.py::test_the_first_push_comes_before_the_hook`, `::test_the_scaffold_through_a_pr_path`, `::test_the_repository_settings_commands`, `::test_the_required_check_appears_after_the_first_run` | |
@@ -356,7 +356,7 @@ What the plan rests on:
 
 ### Group 2 — `init`: templates, skill, documentation, eval case
 
-- [ ] 5. **CI templates (AC2 CI part, AC4, AC5).** Files:
+- [x] 5. **CI templates (AC2 CI part, AC4, AC5).** Files:
       `plugin/templates/github/workflows/ci-python.yml`, `ci-node.yml`,
       `ci-placeholder.yml`, `ci-python-placeholder.yml` (new), `ci-node-placeholder.yml`
       (new), `plugin/tests/test_init_layers.py` (new),
