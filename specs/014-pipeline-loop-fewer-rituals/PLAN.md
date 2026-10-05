@@ -179,7 +179,7 @@ Design choices:
 | AC27 | 12 | `plugin/tests/test_pipeline_loop.py::test_final_review_notes_one_context` |  `uv run pytest -q plugin/tests/test_pipeline_loop.py` → `assert "`Agent` tool" in final_review_step("Report mode", 2)` |
 | AC28 | 2 | `plugin/tests/test_workflow_metrics.py::test_a_column_without_data_is_left_out` |  `uv run pytest -q plugin/tests/test_workflow_metrics.py` → `assert key not in cells` |
 | AC29 | 16 | `plugin/tests/test_release_0_9_0.py`, `tests/test_documents.py::test_decisions_record_spec_014`, `::test_roadmap_ticks_spec_014`, `::test_backlog_after_spec_014` |  `uv run pytest -q plugin/tests/test_release_0_9_0.py tests/test_documents.py` → `assert tuple(int(part) for part in manifest["version"].split(".")) >= (0, 9, 0)` |
-| AC30 | 17 | `bash scripts/check.sh` | n/a — the whole suite, green by definition at the end |
+| AC30 | 17 | `bash scripts/check.sh` | n/a — the whole suite, green by definition at the end; n/a — the whole suite, green by definition at the end |
 | AC31 | — | the canary in `### Manual` | manual |
 
 ## Steps
@@ -691,7 +691,7 @@ text, and a step that left them for later would end red.
       `--record-cost`.
       Automatic verification: `uv run pytest -q plugin/tests/test_release_0_9_0.py
       tests/test_documents.py plugin/tests/test_readme.py && uv run pytest -q`
-- [ ] 17. Full verification (AC30). No new files.
+- [x] 17. Full verification (AC30). No new files.
       Automatic verification: `bash scripts/check.sh`, then `git grep -n -i -E "converge
       pass|Red before the change|Chunk notes|CHUNK:" -- plugin/skills plugin/agents
       plugin/templates`, expecting no output.
