@@ -210,3 +210,77 @@ def test_final_review_apply_ends_at_green_ci():
     assert "`workflow_metrics.py --close <spec-dir>`" in sixth
     assert "`run_in_background`" in sixth
     assert "status `done`" not in collapse(agent(("reviewer")))
+
+
+def ship_section(heading: str) -> str:
+    assert f"\n## {heading}\n" in skill("ship"), heading
+    return collapse(skill("ship").split(f"\n## {heading}\n", 1)[1].split("\n## ", 1)[0])
+
+
+# AC16: the kind goes into the fixed-form entry; only `decision` entries count toward the STOP.
+def test_ship_stops_on_the_third_decision():
+    protocol = ship_section("Result protocol")
+    assert "Increment `metrics.escalations`" not in skill("ship")
+    for token in (
+        "`KIND`",
+        "`- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`",
+        "valid `KIND:`",
+        "counts as `decision`",
+    ):
+        assert token in protocol, token
+    third = protocol.split("for the third time", 1)[0].rsplit("- ", 1)[1]
+    assert "`decision`" in third and "same stage" in third
+    assert "`permission` or `tooling`" in protocol
+    assert "do not count" in protocol
+
+
+def test_the_state_table_names_close_and_no_chunk():
+    state = ship_section("State")
+    assert "`workflow_metrics.py --close`" in state and "`done`" in state
+    assert "chunk" not in state.lower()
+    assert "status stays `implemented`" in state
+
+
+def test_the_gate_records_the_gate_entry_form():
+    gate = ship_section("Gate: final review")
+    assert (
+        "`- YYYY-MM-DD — final-review — `gate` — <question> — `accepted`: F1, F2; `rejected`: F3`"
+        in gate
+    )
+    assert "`none`" in gate
+
+
+def test_ship_no_longer_counts_a_derived_key():
+    text = collapse(skill("ship"))
+    for sentence in re.split(r"(?<=[.;:])\s+", text):
+        for key in workflow_metrics.DERIVED:
+            if f"`{key}`" in sentence:
+                assert "--derive" in sentence or "--close" in sentence, (key, sentence)
+
+
+RITUAL_WORDS = (
+    "converge pass",
+    "converge_gaps",
+    "Red before the change",
+    "Czerwony przed zmian\u0105",
+    "Test-first evidence",
+    "chunk mode",
+    "Chunk notes",
+    "Notatki chunk\u00f3w",
+    "CHUNK:",
+    "implement_chunks",
+    "### Group N",
+    "### Grupa N",
+)
+
+
+# AC1, AC2, AC4: none of the three rituals is described as current behaviour in the stage text.
+def test_no_ritual_returns():
+    found = []
+    for folder in ("skills", "agents", "templates"):
+        for path in sorted((PLUGIN / folder).rglob("*")):
+            if not path.is_file():
+                continue
+            text = path.read_text().lower()
+            found += [(path.name, word) for word in RITUAL_WORDS if word.lower() in text]
+    assert not found, found

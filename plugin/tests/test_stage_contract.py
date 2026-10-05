@@ -101,8 +101,9 @@ def test_ship_step_three_states_the_metrics_format():
     start = next(i for i, line in enumerate(lines) if line.startswith("3. "))
     end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("#")), len(lines))
     step = "\n".join(lines[start:end])
-    for token in ["started_at", "escalations", "metrics:", "%Y-%m-%dT%H:%M"]:
+    for token in ["started_at", "metrics:", "%Y-%m-%dT%H:%M"]:
         assert token in step
+    assert "escalations" not in step
     assert "README" not in step
 
 

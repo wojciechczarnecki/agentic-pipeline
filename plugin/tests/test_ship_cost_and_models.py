@@ -14,35 +14,57 @@ def section(heading: str) -> str:
     return collapse(SHIP.split(f"\n## {heading}\n", 1)[1].split("\n## ", 1)[0])
 
 
-# SPEC 011, AC13: the cost is recorded once every stage has finished — after apply returns
-# DONE — and before the notification, which promises green CI on the PR's last commit.
-def test_closing_records_cost_between_apply_and_notification():
+# SPEC 014, AC23: Closing runs `--close` after the reviewer's `apply` returns DONE and before the
+# notification, which promises green CI on the PR's last commit.
+CLOSE = "workflow_metrics.py --close <docs.specsDir>/NNN-<slug>"
+
+
+def test_closing_runs_close_after_apply():
     closing = section("Closing")
-    call = "workflow_metrics.py --record-cost <docs.specsDir>/NNN-<slug>"
-    assert call in closing
+    assert CLOSE in closing
     apply = closing.index("`reviewer/apply` RESULT")
-    record = closing.index(call)
+    close = closing.index(CLOSE)
     notify = closing.index("`PushNotification`")
-    assert apply < record < notify
-    for token in [
-        "`chore: record stage cost for NNN`",
-        "`git push`",
-        "`gh pr checks",
-        "git status --porcelain",
-        "does not stop",
-    ]:
-        assert token in closing, token
+    assert apply < close < notify
     # By name through PATH, never by path (docs/DECISIONS.md, 2026-09-21).
     assert "${CLAUDE_PLUGIN_ROOT}/bin/workflow_metrics.py" not in SHIP
     assert "python3 workflow_metrics.py" not in SHIP
+    assert "chore: record stage cost" not in SHIP
+    # The wait for CI outlasts the foreground Bash limit, so ship runs the call in the background
+    # and reads its exit code and stop line when it ends.
+    assert "`run_in_background`" in closing
+    assert "exit code" in closing and "stop line" in closing
 
 
-def test_the_guardrail_names_the_cost_exception():
+def test_a_failed_close_asks_the_owner_to_resume_the_closing_step_only():
     closing = section("Closing")
-    sentence = closing.split("You do not edit spec files or documents yourself", 1)[1]
-    sentence = sentence.split(".", 1)[0]
-    assert "cost" in sentence
-    assert "--record-cost" in sentence or "script" in sentence
+    step = closing.split("4. A non-zero exit", 1)[1].split(" 5. ", 1)[0]
+    first = step.index("resume the closing step only")
+    assert "(Recommended)" in step[first : first + 80]
+    assert "no new `reviewer`" in step
+    assert "`reviewer` `apply` again" in step
+
+
+def test_the_guardrail_says_close_sets_done():
+    guardrails = section("Guardrails")
+    assert "`workflow_metrics.py --close`" in guardrails
+    assert "sets `done`" in guardrails
+
+
+# SPEC 014, AC25: the start message names the model of every stage.
+def test_the_start_message_names_every_stage_model():
+    start = section("Start")
+    for token in [
+        "`plan`",
+        "`plan-review`",
+        "`implement`",
+        "`final-review`",
+        "`models.<stage>`",
+        "as `model`",
+        "session model",
+        "`inherit`",
+    ]:
+        assert token in start, token
 
 
 # SPEC 011, AC15: `model` is passed only for a stage whose entry is not `inherit`.
@@ -69,17 +91,7 @@ def test_ship_passes_the_model_only_when_not_inherit():
 def test_the_stage_prompt_names_the_spec_directory():
     starting = section("Starting a stage agent")
     assert "`<docs.specsDir>/NNN-<slug>/SPEC.md`" in starting
-    assert "`--record-cost`" in starting
-
-
-# A metrics-only commit that stays red after its one rerun: no notification, the red check
-# goes to the owner, and Closing ends — the reviewer has already returned DONE and will not
-# escalate it.
-def test_a_cost_commit_still_red_after_the_rerun_ends_closing():
-    closing = section("Closing")
-    step = closing.split("2. Record the cost", 1)[1].split(" 3. ", 1)[0]
-    for token in ["Still red after that one rerun", "skip steps 3 and 4", "end Closing there"]:
-        assert token in step, token
+    assert "`--record-cost`" in starting and "`--close`" in starting
 
 
 # The guard's warning about a bad `models` entry is not shown in a normal session, so the
@@ -89,3 +101,4 @@ def test_ignored_models_entries_reach_the_owner():
     assert "name every `models` entry you ignored" in starting
     summary = section("Closing").split(" 5. Summary for the owner", 1)[1]
     assert "the `models` entries you ignored" in summary
+    assert "a job `--close` named" in summary
