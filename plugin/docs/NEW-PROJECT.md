@@ -24,7 +24,11 @@ documents, and at the first feature in `/pipeline:idea`.
    a dependabot entry per layer — the job carries the layer's name, because that name is the
    required check in the repository ruleset. A layer that has no tests or dev tools yet gets
    a placeholder job that passes, so the first CI run is green; replace it with the real
-   steps (listed in a comment in the job) once the layer has tests. In an empty directory
+   steps (listed in a comment in the job) once the layer has tests. The Security workflow
+   is not covered: it still runs at the repository root and needs a lock file, so on a
+   fresh project in a subdirectory, or one without a lock file, its first run is red — a
+   known limit (`docs/BACKLOG.md` of the plugin's repository, Init); it is not a required
+   check, so it does not block a pull request. In an empty directory
    init asks a second round of questions about the commands instead, or writes `TODO:`
    values and a placeholder CI job.
 

@@ -53,6 +53,19 @@ REFUSED = [
     'bash -c "python3 -c \'open(\\".claude/workflow.json\\")\'"',
     "git status && python3 - <<'EOF'\nopen('.claude/workflow.json')\nEOF\n",
     "python3 -c \"open('x.py'); open('.claude/workflow.json')\"",
+    # code glued to its option, or behind other options in the same word
+    "python3 -c\"open('.claude/workflow.json','w') #c\"",
+    "python3 -Ic\"open('.claude/workflow.json')\"",
+    "perl -le'open F, \".claude/settings.json\"'",
+    "node -pe \"require('fs').readFileSync('.claude/settings.json')\"",
+    # value options before the code do not hide it
+    "python3 -W ignore -c \"open('.claude/workflow.json')\"",
+    "perl -I lib -e 'open(F, \".claude/settings.json\")'",
+    "node --require ./m.js -e \"require('fs').readFileSync('.claude/settings.json')\"",
+    # the words after inline code are its argv, and stdin is its data
+    "python3 -c 'import sys; open(sys.argv[1], \"w\")' .claude/workflow.json",
+    "python3 - .claude/workflow.json <<'EOF'\nimport sys\nopen(sys.argv[1])\nEOF\n",
+    "python3 -c 'import sys; open(sys.stdin.read())' <<< .claude/workflow.json",
 ]
 
 
@@ -97,6 +110,12 @@ ALLOWED = [
     "cat <<EOF > a.md\nsee .claude/workflow.json\nEOF\npython3 - <<EOF\nprint(1)\nEOF\n",
     "python3 - <<EOF\nprint(1)\nEOF\ncat <<EOF > a.md\nsee .claude/workflow.json\nEOF\n",
     "sh -c 'echo .claude/other.json'",
+    # a script or a module reads its arguments and stdin as data
+    "python3 tool.py -c .claude/workflow.json",
+    "python3 -m pytest --print .claude/settings.json",
+    "python3 -m json.tool .claude/workflow.json",
+    "python3 tool.py <<'EOF'\n.claude/workflow.json\nEOF\n",
+    "ruby -E UTF-8 tool.rb .claude/settings.json",
 ]
 
 
@@ -113,7 +132,28 @@ def test_a_heredoc_to_a_non_interpreter_keeps_todays_rules(repo):
 
 
 def test_the_shell_c_flag_is_not_interpreter_code(repo):
-    assert evaluate("sh -c 'echo .claude/other.json'", repo) is None
+    assert evaluate("sh -c 'cat .claude/workflow.json'", repo) is None
+
+
+# Known limit (docs/GUARD.md): code reaching an interpreter's stdin through a pipe is not
+# read. These pins turn red when a later change closes the gap.
+KNOWN_LIMIT = [
+    "cat <<'EOF' | python3\nopen('.claude/workflow.json')\nEOF\n",
+    "echo \"open('.claude/workflow.json')\" | python3",
+]
+
+
+@pytest.mark.parametrize("command", KNOWN_LIMIT)
+def test_code_piped_into_an_interpreter_is_a_known_limit(repo, command):
+    assert evaluate(command, repo) is None
+
+
+def test_a_refusal_quotes_the_heredoc_delimiter_not_the_marker(repo):
+    command = "git status && cat <<'EOF' > .claude/workflow.json\n{}\nEOF\n"
+    reason = evaluate(command, repo)
+    assert reason is not None
+    assert "__pipeline_heredoc" not in reason, reason
+    assert "`cat << EOF > .claude/workflow.json`" in reason, reason
 
 
 PLUGIN = Path(__file__).resolve().parents[1]

@@ -84,13 +84,19 @@ Each layer covers ground the one before it cannot, and each has its own way arou
   suggestion to send the commands as separate calls.
 - **Interpreter code naming a guardrail file** is refused. The code is what a `python`,
   `python3`, `node`, `perl` or `ruby` command is given — also behind the wrappers above
-  (`env`, `timeout`, `uv run`, `bash -c`): a heredoc body or a here-string fed to its stdin,
-  and the argument of `-c` (Python) or `-e`, `-E`, `-p`, `--eval` and `--print` (Perl, Ruby,
-  Node). A mention counts, whether the code reads or writes the file, because a read and a
-  write cannot be told apart from text; reads have `Read` and `cat`. The reason says that
-  guardrail files change only through Edit/Write with the owner's approval. A heredoc fed
-  to another command (`cat <<EOF > notes.md`) is judged by the other rules only, and
-  interpreter code that names no guardrail file passes.
+  (`env`, `timeout`, `uv run`, `bash -c`): the argument of `-c` (Python), `-e` (Ruby, Perl,
+  Node), `-E` (Perl), `-p`, `--eval` and `--print` (Node), read like getopt — also glued to
+  the option or behind other letters of the same word (`-c"…"`, `-Ic`, `perl -le'…'`) and
+  behind options that take a value (`-W ignore`, `-I lib`, `--require m`) — together with
+  the words after it, which are its argv, and a heredoc body or here-string fed to its
+  stdin; with no such option and no script, stdin is the program and its heredoc or
+  here-string is the code. A script or a module (`python3 tool.py`, `python3 -m pytest`)
+  reads its arguments and stdin as data, so none of them counts. A mention counts, whether
+  the code reads or writes the file, because a read and a write cannot be told apart from
+  text; reads have `Read` and `cat`. The reason says that guardrail files change only
+  through Edit/Write with the owner's approval. A heredoc fed to another command
+  (`cat <<EOF > notes.md`) is judged by the other rules only, and interpreter code that
+  names no guardrail file passes.
 - **`gh api -X DELETE`** is refused only on the owner's ground — the same ground the `gh`
   subcommands keep: the repository and the organisation themselves, branch and tag refs,
   merges, branch protection, rulesets, releases, workflow runs, secrets, variables,
@@ -243,11 +249,18 @@ layers behind it do not depend on it.
   project's settings, not by the guard.
 - **Scripts, interpreters and shell functions.** A script written to a file and then run
   (`bash /tmp/x.sh`), interpreter code that reaches a guardrail file without naming it (a
-  path built at run time) and a shell function defined in an earlier call run commands the
-  guard never sees as a command string. Interpreter code that names a guardrail file is
-  refused (see the rule above); a script file is not read. The pre-push
-  hook and the rulesets still stop a push to `main`; nothing local stops the rest.
-  Tracked in `docs/BACKLOG.md` (Guard, P3).
+  path built at run time), code piped into an interpreter's stdin from another command
+  (`cat <<'EOF' | python3`, `echo "…" | python3`) and a shell function defined in an
+  earlier call run commands the guard never sees as a command string. Interpreter code
+  that names a guardrail file is refused (see the rule above); a script file is not read.
+  The pre-push hook and the rulesets still stop a push to `main`; nothing local stops the
+  rest. Tracked in `docs/BACKLOG.md` (Guard, P3).
+- **A shell fed through stdin and wrapper value options.** `bash <<'EOF'` (or a pipe into
+  `sh`) runs commands the guard never reads: only `bash -c` is analysed. The wrappers
+  `nice`, `env`, `exec` and `stdbuf` are unwrapped by dropping words that start with `-`,
+  so the value of an option given as its own word (`nice -n 10 …`) is taken for the
+  program, and the command behind it passes unchecked. On `main` the pre-push hook and the
+  rulesets still stop a push. Tracked in `docs/BACKLOG.md` (Guard, P2).
 - **Git configuration channels the guard does not parse:** `--config-env`, the
   `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`/`GIT_CONFIG_PARAMETERS` variables,
   `GIT_CONFIG_GLOBAL`, and an `include.path` or `includeIf` entry pointing at another

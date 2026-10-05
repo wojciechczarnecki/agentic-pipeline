@@ -16,11 +16,13 @@ metrics:
   implement_steps: 12
   implement_iterations: 0
   converge_gaps: 0
-  deviations_minor: 3
+  deviations_minor: 4
   deviations_major: 0
   final_review_blockers: 0
   final_review_worth_fixing: 8
   final_review_nits: 5
+  findings_accepted: 13
+  findings_rejected: 0
 ---
 
 # SPEC 015 — Bootstrapping and the guard

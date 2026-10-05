@@ -97,6 +97,55 @@ def test_placeholder_jobs_pass_and_list_the_real_steps(placeholder, real):
         assert SUBDIRECTORY_MARKER not in rendered and ROOT_MARKER not in rendered
 
 
+@pytest.mark.parametrize("placeholder", sorted(PLACEHOLDERS))
+def test_placeholder_jobs_render_both_layer_forms(placeholder):
+    layer = uncommented(render(placeholder, "backend", "backend"))
+    assert "\n  backend:\n" in layer
+    assert "    defaults:\n      run:\n        working-directory: backend\n" in layer
+    root = uncommented(render(placeholder, "python"))
+    assert "\n  python:\n" in root
+    assert "working-directory" not in root and "defaults:" not in root
+
+
+# A plain YAML scalar cannot hold ": " — GitHub rejects such a workflow, so its job never
+# reports and a required check stays pending.
+@pytest.mark.parametrize("path", sorted(WORKFLOWS.glob("*.yml")), ids=lambda path: path.name)
+def test_no_run_step_is_an_invalid_plain_scalar(path):
+    for line in uncommented(path.read_text()).splitlines():
+        match = re.match(r"^\s*(?:- )?run: (.+)$", line)
+        if match and match.group(1)[0] not in "\"'|>":
+            assert ": " not in match.group(1), (path.name, line)
+
+
+def jobs_of(text: str) -> list[str]:
+    return re.findall(r"^  ([A-Za-z0-9_<>-]+):$", text, re.M)
+
+
+# Two layers in one repository: `init` assembles one ci.yml with a job per layer, one
+# Dependabot entry per layer and the ruleset's required checks equal to the job names.
+def test_a_two_layer_project_renders_consistently():
+    python = render("ci-python.yml", "backend", "backend")
+    node = render("ci-node-placeholder.yml", "frontend", "frontend")
+    header, _, python_jobs = python.partition("\njobs:\n")
+    node_jobs = node.partition("\njobs:\n")[2]
+    ci = f"{header}\njobs:\n{python_jobs}\n{node_jobs}"
+    jobs = jobs_of(ci.partition("\njobs:\n")[2])
+    assert jobs == ["backend", "frontend"]
+    assert ci.count("\nname: CI\n") == 1 and ci.count("\non:\n") == 1
+    assert "working-directory: backend" in ci and "working-directory: frontend" in ci
+    backend = render_dependabot("backend")
+    frontend = render_dependabot("frontend")
+    assert directory_of(backend, "uv") == "/backend"
+    assert directory_of(frontend, "npm") == "/frontend"
+    ruleset = json.loads((GITHUB / "repository" / "ruleset.json").read_text())
+    rules = {rule["type"]: rule for rule in ruleset["rules"]}
+    rules["required_status_checks"]["parameters"]["required_status_checks"] = [
+        {"context": job} for job in jobs
+    ]
+    checks = rules["required_status_checks"]["parameters"]["required_status_checks"]
+    assert [check["context"] for check in checks] == jobs
+
+
 @pytest.mark.parametrize("path", sorted(WORKFLOWS.glob("ci-*.yml")), ids=lambda path: path.name)
 def test_every_ci_template_names_the_required_check(path):
     comments = [line for line in path.read_text().splitlines() if line.startswith("#")]

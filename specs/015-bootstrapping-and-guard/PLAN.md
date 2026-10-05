@@ -783,6 +783,11 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   would then demand a `.claude/settings.json` with a `Read` rule from its fixture, which AC3
   forbids (the fixture is exactly `backend/pyproject.toml`) and which `init`, copying templates
   through the shell, does not need.
+- Step 8 (minor, recorded at the final review, F12): `plugin/skills/init/SKILL.md` step 4 writes
+  the `migrations` section when an `alembic.ini` sits at the root or in a layer directory. No AC
+  asks for it, but the skill already kept `migrations` "when the project has a migration tool",
+  and the sentence makes that rule concrete for the one tool the guard's migration module knows;
+  it is the counterpart of AC18's notice, which fires when the section is missing.
 
 ## Final review
 
@@ -903,3 +908,36 @@ Rejected: none — every reported finding was reproduced; duplicates across pers
 merged into F1–F8.
 
 Left out: 20 nit findings
+
+### 2026-10-05 — apply
+
+Owner decision: accept all (F1–F13). Fixed:
+
+- **F1** → `guard.py`: `interpreter_arguments` walks the option cluster left to right like
+  getopt; at the first code letter the rest of the word, or the next word, is the code.
+  `-c"…"`, `-Ic"…"` and `perl -le'…'` are in `REFUSED`.
+- **F2** → the walk stops at the first operand, at `-m` and at `-`/`--`; a script or a module
+  makes stdin data; `--eval`/`--print` are Node's only, Ruby's `-E` is a value option.
+  `python3 tool.py -c …`, `python3 -m pytest --print …`, `python3 -m json.tool …`,
+  `python3 tool.py <<'EOF'` and `ruby -E UTF-8 tool.rb …` are in `ALLOWED`.
+- **F3** → inline code now counts the words after it (its argv) and its stdin, so
+  `python3 -c '…sys.argv[1]…' .claude/workflow.json` is refused; value options before the code
+  (`-W ignore`, `-I lib`, `--require m`) are skipped. Code piped into an interpreter stays a
+  known limit: `plugin/docs/GUARD.md`, `docs/BACKLOG.md` (Guard P3 row) and the
+  `KNOWN_LIMIT` pins in `test_guard_interpreters.py`.
+- **F4** → `strip_heredocs` returns the delimiters, and `Analyzer.run` maps markers back in a
+  refusal; `test_a_refusal_quotes_the_heredoc_delimiter_not_the_marker`.
+- **F5** → `ci-placeholder.yml` echo without `: `; `test_no_run_step_is_an_invalid_plain_scalar`
+  over every workflow template (red on the old template).
+- **F6** → SKILL step 4: the Node real job also needs a `package-lock.json`, and
+  `npm run test:run` becomes the manifest's test script.
+- **F7** → `test_placeholder_jobs_render_both_layer_forms`.
+- **F8** → `plugin/docs/GUARD.md` known limit "A shell fed through stdin and wrapper value
+  options"; `docs/BACKLOG.md` Guard P2 row with a trigger; the code fix is a separate spec.
+- **F9** → `test_a_two_layer_project_renders_consistently`.
+- **F10** → SKILL step 1: the layer name follows GitHub's job-id rule and falls back to
+  `<dir>-<stack>` on a bad name or a collision.
+- **F11** → `plugin/docs/NEW-PROJECT.md` §1 names the red first Security run as a known limit.
+- **F12** → recorded as a minor deviation (`## Deviations`, step 8).
+- **F13** → `test_the_shell_c_flag_is_not_interpreter_code` uses
+  `sh -c 'cat .claude/workflow.json'`.

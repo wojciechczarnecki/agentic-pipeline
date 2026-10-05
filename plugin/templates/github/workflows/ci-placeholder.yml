@@ -23,4 +23,4 @@ jobs:
       # TODO: run the test suite
       # TODO: build the artefact, if the project produces one
       - name: Verify
-        run: echo "TODO: replace this step with the real verification of this project"
+        run: echo "TODO - replace this step with the real verification of this project"

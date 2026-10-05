@@ -179,9 +179,104 @@ GUARDRAIL_FILES = (
     "and its install state) change only through Edit/Write with the owner's approval"
 )
 INTERPRETER = re.compile(r"python(\d+(\.\d+)?)?|node|perl|ruby")
-# the short option letters that make an interpreter run code from its arguments
-CODE_LETTERS = {"python": "c", "node": "ep", "perl": "eE", "ruby": "eE"}
-CODE_LONG_OPTIONS = {"--eval", "--print"}
+
+
+# How an interpreter reads its command line, getopt style: `code` letters take the code (the
+# rest of the word, or the next word), `module` letters name a module that runs like a script,
+# `value` letters take the rest of the word or the next one, and `attached` letters take only
+# what their pattern matches in the rest of the word.
+class InterpreterOptions(NamedTuple):
+    code: str
+    module: str
+    value: str
+    attached: dict[str, str]
+    long_code: frozenset[str]
+    long_value: frozenset[str]
+
+
+INTERPRETER_OPTIONS = {
+    "python": InterpreterOptions(
+        "c", "m", "WX", {}, frozenset(), frozenset({"--check-hash-based-pycs"})
+    ),
+    "node": InterpreterOptions(
+        "ep",
+        "",
+        "rC",
+        {},
+        frozenset({"--eval", "--print"}),
+        frozenset(
+            {
+                "--require",
+                "--import",
+                "--loader",
+                "--experimental-loader",
+                "--input-type",
+                "--conditions",
+                "--env-file",
+                "--env-file-if-exists",
+                "--title",
+                "--inspect-port",
+                "--debug-port",
+                "--redirect-warnings",
+                "--report-dir",
+                "--report-directory",
+                "--diagnostic-dir",
+                "--icu-data-dir",
+                "--openssl-config",
+                "--disable-warning",
+                "--unhandled-rejections",
+                "--watch-path",
+                "--test-reporter",
+                "--test-reporter-destination",
+                "--test-name-pattern",
+                "--test-skip-pattern",
+                "--dns-result-order",
+                "--secure-heap",
+                "--secure-heap-min",
+                "--heapsnapshot-signal",
+                "--max-http-header-size",
+                "--stack-trace-limit",
+                "--tls-cipher-list",
+                "--tls-keylog",
+            }
+        ),
+    ),
+    "perl": InterpreterOptions(
+        "eE",
+        "",
+        "I",
+        {
+            "0": r"(x[0-9A-Fa-f]*|[0-7]*)",
+            "l": r"[0-7]*",
+            "C": r"[0-9IOEioSDALa]*",
+            "d": r"(t?:.*)?",
+            "D": ".*",
+            "i": ".*",
+            "x": ".*",
+            "M": ".*",
+            "m": ".*",
+            "F": ".*",
+        },
+        frozenset(),
+        frozenset(),
+    ),
+    "ruby": InterpreterOptions(
+        "e",
+        "",
+        "ICEr",
+        {
+            "0": r"[0-7]*",
+            "F": ".*",
+            "i": ".*",
+            "x": ".*",
+            "K": ".?",
+            "T": "[0-9]*",
+            "W": r"[0-9]*|:.*",
+        },
+        frozenset(),
+        frozenset({"--encoding", "--external-encoding", "--internal-encoding"}),
+    ),
+}
 INTERPRETER_CODE = "interpreter code names a guardrail file; "
 # cp, install and ln write only their destination; their sources are reads
 DESTINATION_PROGRAMS = {"cp", "install", "ln"}
@@ -682,7 +777,7 @@ class Analyzer:
         if depth > 5:
             raise GuardError("the command nests too deeply to verify; split it up")
         try:
-            text, expanded, bodies = strip_heredocs(text)
+            text, expanded, bodies, delimiters = strip_heredocs(text)
         except ValueError:
             raise GuardError(
                 "the command could not be parsed; split it into simpler ones"
@@ -690,6 +785,17 @@ class Analyzer:
         outer, self.bodies = self.bodies, bodies
         try:
             self.analyze(text, expanded, depth)
+        except GuardError as exc:
+            # a refusal quotes the command the agent wrote, not the guard's markers
+            reason = MARKER_WORD.sub(
+                lambda match: (
+                    delimiters[int(match.group(1))]
+                    if int(match.group(1)) < len(delimiters)
+                    else match.group(0)
+                ),
+                str(exc),
+            )
+            raise GuardError(reason) from None
         finally:
             self.bodies = outer
 
@@ -931,8 +1037,13 @@ class Analyzer:
             if any(self.names_guardrail_file(text) for text in (code, expand_variables(code, env))):
                 raise GuardError(INTERPRETER_CODE + GUARDRAIL_FILES)
 
+    # Everything handed to inline code counts: its own text, the words after it (its argv) and
+    # its stdin. With no code option and no script, stdin is the program. A script or a module
+    # reads its arguments as data, so none of them is code.
     def interpreter_code(self, program: str, tokens: list[str], args: list[str]) -> list[str]:
-        code = []
+        code = interpreter_arguments(program, args)
+        if code is None:
+            return []
         for index, token in enumerate(tokens[:-1]):
             following = tokens[index + 1]
             if token == "<<<":
@@ -941,17 +1052,6 @@ class Analyzer:
                 for number in MARKER_WORD.findall(following):
                     if int(number) < len(self.bodies):
                         code.append(self.bodies[int(number)])
-        letters = CODE_LETTERS["python" if program.startswith("python") else program]
-        for index, arg in enumerate(args):
-            following = args[index + 1 : index + 2]
-            name, equals, value = arg.partition("=")
-            if arg.startswith("--") and name in CODE_LONG_OPTIONS:
-                code += [value] if equals else following
-            elif arg.startswith("-") and not arg.startswith("--") and len(arg) > 1:
-                if arg[-1] in letters:
-                    code += following
-                elif arg[1] in letters:
-                    code.append(arg[2:])
         return code
 
     def names_guardrail_file(self, text: str) -> bool:
@@ -1244,16 +1344,57 @@ class Analyzer:
             Analyzer(self.cwd, {}, self.rules, in_container=True).segment(rest[1:], depth + 1)
 
 
+# Walks an interpreter's options like getopt. Returns None when a script or a module runs, so
+# its arguments are data. Otherwise returns the inline code with every word after it (they are
+# all scanned, as code or as its argv), or an empty list when stdin is the program. A value
+# option whose next word starts with `-` does not take it: the scan then reads more as code,
+# never less.
+def interpreter_arguments(program: str, args: list[str]) -> list[str] | None:
+    options = INTERPRETER_OPTIONS["python" if program.startswith("python") else program]
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        index += 1
+        if arg == "-":
+            return args[index:]
+        if arg == "--" or not arg.startswith("-"):
+            return [] if arg == "--" and index == len(args) else None
+        if arg.startswith("--"):
+            name, equals, value = arg.partition("=")
+            if name in options.long_code:
+                return [value, *args[index:]] if equals else args[index:]
+            following = args[index : index + 1]
+            if name in options.long_value and not equals and following:
+                index += 0 if following[0].startswith("-") else 1
+            continue
+        position = 1
+        while position < len(arg):
+            letter, rest = arg[position], arg[position + 1 :]
+            if letter in options.code:
+                return [rest, *args[index:]] if rest else args[index:]
+            if letter in options.module:
+                return None
+            if letter in options.value:
+                if not rest and args[index : index + 1] and not args[index].startswith("-"):
+                    index += 1
+                break
+            pattern = options.attached.get(letter)
+            match = re.match(pattern, rest) if pattern else None
+            position += 1 + (match.end() if match else 0)
+    return []
+
+
 # Heredoc bodies are data, not commands; only an unquoted delimiter lets the shell run
 # substitutions inside the body, so those bodies are still scanned for $(...) and backticks.
 # A `<<` counts only outside quotes, comments and $((...)) — anywhere else skipping lines
 # would hide real commands — and a heredoc that never closes fails closed. Each delimiter word
 # on a kept line becomes a numbered marker, so a body stays traceable to the command that reads
 # it: the bodies come back in marker order, quoted or not.
-def strip_heredocs(text: str) -> tuple[str, str, list[str]]:
+def strip_heredocs(text: str) -> tuple[str, str, list[str], list[str]]:
     kept: list[str] = []
     expanded: list[str] = []
     bodies: list[list[str]] = []
+    delimiters: list[str] = []
     pending: list[tuple[str, bool, bool, int]] = []
     state = ShellState()
     for line in text.split("\n"):
@@ -1273,10 +1414,12 @@ def strip_heredocs(text: str) -> tuple[str, str, list[str]]:
         for heredoc in opened:
             pending.append((heredoc.delimiter, heredoc.strip_tabs, heredoc.expands, len(bodies)))
             bodies.append([])
+            delimiters.append(heredoc.delimiter)
         kept.append(line)
     if pending:
         raise ValueError("unterminated heredoc")
-    return "\n".join(kept), "\n".join(expanded), ["\n".join(body) for body in bodies]
+    bodies_text = ["\n".join(body) for body in bodies]
+    return "\n".join(kept), "\n".join(expanded), bodies_text, delimiters
 
 
 class Heredoc(NamedTuple):

@@ -33,7 +33,12 @@ commit belongs to the owner.
    manifest is one layer. A layer at the root is named after its stack (`python`, `node`); a
    layer in a subdirectory is named after the directory (`backend`, `frontend`), and a
    directory holding both manifests gives the layers `<dir>-python` and `<dir>-node`, so
-   job names stay unique. No manifest → unknown stack. A project deeper than depth 1
+   job names stay unique. A layer name is a GitHub job id: letters, digits, `-` and `_`,
+   starting with a letter or `_`; when a directory name breaks that rule (`2024-api`,
+   `my.app`) or two layers would share a name (a `python/` directory beside a root
+   `pyproject.toml`), name the layer `<dir>-<stack>` with every other character replaced
+   by `-` and a leading `_` when it starts with a digit, and show the name in the stack
+   question. No manifest → unknown stack. A project deeper than depth 1
    (`apps/web`) is not detected: the owner names it in the stack question.
    Look into each manifest for the script names (`scripts` in `package.json`, the lint and
    test tools in `pyproject.toml`) — that fills `verify` and `format` without asking. Note
@@ -159,8 +164,11 @@ commit belongs to the owner.
      `name: CI` and one trigger block). Per layer, write the real job (`ci-python.yml`,
      `ci-node.yml`) only when its manifest declares the lint and test tools — for Python
      `ruff` and `pytest` (the `black` step stays only when `black` is declared), for Node a
-     `lint` and a test script (the build step stays only with a `build` script) — and the
-     layer has a test file. Otherwise write the placeholder job (`ci-python-placeholder.yml`,
+     `lint` and a test script and a `package-lock.json` beside the manifest, because
+     `npm ci` and the npm cache need it (the build step stays only with a `build` script) —
+     and the layer has a test file. In the Node job, `npm run test:run` becomes the test
+     script the manifest has (`npm test` for `test`), so the first run does not stop on a
+     missing script. Otherwise write the placeholder job (`ci-python-placeholder.yml`,
      `ci-node-placeholder.yml`): it passes, so the required check exists from the first
      push, and it lists the real steps as comments. Neither layer → `ci-placeholder.yml`
      (job `verify`). Render each template mechanically: for a root layer, delete the lines

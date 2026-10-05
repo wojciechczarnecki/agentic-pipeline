@@ -28,10 +28,16 @@ repository settings as files, and the guard closes three gaps the consumer met.
   `pre-push` has `<gitHooksDir>` substituted. The closing warns when `production.hosts`
   stays empty and lists a missing `README.md` or licence as `TODO:`.
 - The guard refuses interpreter code (`python`, `node`, `perl`, `ruby`: a heredoc body, a
-  here-string, the argument of `-c`, `-e`, `-E`, `-p`) that names a guardrail file; the
-  once-per-session check notices an `alembic.ini` when `.claude/workflow.json` has no
+  here-string, the argument of `-c`, `-e`, `-E`, `-p`, read like getopt, with the words
+  after it) that names a guardrail file; a script or a module (`python3 tool.py`,
+  `python3 -m pytest`) keeps its arguments and stdin as data. A refusal quotes heredoc
+  delimiters as written, not the guard's internal markers. The once-per-session check notices an `alembic.ini` when `.claude/workflow.json` has no
   `migrations` section; every refused call with several commands suggests sending them as
   separate calls, also when none passed.
+- `ci-placeholder.yml` (an unknown stack) is valid YAML again: its echo step held `: ` in a
+  plain scalar, so GitHub rejected the workflow and the required `verify` check never
+  reported. A Node layer gets the real job only with a `package-lock.json`, and its test step
+  runs the test script the manifest has.
 - New eval case `init-subdirectory-project`.
 
 **consumer impact:** update as usual. The new `ask` and `deny` rules reach only newly
