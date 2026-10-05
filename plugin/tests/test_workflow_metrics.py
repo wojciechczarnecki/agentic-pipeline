@@ -528,7 +528,8 @@ def test_the_cost_ratio_rounds_half_up(tmp_path):
         costed(cost_plan_review_cents="5", plan_review_blockers="1", plan_review_majors="1"),
     )
     report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
-    assert "Plan review cost per significant finding: 3 cents (5/2) — a lower bound: output tokens are undercounted" in report
+    assert "Plan review cost per significant finding: 3 cents (5/2)" in report
+    assert "(5/2) — a lower bound" in report
 
 
 def test_cost_lines_are_hidden_without_data(tmp_path):
@@ -614,4 +615,6 @@ def test_escalation_kinds_are_optional(tmp_path):
             assert key not in workflow_metrics.REQUIRED[status], (key, status)
         problems = workflow_metrics.check(spec_dir(tmp_path, "done", dict(COMPLETE, **{key: "x"})))
         assert any(key in problem for problem in problems), key
-        assert workflow_metrics.check(spec_dir(tmp_path, "done", dict(COMPLETE, **{key: "1"}))) == []
+        assert (
+            workflow_metrics.check(spec_dir(tmp_path, "done", dict(COMPLETE, **{key: "1"}))) == []
+        )

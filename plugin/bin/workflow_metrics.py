@@ -4,13 +4,17 @@
 # from .claude/workflow.json (`docs.specsDir`).
 # With --record-cost it prices the spec's stage subagents from Claude Code's transcripts and
 # writes the four `cost_*` keys into its SPEC.md.
+# With --derive it counts the keys of DERIVED from the fixed forms in SPEC.md and PLAN.md and
+# writes them into the `metrics:` block; a key whose source is not in the expected form is
+# named on stderr and left as it was.
 # Usage: python3 workflow_metrics.py [dir]
 #        python3 workflow_metrics.py --check <spec-dir>
+#        python3 workflow_metrics.py --derive <spec-dir>
 #        python3 workflow_metrics.py --record-cost <spec-dir> [--transcripts <dir>]
-# Exit codes: 0 — report rendered, --check found nothing wrong, or --record-cost finished
-# (missing transcripts and unknown models only warn); 1 — --check found a problem (every one
-# named on stderr), an unreadable spec directory or a broken workflow.json; 2 — argparse
-# rejected the arguments.
+# Exit codes: 0 — report rendered, --check found nothing wrong, --derive finished (keys it
+# cannot read only warn), or --record-cost finished (missing transcripts and unknown models
+# only warn); 1 — --check found a problem (every one named on stderr), an unreadable spec
+# directory or a broken workflow.json; 2 — argparse rejected the arguments.
 import argparse
 import json
 import os
@@ -22,6 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import spec_forms  # noqa: E402
 import workflow_config  # noqa: E402
 
 REQUIRED_DONE_COUNTERS = [
@@ -38,6 +43,23 @@ REQUIRED_DONE_COUNTERS = [
     "findings_accepted",
     "findings_rejected",
 ]
+DERIVED = (
+    "plan_steps",
+    "plan_review_blockers",
+    "plan_review_majors",
+    "implement_steps",
+    "implement_iterations",
+    "deviations_minor",
+    "deviations_major",
+    "escalations",
+    "escalations_permission",
+    "escalations_tooling",
+    "final_review_blockers",
+    "final_review_worth_fixing",
+    "final_review_nits",
+    "findings_accepted",
+    "findings_rejected",
+)
 COST_KEYS = {
     "plan": "cost_plan_cents",
     "plan-review": "cost_plan_review_cents",
@@ -229,7 +251,7 @@ def find_agents(source: Path) -> dict[str, tuple[dict, list[Path]]]:
 # A stage agent belongs to this spec when its type is a stage agent, its prompt names the spec
 # directory as a whole path segment, and it ran inside this repository: a spec with the same
 # number, or even the same name, in another repository is not counted. Its descendants (the
-# final review's perspectives, the converge pass) count toward its stage.
+# final review's perspectives) count toward its stage.
 # `estimates`, when given, gets per stage the logged output tokens and an estimate from the
 # content (see `content_tokens`).
 def stage_usage(
@@ -551,7 +573,7 @@ def default_transcripts() -> Path:
 
 # An exact line edit inside the `metrics:` block: an existing key has its value replaced, a
 # new one is appended after the block's last line, and every other byte stays as it was.
-def write_costs(text: str, values: dict[str, int]) -> str | None:
+def write_costs(text: str, values: dict[str, int | str]) -> str | None:
     if not text.startswith("---\n"):
         return None
     close = text.find("\n---", 3)
@@ -651,17 +673,123 @@ def record_cost(spec_dir: Path, source: Path) -> int:
     return 0
 
 
+# The counters that can be read from the spec files, written by the same line edit as the cost.
+# A key is written only when its source is in the expected form, so a stage agent started after
+# an escalation gets back what the agents before it counted, and a hand-kept value is never
+# replaced by a guess. Every key left out is named with the reason.
+def derive(spec_dir: Path) -> int:
+    spec = spec_dir / "SPEC.md"
+    try:
+        text = spec.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        print(f"no readable SPEC.md in {spec_dir}: {exc}", file=sys.stderr)
+        return 1
+    plan_file = spec_dir / "PLAN.md"
+    plan = None
+    try:
+        plan = plan_file.read_text(encoding="utf-8") if plan_file.is_file() else None
+    except (OSError, UnicodeDecodeError):
+        plan = None
+    status = parse_status(text)
+    values: dict[str, int | str] = {}
+    left: dict[str, str] = {}
+
+    def put(key: str, value: int | None, reason: str) -> None:
+        if value is None:
+            left[key] = reason
+        else:
+            values[key] = value
+
+    no_plan = "no readable PLAN.md"
+    if plan is None:
+        for key in DERIVED:
+            left[key] = no_plan
+    else:
+        found = spec_forms.steps(plan)
+        ticked = [step for step in found if step.ticked]
+        put("plan_steps", len(found) or None, "no step line in `## Steps`")
+        put("implement_steps", len(ticked) or None, "no ticked step")
+        unnoted = [step.number for step in ticked if step.iterations is None]
+        if not ticked:
+            left["implement_iterations"] = "no ticked step"
+        elif unnoted:
+            names = ", ".join(f"step {number}" for number in unnoted)
+            left["implement_iterations"] = f"{names} ticked without an `iterations: <k>` note"
+        else:
+            values["implement_iterations"] = sum(step.iterations or 0 for step in ticked)
+        split = spec_forms.deviations(plan)
+        if split is not None and (status in DEVIATIONS_DUE or split != (0, 0)):
+            values["deviations_minor"], values["deviations_major"] = split
+        elif status in DEVIATIONS_DUE:
+            values["deviations_minor"] = values["deviations_major"] = 0
+        else:
+            for key in ("deviations_minor", "deviations_major"):
+                left[key] = "no entry in `## Deviations`"
+        for key, kind, source in (
+            ("plan_review_blockers", "blocker", "review"),
+            ("plan_review_majors", "major", "review"),
+            ("final_review_blockers", "blocker", "final"),
+            ("final_review_worth_fixing", "worth-fixing", "final"),
+            ("final_review_nits", "nit", "final"),
+        ):
+            count = (
+                spec_forms.review_log(plan, kind)
+                if source == "review"
+                else spec_forms.final_review(plan, kind)
+            )
+            where = "`## Review log`" if source == "review" else "`## Final review`"
+            put(key, count, f"{where} holds only the placeholder")
+        gates = [d for d in spec_forms.decisions(plan, "PLAN")[0] if d.kind == "gate"]
+        ids = spec_forms.gate_ids(gates[-1]) if gates else None
+        if ids is None:
+            reason = (
+                "no gate entry" if not gates else "the gate entry has no `accepted`/`rejected` ids"
+            )
+            left["findings_accepted"] = left["findings_rejected"] = reason
+        else:
+            values["findings_accepted"], values["findings_rejected"] = len(ids[0]), len(ids[1])
+    counted = spec_forms.decisions(text, "SPEC")[0]
+    unformed: list[str] = []
+    if plan is not None:
+        formed, unformed = spec_forms.decisions(plan, "PLAN")
+        counted = counted + formed
+    counted = [entry for entry in counted if entry.kind != "gate"]
+    if unformed:
+        for key in ("escalations", "escalations_permission", "escalations_tooling"):
+            left[key] = "an entry of `## Owner decisions` is not in the fixed form"
+    else:
+        values["escalations"] = len(counted)
+        values["escalations_permission"] = sum(e.kind == "permission" for e in counted)
+        values["escalations_tooling"] = sum(e.kind == "tooling" for e in counted)
+    for key in DERIVED:
+        if key in left:
+            print(f"not written: {key} — {left[key]}", file=sys.stderr)
+    updated = write_costs(text, values)
+    if updated is None:
+        print(f"{spec} has no frontmatter; nothing derived", file=sys.stderr)
+    elif updated != text:
+        spec.write_text(updated, encoding="utf-8")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Report or check workflow metrics.")
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--record-cost", action="store_true")
+    parser.add_argument("--derive", action="store_true")
     parser.add_argument("--transcripts")
     parser.add_argument("directory", nargs="?")
     args = parser.parse_args(argv[1:])
-    if args.check and args.record_cost:
-        parser.error("--check and --record-cost are separate runs; pass one of them")
+    if sum([args.check, args.record_cost, args.derive]) > 1:
+        parser.error("--check, --record-cost and --derive are separate runs; pass one of them")
     if args.transcripts and not args.record_cost:
         parser.error("--transcripts only works with --record-cost")
+
+    if args.derive:
+        if not args.directory:
+            print("usage: workflow_metrics.py --derive <spec-dir>", file=sys.stderr)
+            return 1
+        return derive(Path(args.directory))
 
     if args.record_cost:
         if not args.directory:
