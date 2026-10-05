@@ -781,4 +781,120 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+### 2026-10-05 — report
+
+Three independent perspectives (compliance, quality, tests); every finding below was checked
+in the code or through `guard.evaluate`. `bash scripts/check.sh`: ALL GREEN (2564 passed).
+
+AC → evidence:
+
+| AC | Evidence | Verdict |
+|----|----------|---------|
+| AC1 | `plugin/skills/init/SKILL.md` steps 1–2; `test_init_skill.py::test_layers_are_detected_at_depth_one`; eval `init-subdirectory-project` | ok |
+| AC2 | `ci-python.yml`/`ci-node.yml` markers, `dependabot.yml` `/<dir>`, SKILL step 4; `test_init_layers.py::test_ci_renders_a_subdirectory_layer`, `::test_ci_renders_a_root_layer_as_today`, `::test_dependabot_renders_the_layer_directory`; `test_init_skill.py::test_verify_and_format_follow_the_layer_directory` | ok |
+| AC3 | `plugin/evals/init-subdirectory-project/`; `test_eval_cases.py`; ledger 5 of 5 | ok |
+| AC4 | `ci-python-placeholder.yml`, `ci-node-placeholder.yml`, SKILL steps 4 and 7; `test_init_layers.py::test_placeholder_jobs_pass_and_list_the_real_steps` | ok (F6, F7) |
+| AC5 | comment in every `ci-*.yml`; `::test_every_ci_template_names_the_required_check` | ok |
+| AC6 | `templates/github/repository/{ruleset,settings}.json`; `::test_the_ruleset_template`, `::test_the_repository_settings_template` | ok |
+| AC7 | SKILL steps 4 and 6; `test_init_skill.py::test_init_copies_the_repository_settings` | ok |
+| AC8 | `plugin/docs/NEW-PROJECT.md` §3; `test_new_project_doc.py` | ok |
+| AC9 | `plugin/templates/settings.json`; `test_init_templates.py::test_settings_template_*` | ok |
+| AC10 | SKILL step 4; `::test_allow_rules_follow_the_seen_stack` | ok |
+| AC11 | SKILL step 7; `::test_the_closing_warns_about_empty_hosts` | ok |
+| AC12 | SKILL step 4 (copy with `sed … >`, no `sed -i`); `::test_the_hooks_dir_is_substituted_in_pre_push`; eval criterion | ok |
+| AC13 | SKILL write scope, steps 4 and 6; `::test_gitignore_is_append_only` | ok |
+| AC14 | SKILL step 7; `::test_readme_and_licence_are_closing_todos` | ok |
+| AC15 | `templates/docs/adr/ADR.{en,pl}.md`; `::test_the_adr_template_has_twins`, `::test_the_adr_template_is_offered_not_copied`, `test_new_project_doc.py::test_the_adr_template_is_described` | ok |
+| AC16 | `guard.py` `check_interpreter_code`, `interpreter_code`, `strip_heredocs` markers; `test_guard_interpreters.py` | partial (F1, F3) |
+| AC17 | `ALLOWED` pins, `::test_a_heredoc_to_a_non_interpreter_keeps_todays_rules`, GUARD.md doc tests | partial (F2) |
+| AC18 | `guard.py` `migrations_notice`; `test_guard_alembic_notice.py` | ok |
+| AC19 | `Analyzer.run` suffix; `test_guard.py::test_a_*_suggests_separate_calls` | ok |
+| AC20 | `plugin.json` 0.10.0, CHANGELOG, DECISIONS, ROADMAP, BACKLOG; `test_release_0_10_0.py`, `tests/test_documents.py::test_spec_015_*` | ok |
+| AC21 | `bash scripts/check.sh` ALL GREEN | ok |
+| AC22 | End-to-end → Manual 1 | manual (owner) |
+
+Plan steps 1–12 are ticked with reason; the three minor deviations are justified; nothing
+outside the scope beyond F12.
+
+Findings:
+
+- **F1** `worth-fixing` `plugin/bin/guard.py:944-955` (`interpreter_code`) — the option
+  cluster is read by its last and second letter only, so code glued to its flag slips
+  through: `python3 -c"open('.claude/workflow.json','w') #c"` (ends in `c`, the next arg is
+  taken as the code), `perl -le'open F, ".claude/settings.json"'` and
+  `python3 -Ic"open('.claude/workflow.json')"` all pass. Fix: walk the cluster left to right
+  like getopt; at the first code letter the rest of the token is the code, or the next arg
+  when the rest is empty; add the three inputs to `REFUSED`.
+- **F2** `worth-fixing` `plugin/bin/guard.py:944-955` — the option scan does not stop at
+  the script or module, and a heredoc is credited as code even when a script reads it:
+  `python3 tool.py -c .claude/workflow.json`, `python3 -m pytest --print .claude/settings.json`
+  and `python3 tool.py <<'EOF'` with a body naming `.claude/workflow.json` are refused
+  (false refusals, against AC17). `--eval`/`--print` also apply to Python and Perl, and
+  Ruby's `-E` (encoding) counts as code. Fix: stop at the first operand, `-m`, `-` or `--`;
+  credit a heredoc or here-string only when no script operand exists; `--eval`/`--print`
+  for Node only, `CODE_LETTERS["ruby"] = "e"`; pin the cases in `ALLOWED`.
+- **F3** `worth-fixing` `plugin/bin/guard.py:934-955`, `plugin/docs/GUARD.md:84-93,244-250`
+  — code that reaches the interpreter without being its own heredoc or `-c`/`-e` passes and
+  is not named as a limit: `cat <<'EOF' | python3` and `echo "…workflow.json…" | python3`
+  (stdin through a pipe), and a guardrail path given as an argument or variable to inline
+  code (`python3 -c 'open(sys.argv[1],"w")' .claude/workflow.json`). Fix: at minimum, list
+  both in the GUARD.md known limit and the BACKLOG Guard P3 row with tests pinning today's
+  behaviour; optionally also scan an inline-code interpreter's positional args and the
+  bodies of earlier commands in its pipeline.
+- **F4** `worth-fixing` `plugin/bin/guard.py:1267-1270` with `Analyzer.run` — the internal
+  heredoc marker leaks into refusal text:
+  `git status && cat <<'EOF' > .claude/workflow.json …` → "refused because of
+  `` `cat << __pipeline_heredoc_0__ > .claude/workflow.json` ``"; an agent re-sending the
+  named part gets a command it never wrote. Fix: map markers back to the original
+  delimiters when a part is rendered into a reason; test that no reason contains
+  `__pipeline_heredoc`.
+- **F5** `worth-fixing` `plugin/templates/github/workflows/ci-placeholder.yml:24,26` — the
+  `run: echo "TODO: replace …"` lines are plain scalars with `: `, invalid YAML (PyYAML:
+  "mapping values are not allowed here"), so the workflow never runs. Predates the branch,
+  but now `.github/repository/ruleset.json` requires the `verify` check, which then never
+  reports, so every PR in an unknown-stack project stays blocked. Fix: drop the colon (as
+  the new placeholders do: `TODO -`) or quote the value; a test that no template `run:`
+  plain scalar contains `": "`.
+- **F6** `worth-fixing` `plugin/skills/init/SKILL.md:160-163`,
+  `plugin/templates/github/workflows/ci-node.yml:39` — the Node real job can be red on its
+  first run: the template hard-codes `npm run test:run` while the criterion accepts any
+  test script (a layer with only `"test"` → "Missing script: test:run"; PLAN Risks says the
+  skill uses the manifest's script, but the skill does not say so), and a layer without
+  `package-lock.json` gets the real job, where `cache: npm` and `npm ci` fail. Fix: step 4
+  says to use the manifest's test script name, and the Node real-job criterion also needs a
+  `package-lock.json`.
+- **F7** `worth-fixing` `plugin/tests/test_init_layers.py:80-103` — the placeholder render
+  test only checks that no marker or placeholder is left; it never asserts the subdirectory
+  form the eval fixture always gets (job `backend:`, `defaults.run.working-directory:
+  backend`), nor the root form. A placeholder template that drops the `defaults` block
+  would pass. Fix: assert both forms for both placeholders, as
+  `test_ci_renders_a_subdirectory_layer` does for the real templates.
+- **F8** `worth-fixing` `plugin/bin/guard.py` (`unwrap`, `SHELLS`), `plugin/docs/GUARD.md`
+  known limits — two bypasses that predate the branch and that AC16 leans on ("the wrappers
+  the guard already unwraps"): value options of `nice`/`env`/`exec`/`stdbuf` are not skipped
+  (`nice -n 10 git push origin main` and `nice -n 10 python3 -c "…workflow.json…"` pass),
+  and a shell fed through stdin is never analysed (`bash <<'EOF'` + `gh pr merge 1` passes).
+  Neither is in the known limits. Fix within this PR: record both in GUARD.md known limits
+  and `docs/BACKLOG.md` (Guard, with priority and trigger); the code fix is a separate spec.
+- **F9** `nit` `plugin/tests/test_init_layers.py`, `test_init_skill.py` — no mechanical
+  check of a two-layer project (`backend/` + `frontend/`): unique job names in one `ci.yml`,
+  one Dependabot entry per layer, ruleset contexts equal to the job names. Fix: one render
+  test merging two layers.
+- **F10** `nit` `plugin/skills/init/SKILL.md` step 1 — layer names are not checked against
+  GitHub's job-id rule (`2024-api`, `my.app`, a space) nor for a collision (a `python/`
+  directory beside a root `pyproject.toml`). Fix: one sentence — fall back to
+  `<dir>-<stack>` or ask.
+- **F11** `nit` `plugin/docs/NEW-PROJECT.md:26` — "so the first CI run is green", but on a
+  fresh `backend/` project the Security workflow is red (no lock file; BACKLOG debt). Fix:
+  one sentence naming that known limit.
+- **F12** `nit` `plugin/skills/init/SKILL.md:43,134` — `init` now writes a `migrations`
+  section when it sees `alembic.ini`; no AC asks for it. Fix: drop it, or record it as a
+  minor deviation.
+- **F13** `nit` `plugin/tests/test_guard_interpreters.py:115` —
+  `test_the_shell_c_flag_is_not_interpreter_code` cannot fail: `.claude/other.json` names
+  no guardrail file. Fix: use `sh -c 'cat .claude/workflow.json'`.
+
+Rejected: none — every reported finding was reproduced; duplicates across perspectives were
+merged into F1–F8.
+
+Left out: 20 nit findings
