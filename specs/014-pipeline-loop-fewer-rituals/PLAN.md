@@ -784,6 +784,8 @@ text, and a step that left them for later would end red.
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-10-05 — final-review — gate — Which final review findings to fix? Decision: accept all listed findings F1–F16 (blocker, worth-fixing and nit); none rejected. The 20 nit findings left out of the report were not presented and are not in scope.
+
 ## Review log
 
 2026-10-05, plan review (plugin 0.8.2). Findings are written in the fixed form this plan
