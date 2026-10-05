@@ -254,7 +254,7 @@ What the plan rests on:
 | AC15 | 7, 8, 9 | `plugin/tests/test_init_templates.py::test_the_adr_template_has_twins`; `test_init_skill.py::test_the_adr_template_is_offered_not_copied`; `test_new_project_doc.py::test_the_adr_template_is_described` | |
 | AC16 | 2 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_naming_a_guardrail_file_is_refused` (parametrised: heredoc, here-string, `-c`, `-e`, `-E`, wrappers, plugin root, install state) `uv run pytest -q plugin/tests/test_guard_interpreters.py` → `assert reason is not None, command` (24 refused cases red) |
 | AC17 | 2, 4 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_without_a_guardrail_path_passes`, `::test_a_heredoc_to_a_non_interpreter_keeps_todays_rules`, `::test_guard_doc_narrows_the_interpreter_limit` | |
-| AC18 | 3, 4 | `plugin/tests/test_guard_alembic_notice.py` (root, subdirectory, once per session, never blocks, silent with `migrations`, silent without `workflow.json`, silent at depth 2) | |
+| AC18 | 3, 4 | `plugin/tests/test_guard_alembic_notice.py` (root, subdirectory, once per session, never blocks, silent with `migrations`, silent without `workflow.json`, silent at depth 2) `uv run pytest -q plugin/tests/test_guard_alembic_notice.py` → `assert NOTICE in notice["systemMessage"]` (5 notice cases red; the silent cases are regression pins) |
 | AC19 | 1 | `plugin/tests/test_guard.py::test_a_chained_uv_call_with_a_refused_part_suggests_separate_calls`, `::test_a_call_with_every_part_refused_suggests_separate_calls` | `uv run pytest -q plugin/tests/test_guard.py -k separate_calls` → `assert "separate calls" in reason` (only `::test_a_call_with_every_part_refused_suggests_separate_calls`; the chained `uv` test is a regression pin, green today) |
 | AC20 | 11 | `plugin/tests/test_release_0_10_0.py`; `tests/test_documents.py::test_spec_015_decisions_rows`, `::test_spec_015_roadmap_and_backlog` | |
 | AC21 | 11, 12 | `bash scripts/check.sh` | n/a — the gate over every other test |
@@ -318,7 +318,7 @@ What the plan rests on:
       exercises `strip_heredocs`.
       Automatic verification: `uv run pytest -q plugin/tests/test_guard_interpreters.py plugin/tests/test_guard.py plugin/tests/test_guard_own_files.py && uv run pytest -q plugin/tests`
 
-- [ ] 3. **Alembic notice (AC18).** Files: `plugin/bin/guard.py`,
+- [x] 3. **Alembic notice (AC18).** Files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard_alembic_notice.py` (new).
       Tests first, built on `test_guard_read_rule.Setup`, with a covering `Read` rule
       written so that the read-rule notice stays out of the way, then run them red. The

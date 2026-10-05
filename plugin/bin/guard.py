@@ -413,7 +413,9 @@ def main() -> int:
     else:
         # Only a pipeline project reads the templates: with a `--scope user` install every
         # other project would get the notice too, and `/pipeline:init` writes the rule.
-        notice = read_rule_notice(session_id, env, config, cwd)
+        notices = [read_rule_notice(session_id, env, config, cwd)]
+        notices.append(migrations_notice(session_id, config))
+        notice = "\n".join(text for text in notices if text) or None
     reason = evaluate(command, cwd, env, config)
     if reason is None:
         if notice:
@@ -604,6 +606,37 @@ def read_rule_notice(
         if not first_in_session(session_id, "read-rule"):
             return None
         return READ_RULE.format(target=target, rule=suggested_rule(target, env))
+    except Exception:
+        return None
+
+
+MIGRATIONS_NOTICE = (
+    "pipeline guard: {path} exists, but .claude/workflow.json has no `migrations` section, so "
+    "the migration rule is inactive. To guard Alembic runs, add "
+    '"migrations": {{"command": "alembic", "localHosts": ["localhost", "127.0.0.1", "::1"]}} '
+    "to .claude/workflow.json (plugin README, configuration)."
+)
+
+
+def alembic_files(root: Path) -> list[Path]:
+    found = [root / "alembic.ini"]
+    for directory in sorted(root.iterdir()):
+        if directory.name.startswith(".") or directory.name == "node_modules":
+            continue
+        found.append(directory / "alembic.ini")
+    return [path for path in found if path.is_file()]
+
+
+# Fail-open like the Read notice, and the marker is set only when a notice goes out, so a
+# project without alembic.ini never creates one.
+def migrations_notice(session_id: str | None, config: workflow_config.Config) -> str | None:
+    try:
+        if not config.found or config.get("migrations") is not None or not config.root:
+            return None
+        files = alembic_files(config.root)
+        if not files or not first_in_session(session_id, "alembic"):
+            return None
+        return MIGRATIONS_NOTICE.format(path=files[0].relative_to(config.root).as_posix())
     except Exception:
         return None
 
