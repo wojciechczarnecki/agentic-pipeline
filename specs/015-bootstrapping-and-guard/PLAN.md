@@ -255,7 +255,7 @@ What the plan rests on:
 | AC16 | 2 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_naming_a_guardrail_file_is_refused` (parametrised: heredoc, here-string, `-c`, `-e`, `-E`, wrappers, plugin root, install state) | |
 | AC17 | 2, 4 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_without_a_guardrail_path_passes`, `::test_a_heredoc_to_a_non_interpreter_keeps_todays_rules`, `::test_guard_doc_narrows_the_interpreter_limit` | |
 | AC18 | 3, 4 | `plugin/tests/test_guard_alembic_notice.py` (root, subdirectory, once per session, never blocks, silent with `migrations`, silent without `workflow.json`, silent at depth 2) | |
-| AC19 | 1 | `plugin/tests/test_guard.py::test_a_chained_uv_call_with_a_refused_part_suggests_separate_calls`, `::test_a_call_with_every_part_refused_suggests_separate_calls` | only `::test_a_call_with_every_part_refused_suggests_separate_calls`; the chained `uv` test is a regression pin, green today |
+| AC19 | 1 | `plugin/tests/test_guard.py::test_a_chained_uv_call_with_a_refused_part_suggests_separate_calls`, `::test_a_call_with_every_part_refused_suggests_separate_calls` | `uv run pytest -q plugin/tests/test_guard.py -k separate_calls` → `assert "separate calls" in reason` (only `::test_a_call_with_every_part_refused_suggests_separate_calls`; the chained `uv` test is a regression pin, green today) |
 | AC20 | 11 | `plugin/tests/test_release_0_10_0.py`; `tests/test_documents.py::test_spec_015_decisions_rows`, `::test_spec_015_roadmap_and_backlog` | |
 | AC21 | 11, 12 | `bash scripts/check.sh` | n/a — the gate over every other test |
 | AC22 | — | manual (owner), End-to-end → Manual 1 | manual |
@@ -264,7 +264,7 @@ What the plan rests on:
 
 ### Group 1 — Guard
 
-- [ ] 1. **The compound suggestion (AC19).** Files: `plugin/bin/guard.py`,
+- [x] 1. **The compound suggestion (AC19).** Files: `plugin/bin/guard.py`,
       `plugin/tests/test_guard.py`.
       Tests first. Only the second test is the proving test and must be seen red; the
       first is a regression pin the SPEC asks for, and it is green before the change,

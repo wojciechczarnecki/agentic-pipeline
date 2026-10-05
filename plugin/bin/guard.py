@@ -671,7 +671,7 @@ class Analyzer:
                 f"; the other {passed} of {len(commands)} parts passed"
                 " — run them as a separate call"
                 if passed
-                else ""
+                else "; send the commands as separate calls"
             )
             raise GuardError(f"the whole call is refused because of {'; '.join(blocked)}{rest}")
 
