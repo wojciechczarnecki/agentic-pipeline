@@ -214,10 +214,11 @@ worktrees.
 
 Every spec carries a flat `metrics:` block in its SPEC.md frontmatter, filled in by the
 pipeline stages. Keys, the report and the `--check` gate: `plugin/README.md` → metrics
-section. The four `cost_*` keys are written by `workflow_metrics.py --record-cost
-<spec-dir>`, which `/pipeline:ship` runs in Closing; a spec closed by hand, or one whose
-transcripts sit in the archive, is costed with the same call (`--transcripts <dir>` for the
-archive). The script is called by name through `PATH` (`workflow_metrics.py --check
+section. Counters that can be read from the spec files are written by `workflow_metrics.py
+--derive <spec-dir>`. The four `cost_*` keys are written by `workflow_metrics.py
+--record-cost <spec-dir>`, which `workflow_metrics.py --close <spec-dir>` runs when
+`/pipeline:ship` closes the spec; a spec closed by hand, or one whose transcripts sit in the
+archive, is costed with the same call (`--transcripts <dir>` for the archive). The script is called by name through `PATH` (`workflow_metrics.py --check
 <spec-dir>`): Claude Code appends an enabled plugin's `bin/` to the session's `PATH`, in
 consumers too. Never through `${CLAUDE_PLUGIN_ROOT}` — skill text gets it substituted, but
 permission rules do not, so the absolute path never matches an `allow` rule and a stage

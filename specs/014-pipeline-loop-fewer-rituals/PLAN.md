@@ -178,7 +178,7 @@ Design choices:
 | AC26 | 2 | `plugin/tests/test_workflow_metrics.py::test_cost_lines_are_labelled_a_lower_bound` |  `uv run pytest -q plugin/tests/test_workflow_metrics.py` → `assert line.endswith(" — a lower bound: output tokens are undercounted")` |
 | AC27 | 12 | `plugin/tests/test_pipeline_loop.py::test_final_review_notes_one_context` |  `uv run pytest -q plugin/tests/test_pipeline_loop.py` → `assert "`Agent` tool" in final_review_step("Report mode", 2)` |
 | AC28 | 2 | `plugin/tests/test_workflow_metrics.py::test_a_column_without_data_is_left_out` |  `uv run pytest -q plugin/tests/test_workflow_metrics.py` → `assert key not in cells` |
-| AC29 | 16 | `plugin/tests/test_release_0_9_0.py`, `tests/test_documents.py::test_decisions_record_spec_014`, `::test_roadmap_ticks_spec_014`, `::test_backlog_after_spec_014` | |
+| AC29 | 16 | `plugin/tests/test_release_0_9_0.py`, `tests/test_documents.py::test_decisions_record_spec_014`, `::test_roadmap_ticks_spec_014`, `::test_backlog_after_spec_014` |  `uv run pytest -q plugin/tests/test_release_0_9_0.py tests/test_documents.py` → `assert tuple(int(part) for part in manifest["version"].split(".")) >= (0, 9, 0)` |
 | AC30 | 17 | `bash scripts/check.sh` | n/a — the whole suite, green by definition at the end |
 | AC31 | — | the canary in `### Manual` | manual |
 
@@ -668,7 +668,7 @@ text, and a step that left them for later would end red.
       the PR and the background call), the lower-bound label, legacy keys).
       Automatic verification: `uv run pytest -q plugin/tests/test_readme.py &&
       uv run pytest -q`
-- [ ] 16. Release 0.9.0 and the documents (AC29). Files:
+- [x] 16. Release 0.9.0 and the documents (AC29). Files:
       `plugin/.claude-plugin/plugin.json`, `plugin/CHANGELOG.md`, `docs/DECISIONS.md`,
       `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/CONVENTIONS.md` (the Workflow metrics
       paragraph: `--close` runs the cost), new `plugin/tests/test_release_0_9_0.py`,
