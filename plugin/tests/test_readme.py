@@ -67,8 +67,11 @@ def test_changelog_starts_at_the_manifest_version():
 # check test's COMPLETE would be one more place to drift.
 def test_metrics_block_lists_every_counter():
     section = README.split("## Workflow metrics", 1)[1]
+    # The two legacy keys are named once, in the sentence that says old specs keep them.
+    legacy = {"converge_gaps", "implement_chunks"}
     for counter in [*workflow_metrics.TIMESTAMPS, *workflow_metrics.COUNTERS]:
-        assert f"{counter}:" in section, counter
+        if counter not in legacy:
+            assert f"{counter}:" in section, counter
 
 
 def install_guide() -> str:
@@ -283,7 +286,9 @@ HEADINGS = [
     "### Severity tokens",
     "## Workflow metrics",
     "### Checking metrics (`--check`)",
+    "### Deriving counters (`--derive`)",
     "### Recording cost (`--record-cost`)",
+    "### Closing a spec (`--close`)",
     "## CHANGELOG",
 ]
 
@@ -374,23 +379,81 @@ def test_the_changelog_names_the_read_rule():
     assert "stops" in impact
 
 
-# SPEC 010, AC10: the pipeline mechanics describe test-first evidence, the converge pass and
-# the nit cap, and the 0.7.0 release notes record them with their consumer impact.
-def test_the_readme_describes_test_first_and_converge():
+def metrics_section() -> str:
+    return README.split("\n## Workflow metrics\n", 1)[1].split("\n## ", 1)[0]
+
+
+# SPEC 014, AC3: the pipeline mechanics keep test-first as guidance, and the nit cap stays.
+def test_the_readme_describes_test_first_guidance_and_the_nit_cap():
     mechanics = README.split("\n## Pipeline mechanics\n", 1)[1].split("\n## ", 1)[0]
     mechanics = " ".join(mechanics.split())
     for token in [
-        "Red before the change",
-        "converge pass",
-        "`missing`",
-        "`partial`",
-        "`contradicts`",
-        "`unrequested`",
-        "at most two passes",
+        "proving test",
+        "before the product change",
+        "gap in the SPEC",
         "five `nit`",
         "left out",
     ]:
         assert token in mechanics, token
+
+
+# SPEC 014, AC1, AC2, AC4: no ritual is described as current behaviour. The two legacy keys are
+# named once, in the one sentence of Workflow metrics that says old specs keep them.
+def test_the_readme_has_no_ritual():
+    for word in [
+        "converge pass",
+        "Red before the change",
+        "Chunk notes",
+        "CHUNK:",
+        "chunked implementer",
+        "chunk mode",
+    ]:
+        assert word.lower() not in README.lower(), word
+    mentions = [
+        line
+        for line in README.splitlines()
+        if "converge_gaps" in line or "implement_chunks" in line
+    ]
+    assert len(mentions) == 1, mentions  # the one legacy-key sentence
+    legacy = " ".join(metrics_section().split())
+    assert (
+        "legacy keys" in legacy and "`converge_gaps`" in legacy and "`implement_chunks`" in legacy
+    )
+
+
+# SPEC 014, AC23: `--close` is what sets `done`.
+def test_the_status_table_names_close():
+    table = README.split("### Spec statuses", 1)[1].split("\n### ", 1)[0]
+    rows = {
+        line.split("|")[1].strip(): line for line in table.splitlines() if line.startswith("| `")
+    }
+    assert "PR with green CI" in rows["`implemented` + decisions"]
+    assert "`done`" not in rows["`implemented` + decisions"].split("|")[3]
+    close = [line for line in table.splitlines() if "--close" in line]
+    assert close and "`done`" in close[0]
+    assert "chunk" not in table.lower()
+
+
+# SPEC 014, AC7, AC11, AC13, AC19, AC20, AC26: the mechanics of derive, the lint and the close.
+def test_the_readme_documents_derive_lint_and_close():
+    metrics = " ".join(metrics_section().split())
+    for token in [
+        "--derive",
+        "fixed forms",
+        "`iterations: <k>`",
+        "`Pass when:`",
+        "`--close`",
+        "`escalations_permission`",
+        "`escalations_tooling`",
+        "lower bound",
+        "`run_in_background`",
+        "PIPELINE_CLOSE_TIMEOUT_SECONDS",
+    ]:
+        assert token in metrics, token
+    for code in ["`0`", "`1`", "`3`", "`4`", "`5`"]:
+        assert code in metrics.split("`--close`", 1)[1], code
+    for step in ["cost", "`done`", "commit", "push", "re-run"]:
+        assert step in metrics.split("### Closing a spec")[1], step
 
 
 def test_the_changelog_records_spec_010():
@@ -421,9 +484,9 @@ def test_the_models_row_marks_the_guess_and_effort():
         assert token in effort, token
 
 
-# SPEC 012, AC5: the switch is off by default and marked as a candidate not yet measured.
-def test_the_implement_row_marks_the_candidate():
+# SPEC 014, AC5: the key is documented as retired, so a consumer that still has it knows why.
+def test_the_implement_row_marks_the_key_retired():
     rows = [line for line in README.splitlines() if line.startswith("| `implement.chunked`")]
     assert len(rows) == 1
-    for token in ["`false`", "Stage 7", "not yet measured"]:
+    for token in ["retired in 0.9.0", "ignored", "remove"]:
         assert token in rows[0], token
