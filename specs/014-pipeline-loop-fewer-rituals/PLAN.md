@@ -883,4 +883,144 @@ A fresh subagent compared the diff with the SPEC and reported two gaps; I reject
 
 ## Final review
 
-_(filled in by /pipeline:final-review)_
+2026-10-05, final review (report mode, plugin 0.8.2). Three perspectives ran as separate
+subagents: compliance, quality and tests (62 mutations, 41 killed). `bash scripts/check.sh`
+is green (2380 tests).
+
+AC → evidence:
+
+| AC | Evidence | Verdict |
+|----|----------|---------|
+| AC1 | three eval dirs gone, no mapping in `scripts/eval_receipt.py`; `test_pipeline_loop.py::test_no_ritual_returns`, `tests/test_eval_receipt.py::test_no_rule_names_a_removed_case`, `test_stage_contract.py::test_the_removed_triggers_are_gone` | ok |
+| AC2 | three-column PLAN templates (`test_the_ac_matrix_has_three_columns`), case removed, trigger gone | ok |
+| AC3 | `implement` `## Test first` (`test_implement_keeps_test_first_guidance`), final-review "Break the code" (`test_final_review_tests_break_the_code`) | ok, F14 |
+| AC4 | `sections.md` without group rows (`test_the_section_map_has_no_group_rows`), case removed, `test_no_ritual_returns`, `test_the_readme_has_no_ritual` | ok |
+| AC5 | `workflow_config.py` notice; `test_retired_chunked_passes_with_a_notice`, `test_retired_chunked_is_silent_for_the_hooks`, `test_implement_bad_values_still_fail`, `test_the_example_has_no_implement_section` | ok |
+| AC6 | `plugin/tests/fixtures/consumer-specs/00{1..9}-spec`, `test_consumer_specs_pass_the_check`, `tests/test_spec_metrics.py` | ok |
+| AC7 | `workflow_metrics.derive`, `spec_forms.py`; `test_derive_writes_every_key[en,pl]` | ok, F10 |
+| AC8 | `spec_forms.steps`; `test_a_missing_iteration_note_leaves_iterations_unwritten`, `test_implement_ticks_with_the_iteration_note` | ok |
+| AC9 | `test_derive_keeps_every_other_byte`, `test_derive_is_idempotent`, `test_missing_sources_are_named` | gap: F10 |
+| AC10 | closing steps of the four stage skills; `test_every_stage_closes_with_derive_then_check`, `test_no_skill_counts_a_derived_key` | ok |
+| AC11 | template placeholders (`test_templates_give_the_fixed_forms`), derive en/pl test | gap: F1, F9 |
+| AC12 | `workflow_metrics.lint`; `test_an_ac_without_a_matrix_row_is_reported` | ok |
+| AC13 | `spec_forms.manual_without_pass`; `test_a_manual_item_without_a_pass_line_is_reported`, `test_plan_requires_the_pass_line` | gap: F7 |
+| AC14 | `LINTED`; `test_unlinted_statuses_pass` | ok |
+| AC15 | `KIND:` in `ship`, the four agents and README; `test_the_result_block_has_kind` | ok |
+| AC16 | `ship` Result protocol (`test_ship_stops_on_the_third_decision`), `test_escalation_kinds_are_optional`, `test_escalations_by_kind` | ok |
+| AC17 | `implement` Overriding rules (`test_implement_installs_accepted_dependencies`), `agents/implementer.md` | ok, F15 |
+| AC18 | `plan`, `plan-review` (`test_plan_writes_no_owner_step`) | ok |
+| AC19 | `workflow_close.run_close`; `test_close_refuses[8 cases]` | ok |
+| AC20 | `run_close`, `prepare`, `wait`; `test_close_green_path`, `test_a_red_check_restores_the_spec`, `test_red_then_green_after_one_rerun` | ok, F3 |
+| AC21 | `flaky_jobs`, exit 3; `test_a_flaky_job_without_a_backlog_entry_stops`, `test_a_flaky_job_in_the_backlog_passes` | gap: F2 |
+| AC22 | `StopError.line`; `test_every_stop_prints_one_state_line`, both resume tests, `test_done_without_the_close_commit_is_refused` | gap: F5 |
+| AC23 | final-review apply steps 3–6, `ship` State table, Closing and guardrail, README status table; `test_final_review_apply_ends_at_green_ci`, `test_closing_runs_close_after_apply`, `test_the_status_table_names_close` | ok, F4, F6 |
+| AC24 | `plugin/tests/test_close.py` (git with a bare remote, stub `gh`) | ok, F11 |
+| AC25 | `ship` Start step 4; `test_the_start_message_names_every_stage_model` | ok |
+| AC26 | `per_unit` label; `test_cost_lines_are_labelled_a_lower_bound` | ok |
+| AC27 | final-review report step 4, `agents/reviewer.md`; `test_final_review_notes_one_context` | ok |
+| AC28 | `render`; `test_a_column_without_data_is_left_out` | ok |
+| AC29 | `plugin.json` 0.9.0, CHANGELOG `## 0.9.0` (`test_release_0_9_0.py`), DECISIONS rows, ROADMAP, BACKLOG (`tests/test_documents.py`) | ok |
+| AC30 | `bash scripts/check.sh` green | ok |
+| AC31 | the canary in `### Manual`, with its `Pass when:` line | manual |
+
+Plan steps: all 17 ticked, each with its commits. The nine deviations are `minor` and
+justified. Nothing outside the scope got into the branch. Every row of the AC → steps matrix
+has a red record or an `n/a`/`manual` mark.
+
+Findings:
+
+- **F1** `blocker` `plugin/skills/ship/SKILL.md:189-190` — a report with no findings skips
+  the gate and records "that there were no findings" as a free-form entry. `--derive` then
+  leaves `escalations*` unwritten and writes no `findings_accepted`/`findings_rejected`, so
+  `--close` stops at `check` with exit 1 ("requires metric keys that are missing") on every
+  clean final review, and the recommended resume repeats the same stop (reproduced on a
+  copy of the derive fixture). Fix: record the no-findings case as a `gate` entry with
+  `` `accepted`: none; `rejected`: none `` in `ship` and in `final-review` (report step 5,
+  apply step 1), and add a derive and a close test for it.
+- **F2** `worth-fixing` `plugin/bin/workflow_close.py:187` — the backlog check is a
+  substring test (`name not in backlog`). This repository's CI job is `plugin` and
+  `docs/BACKLOG.md` contains "plugin" many times, so a flaky job never stops the close here;
+  the same holds for `test`, `lint` or `build` against ordinary prose. Fix: match the job
+  name as a backticked code span or a whole word, document the form, and test that
+  "plugins" in the backlog does not excuse the job `plugin`.
+- **F3** `worth-fixing` `plugin/bin/workflow_close.py:280-285` — right after
+  `gh run rerun <id> --failed`, `wait_for` polls at once. If GitHub still reports the old
+  completed/failure attempt, the close exits 5 ("red after one re-run") while the re-run is
+  still to come. Fix: remember each re-run run's `attempt` and judge only once it has grown
+  and the run is `completed`; add a stub answer that repeats the old attempt once.
+- **F4** `worth-fixing` `plugin/skills/final-review/SKILL.md:163-165` — the flaky backlog
+  entry "goes into the stage's own commit of step 3", but the flaky run is seen in step 4,
+  after that commit is pushed; an uncommitted entry then makes `--close` refuse a dirty
+  tree. The entry is also described by "the test name", while `--close` matches the CI job
+  name, so a correct-looking entry still stops the close with exit 3. Fix: the entry gets
+  its own commit and push in step 4 (and CI is awaited on that head), and it names the CI
+  job.
+- **F5** `worth-fixing` `plugin/bin/workflow_close.py:96-105` — only `StopError` restores
+  SPEC.md. Any other exception after `prepare()` wrote `done` (an `OSError`, an odd
+  transcript in `record_cost`, a non-dict job in `failed_jobs`, a SIGTERM of the background
+  call) gives a traceback with no stop line (AC22) and leaves a dirty tree at `done` with no
+  close commit, which every later `--close` refuses. Fix: restore on any exception before
+  the commit and turn it into a stop line.
+- **F6** `worth-fixing` `plugin/skills/ship/SKILL.md:204-210` — "resume the closing step only
+  (Recommended)" is recommended for every non-zero exit, but for exit 1 (check red, SPEC.md
+  restored) and exit 3 (flaky job) a resume repeats the same stop; the text itself says exit
+  3 is the case for the second option. Fix: recommend resume for exits 4 and 5, and
+  `reviewer` `apply` for 1 and 3. This narrows AC23's wording, so it is the owner's call.
+- **F7** `worth-fixing` `plugin/bin/spec_forms.py:197,208-214` — the template lists manual
+  scenarios as `- ` bullets, but a section of one bullet `- n/a — <reason>` is reported as a
+  scenario with no pass line (false red, reproduced), and the tested non-bullet n/a branch is
+  dead code. Numbered items (`1. Open the page.`) or prose with no pass line pass the lint
+  (false green, reproduced). Fix: accept an optional `- ` in the n/a match, read numbered
+  items as items, report a non-empty section with neither items nor n/a, and test each.
+- **F8** `worth-fixing` `plugin/skills/implement/SKILL.md:81-82`,
+  `plugin/skills/plan-review/SKILL.md:122-123` — run on their own, both append the
+  escalation decision to `## Owner decisions` without the fixed form that `ship` and
+  `final-review` give. One free-form entry makes `--derive` leave `escalations*` unwritten
+  for the rest of the spec, and `--check` goes red where `escalations` is required. Fix:
+  give the form ``- YYYY-MM-DD — <stage> — `<kind>` — <question> — <decision>`` in both.
+- **F9** `worth-fixing` `plugin/bin/workflow_metrics.py:751-752`,
+  `plugin/bin/spec_forms.py:114-122` — `--derive` writes a silent zero where its source is
+  not in the expected form: `deviations_*: 0` when `## Deviations` is missing or misspelled
+  at `implemented`/`done`, and `plan_review_*: 0` when the review log has content but no
+  line in the finding form (verified: a hand-kept 2/1 became 0/0, nothing named). AC9 asks
+  to write only what is found in form. Fix: leave the keys unwritten and name them; let a
+  review with no findings write a recognised "none" line.
+- **F10** `worth-fixing` `plugin/tests/test_derive.py:91-107`,
+  `plugin/tests/fixtures/derive/PLAN.md`, `plugin/tests/test_spec_lint.py` — mutations that
+  survive: derive writing CRLF or dropping the final newline (the byte test compares
+  `splitlines()`); a duplicate `F<n>` counted twice; an untokened deviation not counted as
+  minor; a numbered review finding ignored; ASCII-dash decision entries rejected; the first
+  gate used instead of the last; `[X]` not ticked; `AC(\d)` matching AC10 as AC1, or an AC
+  taken from the proving-test cell; the Polish manual section skipped. Fix: compare bytes,
+  put one line of each form in the fixture, and add an AC1/AC10 and a Polish negative lint
+  case.
+- **F11** `worth-fixing` `plugin/tests/test_close.py` — mutations that survive: `git push
+  --force` (the guarantee that keeps `--close` safe outside the guard); an empty run list
+  read as green; a failed `gh run rerun` ignored (the stub's `rerun_fails` is unused); `gh`
+  failures in the flaky check and the wait; resume detection without `-- SPEC.md` (the
+  "survives a later commit" claim is untested); detached HEAD allowed. Fix: a remote moved
+  ahead by another clone (exit 4, remote unchanged), a `[[], [green]]` queue, a re-run
+  failure, `gh` failures before the commit (SPEC.md restored) and after the push, a resume
+  after an unrelated commit, and a detached-HEAD refusal.
+- **F12** `nit` `plugin/bin/workflow_close.py:45-49` — `subprocess.run` has no timeout and no
+  `GIT_TERMINAL_PROMPT=0`, so a stalled `gh` or a push asking for credentials hangs the
+  background call past its own deadline with no stop line. Fix: a per-call timeout turned
+  into a stop, and the prompt disabled.
+- **F13** `nit` `plugin/bin/spec_forms.py:138` — `ENTRY` accepts `—` or `-` but not the en
+  dash `–` common in model output; one such entry is unformed and drops all three
+  `escalations*` keys. Fix: accept `[—–-]`.
+- **F14** `nit` `plugin/skills/implement/SKILL.md:128` — the Test first paragraph keeps "a
+  proving test the owner or the plan gives verbatim is not rewritten … you escalate", which
+  is close to the alternative the SPEC decision table rejected and names no trigger. Fix:
+  tie it to the SPEC-gap trigger or drop it.
+- **F15** `nit` `plugin/agents/implementer.md:14-16` — the agent body lacks AC17's "no
+  dependency is added beyond what the change needs", which the skill has. Fix: add it.
+- **F16** `nit` `plugin/bin/workflow_metrics.py:469-471`, `plugin/bin/workflow_close.py:71-93,253,288`
+  — "AC2 have no row" for one AC, and most lint and stop messages name no way out, against
+  the user-facing-text rule of `docs/CONVENTIONS.md`. Fix: agree in number and append the
+  next action ("add a matrix row", "commit or stash", "run `--close` again to resume").
+
+Rejected: none. Duplicates across the perspectives were merged (F1 came from two, F2 and
+F3 from three).
+
+Left out: 20 nit findings

@@ -19,6 +19,9 @@ metrics:
   deviations_major: 0
   escalations_permission: 0
   escalations_tooling: 0
+  final_review_blockers: 1
+  final_review_worth_fixing: 10
+  final_review_nits: 5
 ---
 
 # SPEC 014 — Fewer rituals, more code in the pipeline loop
