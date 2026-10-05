@@ -309,7 +309,8 @@ code, are verified differently (a pipeline run against a fresh-repository canary
         the cost as a lower bound while output tokens are undercounted (`docs/BACKLOG.md`)
       - a stage without the `Agent` tool (a cloud session) says in its report that the
         perspectives ran in one context — no restructuring (`docs/BACKLOG.md`, P3)
-- [ ] 0.10.0, one spec — bootstrapping and the guard (from the consumer's `init` report):
+- [ ] 0.10.0, one spec — bootstrapping and the guard (from the consumer's `init` report)
+      (`specs/015-bootstrapping-and-guard/SPEC.md`):
       - a project in a subdirectory (`backend/`, later `frontend/`): CI
         `working-directory` (also for `setup-uv`), the Dependabot `directory`,
         `verify.command`, `format[].command` (`uv run --project backend …`) and the
