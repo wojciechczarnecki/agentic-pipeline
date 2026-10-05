@@ -34,6 +34,8 @@ NAME_ARGUMENT = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)(?:\[[^\]]*\])?(?:\+?=|$)"
 ARRAY_START = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\+?=")
 VARIABLE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
 HEREDOC_DELIMITER = re.compile(r"(-?)[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
+HEREDOC_MARKER = "__pipeline_heredoc_{}__"
+MARKER_WORD = re.compile(r"__pipeline_heredoc_(\d+)__")
 PUNCTUATION = ";&|()<>"
 OPERATOR = re.compile(r";;|&&|\|\||\|&|[;&|()]")
 
@@ -176,6 +178,11 @@ GUARDRAIL_FILES = (
     "guardrail files (.claude/settings*.json, .claude/workflow.json, this plugin's directory "
     "and its install state) change only through Edit/Write with the owner's approval"
 )
+INTERPRETER = re.compile(r"python(\d+(\.\d+)?)?|node|perl|ruby")
+# the short option letters that make an interpreter run code from its arguments
+CODE_LETTERS = {"python": "c", "node": "ep", "perl": "eE", "ruby": "eE"}
+CODE_LONG_OPTIONS = {"--eval", "--print"}
+INTERPRETER_CODE = "interpreter code names a guardrail file; "
 # cp, install and ln write only their destination; their sources are reads
 DESTINATION_PROGRAMS = {"cp", "install", "ln"}
 # short options that take a value, and long ones that may take it as the next word
@@ -309,6 +316,7 @@ class Rules:
         self.protected_file = protected_file_pattern(config, env, cwd)
         self.settings_file = re.compile("|".join(SETTINGS_FILES))
         self.guarded_roots, self.guarded_files = guarded_paths(env)
+        self.guarded_spellings = guarded_spellings(self.guarded_roots, env)
         self.git_hooks = git_hooks_pattern(config)
         migrations = config.get("migrations") or {}
         self.migration_command = migrations.get("command", "")
@@ -345,6 +353,18 @@ def guarded_paths(env: dict[str, str]) -> tuple[list[Path], list[Path]]:
             if path not in files:
                 files.append(path)
     return roots, files
+
+
+# How interpreter code can spell the plugin's directories: the absolute path and, under the
+# home directory, the `~/…` form the shell would expand.
+def guarded_spellings(roots: list[Path], env: dict[str, str]) -> list[str]:
+    home = home_dir(env)
+    spellings = [str(plugin_dir(env))]
+    for root in roots:
+        spellings.append(str(root))
+        if is_within(root, home) and root != home:
+            spellings.append(f"~/{root.relative_to(home).as_posix()}")
+    return list(dict.fromkeys(spellings))
 
 
 def git_hooks_pattern(config: workflow_config.Config) -> re.Pattern[str] | None:
@@ -621,16 +641,26 @@ class Analyzer:
         self.exported = set(env) if exported is None else exported
         self.blocks = 0
         self.scopes: list[Snapshot] = []
+        # the heredoc bodies of the text `run` is checking, by marker number; `eval` re-enters
+        # `run` on this instance, so each run puts the outer bodies back
+        self.bodies: list[str] = []
 
     def run(self, text: str, depth: int = 0) -> None:
         if depth > 5:
             raise GuardError("the command nests too deeply to verify; split it up")
         try:
-            text, expanded = strip_heredocs(text)
+            text, expanded, bodies = strip_heredocs(text)
         except ValueError:
             raise GuardError(
                 "the command could not be parsed; split it into simpler ones"
             ) from None
+        outer, self.bodies = self.bodies, bodies
+        try:
+            self.analyze(text, expanded, depth)
+        finally:
+            self.bodies = outer
+
+    def analyze(self, text: str, expanded: str, depth: int) -> None:
         executable = f"{outside_single_quotes(text)}\n{expanded}"
         for dollar, backtick in re.findall(r"\$\(([^()]*)\)|`([^`]*)`", executable):
             nested = Analyzer(
@@ -749,6 +779,7 @@ class Analyzer:
         self.check_guardrail_files(program, args, redirects)
         if program not in REMOVAL_PROGRAMS:
             self.check_own_files(program, plain, written)
+        self.check_interpreter_code(program, tokens, args, env)
         if program in SHELLS:
             if "-c" in args[:-1]:
                 # a new shell process sees only exported variables and its own prefix
@@ -854,6 +885,49 @@ class Analyzer:
         for target in touched:
             if hooks.search(target) and self.hook_target_exists(target):
                 raise GuardError(GIT_HOOKS)
+
+    # Code fed to an interpreter is judged on what it names: a read and a write cannot be told
+    # apart from text, and reads have `Read` and `cat`. A path built at run time, or a script
+    # file, stays unseen (docs/GUARD.md, known limits).
+    def check_interpreter_code(
+        self, program: str, tokens: list[str], args: list[str], env: dict[str, str]
+    ) -> None:
+        if not INTERPRETER.fullmatch(program):
+            return
+        for code in self.interpreter_code(program, tokens, args):
+            if any(self.names_guardrail_file(text) for text in (code, expand_variables(code, env))):
+                raise GuardError(INTERPRETER_CODE + GUARDRAIL_FILES)
+
+    def interpreter_code(self, program: str, tokens: list[str], args: list[str]) -> list[str]:
+        code = []
+        for index, token in enumerate(tokens[:-1]):
+            following = tokens[index + 1]
+            if token == "<<<":
+                code.append(following)
+            elif token == "<<":
+                for number in MARKER_WORD.findall(following):
+                    if int(number) < len(self.bodies):
+                        code.append(self.bodies[int(number)])
+        letters = CODE_LETTERS["python" if program.startswith("python") else program]
+        for index, arg in enumerate(args):
+            following = args[index + 1 : index + 2]
+            name, equals, value = arg.partition("=")
+            if arg.startswith("--") and name in CODE_LONG_OPTIONS:
+                code += [value] if equals else following
+            elif arg.startswith("-") and not arg.startswith("--") and len(arg) > 1:
+                if arg[-1] in letters:
+                    code += following
+                elif arg[1] in letters:
+                    code.append(arg[2:])
+        return code
+
+    def names_guardrail_file(self, text: str) -> bool:
+        rules = self.rules
+        if rules.protected_file.search(text):
+            return True
+        if any(spelling in text for spelling in rules.guarded_spellings):
+            return True
+        return any(name in text for name in INSTALL_STATE_FILES)
 
     def check_own_files(self, program: str, args: list[str], redirects: list[str]) -> None:
         targets = list(redirects)
@@ -1140,25 +1214,44 @@ class Analyzer:
 # Heredoc bodies are data, not commands; only an unquoted delimiter lets the shell run
 # substitutions inside the body, so those bodies are still scanned for $(...) and backticks.
 # A `<<` counts only outside quotes, comments and $((...)) — anywhere else skipping lines
-# would hide real commands — and a heredoc that never closes fails closed.
-def strip_heredocs(text: str) -> tuple[str, str]:
+# would hide real commands — and a heredoc that never closes fails closed. Each delimiter word
+# on a kept line becomes a numbered marker, so a body stays traceable to the command that reads
+# it: the bodies come back in marker order, quoted or not.
+def strip_heredocs(text: str) -> tuple[str, str, list[str]]:
     kept: list[str] = []
     expanded: list[str] = []
-    pending: list[tuple[str, bool, bool]] = []
+    bodies: list[list[str]] = []
+    pending: list[tuple[str, bool, bool, int]] = []
     state = ShellState()
     for line in text.split("\n"):
         if pending:
-            delimiter, strip_tabs, expands = pending[0]
+            delimiter, strip_tabs, expands, number = pending[0]
             if (line.lstrip("\t") if strip_tabs else line) == delimiter:
                 pending.pop(0)
-            elif expands:
-                expanded.append(line)
+            else:
+                bodies[number].append(line)
+                if expands:
+                    expanded.append(line)
             continue
+        opened = state.heredocs_opened_by(line)
+        for heredoc in reversed(opened):
+            marker = HEREDOC_MARKER.format(len(bodies) + opened.index(heredoc))
+            line = line[: heredoc.start] + marker + line[heredoc.end :]
+        for heredoc in opened:
+            pending.append((heredoc.delimiter, heredoc.strip_tabs, heredoc.expands, len(bodies)))
+            bodies.append([])
         kept.append(line)
-        pending.extend(state.heredocs_opened_by(line))
     if pending:
         raise ValueError("unterminated heredoc")
-    return "\n".join(kept), "\n".join(expanded)
+    return "\n".join(kept), "\n".join(expanded), ["\n".join(body) for body in bodies]
+
+
+class Heredoc(NamedTuple):
+    delimiter: str
+    strip_tabs: bool
+    expands: bool
+    start: int
+    end: int
 
 
 class ShellState:
@@ -1166,7 +1259,7 @@ class ShellState:
         self.quote = ""
         self.arithmetic = 0
 
-    def heredocs_opened_by(self, line: str) -> list[tuple[str, bool, bool]]:
+    def heredocs_opened_by(self, line: str) -> list[Heredoc]:
         opened = []
         index = 0
         while index < len(line):
@@ -1195,7 +1288,15 @@ class ShellState:
             elif line.startswith("<<", index) and not self.arithmetic:
                 match = HEREDOC_DELIMITER.match(line, index + 2)
                 if match:
-                    opened.append((match.group(3), match.group(1) == "-", not match.group(2)))
+                    opened.append(
+                        Heredoc(
+                            match.group(3),
+                            match.group(1) == "-",
+                            not match.group(2),
+                            match.start(3),
+                            match.end(3),
+                        )
+                    )
                     index = match.end() - 1
             index += 1
         return opened

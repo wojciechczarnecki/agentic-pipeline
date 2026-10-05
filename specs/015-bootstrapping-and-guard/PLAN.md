@@ -252,7 +252,7 @@ What the plan rests on:
 | AC13 | 8 | `plugin/tests/test_init_skill.py::test_gitignore_is_append_only` (write scope + entries) | |
 | AC14 | 8 | `plugin/tests/test_init_skill.py::test_readme_and_licence_are_closing_todos` | |
 | AC15 | 7, 8, 9 | `plugin/tests/test_init_templates.py::test_the_adr_template_has_twins`; `test_init_skill.py::test_the_adr_template_is_offered_not_copied`; `test_new_project_doc.py::test_the_adr_template_is_described` | |
-| AC16 | 2 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_naming_a_guardrail_file_is_refused` (parametrised: heredoc, here-string, `-c`, `-e`, `-E`, wrappers, plugin root, install state) | |
+| AC16 | 2 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_naming_a_guardrail_file_is_refused` (parametrised: heredoc, here-string, `-c`, `-e`, `-E`, wrappers, plugin root, install state) `uv run pytest -q plugin/tests/test_guard_interpreters.py` → `assert reason is not None, command` (24 refused cases red) |
 | AC17 | 2, 4 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_without_a_guardrail_path_passes`, `::test_a_heredoc_to_a_non_interpreter_keeps_todays_rules`, `::test_guard_doc_narrows_the_interpreter_limit` | |
 | AC18 | 3, 4 | `plugin/tests/test_guard_alembic_notice.py` (root, subdirectory, once per session, never blocks, silent with `migrations`, silent without `workflow.json`, silent at depth 2) | |
 | AC19 | 1 | `plugin/tests/test_guard.py::test_a_chained_uv_call_with_a_refused_part_suggests_separate_calls`, `::test_a_call_with_every_part_refused_suggests_separate_calls` | `uv run pytest -q plugin/tests/test_guard.py -k separate_calls` → `assert "separate calls" in reason` (only `::test_a_call_with_every_part_refused_suggests_separate_calls`; the chained `uv` test is a regression pin, green today) |
@@ -282,7 +282,7 @@ What the plan rests on:
       lines 296–335 stay green unchanged.
       Automatic verification: `uv run pytest -q plugin/tests/test_guard.py`
 
-- [ ] 2. **Interpreter code naming a guardrail file (AC16, AC17).** Files:
+- [x] 2. **Interpreter code naming a guardrail file (AC16, AC17).** Files:
       `plugin/bin/guard.py`, `plugin/tests/test_guard_interpreters.py` (new).
       Tests first, then run them red.
 
