@@ -254,7 +254,10 @@ text, and a step that left them for later would end red.
         rejected false finding without an id;
       - owner decisions: `implement` `decision`, `implement` `permission`,
         `final-review` `tooling`, and a `gate` with `accepted`: F1, F2, F3 and
-        `rejected`: F4.
+        `rejected`: F4;
+      - an AC → steps matrix with a row for each of AC1–AC3 and a `### Manual` section
+        whose item has its pass line (`Pass when:` / `Zaliczony, gdy:`), so that step 4's
+        lint, which runs at status `implemented`, keeps `--check` green on these fixtures.
 
       Expected values: `plan_steps` 4, `implement_steps` 4, `implement_iterations` 3,
       `deviations_minor` 1, `deviations_major` 1, `plan_review_blockers` 1,
@@ -309,12 +312,19 @@ text, and a step that left them for later would end red.
       - `test_no_plan_reports_every_ac`.
       - `test_consumer_specs_pass_the_check`: each of the nine fixtures.
 
-      Change: `check()` calls the lint for the three statuses. Then run
+      Change: `check()` calls the lint for the three statuses. The pass literals come from
+      a new `sections.md` row `pass-condition` (`Zaliczony, gdy:` / `Pass when:`), added in
+      this step, not in step 9, because the lint reads it at run time. The parity tests in
+      `test_templates_language.py` then need the row in `MAP_SNAPSHOT` and the literal in
+      each PLAN template (`check_occurs`), so this step also gives the `### Manual` /
+      `### Ręczna` placeholder of `PLAN.en.md` and `PLAN.pl.md` its pass line. The
+      fixtures of step 3 already carry matrix rows and a pass line (see there). Then run
       `plugin/tests/test_eval_cases.py`, which runs `--check` on every stage scaffold.
       Make each red scaffold pass by giving its PLAN fixture the missing matrix rows or
       `Pass when:` lines. Change nothing else in a case.
       Automatic verification: `uv run pytest -q plugin/tests/test_spec_lint.py
-      plugin/tests/test_eval_cases.py tests/test_spec_metrics.py && uv run pytest -q`
+      plugin/tests/test_eval_cases.py plugin/tests/test_templates_language.py
+      plugin/tests/test_derive.py tests/test_spec_metrics.py && uv run pytest -q`
 
 ### Group 2 — The scripted close
 
@@ -329,7 +339,8 @@ text, and a step that left them for later would end red.
         `docs.backlog: "docs/BACKLOG.md"`, and `docs/BACKLOG.md` exists.
       - `specs/001-demo/SPEC.md` has status `implemented` and every key that `implemented`
         needs. `PLAN.md` is complete in the fixed forms, so `--derive` reproduces the block,
-        and the balance holds at `done`.
+        and the balance holds at `done`. It has a matrix row per AC and a manual pass line,
+        because the lint applies at `implemented`.
       - A stub `gh`: a Python script in a temporary `bin/` put first on `PATH`. It answers
         `pr view`, `run list`, `run view` and `run rerun` from a JSON state file
         (`GH_STUB_STATE`). `run list` answers come from a queue whose last entry repeats.
@@ -362,13 +373,19 @@ text, and a step that left them for later would end red.
       - `test_every_stop_prints_one_state_line`: across the cases above, stderr has
         exactly one `close stopped at` line.
       - `test_cost_warnings_do_not_stop_the_close`: no transcripts, and exit 0 anyway.
+      - `test_a_failed_commit_restores_the_spec`: the commit is made to fail (for example
+        a `pre-commit` hook in the fixture repository that exits 1). Exit 4,
+        `committed: no, pushed: no`, SPEC.md byte-identical to the start, and the tree
+        clean, so a second `--close` is not refused for a dirty tree.
 
       Change, in the order of AC20:
       1. `record_cost(spec_dir, default_transcripts())`, ignoring its return.
       2. Status, `stage_history` and `finished_at` (`write_costs`).
       3. `derive` then `check`, with a restore on red.
       4. A flaky-check placeholder, which step 7 fills.
-      5. `git add <SPEC.md>` and commit.
+      5. `git add <SPEC.md>` and commit. Every stop before the commit lands (red check,
+         flaky job, failed commit) restores SPEC.md to its bytes at the start and unstages
+         it, so the tree is clean and the status is still `implemented` for the next run.
       6. `git push origin <branch>`.
       7. Wait, then re-run once with `gh run rerun <id> --failed` for every failed run, and
          wait again.
@@ -381,7 +398,9 @@ text, and a step that left them for later would end red.
       Tests first:
       - `test_a_flaky_job_without_a_backlog_entry_stops`: the PR head's run has attempt 2,
         and job `plugin` is `failure` in attempt 1 and `success` in attempt 2. Exit 3,
-        stderr names `plugin` and the run URL, and there is no commit.
+        stderr names `plugin` and the run URL, there is no commit, and SPEC.md is
+        byte-identical to the start with a clean tree (a status left at `done` without the
+        close commit would make every later `--close` refuse).
       - `test_a_flaky_job_in_the_backlog_passes`: `docs/BACKLOG.md` contains `plugin`, and
         the exit is 0.
       - `test_resume_after_a_stop_at_the_wait`: after the exit 5 of step 6, switch the stub
@@ -412,6 +431,13 @@ text, and a step that left them for later would end red.
       `# implement-escalates-on-never-red-test`, `# implement-converge-finds-missing-ac` and
       `# implement-stops-at-group-boundary`). Leave `plugin/evals/last-run.json` as it is,
       because the owner's release run rewrites it.
+      Delete `plugin/tests/test_converge.py`, `plugin/tests/test_test_first.py` and
+      `plugin/tests/test_chunked_implementer.py` in this step, not in step 10:
+      `test_chunked_implementer.py` reads the grader of the deleted
+      `implement-stops-at-group-boundary` case and asserts `### Group 1 — ` and
+      `## Chunk notes` in the plan-review fixture that step 9 changes, so it would turn the
+      suite red here and in step 9. The three files pin only ritual text that steps 9–15
+      remove.
       Automatic verification: `uv run pytest -q tests/test_eval_receipt.py
       plugin/tests/test_eval_cases.py && uv run pytest -q`
 - [ ] 9. Templates and the section map (AC2, AC4, AC11, AC13). Files:
@@ -442,7 +468,8 @@ text, and a step that left them for later would end red.
       - each placeholder (`_(…)_`, one line, which `--derive` ignores) giving its fixed
         form: owner decisions, review log, deviations and final review.
 
-      Edit `sections.md` as tested. Bring the two plan-review fixtures to the new
+      Edit `sections.md` as tested (the `pass-condition` row is already there from step 4;
+      this step removes `step-group` and `chunk-notes`). Bring the two plan-review fixtures to the new
       headings. Simplify `normalised()` in `test_eval_cases.py`, and give the prefix-literal
       test in `test_language_contract.py` a synthetic literal in place of `### Group N — `.
       Automatic verification: `uv run pytest -q plugin/tests/test_templates_language.py
@@ -450,9 +477,7 @@ text, and a step that left them for later would end red.
       plugin/tests/test_eval_cases.py && uv run pytest -q`
 - [ ] 10. `implement` and the implementer's body (AC1–AC4, AC8, AC10, AC17). Files:
       `plugin/skills/implement/SKILL.md`, `plugin/agents/implementer.md` (outside its
-      contract sections), `plugin/tests/test_converge.py`,
-      `plugin/tests/test_test_first.py` and `plugin/tests/test_chunked_implementer.py`
-      (deleted), new `plugin/tests/test_pipeline_loop.py`,
+      contract sections), new `plugin/tests/test_pipeline_loop.py`,
       `plugin/tests/test_stage_skills.py`, `plugin/tests/test_stage_contract.py`,
       `plugin/tests/test_record_cost.py` (comment only).
       Tests first, in `test_pipeline_loop.py`, with text compared whitespace-collapsed:
@@ -482,7 +507,7 @@ text, and a step that left them for later would end red.
       Step 5 (converge) goes. Finish: status `implemented` + `stage_history`, then
       `--derive`, then `--check`, the escalation path and the push. Add a short
       "Dependencies" rule to Overriding rules. The Handoff drops the converge passes and the
-      chunk. Delete the three test files. Update `CLOSING_STEPS["implement"]`,
+      chunk. (The three ritual test files are already gone in step 8.) Update `CLOSING_STEPS["implement"]`,
       `test_implement_steps_counts_the_planned_steps_too` and
       `test_implement_records_the_split_metrics` in `test_stage_skills.py`. Update the
       implementer metrics-line test in `test_stage_contract.py`, whose new line is
@@ -537,7 +562,8 @@ text, and a step that left them for later would end red.
       - `test_final_review_apply_ends_at_green_ci`: apply ends at a PR with green CI and
         status `implemented`, the flaky-retry backlog entry goes into apply's own commit,
         apply never sets `done`, and run on its own it runs `workflow_metrics.py --close
-        <spec-dir>` last.
+        <spec-dir>` last, as a background Bash call (`run_in_background`), the same rule
+        as in step 14.
       - `final-review` joins the two step-10 tests.
       - Replace `test_compliance_checks_the_red_column` with a check that the compliance
         perspective names no red record.
@@ -588,7 +614,11 @@ text, and a step that left them for later would end red.
         <docs.specsDir>/NNN-<slug>` comes after the `reviewer/apply` RESULT and before
         `PushNotification`. A non-zero exit asks the owner with "resume the closing step
         only" first, "(Recommended)", and no new reviewer. No `--record-cost` commit step
-        remains. Rework the five Closing tests in this file.
+        remains. `--close` runs as a background Bash call (`run_in_background`), and
+        `ship` reads its exit code and its stop line when the call ends: the wait for CI
+        (timeout 3600 s by default, twice with the re-run) outlasts the foreground Bash
+        limit (120 s by default, 600 s at most), and a killed call would read as a stop
+        with no state line. Rework the five Closing tests in this file.
       - The State table names `--close` → `done` and no chunk.
       - The guardrail says that `--close`, not `ship`, sets `done`.
       - The gate step records the `gate` entry form.
@@ -602,7 +632,7 @@ text, and a step that left them for later would end red.
       step 4 is the model message), "Starting a stage agent" (drop "every chunk"), the
       Result protocol, the Gate and Closing:
       1. Take the PR link and CI status from the RESULT.
-      2. Run `--close`.
+      2. Run `--close` in the background (`run_in_background`) and wait for it to end.
       3. On exit 0 send the notification.
       4. On a non-zero exit ask the owner, with options: resume the closing step only
          (Recommended), `reviewer` `apply` again with the stop line, or the owner takes over.
@@ -634,8 +664,8 @@ text, and a step that left them for later would end red.
       Change, in order: the config row, Models and effort (no converge), the statuses
       table, Implementation and review (the three paragraphs out; test-first guidance,
       dependencies, the scripted close in), Workflow metrics (the example block, who writes
-      what, `--derive`, the lint in `--check`, `--close`, the lower-bound label, legacy
-      keys).
+      what, `--derive`, the lint in `--check`, `--close` (with its need for CI checks on
+      the PR and the background call), the lower-bound label, legacy keys).
       Automatic verification: `uv run pytest -q plugin/tests/test_readme.py &&
       uv run pytest -q`
 - [ ] 16. Release 0.9.0 and the documents (AC29). Files:
@@ -650,7 +680,9 @@ text, and a step that left them for later would end red.
         `KIND` and a consumer impact.
       - `tests/test_documents.py`:
         - `test_decisions_record_spec_014`: one row for `--close` setting `done`, one for
-          derived metrics in the frontmatter;
+          derived metrics in the frontmatter. The `--close` row also says that the script
+          now reads `protectedBranches` and pushes outside the guard's view, because the
+          2026-09-22 row says the key is read by the guard only;
         - `test_roadmap_ticks_spec_014`: the item is ticked;
         - `test_backlog_after_spec_014`: no P2 item about calling `workflow_metrics.py` by
           name, and the cost item says the label is done and the fix waits.
@@ -686,7 +718,17 @@ text, and a step that left them for later would end red.
   breaks, because the tests use the stub. The canary in the manual section is the real
   check.
 - **The `run list` queue in the stub:** a missing new-head run must not read as green.
-  `wait` requires at least one run before it judges.
+  `wait` requires at least one run before it judges. A consumer with no Actions workflow
+  never gets a run, so its `--close` ends at the timeout with exit 5 and
+  `committed: yes, pushed: yes`. The README's `--close` paragraph says that the close
+  needs CI checks on the PR, as the final review's green-CI rule already does.
+- **`--close` and the Bash time limit:** a foreground Bash call ends at 600 s at most,
+  and the CI wait can run longer. `ship` (step 14) and a standalone `final-review` apply
+  (step 12) run `--close` in the background. A call that dies anyway leaves a state the
+  resume path handles (step 7).
+- **Stops before the commit restore SPEC.md** (steps 6 and 7). A stop that left the
+  status at `done` without the close commit would be refused by every later run, both as
+  a dirty tree and as `done` without the commit.
 - **Eval fixtures:** after step 4, every stage scaffold must pass the lint. A fixture that
   fails is fixed by adding rows or pass lines, never by changing the case's point.
   `plugin/evals/last-run.json` still names the removed cases until the owner's release run.
@@ -737,7 +779,81 @@ _(appended by /pipeline:ship or a stage on escalation: date, stage, question, de
 
 ## Review log
 
-_(filled in by /pipeline:plan-review)_
+2026-10-05, plan review (plugin 0.8.2). Findings are written in the fixed form this plan
+introduces, so `--derive` can read them later.
+
+Findings:
+
+- `major` — Step 4 depended on step 9. The lint reads the pass literal from the
+  `pass-condition` row of `sections.md`, which step 9 added. That row cannot be added
+  alone, because `test_the_section_map_matches_the_snapshot` (`MAP_SNAPSHOT`) and
+  `test_every_map_row_occurs_in_its_template` need it in the snapshot and in both PLAN
+  templates. Fixed: step 4 adds the row, the snapshot entry and the templates' pass line.
+  Step 9 only removes `step-group` and `chunk-notes`.
+- `major` — Steps 8 and 9 would leave the suite red until step 10.
+  `test_chunked_implementer.py::test_the_group_boundary_grader_asks_for_the_final_message`
+  reads the grader of the case step 8 deletes, and
+  `::test_the_english_plan_review_fixture_has_groups` asserts the groups that step 9
+  removes from the fixture. Fixed: the three ritual test files are deleted in step 8, and
+  step 10 no longer deletes them.
+- `major` — `--close` waits up to 3600 s by default, twice with the re-run, but a
+  foreground Bash call ends at 120 s by default and 600 s at most. `ship` would see a
+  killed call with no state line. Fixed: steps 12 and 14 run `--close` as a background
+  Bash call, and the tests check it. Added to Risks.
+- `major` — A flaky-job stop (exit 3) or a failed commit (exit 4) happened after SPEC.md
+  had been set to `done`, and only the red check restored it. The tree was then dirty and
+  the status `done` without the close commit, so every later `--close` refused and the
+  resume of AC22 was impossible. Fixed: every stop before the commit restores SPEC.md
+  (step 6 change, item 5). The step 7 flaky test asserts it, and a new step 6 test
+  `test_a_failed_commit_restores_the_spec` covers it too.
+- `minor` — The step 3 `--derive` fixtures and the step 5 close harness have status
+  `implemented`, and their `--check` would turn red once step 4's lint runs. Fixed: both
+  carry a matrix row per AC and a manual pass line.
+- `minor` — `docs/DECISIONS.md` 2026-09-22 says only the guard reads `protectedBranches`.
+  `--close` now reads it too. Fixed: the step 16 decisions test requires the `--close` row
+  to say so.
+- `minor` — A consumer with no Actions workflow never gets a run for the head, so its
+  `--close` always ends at the timeout. Fixed: added to Risks, and the step 15 README
+  paragraph names the need for CI checks.
+
+Checked and found sound:
+
+- Anti-anchoring: my own approach was code first (`--derive`, lint, `--close`, retired
+  key) with subprocess tests, then the text removals, then the docs and the release. I also
+  expected a stub `gh` with a temporary git remote, and fixtures from the consumer's
+  frontmatter. The plan does all of this. The differences I found were the four `major`
+  findings above.
+- Coverage: every AC from AC1 to AC31 has a matrix row, steps and a proving test, and the
+  matrix matches the steps. AC30 is `n/a` and AC31 is `manual`.
+- Compliance: `docs/CONVENTIONS.md` read in full. Standard library only in `plugin/bin`,
+  scripts tested as subprocesses, no new eval case, receipt and canary left to the owner,
+  calls by name through `PATH`. I searched `docs/DECISIONS.md` for "done", "record-cost",
+  "escalations", "push" and "guard". The plan breaks no row: the language-contract row
+  (code tokens in English, prose in `language`) fits the fixed forms, and the cost row
+  (four stage subagents) is unchanged by `--close`.
+- `scripts/git-hooks/pre-push` checks `last-run.json` only for release tags, so deleting
+  three eval cases does not block the lane push. The Risks entry on this holds.
+- `write_costs` formats values with an f-string, so a `str` `finished_at` is written
+  unquoted, as the plan expects.
+- The consumer frontmatter (nine specs) holds only statuses, dates and metric keys, with
+  no domain word. With generic folder names, `test_no_domain_references.py` stays green.
+- `gh` 2.101 is installed locally. `attempt` exists in `gh run list --json`.
+- Minimality: the two new modules keep `workflow_metrics.py` readable, and the command
+  stays `workflow_metrics.py`, as SPEC decision 9 needs. Nothing goes beyond the SPEC.
+- Feasibility: once the fixes are in, no step depends on a later one. No migration and no
+  new dependency, which matches the Owner summary and SPEC owner decision 14.
+- E2E: the automatic part runs on the working tree. The only manual scenario is the
+  canary, which cannot be automated, and it has a pass condition.
+- Testability: every step has `Automatic verification:` with exact test paths.
+- Groups: four groups and 17 steps, and no group boundary leaves work half done. The plan
+  keeps the 0.8.2 groups and the fourth column on purpose, because 0.8.2 implements this
+  spec. Both leave the templates only in this change.
+- Test-first: every step writes its tests first, and the matrix has the fourth column.
+- No step is performed by the owner.
+- Language: English throughout, as `language: en` requires.
+
+Decision: the plan is approved. All seven findings were fixed in the plan itself, none is
+a blocker, and it adds no dependency and no migration, so nothing needs the owner.
 
 ## Chunk notes
 
