@@ -89,16 +89,15 @@ implementation — the owner steps in only when the decision is not yours (step 
    - **testability:** every step has an `Automatic verification:` section
      with exact commands (test paths) that
      `/pipeline:implement` will run in the self-correction loop — not a vague "add tests";
-   - **groups:** every step is in exactly one group under a `### Group N — <name>` heading
-     (either literal from the section map); no group boundary leaves work for a later group
-     to finish; a small plan is one group, because every chunk pays its cache writes again.
-     You fix a violation in place, and a plan without groups gets them. A boundary that
-     leaves work half done is `major`; missing groups, or a small plan split in several,
-     are `minor`;
-   - **test-first:** each step that delivers an AC writes and runs its proving test before
-     the product change, and the AC → steps matrix has the fourth column, empty or marked
-     `manual` / `n/a — <reason>` — without them `/pipeline:implement` cannot record the
-     test red; a missing column you add in place, severity `major`;
+   - **proving test:** each step that delivers an AC writes its proving test and runs it
+     before the product change; a step that does not you fix in place, severity `major`;
+   - **manual:** every item of `### Manual (performed by the owner)` has a `Pass when:` line
+     (the Polish literal comes from the "Section map"), or the section is the single line
+     `n/a — <reason>`; a missing line you add in place, severity `minor`. A step the owner
+     has to perform (an install, a lock file, a command the implementer could run) does not
+     belong in `## Steps`: you fix it in place by making it a step the implementer carries
+     out, severity `major`. A check by hand in `### Manual (performed by the owner)` stays
+     allowed;
    - **summary:** `## Owner summary` consistent with the plan
      — especially the new dependency and data migration flags;
    - **language:** the PLAN (every section, the Review log included) in the current
@@ -107,9 +106,11 @@ implementation — the owner steps in only when the decision is not yours (step 
    Every problem has a severity — a token written as code in every language: `blocker` (the
    plan will lead to a wrong result or does not cover an AC), `major` (a significant gap
    fixable in the plan), `minor`.
-4. **Make the fixes directly in PLAN.md.** In `## Review log` record: the date,
-   the findings with their severity, what was changed and why, and what was checked and
-   found correct (so that the later stages do not repeat that work).
+4. **Make the fixes directly in PLAN.md.** In `## Review log` record: the date; the
+   findings, each a list item that starts with its severity token in backticks —
+   `- `blocker` — <what, and what was changed>`, or `major`, or `minor` — which
+   `--derive` counts; what was checked and found correct (so that the later stages do not
+   repeat that work), in a list whose items do not start with a severity token.
 5. **The approval decision.** Escalate (do not set `plan-approved`) when:
    - a blocker remains that you cannot fix in the plan itself;
    - the problem lies in the SPEC (a gap, a contradiction, an AC impossible to cover) — you
@@ -121,11 +122,10 @@ implementation — the owner steps in only when the decision is not yours (step 
    Escalation in a session on its own: `AskUserQuestion` with options and a recommendation
    (the first, "(Recommended)"), the decision appended to PLAN.md → `## Owner decisions`,
    then finish step 5.
-6. **Closing the stage:** in the `metrics:` block of SPEC.md set `plan_review_blockers`,
-   `plan_review_majors` (counted before the fixes) and `plan_changes` (the number of changes
-   made in the plan).
-   The flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
-   success `workflow_metrics.py --check <spec-dir>`.
+6. **Closing the stage:** in the `metrics:` block of SPEC.md set `plan_changes` (the number
+   of changes made in the plan), then run `workflow_metrics.py --derive <spec-dir>`, which
+   counts the findings of the Review log, and `workflow_metrics.py --check <spec-dir>`
+   before reporting success.
    A red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
    STOP with a question) with the names of the missing keys; you do not invent a value you
    did not measure. Commit (`docs: review PLAN NNN <slug>`).

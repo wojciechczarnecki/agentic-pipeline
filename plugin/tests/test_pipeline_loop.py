@@ -15,7 +15,7 @@ import workflow_metrics  # noqa: E402
 DERIVE = "`workflow_metrics.py --derive <spec-dir>`"
 CHECK = "`workflow_metrics.py --check <spec-dir>`"
 # Skills whose closing step runs --derive and then --check; the others join as their step lands.
-CLOSING_SKILLS = ["implement"]
+CLOSING_SKILLS = ["plan", "plan-review", "implement"]
 
 
 def collapse(text: str) -> str:
@@ -118,3 +118,53 @@ def test_no_skill_counts_a_derived_key(name):
             if f"`{key}`" in sentence:
                 assert "--derive" in sentence, (name, key, sentence)
     assert set(CLOSING_STEPS[name][1]).isdisjoint(workflow_metrics.DERIVED), name
+
+
+# AC13: the plan and its review require the pass line of a manual scenario.
+@pytest.mark.parametrize("name", ["plan", "plan-review"])
+def test_plan_requires_the_pass_line(name):
+    text = collapse(skill(name))
+    assert "`Pass when:`" in text
+    assert "Section map" in text
+    assert "`n/a — <reason>`" in text
+
+
+# AC18: no step is performed by the owner; manual verification stays in its own section.
+def test_plan_writes_no_owner_step():
+    text = collapse(skill("plan"))
+    assert "no step for the owner to perform" in text
+    assert "### Manual (performed by the owner)" in text
+    review = collapse(skill("plan-review"))
+    assert "performed by the owner" in review
+    assert "`major`" in review.split("**manual:**", 1)[1].split(" - **", 1)[0]
+    assert "fix it in place" in review or "fix in place" in review
+    assert "stays allowed" in review
+
+
+# AC11: a review-log finding is a list item that starts with its severity token.
+def test_plan_review_finding_form():
+    step = collapse(heading_block(skill("plan-review"), "## Steps"))
+    record = step.split("4. **Make the fixes", 1)[1].split(" 5. ", 1)[0]
+    assert "list item" in record
+    for token in ("`blocker`", "`major`", "`minor`"):
+        assert token in record, token
+
+
+@pytest.mark.parametrize("name", ["plan", "plan-review"])
+def test_no_group_or_test_first_column_left(name):
+    text = skill(name)
+    for token in (
+        "## Step groups",
+        "**groups:**",
+        "**test-first:**",
+        "fourth column",
+        "implement.chunked",
+        "Group N",
+    ):
+        assert token not in text, (name, token)
+
+
+def test_plan_no_longer_sets_the_derived_counters():
+    step = collapse(closing_step("plan"))
+    assert "`started_at`" in step
+    assert "set `escalations: 0`" not in step

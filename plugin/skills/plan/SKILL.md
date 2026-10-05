@@ -91,54 +91,37 @@ with the final review report; they do not approve the whole plan).
    the SPEC. Steps small (≤ ~1 h of work) and closed: each has an `Automatic verification:`
    section with exact commands (test paths,
    not a vague "add tests") — this is the contract for the self-correction loop of
-   `/pipeline:implement`. Each step that delivers an AC writes and runs its proving test
-   before the product change, so that `/pipeline:implement` can record the test red
-   before the change makes it pass. An order without "forward" dependencies; a data
+   `/pipeline:implement`. Each step that delivers an AC writes its proving test and runs
+   it before the product change. An order without "forward" dependencies; a data
    migration always
    as a separate step. Split the end-to-end verification into automatic (done by the agent)
    and manual (done by the owner) — only what cannot be
-   automated goes into the manual one. When `verify.scopes` has a UI scope and the change
+   automated goes into the manual one, and each manual item carries a line `Pass when:` (the
+   Polish literal comes from the "Section map") that names a command, a query or a place in
+   the UI with the expected result; a manual section with nothing to check is the single
+   line `n/a — <reason>`. You write no step for the owner to perform: an install, a lock
+   file or a command the implementer could run belongs to a step the implementer carries
+   out, and only a check by hand goes into `### Manual (performed by the owner)`. When `verify.scopes` has a UI scope and the change
    touches the interface — plan in the automatic verification `<verify.command> <UI scope>`
    and looking at the visual artifacts and updating the review scenario required by
    `<docs.conventions>`. The plan's length follows the change: each step and section says
    something the implementer needs, and a template section that does not apply gets one
    line `n/a — <reason>` instead of filler, because filler hides the steps that matter.
-   Divide the steps into groups as the Step groups section says.
 6. **AC → steps matrix:** every AC must have steps that deliver it and a test that
    proves it. An AC impossible to cover → escalation (a gap in the SPEC); do not patch the
-   SPEC yourself. The fourth column stays empty for `/pipeline:implement`, which records
-   the red run there. You mark a row `manual` (the owner checks it by hand) or
-   `n/a — <reason>` (for example `n/a — kept behaviour`) only when no test can be red
-   before the change.
+   SPEC yourself. The matrix has three columns: the AC, its steps and its proving test. You
+   mark a row `manual` (the owner checks it by hand) or `n/a — <reason>` (for example
+   `n/a — kept behaviour`) only when no test can prove it.
 7. **Fill in `## Owner summary`** at the end, when the plan
    is ready. The "new dependency" and "data migration" flags must be true — on them
    depends whether the plan review can approve it without the owner.
 8. **Closing the stage:** in SPEC.md `status: plan-draft` + an entry in `stage_history`; in
-   the `metrics:` block set `started_at` and `escalations: 0` (if missing;
-   `date +%Y-%m-%dT%H:%M`) and `plan_steps`.
-   The flat `metrics:` block: integer counters, times `%Y-%m-%dT%H:%M`; before reporting
-   success `workflow_metrics.py --check <spec-dir>`.
+   the `metrics:` block set `started_at` if it is missing (`date +%Y-%m-%dT%H:%M`), then
+   run `workflow_metrics.py --derive <spec-dir>`, which writes the counters it can read from
+   the plan, and `workflow_metrics.py --check <spec-dir>` before reporting success.
    A red you cannot fix from your own artifacts = `RESULT: ESCALATE` (on its own:
    STOP with a question) with the names of the missing keys; you do not invent a value you
    did not measure. Commit (`docs: add PLAN NNN <slug>`). Do not implement anything.
-
-## Step groups
-
-- Divide `## Steps` into groups, each under a heading `### Group N — <name>` (the Polish
-  literal comes from the section map, `sections.md`), whatever `implement.chunked` says in
-  `.claude/workflow.json`. A plan can be chunked later, when the owner turns the switch on,
-  and plans look the same in both modes, so the before and after runs stay comparable.
-- A group is a coherent part of the change that ends in a green, committable state: no
-  step leaves work for a later group to finish, because a chunk of the implementer stops at
-  the group boundary and the next one starts from the committed state and a short note.
-- Keep one numbering: step numbers run through the whole plan, and a later group continues
-  the numbering of the group before it.
-- A small plan is one group, because every chunk pays its cache writes again: it re-reads
-  the SPEC, the PLAN, the conventions and its own files. The rule of thumb: split only where
-  a later part of the change needs other files and other context than the earlier one, and
-  where the context a chunk would drop (the files, test runs and failures of a finished
-  group) outweighs what the next chunk reads again. A plan that stays in one area is one
-  group.
 
 ## PLAN.md template
 

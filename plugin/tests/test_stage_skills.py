@@ -87,11 +87,8 @@ def test_no_agent_enumerates_views(name):
 
 
 CLOSING_STEPS = {
-    "plan": ("8. ", ["started_at", "escalations", "plan_steps"]),
-    "plan-review": (
-        "6. ",
-        ["plan_review_blockers", "plan_review_majors", "plan_changes"],
-    ),
+    "plan": ("8. ", ["started_at"]),
+    "plan-review": ("6. ", ["plan_changes"]),
     "implement": ("5. **Finish", []),
     "final-review": (
         "4. **Write the report",
