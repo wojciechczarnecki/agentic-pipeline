@@ -572,10 +572,15 @@ def read_rule_notice(
         if marker_path(session_id, "read-rule").exists():
             return None
         target = plugin_dir(env)
-        project = Path(env.get("CLAUDE_PROJECT_DIR") or config.root or cwd)
-        for path in settings_files(env, project):
-            if any(rule_covers(rule, target, env) for rule in allow_rules(path)):
-                return None
+        # A session started in a subdirectory (`backend/`) has it as CLAUDE_PROJECT_DIR, while
+        # the rule lives beside `.claude/workflow.json` at the repository root: both count.
+        projects = {Path(env.get("CLAUDE_PROJECT_DIR") or cwd)}
+        if config.root:
+            projects.add(config.root)
+        for project in projects:
+            for path in settings_files(env, project):
+                if any(rule_covers(rule, target, env) for rule in allow_rules(path)):
+                    return None
         if not first_in_session(session_id, "read-rule"):
             return None
         return READ_RULE.format(target=target, rule=suggested_rule(target, env))

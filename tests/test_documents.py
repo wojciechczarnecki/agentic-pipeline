@@ -520,10 +520,11 @@ ROADMAP = read("docs/ROADMAP.md")
 
 
 # Stage 8 runs before Stage 6 and keeps its number, because append-only rows in
-# docs/DECISIONS.md refer to stages by number ("until Stage 8").
+# docs/DECISIONS.md refer to stages by number ("until Stage 8"). Stage 10 runs before
+# Stage 9 for the same reason (DECISIONS, 2026-10-05).
 def test_roadmap_stage_order():
     stages = [int(n) for n in re.findall(r"^## Stage (\d+)\b", ROADMAP, re.M)]
-    assert stages == [1, 2, 3, 4, 5, 8, 6, 7, 9]
+    assert stages == [1, 2, 3, 4, 5, 8, 6, 7, 10, 9]
 
 
 def test_roadmap_release_versions_ascend():

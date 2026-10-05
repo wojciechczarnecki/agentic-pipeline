@@ -28,6 +28,7 @@ metrics:
   cost_plan_cents: 99
   cost_plan_review_cents: 55
   cost_final_review_cents: 405
+  cost_implement_cents: 184
 ---
 
 # SPEC 013 — Cheaper eval runs

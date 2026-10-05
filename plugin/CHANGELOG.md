@@ -2,6 +2,26 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.8.2
+
+`workflow_metrics.py --record-cost` prices Claude Sonnet 5.5, and the guard stops warning
+about a missing `Read` rule in a session started in a subdirectory of the repository.
+
+**consumer impact:** none — no configuration change; update as usual. Specs closed on
+0.8.1 with an implementer on `"sonnet"` have no `cost_implement_cents`; while the stage
+transcripts are still local, `workflow_metrics.py --record-cost <spec-dir>` adds it.
+
+### Fixed
+
+- `bin/workflow_metrics.py` has a rate for `claude-sonnet-5-5` (its launch rates, the same
+  as Claude Sonnet 5). `"models": {"implement": "sonnet"}` runs the implementer on it, so
+  on 0.8.1 the most expensive stage was left without a cost. A test checks that every
+  `models.*` alias resolves to a model with a rate.
+- `bin/guard.py` looks for the plugin's `Read` allow rule in the settings beside
+  `.claude/workflow.json` too, not only in `CLAUDE_PROJECT_DIR`. A session started in
+  `backend/` had it as its project directory and got a false notice, although the
+  repository root's `.claude/settings.json` held the rule.
+
 ## 0.8.1
 
 `implement` states that `implement_steps` counts every step carried out — the planned
