@@ -417,6 +417,8 @@ NEW_KEYS = [
     "cost_implement_cents",
     "cost_final_review_cents",
     "implement_chunks",
+    "escalations_permission",
+    "escalations_tooling",
 ]
 STATUSES = ["spec-draft", "spec-ready", "plan-draft", "plan-approved", "implemented", "done"]
 
@@ -512,9 +514,10 @@ def test_report_shows_cost_per_finding_and_per_step(tmp_path):
     )
     spec_dir(tmp_path, "done", costed(final_review_worth_fixing="9"), name="017-c")
     report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
-    assert "Plan review cost per significant finding: 80 cents (401/5)" in report
-    assert "Final review cost per significant finding: 500 cents (500/1)" in report
-    assert "Cost per plan step: 360 cents (1800/5)" in report
+    lower = " — a lower bound: output tokens are undercounted"
+    assert f"Plan review cost per significant finding: 80 cents (401/5){lower}" in report
+    assert f"Final review cost per significant finding: 500 cents (500/1){lower}" in report
+    assert f"Cost per plan step: 360 cents (1800/5){lower}" in report
 
 
 def test_the_cost_ratio_rounds_half_up(tmp_path):
@@ -525,7 +528,7 @@ def test_the_cost_ratio_rounds_half_up(tmp_path):
         costed(cost_plan_review_cents="5", plan_review_blockers="1", plan_review_majors="1"),
     )
     report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
-    assert "Plan review cost per significant finding: 3 cents (5/2)" in report
+    assert "Plan review cost per significant finding: 3 cents (5/2) — a lower bound: output tokens are undercounted" in report
 
 
 def test_cost_lines_are_hidden_without_data(tmp_path):
@@ -552,31 +555,63 @@ def test_cost_lines_are_hidden_without_data(tmp_path):
     assert "Cost per plan step" not in report
 
 
-def test_report_has_columns_for_the_new_keys(tmp_path):
-    spec_dir(tmp_path, "done", costed(converge_gaps="2"), name="015-a")
-    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
-    header = report.splitlines()[0]
-    cells = [cell.strip() for cell in header.strip("|").split("|")]
-    for key in NEW_KEYS:
-        assert key in cells, key
-    row = next(line for line in report.splitlines() if line.startswith("| 015-a"))
-    values = dict(zip(cells, [cell.strip() for cell in row.strip("|").split("|")], strict=True))
-    assert values["converge_gaps"] == "2"
-    assert values["cost_plan_cents"] == "-"
-    assert values["deviations_minor"] == "-"
+def header_cells(report: str) -> list[str]:
+    return [cell.strip() for cell in report.splitlines()[0].strip("|").split("|")]
 
 
-# SPEC 012, AC14: the chunk count is a report column, `-` where a spec ran in one context.
-def test_implement_chunks_is_a_report_column(tmp_path):
-    spec_dir(tmp_path, "done", dict(COMPLETE, implement_chunks="3"), name="015-a")
+def row_values(report: str, label: str) -> dict[str, str]:
+    row = next(line for line in report.splitlines() if line.startswith(f"| {label}"))
+    cells = [cell.strip() for cell in row.strip("|").split("|")]
+    return dict(zip(header_cells(report), cells, strict=True))
+
+
+# SPEC 014, AC28: a counter column shows only where some spec carries the key.
+def test_a_column_without_data_is_left_out(tmp_path):
+    spec_dir(tmp_path, "done", COMPLETE, name="015-a")
     spec_dir(tmp_path, "done", COMPLETE, name="016-b")
     report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
-    header = report.splitlines()[0]
-    cells = [cell.strip() for cell in header.strip("|").split("|")]
-    assert "implement_chunks" in cells
-    values = {}
-    for name in ("015-a", "016-b"):
-        row = next(line for line in report.splitlines() if line.startswith(f"| {name}"))
-        row_cells = [cell.strip() for cell in row.strip("|").split("|")]
-        values[name] = dict(zip(cells, row_cells, strict=True))["implement_chunks"]
-    assert values == {"015-a": "3", "016-b": "-"}
+    cells = header_cells(report)
+    for key in ("converge_gaps", "implement_chunks", "escalations_permission"):
+        assert key not in cells, key
+    assert not any(cell.startswith("cost_") for cell in cells), cells
+    assert "plan_steps" in cells
+
+    spec_dir(tmp_path, "done", dict(COMPLETE, implement_chunks="3"), name="017-c")
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    assert "implement_chunks" in header_cells(report)
+    assert row_values(report, "017-c")["implement_chunks"] == "3"
+    assert row_values(report, "015-a")["implement_chunks"] == "-"
+    assert row_values(report, "**total**")["implement_chunks"] == "3"
+    rows = [line for line in report.splitlines() if line.startswith("|")]
+    assert len({line.count("|") for line in rows}) == 1
+
+
+# SPEC 014, AC26: output tokens are undercounted, so every cost line says it is a lower bound.
+def test_cost_lines_are_labelled_a_lower_bound(tmp_path):
+    spec_dir(
+        tmp_path,
+        "done",
+        costed(
+            cost_plan_cents="100",
+            cost_plan_review_cents="300",
+            cost_implement_cents="900",
+            cost_final_review_cents="500",
+        ),
+        name="015-a",
+    )
+    report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
+    cost_lines = [line for line in report.splitlines() if " cents (" in line]
+    assert len(cost_lines) == 3, cost_lines
+    for line in cost_lines:
+        assert line.endswith(" — a lower bound: output tokens are undercounted"), line
+
+
+# SPEC 014, AC16: the escalation kinds are optional integer counters.
+def test_escalation_kinds_are_optional(tmp_path):
+    for key in ("escalations_permission", "escalations_tooling"):
+        assert key in workflow_metrics.COUNTERS
+        for status in STATUSES:
+            assert key not in workflow_metrics.REQUIRED[status], (key, status)
+        problems = workflow_metrics.check(spec_dir(tmp_path, "done", dict(COMPLETE, **{key: "x"})))
+        assert any(key in problem for problem in problems), key
+        assert workflow_metrics.check(spec_dir(tmp_path, "done", dict(COMPLETE, **{key: "1"}))) == []

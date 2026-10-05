@@ -307,6 +307,8 @@ metrics:
   deviations_minor: 1                  # every other entry in `## Deviations`
   deviations_major: 0                  # deviations that change scope, architecture or schema
   escalations: 1                       # /pipeline:ship — questions to the owner
+  escalations_permission: 0            # optional: by kind, `escalations` is the total
+  escalations_tooling: 0
   final_review_blockers: 0             # /pipeline:final-review report
   final_review_worth_fixing: 3
   final_review_nits: 2

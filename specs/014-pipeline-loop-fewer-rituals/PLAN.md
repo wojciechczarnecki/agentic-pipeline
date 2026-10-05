@@ -175,9 +175,9 @@ Design choices:
 | AC23 | 12, 14, 15 | `plugin/tests/test_pipeline_loop.py::test_final_review_apply_ends_at_green_ci`, `plugin/tests/test_ship_cost_and_models.py::test_closing_runs_close_after_apply`, `plugin/tests/test_readme.py::test_the_status_table_names_close` | |
 | AC24 | 5, 6, 7 | `plugin/tests/test_close.py` (the whole file) | |
 | AC25 | 14 | `plugin/tests/test_ship_cost_and_models.py::test_the_start_message_names_every_stage_model` | |
-| AC26 | 2 | `plugin/tests/test_workflow_metrics.py::test_cost_lines_are_labelled_a_lower_bound` | |
+| AC26 | 2 | `plugin/tests/test_workflow_metrics.py::test_cost_lines_are_labelled_a_lower_bound` |  `uv run pytest -q plugin/tests/test_workflow_metrics.py` → `assert line.endswith(" — a lower bound: output tokens are undercounted")` |
 | AC27 | 12 | `plugin/tests/test_pipeline_loop.py::test_final_review_notes_one_context` | |
-| AC28 | 2 | `plugin/tests/test_workflow_metrics.py::test_a_column_without_data_is_left_out` | |
+| AC28 | 2 | `plugin/tests/test_workflow_metrics.py::test_a_column_without_data_is_left_out` |  `uv run pytest -q plugin/tests/test_workflow_metrics.py` → `assert key not in cells` |
 | AC29 | 16 | `plugin/tests/test_release_0_9_0.py`, `tests/test_documents.py::test_decisions_record_spec_014`, `::test_roadmap_ticks_spec_014`, `::test_backlog_after_spec_014` | |
 | AC30 | 17 | `bash scripts/check.sh` | n/a — the whole suite, green by definition at the end |
 | AC31 | — | the canary in `### Manual` | manual |
@@ -216,7 +216,7 @@ text, and a step that left them for later would end red.
       Automatic verification: `uv run pytest -q plugin/tests/test_workflow_config.py
       plugin/tests/test_init_templates.py plugin/tests/test_init_skill.py
       plugin/tests/test_guard.py && uv run pytest -q`
-- [ ] 2. The report: columns with data only, and cost as a lower bound (AC26, AC28, AC16).
+- [x] 2. The report: columns with data only, and cost as a lower bound (AC26, AC28, AC16).
       Files: `plugin/bin/workflow_metrics.py`, `plugin/tests/test_workflow_metrics.py`.
       Tests first:
       - `test_a_column_without_data_is_left_out`: two specs with `COMPLETE` give no

@@ -57,6 +57,8 @@ COUNTERS = [
     "deviations_minor",
     "deviations_major",
     "escalations",
+    "escalations_permission",
+    "escalations_tooling",
     "final_review_blockers",
     "final_review_worth_fixing",
     "final_review_nits",
@@ -64,6 +66,8 @@ COUNTERS = [
     "findings_rejected",
     *COST_KEYS.values(),
 ]
+# `implement_chunks` and `converge_gaps` are legacy keys: no stage writes them since 0.9.0, and
+# specs closed before it keep them.
 # `deviations` or both split keys: the split arrived in SPEC 011, and nobody guesses it for
 # specs that recorded the old key.
 DEVIATION_FORMS = ("deviations", ("deviations_minor", "deviations_major"))
@@ -451,7 +455,8 @@ def ratio(part: int, whole: int) -> str:
 def render(rows: list[tuple[str, dict[str, str]]]) -> str:
     if not rows:
         return "No spec carries a metrics block yet."
-    header = ["spec", "lead_time_h", *COUNTERS]
+    shown = [key for key in COUNTERS if any(metrics.get(key) for _, metrics in rows)]
+    header = ["spec", "lead_time_h", *shown]
     lines = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
     totals = dict.fromkeys(COUNTERS, 0)
     for name, metrics in rows:
@@ -459,11 +464,12 @@ def render(rows: list[tuple[str, dict[str, str]]]) -> str:
         cells = [name, "-" if hours is None else str(hours)]
         for key in COUNTERS:
             value = metrics.get(key, "")
-            cells.append(value or "-")
+            if key in shown:
+                cells.append(value or "-")
             if value.isdigit():
                 totals[key] += int(value)
         lines.append("| " + " | ".join(cells) + " |")
-    lines.append("| **total** | - | " + " | ".join(str(totals[key]) for key in COUNTERS) + " |")
+    lines.append("| **total** | - | " + " | ".join(str(totals[key]) for key in shown) + " |")
 
     lines.append("")
     early = totals["plan_review_blockers"] + totals["plan_review_majors"]
@@ -484,10 +490,14 @@ def integer(metrics: dict[str, str], key: str) -> int:
     return int(value) if value.isdigit() else 0
 
 
+LOWER_BOUND = " — a lower bound: output tokens are undercounted"
+
+
 def per_unit(label: str, cents: int, units: int) -> list[str]:
     if units <= 0:
         return []
-    return [f"{label}: {(2 * cents + units) // (2 * units)} cents ({cents}/{units})"]
+    average = (2 * cents + units) // (2 * units)
+    return [f"{label}: {average} cents ({cents}/{units}){LOWER_BOUND}"]
 
 
 # Each line only counts specs that carry its cost, so a spec costed on another machine, or
