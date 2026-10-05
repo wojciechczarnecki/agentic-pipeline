@@ -238,11 +238,11 @@ What the plan rests on:
 | AC | Steps | Proving test | Red before the change |
 |----|-------|--------------|-----------------------|
 | AC1 | 8, 10 | `plugin/tests/test_init_skill.py::test_layers_are_detected_at_depth_one`; eval `init-subdirectory-project` (step 12) | |
-| AC2 | 5, 6, 8, 10 | `plugin/tests/test_init_layers.py::test_ci_renders_a_subdirectory_layer`, `::test_ci_renders_a_root_layer_as_today`, `::test_dependabot_renders_the_layer_directory`; `test_init_skill.py::test_verify_and_format_follow_the_layer_directory`; eval `init-subdirectory-project` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert "    defaults:\n      run:\n        working-directory: backend\n" in python` (CI part, step 5; Dependabot and skill parts follow in steps 6 and 8) |
+| AC2 | 5, 6, 8, 10 | `plugin/tests/test_init_layers.py::test_ci_renders_a_subdirectory_layer`, `::test_ci_renders_a_root_layer_as_today`, `::test_dependabot_renders_the_layer_directory`; `test_init_skill.py::test_verify_and_format_follow_the_layer_directory`; eval `init-subdirectory-project` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert "    defaults:\n      run:\n        working-directory: backend\n" in python` (CI part, step 5; Dependabot and skill parts follow in steps 6 and 8); `uv run pytest -q plugin/tests/test_init_layers.py -k dependabot` → `assert directory_of(layer, "uv") == "/backend"` (Dependabot part, step 6) |
 | AC3 | 10, 12 | `plugin/tests/test_eval_cases.py::test_the_subdirectory_fixture_has_only_a_backend_manifest`, `::test_criteria_name_the_wrong_behaviour[init-subdirectory-project]`; eval measurement ledger (step 12) | |
 | AC4 | 5, 8 | `plugin/tests/test_init_layers.py::test_placeholder_jobs_pass_and_list_the_real_steps`; `test_init_skill.py::test_the_real_job_needs_tools_and_a_test_file` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert len(runs) == 1 and runs[0].startswith("echo"), runs` (placeholder stubs added first) |
 | AC5 | 5 | `plugin/tests/test_init_layers.py::test_every_ci_template_names_the_required_check` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert any("required check" in line and "ruleset" in line for line in comments), path.name` |
-| AC6 | 6 | `plugin/tests/test_init_layers.py::test_the_ruleset_template`, `::test_the_repository_settings_template` | |
+| AC6 | 6 | `plugin/tests/test_init_layers.py::test_the_ruleset_template`, `::test_the_repository_settings_template` |  `uv run pytest -q plugin/tests/test_init_layers.py -k 'ruleset or repository_settings'` → `KeyError: 'target'` and `assert {} == {'allow_squash_merge': …}` (stub files `{}` first) |
 | AC7 | 8 | `plugin/tests/test_init_skill.py::test_init_copies_the_repository_settings` (GENERATED entries + idempotence wording) | |
 | AC8 | 9 | `plugin/tests/test_new_project_doc.py::test_the_first_push_comes_before_the_hook`, `::test_the_scaffold_through_a_pr_path`, `::test_the_repository_settings_commands`, `::test_the_required_check_appears_after_the_first_run` | |
 | AC9 | 7 | `plugin/tests/test_init_templates.py::test_settings_template_protects_the_guardrail_files` (rewritten), `::test_settings_template_denies_detaching_the_plugin` | |
@@ -385,7 +385,7 @@ What the plan rests on:
       "add `defaults:`" comment.
       Automatic verification: `uv run pytest -q plugin/tests/test_init_layers.py plugin/tests/test_init_templates.py`
 
-- [ ] 6. **Dependabot and repository-settings templates (AC2 Dependabot part, AC6).**
+- [x] 6. **Dependabot and repository-settings templates (AC2 Dependabot part, AC6).**
       Files: `plugin/templates/github/dependabot.yml`,
       `plugin/templates/github/repository/ruleset.json` (new),
       `plugin/templates/github/repository/settings.json` (new),

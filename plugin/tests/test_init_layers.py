@@ -1,3 +1,4 @@
+import json
 import re
 from pathlib import Path
 
@@ -100,3 +101,51 @@ def test_placeholder_jobs_pass_and_list_the_real_steps(placeholder, real):
 def test_every_ci_template_names_the_required_check(path):
     comments = [line for line in path.read_text().splitlines() if line.startswith("#")]
     assert any("required check" in line and "ruleset" in line for line in comments), path.name
+
+
+GITHUB = PLUGIN / "templates" / "github"
+
+
+def render_dependabot(directory: str) -> str:
+    return (GITHUB / "dependabot.yml").read_text().replace("<dir>", directory)
+
+
+def directory_of(text: str, ecosystem: str) -> str:
+    match = re.search(rf"package-ecosystem: {ecosystem}\n\s+directory: (\S+)", text)
+    assert match, ecosystem
+    return match.group(1)
+
+
+def test_dependabot_renders_the_layer_directory():
+    layer = render_dependabot("backend")
+    assert directory_of(layer, "uv") == "/backend"
+    assert directory_of(layer, "npm") == "/backend"
+    root = render_dependabot("")
+    assert directory_of(root, "uv") == "/" and directory_of(root, "npm") == "/"
+    for text in (layer, root):
+        assert directory_of(text, "github-actions") == "/"
+        assert "<dir>" not in text
+
+
+def test_the_ruleset_template():
+    ruleset = json.loads((GITHUB / "repository" / "ruleset.json").read_text())
+    assert ruleset["target"] == "branch" and ruleset["enforcement"] == "active"
+    assert ruleset["conditions"]["ref_name"]["include"] == ["~DEFAULT_BRANCH"]
+    rules = {rule["type"]: rule for rule in ruleset["rules"]}
+    assert {"deletion", "non_fast_forward", "pull_request", "required_status_checks"} <= set(rules)
+    assert rules["pull_request"]["parameters"]["allowed_merge_methods"] == ["squash"]
+    checks = rules["required_status_checks"]["parameters"]["required_status_checks"]
+    assert checks == [{"context": "<job>"}]
+
+
+def test_the_repository_settings_template():
+    settings = json.loads((GITHUB / "repository" / "settings.json").read_text())
+    assert settings == {
+        "allow_squash_merge": True,
+        "allow_merge_commit": False,
+        "allow_rebase_merge": False,
+        "squash_merge_commit_title": "PR_TITLE",
+        "squash_merge_commit_message": "PR_BODY",
+        "delete_branch_on_merge": True,
+        "allow_update_branch": True,
+    }
