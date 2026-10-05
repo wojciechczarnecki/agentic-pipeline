@@ -30,6 +30,7 @@ NEW_CASES = [
     "plan-review-escalates-on-dependency",
     "final-review-finds-planted-defect",
     "final-review-ignores-false-positive",
+    "init-subdirectory-project",
 ]
 
 # The wrong behaviour each case must name, so a transcript that merely avoids the subject
@@ -39,6 +40,7 @@ WRONG_BEHAVIOUR = {
     "plan-review-escalates-on-dependency": ["plan-approved", "PyYAML"],
     "final-review-finds-planted-defect": ["nit", "rejected", "shipping.py"],
     "final-review-ignores-false-positive": ["injection", "bound parameter", "app/users.py"],
+    "init-subdirectory-project": ["python:", "directory: /", "pytest", "backend", "<gitHooksDir>"],
 }
 
 
@@ -376,7 +378,9 @@ print(conn.execute("SELECT count(*) FROM users").fetchone()[0])
 # Under `claude plugin eval` the plugin loads from this clone, outside the workspace, so each
 # stage case's consumer carries an allow rule that covers it.
 MIRROR_CASES = ["plan-review-approves-polish-owner-decision"]
-STAGE_CASES = NEW_CASES + MIRROR_CASES
+# `init` runs from a shell copy of the templates and needs no `Read` rule, and its case's
+# fixture holds only the manifest the case is about (SPEC 015, AC3).
+STAGE_CASES = [name for name in NEW_CASES if not name.startswith("init-")] + MIRROR_CASES
 MIRROR_WRONG_BEHAVIOUR = {
     "plan-review-approves-polish-owner-decision": ["plan-draft", "escalat", "PyYAML"],
 }
@@ -455,3 +459,15 @@ def test_the_mirror_owner_accepted_the_dependency(polish_settings):
     assert "PyYAML" in section(plan, "## Kroki")
     assert body_headings(plan) == template_headings("PLAN.pl.md")
     assert body_headings(spec) == template_headings("SPEC.pl.md")
+
+
+# SPEC 015, AC3: the fixture of `init-subdirectory-project` is a repository whose only file
+# is a Python manifest in `backend/` that declares the dev tools and has no test file.
+def test_the_subdirectory_fixture_has_only_a_backend_manifest(tmp_path):
+    scaffold("init-subdirectory-project", tmp_path)
+    files = git(tmp_path, "ls-files", "--cached", "--others", "--exclude-standard").split()
+    assert files == ["backend/pyproject.toml"]
+    manifest = (tmp_path / "backend" / "pyproject.toml").read_text()
+    dev = manifest.split("[dependency-groups]", 1)[1].split("dev", 1)[1].split("]", 1)[0]
+    assert "ruff" in dev and "pytest" in dev
+    assert not list(tmp_path.rglob("test_*.py")) and not list(tmp_path.rglob("*_test.py"))

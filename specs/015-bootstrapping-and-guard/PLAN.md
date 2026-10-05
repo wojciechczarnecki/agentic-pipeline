@@ -239,7 +239,7 @@ What the plan rests on:
 |----|-------|--------------|-----------------------|
 | AC1 | 8, 10 | `plugin/tests/test_init_skill.py::test_layers_are_detected_at_depth_one`; eval `init-subdirectory-project` (step 12) | `uv run pytest -q plugin/tests/test_init_skill.py` → `assert token in survey, token` (`depth 1`) and `assert "layers" in third` |
 | AC2 | 5, 6, 8, 10 | `plugin/tests/test_init_layers.py::test_ci_renders_a_subdirectory_layer`, `::test_ci_renders_a_root_layer_as_today`, `::test_dependabot_renders_the_layer_directory`; `test_init_skill.py::test_verify_and_format_follow_the_layer_directory`; eval `init-subdirectory-project` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert "    defaults:\n      run:\n        working-directory: backend\n" in python` (CI part, step 5; Dependabot and skill parts follow in steps 6 and 8); `uv run pytest -q plugin/tests/test_init_layers.py -k dependabot` → `assert directory_of(layer, "uv") == "/backend"` (Dependabot part, step 6); `uv run pytest -q plugin/tests/test_init_skill.py` → `assert token in generating, token` (`uv run --project <dir>`, skill part, step 8) |
-| AC3 | 10, 12 | `plugin/tests/test_eval_cases.py::test_the_subdirectory_fixture_has_only_a_backend_manifest`, `::test_criteria_name_the_wrong_behaviour[init-subdirectory-project]`; eval measurement ledger (step 12) | |
+| AC3 | 10, 12 | `plugin/tests/test_eval_cases.py::test_the_subdirectory_fixture_has_only_a_backend_manifest`, `::test_criteria_name_the_wrong_behaviour[init-subdirectory-project]`; eval measurement ledger (step 12) |  `uv run pytest -q plugin/tests/test_eval_cases.py -k subdirectory` → `test_criteria_name_the_wrong_behaviour[init-subdirectory-project]` failed on the missing `graders/criteria.md` (a `FileNotFoundError`: the case did not exist, so there was no assertion to reach); the fixture test passes because `scaffold.sh` is the first file written |
 | AC4 | 5, 8 | `plugin/tests/test_init_layers.py::test_placeholder_jobs_pass_and_list_the_real_steps`; `test_init_skill.py::test_the_real_job_needs_tools_and_a_test_file` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert len(runs) == 1 and runs[0].startswith("echo"), runs` (placeholder stubs added first); `uv run pytest -q plugin/tests/test_init_skill.py` → `assert token in generating, token` (`ci-python-placeholder.yml`, skill part, step 8) |
 | AC5 | 5 | `plugin/tests/test_init_layers.py::test_every_ci_template_names_the_required_check` | `uv run pytest -q plugin/tests/test_init_layers.py` → `assert any("required check" in line and "ruleset" in line for line in comments), path.name` |
 | AC6 | 6 | `plugin/tests/test_init_layers.py::test_the_ruleset_template`, `::test_the_repository_settings_template` |  `uv run pytest -q plugin/tests/test_init_layers.py -k 'ruleset or repository_settings'` → `KeyError: 'target'` and `assert {} == {'allow_squash_merge': …}` (stub files `{}` first) |
@@ -485,7 +485,7 @@ What the plan rests on:
       the repository files replacing the hand-made ruleset paragraph, and the ADR.
       Automatic verification: `uv run pytest -q plugin/tests/test_new_project_doc.py plugin/tests/test_readme.py`
 
-- [ ] 10. **Eval case `init-subdirectory-project` (AC3, and AC1, AC2, AC4, AC12 in
+- [x] 10. **Eval case `init-subdirectory-project` (AC3, and AC1, AC2, AC4, AC12 in
       practice).** Files: `plugin/evals/init-subdirectory-project/case.yaml`,
       `scaffold.sh`, `graders/criteria.md` (new), `plugin/tests/test_eval_cases.py`.
       Tests first, then run them red:
@@ -746,6 +746,11 @@ _(filled in by /pipeline:implement — every deviation from the plan with its ra
   `# subdirectory layer` in `OTHER_HEADINGS`. The skill has to name the two CI template markers
   in code spans, and the contract test reads a span that starts with `#` as a quoted section
   heading; the set exists for such non-section markers (`TODO:`, `KIND:`).
+- Step 10 (minor): `STAGE_CASES` in `plugin/tests/test_eval_cases.py` leaves out the `init-` cases.
+  The plan adds `init-subdirectory-project` to `NEW_CASES`, and `STAGE_CASES = NEW_CASES + …`
+  would then demand a `.claude/settings.json` with a `Read` rule from its fixture, which AC3
+  forbids (the fixture is exactly `backend/pyproject.toml`) and which `init`, copying templates
+  through the shell, does not need.
 
 ## Final review
 
