@@ -177,6 +177,12 @@ cat > specs/001-bulk-discount/PLAN.md <<'EOF'
 - **New dependency:** no.
 - **Data migration:** no.
 
+## AC → steps matrix
+
+| AC | Steps | Proving test |
+|----|-------|--------------|
+| AC1, AC2, AC3 | 1 | `tests/test_bulk_discount.py` |
+
 ## Steps
 
 - [ ] 1. Bulk discount in `shop/cart.py` - a line with a quantity of 10 or more costs 90%

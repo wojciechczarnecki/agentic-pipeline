@@ -190,7 +190,7 @@ cat > specs/001-deployment-settings/PLAN.md <<'EOF'
 - **New dependency:** no.
 - **Data migration:** no.
 
-## AC -> steps matrix
+## AC → steps matrix
 
 | AC | Steps | Proving test |
 |----|-------|--------------|

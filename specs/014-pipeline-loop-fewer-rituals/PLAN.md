@@ -155,15 +155,15 @@ Design choices:
 | AC3 | 10, 12 | `plugin/tests/test_pipeline_loop.py::test_implement_keeps_test_first_guidance`, `::test_final_review_tests_break_the_code` | |
 | AC4 | 8, 9, 10, 11, 13, 14, 15 | `plugin/tests/test_pipeline_loop.py::test_no_ritual_returns`, `plugin/tests/test_templates_language.py::test_the_section_map_has_no_group_rows` |  `uv run pytest -q tests/test_eval_receipt.py` → `assert not (ROOT / "plugin" / "evals" / name).exists(), name` |
 | AC5 | 1, 15 | `plugin/tests/test_workflow_config.py::test_retired_chunked_passes_with_a_notice`, `::test_retired_chunked_is_silent_for_the_hooks`, `::test_implement_bad_values_still_fail`, `plugin/tests/test_init_templates.py::test_the_example_has_no_implement_section` |  `uv run pytest -q plugin/tests/test_workflow_config.py plugin/tests/test_init_templates.py` → `assert "retired in 0.9.0" in result.stderr` (and `assert "implement" not in example`) |
-| AC6 | 4 | `plugin/tests/test_spec_lint.py::test_consumer_specs_pass_the_check`, `tests/test_spec_metrics.py` | |
+| AC6 | 4 | `plugin/tests/test_spec_lint.py::test_consumer_specs_pass_the_check`, `tests/test_spec_metrics.py` |  n/a — kept behaviour (every consumer spec passes `--check` before and after the lint) |
 | AC7 | 3 | `plugin/tests/test_derive.py::test_derive_writes_every_key` |  `uv run pytest -q plugin/tests/test_derive.py` → `assert result.returncode == 0, result.stderr` (--derive unknown, argparse exit 2) |
 | AC8 | 3, 10 | `plugin/tests/test_derive.py::test_a_missing_iteration_note_leaves_iterations_unwritten`, `plugin/tests/test_pipeline_loop.py::test_implement_ticks_with_the_iteration_note` |  `uv run pytest -q plugin/tests/test_derive.py` → `assert metrics_of(spec)["implement_iterations"] == "9"` precondition run: `assert result.returncode == 0` |
 | AC9 | 3 | `plugin/tests/test_derive.py::test_derive_keeps_every_other_byte`, `::test_derive_is_idempotent`, `::test_missing_sources_are_named` |  `uv run pytest -q plugin/tests/test_derive.py` → `assert result.returncode == 0, result.stderr` (--derive unknown, argparse exit 2) |
 | AC10 | 10, 11, 12, 13, 14 | `plugin/tests/test_pipeline_loop.py::test_every_stage_closes_with_derive_then_check`, `::test_no_skill_counts_a_derived_key` | |
 | AC11 | 3, 9 | `plugin/tests/test_derive.py::test_derive_writes_every_key` (en, pl), `plugin/tests/test_templates_language.py::test_templates_give_the_fixed_forms` |  `uv run pytest -q plugin/tests/test_derive.py` → `assert result.returncode == 0, result.stderr` (--derive unknown, argparse exit 2) |
-| AC12 | 4 | `plugin/tests/test_spec_lint.py::test_an_ac_without_a_matrix_row_is_reported` | |
-| AC13 | 4, 9, 11 | `plugin/tests/test_spec_lint.py::test_a_manual_item_without_a_pass_line_is_reported`, `plugin/tests/test_pipeline_loop.py::test_plan_requires_the_pass_line` | |
-| AC14 | 4 | `plugin/tests/test_spec_lint.py::test_unlinted_statuses_pass` | |
+| AC12 | 4 | `plugin/tests/test_spec_lint.py::test_an_ac_without_a_matrix_row_is_reported` |  `uv run pytest -q plugin/tests/test_spec_lint.py` → `assert result.returncode == 1, result.stderr` |
+| AC13 | 4, 9, 11 | `plugin/tests/test_spec_lint.py::test_a_manual_item_without_a_pass_line_is_reported`, `plugin/tests/test_pipeline_loop.py::test_plan_requires_the_pass_line` |  `uv run pytest -q plugin/tests/test_spec_lint.py` → `assert result.returncode == 1` (manual item without a pass line exits 0) |
+| AC14 | 4 | `plugin/tests/test_spec_lint.py::test_unlinted_statuses_pass` |  n/a — kept behaviour (specs in `spec-draft`, `spec-ready` and `done` pass the check before and after) |
 | AC15 | 3, 13 | `plugin/tests/test_derive.py::test_escalations_by_kind`, `plugin/tests/test_stage_contract.py::test_the_result_block_has_kind` |  `uv run pytest -q plugin/tests/test_derive.py` → `assert result.returncode == 0, result.stderr` (--derive unknown, argparse exit 2) |
 | AC16 | 2, 3, 14 | `plugin/tests/test_derive.py::test_escalations_by_kind`, `plugin/tests/test_workflow_metrics.py::test_escalation_kinds_are_optional`, `plugin/tests/test_pipeline_loop.py::test_ship_stops_on_the_third_decision` |  `uv run pytest -q plugin/tests/test_derive.py plugin/tests/test_workflow_metrics.py` → `assert key in workflow_metrics.COUNTERS` and `assert metrics["escalations"] == "4"` |
 | AC17 | 10 | `plugin/tests/test_pipeline_loop.py::test_implement_installs_accepted_dependencies` | |
@@ -291,7 +291,7 @@ text, and a step that left them for later would end red.
       Automatic verification: `uv run pytest -q plugin/tests/test_derive.py
       plugin/tests/test_workflow_metrics.py plugin/tests/test_record_cost.py &&
       uv run pytest -q`
-- [ ] 4. The spec lint in `--check` (AC12, AC13, AC14, AC6). Files:
+- [x] 4. The spec lint in `--check` (AC12, AC13, AC14, AC6). Files:
       `plugin/bin/workflow_metrics.py`, `plugin/bin/spec_forms.py`, new
       `plugin/tests/test_spec_lint.py`, new fixtures
       `plugin/tests/fixtures/consumer-specs/00{1..9}-spec/SPEC.md`, and the eval scaffolds

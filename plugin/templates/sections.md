@@ -34,6 +34,7 @@ shared by both languages.
 | `e2e` | PLAN | `## Weryfikacja end-to-end` | `## End-to-end verification` |
 | `e2e-automatic` | PLAN | `### Automatyczna (wykonuje /pipeline:implement)` | `### Automatic (performed by /pipeline:implement)` |
 | `e2e-manual` | PLAN | `### Ręczna (wykonuje właściciel)` | `### Manual (performed by the owner)` |
+| `pass-condition` | PLAN | `Zaliczony, gdy:` | `Pass when:` |
 | `definition-of-done` | PLAN | `## Definition of Done` | `## Definition of Done` |
 | `owner-decisions` | PLAN | `## Decyzje właściciela` | `## Owner decisions` |
 | `review-log` | PLAN | `## Review log` | `## Review log` |

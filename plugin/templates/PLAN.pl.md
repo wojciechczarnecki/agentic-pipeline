@@ -39,7 +39,8 @@ przeglądowe — z oczekiwanymi wynikami>
 
 ### Ręczna (wykonuje właściciel)
 
-<krótka lista scenariuszy — tylko to, czego nie da się zautomatyzować>
+- <scenariusz — tylko to, czego nie da się zautomatyzować>
+  Zaliczony, gdy: <polecenie, zapytanie albo miejsce w UI, z oczekiwanym wynikiem>
 
 ## Definition of Done
 

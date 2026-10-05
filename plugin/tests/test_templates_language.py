@@ -151,6 +151,7 @@ MAP_SNAPSHOT = [
         "### Ręczna (wykonuje właściciel)",
         "### Manual (performed by the owner)",
     ),
+    ("pass-condition", "PLAN", "Zaliczony, gdy:", "Pass when:"),
     ("definition-of-done", "PLAN", "## Definition of Done", "## Definition of Done"),
     ("owner-decisions", "PLAN", "## Decyzje właściciela", "## Owner decisions"),
     ("review-log", "PLAN", "## Review log", "## Review log"),

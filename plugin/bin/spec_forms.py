@@ -169,3 +169,47 @@ def gate_ids(decision: Decision) -> tuple[list[str], list[str]] | None:
             return None
         parsed.append([] if match.group(1) == "none" else re.findall(r"F\d+", match.group(1)))
     return parsed[0], parsed[1]
+
+
+ACS = re.compile(r"^\s*- \[[ xX]\] AC(\d+)\b", re.MULTILINE)
+
+
+def spec_acs(spec_text: str) -> list[int]:
+    return sorted({int(number) for number in ACS.findall(spec_text)})
+
+
+def matrix_acs(plan: str | None) -> set[int]:
+    found: set[int] = set()
+    for line in (section(plan, "PLAN", "ac-matrix") or "").splitlines() if plan else []:
+        cells = line.strip().strip("|").split("|")
+        if line.lstrip().startswith("|") and cells:
+            found.update(int(number) for number in re.findall(r"AC(\d+)", cells[0]))
+    return found
+
+
+# The items of `### Manual` that carry no pass-condition line. A section of the single line
+# `n/a — <reason>` has no items to report.
+def manual_without_pass(plan: str | None) -> list[str]:
+    body = section(plan, "PLAN", "e2e-manual") if plan else None
+    if body is None:
+        return []
+    lines = [line for line in body.splitlines() if line.strip()]
+    if len(lines) == 1 and re.match(r"n/a\s+[—-]\s+\S", lines[0]):
+        return []
+    marks = literals("PLAN", "pass-condition")
+    missing = []
+    for item in _items(body):
+        stripped = [re.sub(r"^(- )?", "", line.strip()) for line in item]
+        if not any(line.startswith(marks) for line in stripped):
+            missing.append(stripped[0])
+    return missing
+
+
+def _items(body: str) -> list[list[str]]:
+    items: list[list[str]] = []
+    for line in body.splitlines():
+        if line.startswith("- "):
+            items.append([line])
+        elif items and line.strip():
+            items[-1].append(line)
+    return items

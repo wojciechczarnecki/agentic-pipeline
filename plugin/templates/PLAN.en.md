@@ -39,7 +39,8 @@ visual review tests — with the expected results>
 
 ### Manual (performed by the owner)
 
-<a short list of scenarios — only what cannot be automated>
+- <a scenario — only what cannot be automated>
+  Pass when: <a command, a query or a place in the UI, with the expected result>
 
 ## Definition of Done
 

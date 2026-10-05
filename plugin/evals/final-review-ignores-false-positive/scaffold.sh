@@ -150,7 +150,7 @@ cat > specs/001-sortable-user-list/PLAN.md <<'EOF'
 - **New dependency:** no.
 - **Data migration:** no.
 
-## AC -> steps matrix
+## AC → steps matrix
 
 | AC | Steps | Proving test |
 |----|-------|--------------|

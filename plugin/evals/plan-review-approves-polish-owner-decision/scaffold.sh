@@ -271,7 +271,7 @@ cat > specs/001-deployment-settings/PLAN.md <<'EOF'
 
 ### Ręczna (wykonuje właściciel)
 
-- brak — wszystko pokrywa część automatyczna.
+n/a — wszystko pokrywa część automatyczna.
 
 ## Definition of Done
 

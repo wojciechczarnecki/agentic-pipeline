@@ -94,6 +94,7 @@ COUNTERS = [
 # specs that recorded the old key.
 DEVIATION_FORMS = ("deviations", ("deviations_minor", "deviations_major"))
 DEVIATIONS_DUE = ("implemented", "done")
+LINTED = ("plan-draft", "plan-approved", "implemented")
 TOKEN_TYPES = ("input", "cache_write_5m", "cache_write_1h", "cache_read", "output")
 # API list rates of RATES_DATE in cents per million tokens, in TOKEN_TYPES order. Existing
 # rates are never changed, even when prices move: a cent here is a fixed unit, so costs from
@@ -444,7 +445,31 @@ def check(spec_dir: Path) -> list[str]:
                 f"decided findings ({' + '.join(BALANCE[0])} = {left}) do not match the findings "
                 f"reported ({' + '.join(BALANCE[1])} = {right})"
             )
+    if status in LINTED:
+        problems.extend(lint(spec_dir, text))
     return [f"{spec_dir.name}: {problem}" for problem in problems]
+
+
+# What a plan owes its spec: a matrix row for every AC, and a pass condition on every manual
+# scenario. Specs closed before 0.9.0 are `done` and never get here.
+def lint(spec_dir: Path, spec_text: str) -> list[str]:
+    plan_file = spec_dir / "PLAN.md"
+    try:
+        plan = plan_file.read_text(encoding="utf-8") if plan_file.is_file() else None
+    except (OSError, UnicodeDecodeError):
+        plan = None
+    problems = []
+    covered = spec_forms.matrix_acs(plan)
+    missing = [f"AC{number}" for number in spec_forms.spec_acs(spec_text) if number not in covered]
+    if missing:
+        problems.append(
+            f"{', '.join(missing)} have no row in the PLAN.md AC → steps matrix"
+            if plan is not None
+            else f"no PLAN.md, so {', '.join(missing)} have no row in an AC → steps matrix"
+        )
+    for item in spec_forms.manual_without_pass(plan):
+        problems.append(f'the manual scenario "{item[:60]}" has no pass-condition line')
+    return problems
 
 
 def lead_time_hours(metrics: dict[str, str]) -> float | None:

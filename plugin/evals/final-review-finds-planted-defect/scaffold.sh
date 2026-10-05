@@ -128,7 +128,7 @@ cat > specs/001-free-shipping/PLAN.md <<'EOF'
 - **New dependency:** no.
 - **Data migration:** no.
 
-## AC -> steps matrix
+## AC → steps matrix
 
 | AC | Steps | Proving test |
 |----|-------|--------------|
