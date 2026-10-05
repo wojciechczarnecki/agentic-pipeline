@@ -17,6 +17,7 @@ POLISH_LETTERS = set(POLISH_LOWER + POLISH_LOWER.upper())
 ALLOWLIST = [
     "templates/*.pl.md",
     "templates/docs/*.pl.md",
+    "templates/docs/adr/*.pl.md",
     "templates/sections.md",
     "evals/plan-review-approves-polish-owner-decision/scaffold.sh",
     "evals/init-without-questions/case.yaml",
