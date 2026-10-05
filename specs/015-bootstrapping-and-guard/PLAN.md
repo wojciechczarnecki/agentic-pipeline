@@ -256,7 +256,7 @@ What the plan rests on:
 | AC17 | 2, 4 | `plugin/tests/test_guard_interpreters.py::test_interpreter_code_without_a_guardrail_path_passes`, `::test_a_heredoc_to_a_non_interpreter_keeps_todays_rules`, `::test_guard_doc_narrows_the_interpreter_limit` `uv run pytest -q plugin/tests/test_guard_interpreters.py -k guard_doc` → `assert "names a guardrail" in text` (doc test, red before the GUARD.md edit); the other AC17 tests are regression pins, `n/a — kept behaviour` |
 | AC18 | 3, 4 | `plugin/tests/test_guard_alembic_notice.py` (root, subdirectory, once per session, never blocks, silent with `migrations`, silent without `workflow.json`, silent at depth 2) `uv run pytest -q plugin/tests/test_guard_alembic_notice.py` → `assert NOTICE in notice["systemMessage"]` (5 notice cases red; the silent cases are regression pins) |
 | AC19 | 1 | `plugin/tests/test_guard.py::test_a_chained_uv_call_with_a_refused_part_suggests_separate_calls`, `::test_a_call_with_every_part_refused_suggests_separate_calls` | `uv run pytest -q plugin/tests/test_guard.py -k separate_calls` → `assert "separate calls" in reason` (only `::test_a_call_with_every_part_refused_suggests_separate_calls`; the chained `uv` test is a regression pin, green today) |
-| AC20 | 11 | `plugin/tests/test_release_0_10_0.py`; `tests/test_documents.py::test_spec_015_decisions_rows`, `::test_spec_015_roadmap_and_backlog` | |
+| AC20 | 11 | `plugin/tests/test_release_0_10_0.py`; `tests/test_documents.py::test_spec_015_decisions_rows`, `::test_spec_015_roadmap_and_backlog` |  `uv run pytest -q plugin/tests/test_release_0_10_0.py tests/test_documents.py -k '0_10_0 or spec_015'` → `assert (0, 9, 0) >= (0, 10, 0)` and `assert items[0].startswith("- [x]"), items` |
 | AC21 | 11, 12 | `bash scripts/check.sh` | n/a — the gate over every other test |
 | AC22 | — | manual (owner), End-to-end → Manual 1 | manual |
 
@@ -527,7 +527,7 @@ What the plan rests on:
 
 ### Group 3 — Release and measurement
 
-- [ ] 11. **Release 0.10.0 and documents (AC20, AC21).** Files:
+- [x] 11. **Release 0.10.0 and documents (AC20, AC21).** Files:
       `plugin/.claude-plugin/plugin.json`, `plugin/CHANGELOG.md`, `plugin/README.md`
       (the `/pipeline:init` row and the configuration notes, if the wording changes),
       `docs/DECISIONS.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`,

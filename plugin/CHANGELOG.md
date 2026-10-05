@@ -2,6 +2,46 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.10.0
+
+SPEC 015, from the first public consumer's `init` report: `init` now writes a scaffold that
+is consistent for a project in a subdirectory and green on its first CI run, ships the
+repository settings as files, and the guard closes three gaps the consumer met.
+
+- `init` detects layers from `pyproject.toml` and `package.json` at the root and one level
+  down, and fills them consistently: the CI job (named after the layer, with
+  `working-directory` also on `setup-uv`, or the `cache-dependency-path` of Node), the
+  Dependabot `directory`, `verify.command`, `format[]` (`uv run --project <dir> …`) and the
+  verification commands in `CLAUDE.md` and `docs/CONVENTIONS.md`.
+- A layer that declares no lint and test tools, or has no test file, gets a placeholder CI job
+  that passes (`ci-python-placeholder.yml`, `ci-node-placeholder.yml`) and a `TODO:` on the
+  closing list; every CI template says that the job name is the required check in the
+  ruleset.
+- The repository settings ship as `templates/github/repository/ruleset.json` and
+  `settings.json`; `init` copies them into `.github/repository/` with the CI job names filled
+  in and never overwrites them. `docs/NEW-PROJECT.md` has the `gh api --input` commands, the
+  first push before the `pre-push` hook, the "scaffold through a PR" path and the ADR
+  template (`templates/docs/adr/`, copied by the owner, not by `init`).
+- The `settings.json` template adds `ask` on `Edit(**/.claude/workflow.json)` and `deny` on
+  detaching the plugin; `init` adds broad `allow` rules for the stack it sees (`uv *`,
+  `npm *`, `docker compose *`). `.gitignore` joins the write scope, append-only. The copied
+  `pre-push` has `<gitHooksDir>` substituted. The closing warns when `production.hosts`
+  stays empty and lists a missing `README.md` or licence as `TODO:`.
+- The guard refuses interpreter code (`python`, `node`, `perl`, `ruby`: a heredoc body, a
+  here-string, the argument of `-c`, `-e`, `-E`, `-p`) that names a guardrail file; the
+  once-per-session check notices an `alembic.ini` when `.claude/workflow.json` has no
+  `migrations` section; every refused call with several commands suggests sending them as
+  separate calls, also when none passed.
+- New eval case `init-subdirectory-project`.
+
+**consumer impact:** update as usual. The new `ask` and `deny` rules reach only newly
+initialised projects: an existing project adds them to its `.claude/settings.json` by hand
+(`Edit(**/.claude/workflow.json)` under `ask`, the four `claude plugin disable|uninstall|
+remove|marketplace remove` rules under `deny`). An agent's `python3 -c` or heredoc that reads
+or writes `.claude/workflow.json` or `.claude/settings*.json` is now refused, reads included;
+`Read` and `cat` stay open. A project with an `alembic.ini` and no `migrations` section gets
+a notice once per session.
+
 ## 0.9.0
 
 SPEC 014, from the first public consumer's nine specs: the pipeline loses three rituals that

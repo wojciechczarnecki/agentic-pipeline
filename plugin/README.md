@@ -25,7 +25,7 @@ directory to the first feature.
 
 | Command | Stage |
 |---|---|
-| `/pipeline:init` | project scaffold: configuration, permissions, documents, git hook, CI |
+| `/pipeline:init` | project scaffold: configuration, permissions, documents, git hook, CI per layer (also for a project in a subdirectory), repository settings files |
 | `/pipeline:idea` | critical review of an idea → SPEC.md (the only stage in a dialogue) |
 | `/pipeline:plan` | SPEC → PLAN.md with steps and verification commands |
 | `/pipeline:plan-review` | adversarial plan review, fixes in place, approval |
