@@ -170,7 +170,7 @@ Design choices:
 | AC18 | 11 | `plugin/tests/test_pipeline_loop.py::test_plan_writes_no_owner_step` | |
 | AC19 | 5 | `plugin/tests/test_close.py::test_close_refuses` (each case) |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 1, result.stderr` (--close unknown, exit 2) |
 | AC20 | 6 | `plugin/tests/test_close.py::test_close_green_path`, `::test_a_red_check_restores_the_spec`, `::test_red_then_green_after_one_rerun` |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 0, result.stderr` (test_close_green_path, with the close steps stubbed to a stop) |
-| AC21 | 7 | `plugin/tests/test_close.py::test_a_flaky_job_without_a_backlog_entry_stops`, `::test_a_flaky_job_in_the_backlog_passes` | |
+| AC21 | 7 | `plugin/tests/test_close.py::test_a_flaky_job_without_a_backlog_entry_stops`, `::test_a_flaky_job_in_the_backlog_passes` |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 3, result.stderr` (test_a_flaky_job_without_a_backlog_entry_stops) |
 | AC22 | 5, 6, 7 | `plugin/tests/test_close.py::test_every_stop_prints_one_state_line`, `::test_resume_after_a_stop_at_the_wait`, `::test_resume_after_a_failed_push` |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 1, result.stderr` (--close unknown, exit 2) |
 | AC23 | 12, 14, 15 | `plugin/tests/test_pipeline_loop.py::test_final_review_apply_ends_at_green_ci`, `plugin/tests/test_ship_cost_and_models.py::test_closing_runs_close_after_apply`, `plugin/tests/test_readme.py::test_the_status_table_names_close` | |
 | AC24 | 5, 6, 7 | `plugin/tests/test_close.py` (the whole file) |  `uv run pytest -q plugin/tests/test_close.py` → `assert result.returncode == 1, result.stderr` (--close unknown, exit 2) |
@@ -393,7 +393,7 @@ text, and a step that left them for later would end red.
       Print the name of a job that passed only on that re-run on stdout, and exit 0.
       Automatic verification: `uv run pytest -q plugin/tests/test_close.py &&
       uv run pytest -q`
-- [ ] 7. The flaky check and resuming (AC21, AC22). Files: `plugin/bin/workflow_close.py`,
+- [x] 7. The flaky check and resuming (AC21, AC22). Files: `plugin/bin/workflow_close.py`,
       `plugin/tests/test_close.py`.
       Tests first:
       - `test_a_flaky_job_without_a_backlog_entry_stops`: the PR head's run has attempt 2,

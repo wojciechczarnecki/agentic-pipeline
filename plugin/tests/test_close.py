@@ -383,3 +383,84 @@ def test_a_failed_commit_restores_the_spec(lane):
     assert lane.spec_bytes() == spec_before
     assert lane.git("rev-parse", "HEAD") == head_before
     assert lane.git("status", "--porcelain") == ""
+
+
+FLAKY_URL = "https://example.test/runs/21"
+
+
+def flaky_pr_head(lane: Lane) -> None:
+    flaky = run("ci", databaseId=21, attempt=2, url=FLAKY_URL)
+    jobs = {
+        "21": {
+            "1": [{"name": "plugin", "conclusion": "failure"}],
+            "latest": [{"name": "plugin", "conclusion": "success"}],
+        }
+    }
+    lane.write_state(head_runs=[flaky], jobs=jobs)
+
+
+# SPEC 014, AC21: a job that passed only on a later attempt stops the close before the commit,
+# unless the backlog already names it.
+def test_a_flaky_job_without_a_backlog_entry_stops(lane):
+    flaky_pr_head(lane)
+    spec_before, head_before = lane.spec_bytes(), lane.git("rev-parse", "HEAD")
+    result = lane.close()
+    assert result.returncode == 3, result.stderr
+    assert "plugin" in stop_lines(result)[0] and FLAKY_URL in stop_lines(result)[0]
+    assert stop_lines(result)[0].endswith("committed: no, pushed: no")
+    assert lane.git("rev-parse", "HEAD") == head_before
+    assert lane.spec_bytes() == spec_before
+    assert lane.git("status", "--porcelain") == ""
+
+
+def test_a_flaky_job_in_the_backlog_passes(lane):
+    flaky_pr_head(lane)
+    backlog = lane.repo / "docs" / "BACKLOG.md"
+    backlog.write_text("# Backlog\n\n- P3: the `plugin` job flakes on the first attempt\n")
+    lane.git("commit", "-q", "-am", "name the flaky job")
+    lane.git("push", "-q")
+    result = lane.close()
+    assert result.returncode == 0, result.stderr
+    assert head_subject(lane) == "docs: close SPEC 001 demo"
+
+
+def test_a_job_that_failed_in_the_latest_attempt_is_not_flaky(lane):
+    run_21 = run("ci", databaseId=21, attempt=2, conclusion="failure", url=FLAKY_URL)
+    lane.write_state(head_runs=[run_21], jobs={"21": {"1": [], "latest": []}})
+    assert lane.close().returncode == 0
+
+
+# SPEC 014, AC22: a close that committed but did not go green resumes from the push or the wait.
+def test_resume_after_a_stop_at_the_wait(lane):
+    failed = run("ci", conclusion="failure", databaseId=11)
+    lane.write_state(jobs={"11": {"latest": [{"name": "plugin", "conclusion": "failure"}]}})
+    queue(lane, [failed])
+    assert lane.close().returncode == 5
+    commits = commit_count(lane)
+    queue(lane, [run("ci")])
+    result = lane.close()
+    assert result.returncode == 0, result.stderr
+    assert commit_count(lane) == commits
+    assert lane.remote_head() == lane.git("rev-parse", "HEAD")
+    assert "pushed: yes" not in result.stderr
+
+
+def test_resume_after_a_failed_push(lane):
+    lane.git("remote", "set-url", "origin", str(lane.root / "nowhere.git"))
+    assert lane.close().returncode == 4
+    commits = commit_count(lane)
+    lane.git("remote", "set-url", "origin", str(lane.remote))
+    result = lane.close()
+    assert result.returncode == 0, result.stderr
+    assert commit_count(lane) == commits
+    assert lane.remote_head() == lane.git("rev-parse", "HEAD")
+
+
+def test_done_without_the_close_commit_is_refused(lane):
+    path = lane.repo / SPEC / "SPEC.md"
+    path.write_text(path.read_text().replace("status: implemented", "status: done"))
+    lane.git("commit", "-q", "-am", "set done by hand")
+    lane.git("push", "-q")
+    result = lane.close()
+    assert result.returncode == 1
+    assert stop_lines(result)[0].startswith("close stopped at preconditions:")

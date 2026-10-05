@@ -165,7 +165,45 @@ def mark_done(text: str, today: str, now: str, metrics) -> str | None:
 # The jobs of the PR head's checks that failed on an earlier attempt and passed on a later one,
 # unless the backlog already names them. Returns the reason to stop, or an empty string.
 def flaky_jobs(repo: Path, pr: dict, config) -> str:
+    sha = pr.get("headRefOid")
+    if not isinstance(sha, str) or not sha:
+        return ""
+    backlog_path = config.get("docs.backlog")
+    backlog = ""
+    if isinstance(backlog_path, str) and (repo / backlog_path).is_file():
+        backlog = (repo / backlog_path).read_text(encoding="utf-8", errors="replace")
+    for run in runs_of(repo, sha, "flaky", 1, False):
+        attempt = run.get("attempt")
+        if not isinstance(attempt, int) or attempt < 2 or run.get("conclusion") not in GREEN:
+            continue
+        later = {
+            job["name"]
+            for job in jobs_of(repo, run, None)
+            if job.get("conclusion") == "success" and "name" in job
+        }
+        for earlier in range(1, attempt):
+            for job in jobs_of(repo, run, earlier):
+                name = job.get("name")
+                if job.get("conclusion") == "failure" and name in later and name not in backlog:
+                    return (
+                        f"the job `{name}` passed only on attempt {attempt} of {run.get('url')}; "
+                        f"fix it, or name it in {backlog_path}"
+                    )
     return ""
+
+
+def jobs_of(repo: Path, run: dict, attempt: int | None) -> list[dict]:
+    args = ["gh", "run", "view", str(run.get("databaseId"))]
+    viewed = command(
+        [*args, *(["--attempt", str(attempt)] if attempt else []), "--json", "jobs"], repo
+    )
+    try:
+        jobs = json.loads(viewed.stdout)["jobs"] if viewed.returncode == 0 else None
+    except (ValueError, KeyError, TypeError):
+        jobs = None
+    if not isinstance(jobs, list):
+        raise StopError(1, "flaky", f"gh run view failed: {detail(viewed)}")
+    return [job for job in jobs if isinstance(job, dict)]
 
 
 def commit(spec: Path, message: str, original: bytes, repo: Path) -> None:
@@ -191,7 +229,7 @@ def seconds(name: str, default: int) -> int:
     return int(value) if value.isdigit() else default
 
 
-def runs_of(repo: Path, sha: str, step: str) -> list[dict]:
+def runs_of(repo: Path, sha: str, step: str, code: int = 5, shipped: bool = True) -> list[dict]:
     listed = command(
         ["gh", "run", "list", "--commit", sha, "--json", RUN_FIELDS, "--limit", "100"], repo
     )
@@ -200,7 +238,7 @@ def runs_of(repo: Path, sha: str, step: str) -> list[dict]:
     except ValueError:
         runs = None
     if not isinstance(runs, list):
-        raise StopError(5, step, f"gh run list failed: {detail(listed)}", True, True)
+        raise StopError(code, step, f"gh run list failed: {detail(listed)}", shipped, shipped)
     return [run for run in runs if isinstance(run, dict)]
 
 
