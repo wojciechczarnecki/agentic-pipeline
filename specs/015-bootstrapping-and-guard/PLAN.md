@@ -704,6 +704,11 @@ as intended), and its 5-run follow-up passed 5 of 5, so the case is unchanged. T
 
 _(appended by /pipeline:ship or a stage on escalation: date, stage, question, decision)_
 
+- 2026-10-05 — final review gate — which findings to accept? — **Accept all.**
+  Accepted: F1, F2, F3, F4, F5, F6, F7, F8 (worth-fixing) and F9, F10, F11, F12, F13
+  (nit). Rejected: none of the reported ids; the 20 nits the report left out are not part
+  of this decision.
+
 ## Review log
 
 ### 2026-10-05 — plan review
