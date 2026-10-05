@@ -2,9 +2,11 @@ import json
 import os
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -31,12 +33,17 @@ if args[:2] == ["pr", "view"]:
     print(json.dumps(state["pr"]))
 elif args[:2] == ["run", "list"]:
     if args[args.index("--commit") + 1] == state["pr"]["headRefOid"]:
+        if state.get("head_sleep"):
+            import time
+            time.sleep(state["head_sleep"])
         print(json.dumps(state.get("head_runs", [])))
         sys.exit(0)
     queue = state["run_list"]
     answer = queue.pop(0) if len(queue) > 1 else queue[0]
     with open(state_path, "w") as handle:
         json.dump(state, handle)
+    if answer == "fail":
+        sys.exit("HTTP 502: bad gateway")
     print(json.dumps(answer))
 elif args[:2] == ["run", "view"]:
     run_id = args[2]
@@ -186,6 +193,10 @@ def make_dirty(lane: Lane) -> None:
     (lane.repo / "docs" / "BACKLOG.md").write_text("# Backlog\n\nedited\n")
 
 
+def go_detached(lane: Lane) -> None:
+    lane.git("switch", "-q", "--detach")
+
+
 def make_untracked(lane: Lane) -> None:
     (lane.repo / "stray.txt").write_text("x\n")
 
@@ -208,6 +219,7 @@ REFUSALS = {
     "untracked": make_untracked,
     "no-pr": no_pr,
     "closed-pr": closed_pr,
+    "detached": go_detached,
 }
 
 
@@ -329,9 +341,10 @@ def test_red_then_green_after_one_rerun(lane):
 def test_red_twice_stops(lane):
     failed = run("ci", conclusion="failure", databaseId=11)
     lane.write_state(jobs={"11": {"latest": [{"name": "plugin", "conclusion": "failure"}]}})
-    queue(lane, [failed], [failed])
+    queue(lane, [failed], [{**failed, "attempt": 2}])
     result = lane.close()
     assert result.returncode == 5, result.stderr
+    assert "red after one re-run" in stop_lines(result)[0]
     assert len(reruns(lane)) == 1
     assert stop_lines(result)[0].endswith("committed: yes, pushed: yes")
     assert head_subject(lane) == "docs: close SPEC 001 demo"
@@ -464,3 +477,168 @@ def test_done_without_the_close_commit_is_refused(lane):
     result = lane.close()
     assert result.returncode == 1
     assert stop_lines(result)[0].startswith("close stopped at preconditions:")
+
+
+# Final review F3: right after the re-run GitHub may still report the failed attempt; the close
+# waits for the attempt to grow instead of calling the re-run red.
+def test_the_old_attempt_after_a_rerun_is_not_judged(lane):
+    failed = run("ci", conclusion="failure", databaseId=11)
+    lane.write_state(jobs={"11": {"latest": [{"name": "plugin", "conclusion": "failure"}]}})
+    queue(lane, [failed], [failed], [run("ci", attempt=2)])
+    result = lane.close()
+    assert result.returncode == 0, result.stderr
+    assert len(reruns(lane)) == 1
+
+
+def test_a_rerun_that_never_starts_times_out(lane):
+    lane.env["PIPELINE_CLOSE_TIMEOUT_SECONDS"] = "1"
+    failed = run("ci", conclusion="failure", databaseId=11)
+    lane.write_state(jobs={"11": {"latest": [{"name": "plugin", "conclusion": "failure"}]}})
+    queue(lane, [failed])
+    result = lane.close()
+    assert result.returncode == 5, result.stderr
+    assert "timed out" in stop_lines(result)[0]
+
+
+# Final review F2: the backlog excuses a job only when an entry names it as a code span.
+def test_the_word_in_backlog_prose_does_not_excuse_the_job(lane):
+    flaky_pr_head(lane)
+    backlog = lane.repo / "docs" / "BACKLOG.md"
+    backlog.write_text("# Backlog\n\n- P3: the plugins and the plugin docs need a review\n")
+    lane.git("commit", "-q", "-am", "prose that uses the word")
+    lane.git("push", "-q")
+    result = lane.close()
+    assert result.returncode == 3, result.stderr
+    assert "name it as `plugin`" in stop_lines(result)[0]
+
+
+# Final review F11: the close never forces, so a remote moved ahead stops it at the push.
+def test_a_remote_moved_ahead_stops_the_push(lane):
+    other = lane.root / "other"
+    run_git(lane.root, "clone", "-q", "-b", BRANCH, str(lane.remote), str(other), env=lane.env)
+    (other / "elsewhere.txt").write_text("x\n")
+    run_git(other, "add", "-A", env=lane.env)
+    run_git(other, "commit", "-q", "-m", "elsewhere", env=lane.env)
+    run_git(other, "push", "-q", "origin", BRANCH, env=lane.env)
+    remote_before = lane.remote_head()
+    result = lane.close()
+    assert result.returncode == 4, result.stderr
+    assert stop_lines(result)[0].startswith("close stopped at push:")
+    assert stop_lines(result)[0].endswith("committed: yes, pushed: no")
+    assert lane.remote_head() == remote_before
+
+
+def test_an_empty_run_list_is_not_green(lane):
+    lane.env["PIPELINE_CLOSE_TIMEOUT_SECONDS"] = "1"
+    queue(lane, [])
+    result = lane.close()
+    assert result.returncode == 5, result.stderr
+    assert "timed out" in stop_lines(result)[0]
+
+
+def test_runs_that_appear_late_are_waited_for(lane):
+    queue(lane, [], [run("ci")])
+    result = lane.close()
+    assert result.returncode == 0, result.stderr
+    head = lane.git("rev-parse", "HEAD")
+    assert sum(call.startswith(f"run list --commit {head}") for call in lane.gh_calls()) == 2
+
+
+def test_a_failed_rerun_stops_at_the_wait(lane):
+    failed = run("ci", conclusion="failure", databaseId=11)
+    lane.write_state(
+        jobs={"11": {"latest": [{"name": "plugin", "conclusion": "failure"}]}}, rerun_fails=True
+    )
+    queue(lane, [failed])
+    result = lane.close()
+    assert result.returncode == 5, result.stderr
+    assert "could not re-run" in stop_lines(result)[0]
+    assert stop_lines(result)[0].endswith("committed: yes, pushed: yes")
+
+
+def test_a_gh_failure_in_the_flaky_check_restores_the_spec(lane):
+    lane.write_state(head_runs=[run("ci", databaseId=21, attempt=2)], jobs={})
+    spec_before, head_before = lane.spec_bytes(), lane.git("rev-parse", "HEAD")
+    result = lane.close()
+    assert result.returncode == 1, result.stderr
+    assert stop_lines(result)[0].startswith("close stopped at flaky:")
+    assert stop_lines(result)[0].endswith("committed: no, pushed: no")
+    assert lane.spec_bytes() == spec_before
+    assert lane.git("rev-parse", "HEAD") == head_before
+    assert lane.git("status", "--porcelain") == ""
+
+
+def test_a_gh_failure_after_the_push_stops_at_the_wait(lane):
+    queue(lane, "fail")
+    result = lane.close()
+    assert result.returncode == 5, result.stderr
+    assert "gh run list failed: HTTP 502" in stop_lines(result)[0]
+    assert stop_lines(result)[0].endswith("committed: yes, pushed: yes")
+
+
+def test_resume_after_an_unrelated_commit(lane):
+    failed = run("ci", conclusion="failure", databaseId=11)
+    lane.write_state(jobs={"11": {"latest": [{"name": "plugin", "conclusion": "failure"}]}})
+    queue(lane, [failed])
+    assert lane.close().returncode == 5
+    (lane.repo / "docs" / "BACKLOG.md").write_text("# Backlog\n\n- P3: later\n")
+    lane.git("commit", "-q", "-am", "docs: record owner decision for 001")
+    commits = commit_count(lane)
+    queue(lane, [run("ci")])
+    result = lane.close()
+    assert result.returncode == 0, result.stderr
+    assert commit_count(lane) == commits
+    assert lane.remote_head() == lane.git("rev-parse", "HEAD")
+
+
+# Final review F5: a signal (or any error) after `done` was written restores SPEC.md and still
+# prints the stop line.
+def test_a_sigterm_before_the_commit_restores_the_spec(lane):
+    lane.write_state(head_sleep=30)
+    spec_before, head_before = lane.spec_bytes(), lane.git("rev-parse", "HEAD")
+    process = subprocess.Popen(
+        [sys.executable, str(SCRIPT), "--close", SPEC],
+        cwd=lane.repo,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=lane.env,
+    )
+    head = lane.git("rev-parse", "HEAD")
+    deadline = time.monotonic() + 20
+    while not any(call.startswith(f"run list --commit {head}") for call in lane.gh_calls()):
+        assert time.monotonic() < deadline, "the close never reached the flaky check"
+        time.sleep(0.05)
+    assert b"status: done" in lane.spec_bytes()
+    process.send_signal(signal.SIGTERM)
+    _, stderr = process.communicate(timeout=20)
+    assert process.returncode == 1, stderr
+    lines = [line for line in stderr.splitlines() if line.startswith("close stopped at")]
+    assert len(lines) == 1 and STOP_LINE.match(lines[0]), stderr
+    assert lines[0].startswith("close stopped at flaky: unexpected")
+    assert lines[0].endswith("committed: no, pushed: no")
+    assert lane.spec_bytes() == spec_before
+    assert lane.git("rev-parse", "HEAD") == head_before
+    assert lane.git("status", "--porcelain") == ""
+
+
+# Final review F12: every git and gh call has a deadline and never prompts.
+def test_a_stalled_call_ends_at_its_deadline(monkeypatch, tmp_path):
+    monkeypatch.syspath_prepend(str(BIN))
+    import workflow_close
+
+    monkeypatch.setenv("PIPELINE_CLOSE_CALL_TIMEOUT_SECONDS", "1")
+    started = time.monotonic()
+    result = workflow_close.command([sys.executable, "-c", "import time; time.sleep(10)"], tmp_path)
+    assert time.monotonic() - started < 5
+    assert result.returncode == 124
+    assert "timed out after 1 s" in result.stderr
+
+
+def test_calls_never_prompt(monkeypatch, tmp_path):
+    monkeypatch.syspath_prepend(str(BIN))
+    import workflow_close
+
+    script = "import os; print(os.environ['GIT_TERMINAL_PROMPT'], os.environ['GH_PROMPT_DISABLED'])"
+    result = workflow_close.command([sys.executable, "-c", script], tmp_path)
+    assert result.stdout.split() == ["0", "1"]

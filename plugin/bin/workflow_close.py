@@ -9,10 +9,13 @@
 # with nothing changed or committed; 3 — a job passed only on a later attempt and the backlog
 # does not name it, nothing committed; 4 — the commit or the push failed; 5 — the checks are
 # red after the one re-run, or the wait timed out. Every non-zero exit prints one line:
-# `close stopped at <step>: <reason>; committed: yes|no, pushed: yes|no`.
+# `close stopped at <step>: <reason>; committed: yes|no, pushed: yes|no`. An unexpected error
+# or a SIGTERM stops the same way, with the code of the state it left (1 before the commit,
+# 4 before the push, 5 after it), and SPEC.md restored when nothing was committed.
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -26,6 +29,16 @@ import workflow_config  # noqa: E402
 ALWAYS_PROTECTED = ("main", "master")
 GREEN = ("success", "skipped", "neutral")
 RUN_FIELDS = "databaseId,status,conclusion,attempt,url,workflowName"
+RESUME = "run `workflow_metrics.py --close` again to resume"
+
+
+class TerminatedError(Exception):
+    pass
+
+
+class Progress:
+    def __init__(self):
+        self.step, self.committed, self.pushed = "preconditions", False, False
 
 
 class StopError(Exception):
@@ -42,9 +55,17 @@ class StopError(Exception):
         )
 
 
+# Every git and gh call has a deadline and never prompts, so a stalled `gh` or a push that asks
+# for credentials ends as a stop line instead of hanging the background call.
 def command(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
+    limit = seconds("PIPELINE_CLOSE_CALL_TIMEOUT_SECONDS", 300)
+    env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GH_PROMPT_DISABLED": "1"}
     try:
-        return subprocess.run(args, cwd=cwd, capture_output=True, text=True, check=False)
+        return subprocess.run(
+            args, cwd=cwd, capture_output=True, text=True, check=False, env=env, timeout=limit
+        )
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(args, 124, "", f"`{args[0]}` timed out after {limit} s")
     except OSError as exc:
         return subprocess.CompletedProcess(args, 127, "", str(exc))
 
@@ -54,34 +75,60 @@ def detail(result: subprocess.CompletedProcess) -> str:
     return text.splitlines()[-1] if text else f"exit code {result.returncode}"
 
 
+def terminate(signum, frame) -> None:
+    raise TerminatedError(f"signal {signum}")
+
+
 def close(spec_dir: Path, metrics) -> int:
+    progress = Progress()
+    previous = signal.signal(signal.SIGTERM, terminate)
     try:
-        return run_close(spec_dir.resolve(), metrics)
+        return run_close(spec_dir.resolve(), metrics, progress)
     except StopError as stop:
         print(stop.line(), file=sys.stderr)
         return stop.code
+    except (Exception, KeyboardInterrupt) as exc:
+        code = 1 if not progress.committed else 4 if not progress.pushed else 5
+        stop = StopError(
+            code,
+            progress.step,
+            f"unexpected {type(exc).__name__}: {exc}; {RESUME}",
+            progress.committed,
+            progress.pushed,
+        )
+        print(stop.line(), file=sys.stderr)
+        return code
+    finally:
+        signal.signal(signal.SIGTERM, previous)
 
 
-def run_close(spec_dir: Path, metrics) -> int:
+def run_close(spec_dir: Path, metrics, progress: Progress) -> int:
     spec = spec_dir / "SPEC.md"
     if not spec.is_file():
-        raise StopError(1, "preconditions", f"no SPEC.md in {spec_dir}")
+        raise StopError(1, "preconditions", f"no SPEC.md in {spec_dir}; pass the spec directory")
     root = command(["git", "rev-parse", "--show-toplevel"], spec_dir)
     if root.returncode != 0:
-        raise StopError(1, "preconditions", "not inside a git repository")
+        raise StopError(1, "preconditions", "not inside a git repository; run it in the lane")
     repo = Path(root.stdout.strip())
     branch = command(["git", "branch", "--show-current"], repo).stdout.strip()
     config, _ = workflow_config.load_sections(repo)
     protected = [*ALWAYS_PROTECTED, *(config.get("protectedBranches") or [])]
     if not branch or branch in protected:
         raise StopError(
-            1, "preconditions", f"the branch `{branch or 'HEAD'}` is protected or detached"
+            1,
+            "preconditions",
+            f"the branch `{branch or 'HEAD'}` is protected or detached; "
+            "switch to the spec's lane branch",
         )
     resuming = is_resume(spec, spec_dir.name, repo, metrics)
     if not resuming and metrics.parse_status(spec.read_text(encoding="utf-8")) != "implemented":
-        raise StopError(1, "preconditions", "the spec status is not `implemented`")
+        raise StopError(
+            1, "preconditions", "the spec status is not `implemented`; finish the stages first"
+        )
     if command(["git", "status", "--porcelain"], repo).stdout.strip():
-        raise StopError(1, "preconditions", "the working tree is not clean")
+        raise StopError(
+            1, "preconditions", "the working tree is not clean; commit or stash the changes"
+        )
     view = command(["gh", "pr", "view", "--json", "number,state,url,headRefOid"], repo)
     pr = None
     if view.returncode == 0:
@@ -90,20 +137,28 @@ def run_close(spec_dir: Path, metrics) -> int:
         except ValueError:
             pr = None
     if not isinstance(pr, dict) or pr.get("state") != "OPEN":
-        raise StopError(1, "preconditions", f"no open pull request for `{branch}`")
+        raise StopError(
+            1, "preconditions", f"no open pull request for `{branch}`; open it with `gh pr create`"
+        )
     original = spec.read_bytes()
     message = commit_message(spec_dir.name)
     if not resuming:
         try:
-            prepare(spec, spec_dir, metrics)
+            prepare(spec, spec_dir, metrics, progress)
+            progress.step = "flaky"
             flaky = flaky_jobs(repo, pr, config)
             if flaky:
                 raise StopError(3, "flaky", flaky)
-        except StopError:
+            progress.step = "commit"
+            commit(spec, message, original, repo)
+        except BaseException:
             restore(spec, original, repo)
             raise
-        commit(spec, message, original, repo)
+        progress.committed = True
+    progress.step = "push"
     push(repo, branch)
+    progress.pushed = True
+    progress.step = "wait"
     return wait(repo)
 
 
@@ -119,21 +174,30 @@ def restore(spec: Path, original: bytes, repo: Path) -> None:
 
 # Cost, status `done`, derived counters, and the check that stands in for the owner's eye: a red
 # check stops the close before anything is committed.
-def prepare(spec: Path, spec_dir: Path, metrics) -> None:
+def prepare(spec: Path, spec_dir: Path, metrics, progress: Progress) -> None:
+    progress.step = "cost"
     metrics.record_cost(spec_dir, metrics.default_transcripts())
+    progress.step = "status"
     now = datetime.now()
     text = spec.read_text(encoding="utf-8")
     done = mark_done(text, now.strftime("%Y-%m-%d"), now.strftime(metrics.TIME_FORMAT), metrics)
     if done is None:
-        raise StopError(1, "status", "SPEC.md has no frontmatter with a `status` key")
+        raise StopError(
+            1, "status", "SPEC.md has no frontmatter with a `status` key; restore the template's"
+        )
     spec.write_text(done, encoding="utf-8")
+    progress.step = "derive"
     if metrics.derive(spec_dir) != 0:
         raise StopError(1, "derive", "SPEC.md could not be read")
+    progress.step = "check"
     problems = metrics.check(spec_dir)
     for problem in problems:
         print(problem, file=sys.stderr)
     if problems:
-        raise StopError(1, "check", f"`--check` is red with {len(problems)} problem(s)")
+        count = f"{len(problems)} problem" + ("s" if len(problems) > 1 else "")
+        raise StopError(
+            1, "check", f"`--check` is red with {count}; fix them in the spec files and run again"
+        )
 
 
 def mark_done(text: str, today: str, now: str, metrics) -> str | None:
@@ -163,7 +227,9 @@ def mark_done(text: str, today: str, now: str, metrics) -> str | None:
 
 
 # The jobs of the PR head's checks that failed on an earlier attempt and passed on a later one,
-# unless the backlog already names them. Returns the reason to stop, or an empty string.
+# unless the backlog already names them as a code span (`` `plugin` ``): a bare substring test
+# would excuse a job called `plugin` or `test` by any sentence that uses the word. Returns the
+# reason to stop, or an empty string.
 def flaky_jobs(repo: Path, pr: dict, config) -> str:
     sha = pr.get("headRefOid")
     if not isinstance(sha, str) or not sha:
@@ -184,10 +250,14 @@ def flaky_jobs(repo: Path, pr: dict, config) -> str:
         for earlier in range(1, attempt):
             for job in jobs_of(repo, run, earlier):
                 name = job.get("name")
-                if job.get("conclusion") == "failure" and name in later and name not in backlog:
+                if (
+                    job.get("conclusion") == "failure"
+                    and name in later
+                    and f"`{name}`" not in backlog
+                ):
                     return (
                         f"the job `{name}` passed only on attempt {attempt} of {run.get('url')}; "
-                        f"fix it, or name it in {backlog_path}"
+                        f"fix it, or name it as `{name}` in a {backlog_path} entry"
                     )
     return ""
 
@@ -202,7 +272,7 @@ def jobs_of(repo: Path, run: dict, attempt: int | None) -> list[dict]:
     except (ValueError, KeyError, TypeError):
         jobs = None
     if not isinstance(jobs, list):
-        raise StopError(1, "flaky", f"gh run view failed: {detail(viewed)}")
+        raise StopError(1, "flaky", f"gh run view failed: {detail(viewed)}; {RESUME}")
     return [job for job in jobs if isinstance(job, dict)]
 
 
@@ -215,13 +285,13 @@ def commit(spec: Path, message: str, original: bytes, repo: Path) -> None:
     )
     if made.returncode != 0:
         restore(spec, original, repo)
-        raise StopError(4, "commit", f"git could not commit: {detail(made)}")
+        raise StopError(4, "commit", f"git could not commit: {detail(made)}; {RESUME}")
 
 
 def push(repo: Path, branch: str) -> None:
     pushed = command(["git", "push", "origin", branch], repo)
     if pushed.returncode != 0:
-        raise StopError(4, "push", f"git push failed: {detail(pushed)}", committed=True)
+        raise StopError(4, "push", f"git push failed: {detail(pushed)}; {RESUME}", committed=True)
 
 
 def seconds(name: str, default: int) -> int:
@@ -238,20 +308,38 @@ def runs_of(repo: Path, sha: str, step: str, code: int = 5, shipped: bool = True
     except ValueError:
         runs = None
     if not isinstance(runs, list):
-        raise StopError(code, step, f"gh run list failed: {detail(listed)}", shipped, shipped)
+        raise StopError(
+            code, step, f"gh run list failed: {detail(listed)}; {RESUME}", shipped, shipped
+        )
     return [run for run in runs if isinstance(run, dict)]
 
 
-def wait_for(repo: Path, sha: str) -> list[dict]:
+# The runs of the head once all are completed. A run that was re-run counts only once its attempt
+# has grown past the one that failed: right after `gh run rerun` GitHub may still report the old
+# completed attempt, and judging it would call the re-run red before it ran.
+def wait_for(repo: Path, sha: str, rerun: dict | None = None) -> list[dict]:
     deadline = time.monotonic() + seconds("PIPELINE_CLOSE_TIMEOUT_SECONDS", 3600)
     poll = seconds("PIPELINE_CLOSE_POLL_SECONDS", 15)
+    rerun = rerun or {}
     while True:
         runs = runs_of(repo, sha, "wait")
-        if runs and all(run.get("status") == "completed" for run in runs):
+        if runs and all(settled(run, rerun) for run in runs):
             return runs
         if time.monotonic() >= deadline:
-            raise StopError(5, "wait", f"timed out waiting for the checks of {sha[:7]}", True, True)
+            raise StopError(
+                5, "wait", f"timed out waiting for the checks of {sha[:7]}; {RESUME}", True, True
+            )
         time.sleep(poll)
+
+
+def settled(run: dict, rerun: dict) -> bool:
+    if run.get("status") != "completed":
+        return False
+    before = rerun.get(run.get("databaseId"))
+    if before is None:
+        return True
+    attempt = run.get("attempt")
+    return isinstance(attempt, int) and attempt > before
 
 
 def red(runs: list[dict]) -> list[dict]:
@@ -264,7 +352,13 @@ def failed_jobs(repo: Path, run: dict) -> str:
         jobs = json.loads(viewed.stdout)["jobs"] if viewed.returncode == 0 else []
     except (ValueError, KeyError, TypeError):
         jobs = []
-    names = [job.get("name", "?") for job in jobs if job.get("conclusion") not in GREEN]
+    if not isinstance(jobs, list):
+        jobs = []
+    names = [
+        str(job.get("name", "?"))
+        for job in jobs
+        if isinstance(job, dict) and job.get("conclusion") not in GREEN
+    ]
     return ", ".join(names) or str(run.get("workflowName", "?"))
 
 
@@ -275,17 +369,30 @@ def wait(repo: Path) -> int:
     if not failed:
         return 0
     names = []
+    rerun: dict = {}
     for run in failed:
         names.append(f"{failed_jobs(repo, run)} ({run.get('url', '?')})")
-        rerun = command(["gh", "run", "rerun", str(run.get("databaseId")), "--failed"], repo)
-        if rerun.returncode != 0:
+        started = command(["gh", "run", "rerun", str(run.get("databaseId")), "--failed"], repo)
+        if started.returncode != 0:
             raise StopError(
-                5, "wait", f"gh could not re-run a failed job: {detail(rerun)}", True, True
+                5,
+                "wait",
+                f"gh could not re-run a failed job: {detail(started)}; {RESUME}",
+                True,
+                True,
             )
-    still = red(wait_for(repo, sha))
+        attempt = run.get("attempt")
+        rerun[run.get("databaseId")] = attempt if isinstance(attempt, int) else 1
+    still = red(wait_for(repo, sha, rerun))
     if still:
         raise StopError(
-            5, "wait", "the checks are red after one re-run: " + "; ".join(names), True, True
+            5,
+            "wait",
+            "the checks are red after one re-run: "
+            + "; ".join(names)
+            + "; fix the failure, push, and run `workflow_metrics.py --close` again",
+            True,
+            True,
         )
     print("passed only on a re-run: " + "; ".join(names))
     return 0
