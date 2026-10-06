@@ -660,9 +660,17 @@ def test_backlog_after_spec_014():
     backlog = read("docs/BACKLOG.md")
     p2 = backlog.split("## P2", 1)[1].split("## P3", 1)[0]
     assert "by its path" not in p2
-    cost = [row for row in p2.splitlines() if "lower bound" in row and "cost_" in row]
-    assert len(cost) == 1, cost
-    assert "label is done" in cost[0] and "waits" in cost[0]
+    assert not [row for row in p2.splitlines() if "lower bound" in row and "cost_" in row]
+
+
+# 0.10.1: the lower bound is replaced by an estimate; what is left is the rates of the models
+# measured from too few messages.
+def test_backlog_after_the_output_estimate():
+    p2 = read("docs/BACKLOG.md").split("## P2", 1)[1].split("## P3", 1)[0]
+    rows = [row for row in p2.splitlines() if "`ESTIMATES`" in row]
+    assert len(rows) == 1, rows
+    for token in ["Sonnet 5.5", "Haiku", "drift check", "0.10.1"]:
+        assert token in rows[0], token
 
 
 def test_conventions_say_close_runs_the_cost():

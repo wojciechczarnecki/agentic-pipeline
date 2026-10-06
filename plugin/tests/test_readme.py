@@ -434,7 +434,8 @@ def test_the_status_table_names_close():
     assert "chunk" not in table.lower()
 
 
-# SPEC 014, AC7, AC11, AC13, AC19, AC20, AC26: the mechanics of derive, the lint and the close.
+# SPEC 014, AC7, AC11, AC13, AC19, AC20, AC26: the mechanics of derive, the lint and the close;
+# 0.10.1: the output estimate.
 def test_the_readme_documents_derive_lint_and_close():
     metrics = " ".join(metrics_section().split())
     for token in [
@@ -445,7 +446,10 @@ def test_the_readme_documents_derive_lint_and_close():
         "`--close`",
         "`escalations_permission`",
         "`escalations_tooling`",
-        "lower bound",
+        "partly estimated",
+        "`signature`",
+        "`stop_reason`",
+        "Drift check",
         "`run_in_background`",
         "PIPELINE_CLOSE_TIMEOUT_SECONDS",
     ]:

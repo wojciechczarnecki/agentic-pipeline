@@ -318,9 +318,9 @@ caught before code, and escalations per spec. A counter column shows only when s
 carries that key. Where specs carry cost keys, three more lines follow: the plan review's
 and the final review's cost per significant finding (each over the specs with that stage's
 cost) and the cost per plan step (over the specs with all four costs), in cents rounded
-half up; a line with no data is left out. Every cost line ends with the label "a lower
-bound: output tokens are undercounted", because Claude Code often logs the output count
-from the start of the stream:
+half up; a line with no data is left out. Every cost line ends with the label "output
+tokens partly estimated from the transcript content", because Claude Code often logs the
+output count from the start of the stream (see "Recording cost" below):
 
 ```bash
 workflow_metrics.py [specs-directory]
@@ -431,13 +431,26 @@ Prices what the spec's four stage subagents spent and writes `cost_plan_cents`,
   are never changed — a new model is only added at its launch rates — so a cent is a fixed
   unit and costs from different years compare. Only the stage total is rounded.
 - **Output.** Stdout shows a table per stage: models, tokens by type (input, cache write
-  5 min, cache write 1 h, cache read, output) and cents. A second run replaces the keys it
-  writes; every other byte of SPEC.md stays as it was.
-- **Output tokens are a lower bound.** Claude Code often logs a message's `output_tokens`
-  from the start of the stream rather than its final count, so the output share of a cost
-  is undercounted, by a share that differs by model and stage. When a stage's logged
-  content (characters / 4) is at least twice its logged output and more than 1000 tokens
-  above it, stderr says so; the estimate is never priced.
+  5 min, cache write 1 h, cache read, then output as logged and what the estimate added,
+  `output_added`), the cents, and the cents the estimate added (`cents_added`). A second run replaces the keys it writes;
+  every other byte of SPEC.md stays as it was.
+- **Output tokens are measured plus estimated.** Claude Code often logs a message's
+  `output_tokens` from the start of the stream: only a message with a final entry (a
+  non-empty `stop_reason`) carries its full count, and nothing in the transcript carries it
+  for the others — in a stage subagent about nine messages in ten. Such a message is priced
+  at its logged count or its estimate, whichever is higher. The estimate counts the
+  characters of each content block it logged, written as sorted JSON, at two rates in
+  tokens per 1000 characters: one for the visible part (text, tool calls) and one for the
+  opaque thinking — the `signature` of a `thinking` block and the `data` of a
+  `redacted_thinking` block, since the thinking text is logged empty. The rates were
+  measured on 2026-10-06 on messages with a final count and are frozen in the script like
+  the price table: Opus 5 at 428 and 189, Opus 5.5 at 419 and 140, any other model at 424
+  and 167. On the final messages of each stage of specs 010–015 the estimate came within
+  −5% to +14% of the logged count. Costs recorded before 0.10.1 price the logged count
+  only and stay lower until `--record-cost` records them again.
+- **Drift check.** The messages that do have a final count test the rates, per model: with
+  at least 20 of one model, an estimate more than 25% off their logged total is named on
+  stderr with the model and a request to measure its rates again. The cost is written all the same.
 - **Warnings, never a stop.** No transcripts, a stage without transcripts, or a model missing
   from the rate table leaves that key unwritten — a value an earlier run wrote is kept —
   names the reason on stderr and exits `0`,

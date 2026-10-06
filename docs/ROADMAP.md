@@ -244,6 +244,9 @@ per significant finding, and a finding before code is the cheaper one to fix.
       34 / 104 (001, 005–007, mean 64), with no fewer loop iterations or final-review
       findings — the chunked implementer costs about a quarter more and is removed in Stage
       10; in this repository, Opus 27 / 47 / 71 cents (010–012) against Sonnet 17 (013).
+      These were logged output only; with the 0.10.1 estimate this repository's specs
+      were costed again — Opus 37 / 65 / 88 against Sonnet 23, the same conclusion — while
+      the consumer's figures stay lower bounds.
       Sonnet stays the implementer default; Opus at `low` effort for the checklist stages
       was never measured and stays in `docs/BACKLOG.md` (P3)
 - [x] Cheaper eval runs, in `scripts/` (no plugin version bump): re-running only the
@@ -306,7 +309,8 @@ code, are verified differently (a pipeline run against a fresh-repository canary
         commit; "resume the closing step only" as a standard option after an escalation
         there (consumer 005: a whole reviewer run spent on the closing commit)
       - the `ship` start message lists the model of every stage; the metrics summary labels
-        the cost as a lower bound while output tokens are undercounted (`docs/BACKLOG.md`)
+        the cost as a lower bound while output tokens are undercounted (`docs/BACKLOG.md`;
+        replaced by an estimate in 0.10.1)
       - a stage without the `Agent` tool (a cloud session) says in its report that the
         perspectives ran in one context — no restructuring (`docs/BACKLOG.md`, P3)
 - [x] 0.10.0, one spec — bootstrapping and the guard (from the consumer's `init` report)
@@ -338,6 +342,12 @@ code, are verified differently (a pipeline run against a fresh-repository canary
         way); the once-per-session check warns when `alembic.ini` exists and
         `workflow.json` has no `migrations` section; a refused compound command suggests
         separate calls
+
+- [x] 0.10.1 (patch): `--record-cost` prices the output tokens Claude Code leaves
+      uncounted — a message without a final count gets an estimate from its logged content
+      at frozen per-model rates (visible content and the thinking signature apart), shown
+      apart from the logged count, with a drift check (`docs/BACKLOG.md`, P2, trigger fired
+      on 2026-10-05)
 
 ## Stage 9 — Evidence
 
