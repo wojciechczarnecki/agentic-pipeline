@@ -34,6 +34,8 @@ NAME_ARGUMENT = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)(?:\[[^\]]*\])?(?:\+?=|$)"
 ARRAY_START = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\+?=")
 VARIABLE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
 HEREDOC_DELIMITER = re.compile(r"(-?)[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
+HEREDOC_MARKER = "__pipeline_heredoc_{}__"
+MARKER_WORD = re.compile(r"__pipeline_heredoc_(\d+)__")
 PUNCTUATION = ";&|()<>"
 OPERATOR = re.compile(r";;|&&|\|\||\|&|[;&|()]")
 
@@ -176,6 +178,106 @@ GUARDRAIL_FILES = (
     "guardrail files (.claude/settings*.json, .claude/workflow.json, this plugin's directory "
     "and its install state) change only through Edit/Write with the owner's approval"
 )
+INTERPRETER = re.compile(r"python(\d+(\.\d+)?)?|node|perl|ruby")
+
+
+# How an interpreter reads its command line, getopt style: `code` letters take the code (the
+# rest of the word, or the next word), `module` letters name a module that runs like a script,
+# `value` letters take the rest of the word or the next one, and `attached` letters take only
+# what their pattern matches in the rest of the word.
+class InterpreterOptions(NamedTuple):
+    code: str
+    module: str
+    value: str
+    attached: dict[str, str]
+    long_code: frozenset[str]
+    long_value: frozenset[str]
+
+
+INTERPRETER_OPTIONS = {
+    "python": InterpreterOptions(
+        "c", "m", "WX", {}, frozenset(), frozenset({"--check-hash-based-pycs"})
+    ),
+    "node": InterpreterOptions(
+        "ep",
+        "",
+        "rC",
+        {},
+        frozenset({"--eval", "--print"}),
+        frozenset(
+            {
+                "--require",
+                "--import",
+                "--loader",
+                "--experimental-loader",
+                "--input-type",
+                "--conditions",
+                "--env-file",
+                "--env-file-if-exists",
+                "--title",
+                "--inspect-port",
+                "--debug-port",
+                "--redirect-warnings",
+                "--report-dir",
+                "--report-directory",
+                "--diagnostic-dir",
+                "--icu-data-dir",
+                "--openssl-config",
+                "--disable-warning",
+                "--unhandled-rejections",
+                "--watch-path",
+                "--test-reporter",
+                "--test-reporter-destination",
+                "--test-name-pattern",
+                "--test-skip-pattern",
+                "--dns-result-order",
+                "--secure-heap",
+                "--secure-heap-min",
+                "--heapsnapshot-signal",
+                "--max-http-header-size",
+                "--stack-trace-limit",
+                "--tls-cipher-list",
+                "--tls-keylog",
+            }
+        ),
+    ),
+    "perl": InterpreterOptions(
+        "eE",
+        "",
+        "I",
+        {
+            "0": r"(x[0-9A-Fa-f]*|[0-7]*)",
+            "l": r"[0-7]*",
+            "C": r"[0-9IOEioSDALa]*",
+            "d": r"(t?:.*)?",
+            "D": ".*",
+            "i": ".*",
+            "x": ".*",
+            "M": ".*",
+            "m": ".*",
+            "F": ".*",
+        },
+        frozenset(),
+        frozenset(),
+    ),
+    "ruby": InterpreterOptions(
+        "e",
+        "",
+        "ICEr",
+        {
+            "0": r"[0-7]*",
+            "F": ".*",
+            "i": ".*",
+            "x": ".*",
+            "K": ".?",
+            "T": "[0-9]*",
+            "W": r"[0-9]*|:.*",
+        },
+        frozenset(),
+        frozenset({"--encoding", "--external-encoding", "--internal-encoding"}),
+    ),
+}
+INTERPRETER_CODE = "interpreter code names a guardrail file; "
 # cp, install and ln write only their destination; their sources are reads
 DESTINATION_PROGRAMS = {"cp", "install", "ln"}
 # short options that take a value, and long ones that may take it as the next word
@@ -309,6 +411,7 @@ class Rules:
         self.protected_file = protected_file_pattern(config, env, cwd)
         self.settings_file = re.compile("|".join(SETTINGS_FILES))
         self.guarded_roots, self.guarded_files = guarded_paths(env)
+        self.guarded_spellings = guarded_spellings(self.guarded_roots, env)
         self.git_hooks = git_hooks_pattern(config)
         migrations = config.get("migrations") or {}
         self.migration_command = migrations.get("command", "")
@@ -345,6 +448,18 @@ def guarded_paths(env: dict[str, str]) -> tuple[list[Path], list[Path]]:
             if path not in files:
                 files.append(path)
     return roots, files
+
+
+# How interpreter code can spell the plugin's directories: the absolute path and, under the
+# home directory, the `~/…` form the shell would expand.
+def guarded_spellings(roots: list[Path], env: dict[str, str]) -> list[str]:
+    home = home_dir(env)
+    spellings = [str(plugin_dir(env))]
+    for root in roots:
+        spellings.append(str(root))
+        if is_within(root, home) and root != home:
+            spellings.append(f"~/{root.relative_to(home).as_posix()}")
+    return list(dict.fromkeys(spellings))
 
 
 def git_hooks_pattern(config: workflow_config.Config) -> re.Pattern[str] | None:
@@ -393,7 +508,9 @@ def main() -> int:
     else:
         # Only a pipeline project reads the templates: with a `--scope user` install every
         # other project would get the notice too, and `/pipeline:init` writes the rule.
-        notice = read_rule_notice(session_id, env, config, cwd)
+        notices = [read_rule_notice(session_id, env, config, cwd)]
+        notices.append(migrations_notice(session_id, config))
+        notice = "\n".join(text for text in notices if text) or None
     reason = evaluate(command, cwd, env, config)
     if reason is None:
         if notice:
@@ -588,6 +705,37 @@ def read_rule_notice(
         return None
 
 
+MIGRATIONS_NOTICE = (
+    "pipeline guard: {path} exists, but .claude/workflow.json has no `migrations` section, so "
+    "the migration rule is inactive. To guard Alembic runs, add "
+    '"migrations": {{"command": "alembic", "localHosts": ["localhost", "127.0.0.1", "::1"]}} '
+    "to .claude/workflow.json (plugin README, configuration)."
+)
+
+
+def alembic_files(root: Path) -> list[Path]:
+    found = [root / "alembic.ini"]
+    for directory in sorted(root.iterdir()):
+        if directory.name.startswith(".") or directory.name == "node_modules":
+            continue
+        found.append(directory / "alembic.ini")
+    return [path for path in found if path.is_file()]
+
+
+# Fail-open like the Read notice, and the marker is set only when a notice goes out, so a
+# project without alembic.ini never creates one.
+def migrations_notice(session_id: str | None, config: workflow_config.Config) -> str | None:
+    try:
+        if not config.found or config.get("migrations") is not None or not config.root:
+            return None
+        files = alembic_files(config.root)
+        if not files or not first_in_session(session_id, "alembic"):
+            return None
+        return MIGRATIONS_NOTICE.format(path=files[0].relative_to(config.root).as_posix())
+    except Exception:
+        return None
+
+
 def evaluate(
     command: str, cwd: Path, env: dict[str, str], config: workflow_config.Config | None = None
 ) -> str | None:
@@ -621,16 +769,37 @@ class Analyzer:
         self.exported = set(env) if exported is None else exported
         self.blocks = 0
         self.scopes: list[Snapshot] = []
+        # the heredoc bodies of the text `run` is checking, by marker number; `eval` re-enters
+        # `run` on this instance, so each run puts the outer bodies back
+        self.bodies: list[str] = []
 
     def run(self, text: str, depth: int = 0) -> None:
         if depth > 5:
             raise GuardError("the command nests too deeply to verify; split it up")
         try:
-            text, expanded = strip_heredocs(text)
+            text, expanded, bodies, delimiters = strip_heredocs(text)
         except ValueError:
             raise GuardError(
                 "the command could not be parsed; split it into simpler ones"
             ) from None
+        outer, self.bodies = self.bodies, bodies
+        try:
+            self.analyze(text, expanded, depth)
+        except GuardError as exc:
+            # a refusal quotes the command the agent wrote, not the guard's markers
+            reason = MARKER_WORD.sub(
+                lambda match: (
+                    delimiters[int(match.group(1))]
+                    if int(match.group(1)) < len(delimiters)
+                    else match.group(0)
+                ),
+                str(exc),
+            )
+            raise GuardError(reason) from None
+        finally:
+            self.bodies = outer
+
+    def analyze(self, text: str, expanded: str, depth: int) -> None:
         executable = f"{outside_single_quotes(text)}\n{expanded}"
         for dollar, backtick in re.findall(r"\$\(([^()]*)\)|`([^`]*)`", executable):
             nested = Analyzer(
@@ -671,7 +840,7 @@ class Analyzer:
                 f"; the other {passed} of {len(commands)} parts passed"
                 " — run them as a separate call"
                 if passed
-                else ""
+                else "; send the commands as separate calls"
             )
             raise GuardError(f"the whole call is refused because of {'; '.join(blocked)}{rest}")
 
@@ -749,6 +918,7 @@ class Analyzer:
         self.check_guardrail_files(program, args, redirects)
         if program not in REMOVAL_PROGRAMS:
             self.check_own_files(program, plain, written)
+        self.check_interpreter_code(program, tokens, args, env)
         if program in SHELLS:
             if "-c" in args[:-1]:
                 # a new shell process sees only exported variables and its own prefix
@@ -854,6 +1024,43 @@ class Analyzer:
         for target in touched:
             if hooks.search(target) and self.hook_target_exists(target):
                 raise GuardError(GIT_HOOKS)
+
+    # Code fed to an interpreter is judged on what it names: a read and a write cannot be told
+    # apart from text, and reads have `Read` and `cat`. A path built at run time, or a script
+    # file, stays unseen (docs/GUARD.md, known limits).
+    def check_interpreter_code(
+        self, program: str, tokens: list[str], args: list[str], env: dict[str, str]
+    ) -> None:
+        if not INTERPRETER.fullmatch(program):
+            return
+        for code in self.interpreter_code(program, tokens, args):
+            if any(self.names_guardrail_file(text) for text in (code, expand_variables(code, env))):
+                raise GuardError(INTERPRETER_CODE + GUARDRAIL_FILES)
+
+    # Everything handed to inline code counts: its own text, the words after it (its argv) and
+    # its stdin. With no code option and no script, stdin is the program. A script or a module
+    # reads its arguments as data, so none of them is code.
+    def interpreter_code(self, program: str, tokens: list[str], args: list[str]) -> list[str]:
+        code = interpreter_arguments(program, args)
+        if code is None:
+            return []
+        for index, token in enumerate(tokens[:-1]):
+            following = tokens[index + 1]
+            if token == "<<<":
+                code.append(following)
+            elif token == "<<":
+                for number in MARKER_WORD.findall(following):
+                    if int(number) < len(self.bodies):
+                        code.append(self.bodies[int(number)])
+        return code
+
+    def names_guardrail_file(self, text: str) -> bool:
+        rules = self.rules
+        if rules.protected_file.search(text):
+            return True
+        if any(spelling in text for spelling in rules.guarded_spellings):
+            return True
+        return any(name in text for name in INSTALL_STATE_FILES)
 
     def check_own_files(self, program: str, args: list[str], redirects: list[str]) -> None:
         targets = list(redirects)
@@ -1137,28 +1344,90 @@ class Analyzer:
             Analyzer(self.cwd, {}, self.rules, in_container=True).segment(rest[1:], depth + 1)
 
 
+# Walks an interpreter's options like getopt. Returns None when a script or a module runs, so
+# its arguments are data. Otherwise returns the inline code with every word after it (they are
+# all scanned, as code or as its argv), or an empty list when stdin is the program. A value
+# option whose next word starts with `-` does not take it: the scan then reads more as code,
+# never less.
+def interpreter_arguments(program: str, args: list[str]) -> list[str] | None:
+    options = INTERPRETER_OPTIONS["python" if program.startswith("python") else program]
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        index += 1
+        if arg == "-":
+            return args[index:]
+        if arg == "--" or not arg.startswith("-"):
+            return [] if arg == "--" and index == len(args) else None
+        if arg.startswith("--"):
+            name, equals, value = arg.partition("=")
+            if name in options.long_code:
+                return [value, *args[index:]] if equals else args[index:]
+            following = args[index : index + 1]
+            if name in options.long_value and not equals and following:
+                index += 0 if following[0].startswith("-") else 1
+            continue
+        position = 1
+        while position < len(arg):
+            letter, rest = arg[position], arg[position + 1 :]
+            if letter in options.code:
+                return [rest, *args[index:]] if rest else args[index:]
+            if letter in options.module:
+                return None
+            if letter in options.value:
+                if not rest and args[index : index + 1] and not args[index].startswith("-"):
+                    index += 1
+                break
+            pattern = options.attached.get(letter)
+            match = re.match(pattern, rest) if pattern else None
+            position += 1 + (match.end() if match else 0)
+    return []
+
+
 # Heredoc bodies are data, not commands; only an unquoted delimiter lets the shell run
 # substitutions inside the body, so those bodies are still scanned for $(...) and backticks.
 # A `<<` counts only outside quotes, comments and $((...)) — anywhere else skipping lines
-# would hide real commands — and a heredoc that never closes fails closed.
-def strip_heredocs(text: str) -> tuple[str, str]:
+# would hide real commands — and a heredoc that never closes fails closed. Each delimiter word
+# on a kept line becomes a numbered marker, so a body stays traceable to the command that reads
+# it: the bodies come back in marker order, quoted or not.
+def strip_heredocs(text: str) -> tuple[str, str, list[str], list[str]]:
     kept: list[str] = []
     expanded: list[str] = []
-    pending: list[tuple[str, bool, bool]] = []
+    bodies: list[list[str]] = []
+    delimiters: list[str] = []
+    pending: list[tuple[str, bool, bool, int]] = []
     state = ShellState()
     for line in text.split("\n"):
         if pending:
-            delimiter, strip_tabs, expands = pending[0]
+            delimiter, strip_tabs, expands, number = pending[0]
             if (line.lstrip("\t") if strip_tabs else line) == delimiter:
                 pending.pop(0)
-            elif expands:
-                expanded.append(line)
+            else:
+                bodies[number].append(line)
+                if expands:
+                    expanded.append(line)
             continue
+        opened = state.heredocs_opened_by(line)
+        for heredoc in reversed(opened):
+            marker = HEREDOC_MARKER.format(len(bodies) + opened.index(heredoc))
+            line = line[: heredoc.start] + marker + line[heredoc.end :]
+        for heredoc in opened:
+            pending.append((heredoc.delimiter, heredoc.strip_tabs, heredoc.expands, len(bodies)))
+            bodies.append([])
+            delimiters.append(heredoc.delimiter)
         kept.append(line)
-        pending.extend(state.heredocs_opened_by(line))
     if pending:
         raise ValueError("unterminated heredoc")
-    return "\n".join(kept), "\n".join(expanded)
+    bodies_text = ["\n".join(body) for body in bodies]
+    return "\n".join(kept), "\n".join(expanded), bodies_text, delimiters
+
+
+class Heredoc(NamedTuple):
+    delimiter: str
+    strip_tabs: bool
+    expands: bool
+    start: int
+    end: int
 
 
 class ShellState:
@@ -1166,7 +1435,7 @@ class ShellState:
         self.quote = ""
         self.arithmetic = 0
 
-    def heredocs_opened_by(self, line: str) -> list[tuple[str, bool, bool]]:
+    def heredocs_opened_by(self, line: str) -> list[Heredoc]:
         opened = []
         index = 0
         while index < len(line):
@@ -1195,7 +1464,15 @@ class ShellState:
             elif line.startswith("<<", index) and not self.arithmetic:
                 match = HEREDOC_DELIMITER.match(line, index + 2)
                 if match:
-                    opened.append((match.group(3), match.group(1) == "-", not match.group(2)))
+                    opened.append(
+                        Heredoc(
+                            match.group(3),
+                            match.group(1) == "-",
+                            not match.group(2),
+                            match.start(3),
+                            match.end(3),
+                        )
+                    )
                     index = match.end() - 1
             index += 1
         return opened

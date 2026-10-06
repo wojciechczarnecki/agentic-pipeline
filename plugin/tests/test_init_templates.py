@@ -66,12 +66,35 @@ def test_settings_template_names_no_marketplace_of_its_own():
     assert "TODO" in marketplaces
 
 
+# SPEC 015, AC9: the configuration the guard reads is a guardrail file too, so an edit asks;
+# `init` writes it with Write, and Claude Code asks for every `.claude/` write anyway.
 def test_settings_template_protects_the_guardrail_files():
     settings = json.loads((TEMPLATES / "settings.json").read_text())
-    ask = " ".join(settings["permissions"]["ask"])
-    assert ".claude/settings" in ask
-    # Project configuration, not an enforcement mechanism: init has to write it unattended.
-    assert ".claude/workflow.json" not in ask
+    ask = settings["permissions"]["ask"]
+    assert "Edit(**/.claude/settings*.json)" in ask
+    assert "Edit(**/.claude/workflow.json)" in ask
+
+
+def test_settings_template_denies_detaching_the_plugin():
+    deny = json.loads((TEMPLATES / "settings.json").read_text())["permissions"]["deny"]
+    for rule in [
+        "Bash(gh pr merge*)",
+        "Bash(claude plugin disable*)",
+        "Bash(claude plugin uninstall*)",
+        "Bash(claude plugin remove*)",
+        "Bash(claude plugin marketplace remove*)",
+    ]:
+        assert rule in deny, rule
+
+
+def test_the_adr_template_has_twins():
+    english = (TEMPLATES / "docs" / "adr" / "ADR.en.md").read_text()
+    polish = (TEMPLATES / "docs" / "adr" / "ADR.pl.md").read_text()
+    assert heading_levels(english) == heading_levels(polish)
+    assert len(heading_levels(english)) >= 5
+    for heading in ["Status", "Context", "Decision", "Consequences"]:
+        assert f"## {heading}" in english
+    assert not sorted(POLISH & set(english))
 
 
 def test_workflow_example_covers_every_key_and_validates(tmp_path):
@@ -154,6 +177,8 @@ GITHUB = TEMPLATES / "github"
 CI_VARIANTS = {
     "ci-python.yml": ["uv sync", "uv run pytest", "uv run ruff check"],
     "ci-node.yml": ["npm ci", "npm run test", "npm run lint", "npm run build"],
+    "ci-python-placeholder.yml": ["uv sync", "uv run pytest", "echo"],
+    "ci-node-placeholder.yml": ["npm ci", "npm run test", "echo"],
     "ci-placeholder.yml": ["TODO:"],
 }
 
@@ -179,10 +204,14 @@ def job_names(name: str) -> list[str]:
     return names
 
 
-def test_ci_variants_carry_separate_job_names():
-    names = [name for variant in CI_VARIANTS for name in job_names(variant)]
-    assert names
-    assert len(names) == len(set(names)), names
+# The job of a layer is named after the layer (SPEC 015): the real template and its
+# placeholder share `<layer>`, and only the generic skeleton for an unknown stack keeps a
+# fixed name.
+def test_ci_variants_name_their_job_after_the_layer():
+    assert job_names("ci-placeholder.yml") == ["verify"]
+    for name in CI_VARIANTS:
+        if name != "ci-placeholder.yml":
+            assert job_names(name) == ["<layer>"], name
 
 
 @pytest.mark.parametrize(

@@ -25,7 +25,7 @@ directory to the first feature.
 
 | Command | Stage |
 |---|---|
-| `/pipeline:init` | project scaffold: configuration, permissions, documents, git hook, CI |
+| `/pipeline:init` | project scaffold: configuration, permissions, documents, git hook, CI per layer (also for a project in a subdirectory), repository settings files |
 | `/pipeline:idea` | critical review of an idea → SPEC.md (the only stage in a dialogue) |
 | `/pipeline:plan` | SPEC → PLAN.md with steps and verification commands |
 | `/pipeline:plan-review` | adversarial plan review, fixes in place, approval |
@@ -106,7 +106,10 @@ like — CI re-runs, releases, deployments, issues and pulls stay open), `sudo`,
 outside the repository and the scratch directory, shell edits of guardrail files — which
 include the plugin's own directory wherever it is installed and the plugin install state
 (`installed_plugins.json`, `known_marketplaces.json`) — and detaching the plugin
-(`claude plugin disable`, `uninstall`, `marketplace remove` aimed at it). The
+(`claude plugin disable`, `uninstall`, `marketplace remove` aimed at it). Interpreter code
+(`python3`, `node`, `perl`, `ruby`: a heredoc, a here-string, `-c`, `-e`) that names a
+guardrail file is refused too, and a refused compound call always suggests sending its
+commands as separate calls. The
 configuration adds production hosts and commands, the worktree directory, the migration
 module and `protectedBranches` — release-channel branches guarded exactly like `main`. The migration module recognises
 ONLY Alembic's verbs and the variables `ENVIRONMENT`, `DATABASE_URL`, `DB_HOST`; only
@@ -116,7 +119,9 @@ deliberate: a missing `.claude/workflow.json`, a validation error and a missing 
 end with a warning on stderr and exit code 0. Once per session, in a project with
 `.claude/workflow.json`, the guard also checks that a settings file allows `Read` on the
 plugin's own directory (see the section map below) and, when none does, prints a notice naming the exact rule to add — as `systemMessage` for the
-owner and `additionalContext` for the model, never blocking the call.
+owner and `additionalContext` for the model, never blocking the call. The same once-per-session check notices an `alembic.ini` at the
+repository root or one level down when the configuration has no `migrations` section, and
+names the section to add.
 
 What the guard defends against, the three layers behind it (guard, `pre-push`, GitHub
 rulesets), the commands it stops that a string `deny` rule lets through, and its known

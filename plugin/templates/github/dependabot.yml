@@ -3,10 +3,11 @@ version: 2
 # Monthly, grouped minor/patch updates only. Major versions are upgraded deliberately as
 # their own task (they usually need coordinated changes across several packages); known
 # vulnerabilities are caught independently by the weekly audit in the security workflow.
-# Keep the ecosystems this repository actually uses; `github-actions` stays either way.
+# Keep the ecosystems this repository actually uses, one entry per layer with `<dir>` filled in
+# by `init` (the layer's directory, nothing for the root); `github-actions` stays either way.
 updates:
   - package-ecosystem: uv
-    directory: /
+    directory: /<dir>
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
@@ -20,7 +21,7 @@ updates:
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
-    directory: /
+    directory: /<dir>
     schedule:
       interval: monthly
     open-pull-requests-limit: 3

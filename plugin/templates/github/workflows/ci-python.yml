@@ -1,6 +1,9 @@
-# CI for a Python project managed with uv. Job for the detected Python stack; combine it
-# with ci-node.yml when the repository carries both. If the project lives in a
-# subdirectory, add `defaults: { run: { working-directory: <dir> } }` to the job.
+# CI for a Python project managed with uv. `init` renders this file once per Python layer:
+# a line that ends in a layer marker comment belongs to one form only, and the job name and
+# the directory are filled in by the skill. Combine it with ci-node.yml when the repository
+# carries both.
+# The job name is the required check in the repository ruleset
+# (`.github/repository/ruleset.json`): renaming the job means renaming it there and on GitHub.
 name: CI
 
 on:
@@ -10,14 +13,19 @@ on:
     branches: [main]
 
 jobs:
-  python:
+  <layer>:
     runs-on: ubuntu-latest
+    defaults:  # subdirectory layer
+      run:  # subdirectory layer
+        working-directory: <dir>  # subdirectory layer
 
     steps:
       - uses: actions/checkout@v7
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
+        with:  # subdirectory layer
+          working-directory: <dir>  # subdirectory layer
 
       - name: Set up Python
         run: uv python install

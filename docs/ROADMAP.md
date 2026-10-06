@@ -309,7 +309,8 @@ code, are verified differently (a pipeline run against a fresh-repository canary
         the cost as a lower bound while output tokens are undercounted (`docs/BACKLOG.md`)
       - a stage without the `Agent` tool (a cloud session) says in its report that the
         perspectives ran in one context — no restructuring (`docs/BACKLOG.md`, P3)
-- [ ] 0.10.0, one spec — bootstrapping and the guard (from the consumer's `init` report):
+- [x] 0.10.0, one spec — bootstrapping and the guard (from the consumer's `init` report)
+      (`specs/015-bootstrapping-and-guard/SPEC.md`):
       - a project in a subdirectory (`backend/`, later `frontend/`): CI
         `working-directory` (also for `setup-uv`), the Dependabot `directory`,
         `verify.command`, `format[].command` (`uv run --project backend …`) and the
@@ -326,11 +327,12 @@ code, are verified differently (a pipeline run against a fresh-repository canary
         vulnerability reporting
       - the `settings.json` template: `ask` on `Edit(**/.claude/workflow.json)`, `deny` on
         detaching the plugin, `allow` for the stack's tools (`uv *`, `docker compose *`)
-      - `production`: a warning when `hosts` stays empty, and the known domains and CLI
-        offered when the owner names a hosting provider (Railway, Vercel, Fly, Render)
+      - `production`: a warning when `hosts` stays empty (the known domains and CLI offered
+        for a hosting provider (Railway, Vercel, Fly, Render) were cut by the owner)
       - `<gitHooksDir>` substituted in the copied `pre-push` (`docs/BACKLOG.md` P3, its
-        trigger has fired), `.ruff_cache/` in `.gitignore`, an optional README and licence
-        question for a public repository, an optional ADR template
+        trigger has fired), `.ruff_cache/` in `.gitignore`, a README and licence as closing
+        `TODO:` items (the optional question was cut by the owner: `init` writes neither
+        file), an optional ADR template
       - the guard: a guardrail file path in a heredoc fed to an interpreter (`python3 -`,
         `node -e`, `perl -e`) is refused (the consumer edited `.claude/workflow.json` that
         way); the once-per-session check warns when `alembic.ini` exists and

@@ -1,0 +1,22 @@
+schema_version: "1.1"
+name: init-subdirectory-project
+description: Unattended init in a repository whose only project lives in backend/ writes CI, Dependabot, verify, format and the documents for that directory, with a passing placeholder job named backend.
+runs: 1
+context:
+  scaffold_script: scaffold.sh
+execution:
+  # The same limits as the other init cases: a real /pipeline:init writes a dozen files
+  # and overruns the default 300 s timeout and 30 turns (measured 2026-09-20).
+  timeout_seconds: 900
+  max_turns: 80
+  allowed_tools: [Read, Glob, Grep, Skill, Bash, Edit, Write]
+  prompt: |
+    You are in a repository where `git init` has already run and the only project file is
+    `backend/pyproject.toml`. Run `/pipeline:init Ledger — a small bookkeeping API`.
+    I will not answer any question — you work without me, so finish the task on your own.
+    At the end, list the files you created and the `TODO:` values left to fill in, and show:
+    `.github/workflows/ci.yml` and `.github/dependabot.yml` in full; the `verify.command` and
+    the `format` entries written to `.claude/workflow.json` (or, if `.claude/` could not be
+    written, the values in the content you print for pasting); the commands block of
+    `CLAUDE.md`; the verification line of `docs/CONVENTIONS.md`; and the first 6 lines of
+    `scripts/git-hooks/pre-push`.

@@ -313,6 +313,20 @@ def test_compound_refusal_without_a_passing_part(on_feature):
     assert "passed" not in reason, reason
 
 
+def test_a_chained_uv_call_with_a_refused_part_suggests_separate_calls(on_feature):
+    reason = evaluate("uv lock && uv sync && gh pr merge 1", on_feature)
+    assert reason is not None
+    assert "`gh pr merge 1`" in reason, reason
+    assert "separate call" in reason, reason
+
+
+def test_a_call_with_every_part_refused_suggests_separate_calls(on_feature):
+    reason = evaluate("gh pr merge 1 && sudo ls", on_feature)
+    assert reason is not None
+    assert "separate calls" in reason, reason
+    assert "passed" not in reason, reason
+
+
 @pytest.mark.parametrize(
     "command",
     [

@@ -1,12 +1,12 @@
 {
-  "commit": "5d50c956f8297792c2dd8261e650e7978be55aff",
-  "plugin_fingerprint": "0ea209e69066583e2e31e96f717e01c31d9b84b5beac7fb61d6a8d7368b69699",
-  "plugin_version": "0.9.0",
-  "ran_at": "2026-10-05T14:53",
-  "cases_total": 9,
-  "cases_passed": 9,
+  "commit": "0e7ca60e8d2ddc7097733676eddf6e0845f72f37",
+  "plugin_fingerprint": "2042a8f922f2d8dffeae8d3f9095ded0cedd829f2fb2e3c15b9a63675e9bc3f0",
+  "plugin_version": "0.10.0",
+  "ran_at": "2026-10-06T00:37",
+  "cases_total": 10,
+  "cases_passed": 10,
   "green": true,
-  "cost_usd": 3.9923,
+  "cost_usd": 4.9825,
   "model": "default",
   "cases": {
     "final-review-finds-planted-defect": {
@@ -34,6 +34,12 @@
       "verdict": "pass"
     },
     "init-keeps-manual-edits": {
+      "runs": 1,
+      "passed": 1,
+      "errors": 0,
+      "verdict": "pass"
+    },
+    "init-subdirectory-project": {
       "runs": 1,
       "passed": 1,
       "errors": 0,

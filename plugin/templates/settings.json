@@ -30,10 +30,15 @@
     ],
     "ask": [
       "Edit(**/.claude/settings*.json)",
+      "Edit(**/.claude/workflow.json)",
       "Edit(**/scripts/git-hooks/**)"
     ],
     "deny": [
-      "Bash(gh pr merge*)"
+      "Bash(gh pr merge*)",
+      "Bash(claude plugin disable*)",
+      "Bash(claude plugin uninstall*)",
+      "Bash(claude plugin remove*)",
+      "Bash(claude plugin marketplace remove*)"
     ]
   },
   "extraKnownMarketplaces": {

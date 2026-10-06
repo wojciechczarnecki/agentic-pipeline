@@ -23,8 +23,10 @@ GENERATED = {
     ".github/workflows/ci.yml": "github/workflows/ci-placeholder.yml",
     ".github/workflows/security.yml": "github/workflows/security-python.yml",
     ".github/dependabot.yml": "github/dependabot.yml",
+    ".github/repository/ruleset.json": "github/repository/ruleset.json",
+    ".github/repository/settings.json": "github/repository/settings.json",
 }
-WRITE_SCOPE = [".claude/", "CLAUDE.md", "docs/", "scripts/", ".github/"]
+WRITE_SCOPE = [".claude/", "CLAUDE.md", "docs/", "scripts/", ".github/", ".gitignore"]
 
 
 # The contract is pinned through the identifiers the skill has to name — paths, templates,
@@ -77,6 +79,12 @@ def test_the_git_hook_template_is_executable_and_its_setup_is_printed():
 
 def test_ci_variants_are_driven_by_stack_detection():
     assert "ci-python.yml" in TEXT and "ci-node.yml" in TEXT and "ci-placeholder.yml" in TEXT
+
+
+def bullet(text: str, marker: str) -> str:
+    start = text.index(marker)
+    end = text.find("\n   - `", start + 1)
+    return text[start : end if end != -1 else len(text)]
 
 
 # The consumer's settings must not carry a `hooks` block of its own: the plugin already
@@ -245,3 +253,99 @@ def test_init_writes_the_implement_model_guess():
 def test_init_does_not_write_the_implement_section():
     generating = " ".join(step(4).split())
     assert "you do not write the `implement` section" in generating
+
+
+# SPEC 015, AC1: layers come from the manifests at the root and one level down, and the stack
+# question shows them.
+def test_layers_are_detected_at_depth_one():
+    survey = " ".join(step(1).split())
+    for token in ["pyproject.toml", "package.json", "depth 1", "node_modules"]:
+        assert token in survey, token
+    for token in ["`python`", "`node`", "`backend`", "`frontend`", "named after"]:
+        assert token in survey, token
+    third = " ".join(dict(questions())["3"].split())
+    assert "layers" in third
+
+
+# SPEC 015, AC2: a layer in a subdirectory is spelled out the same way in every file.
+def test_verify_and_format_follow_the_layer_directory():
+    generating = " ".join(step(4).split())
+    for token in ["uv run --project <dir>", "<dir>/", "CLAUDE.md", "docs/CONVENTIONS.md"]:
+        assert token in generating, token
+    assert "the same string as `verify.command`" in generating
+    assert "directory: /<dir>" in generating
+
+
+# SPEC 015, AC4: the real job needs the tools and a test file, otherwise a placeholder job.
+def test_the_real_job_needs_tools_and_a_test_file():
+    generating = " ".join(step(4).split())
+    for token in [
+        "ci-python-placeholder.yml",
+        "ci-node-placeholder.yml",
+        "# subdirectory layer",
+        "# root layer",
+        "`ruff`",
+        "`pytest`",
+        "a test file",
+        "<layer>",
+    ]:
+        assert token in generating, token
+
+
+# SPEC 015, AC7: the repository settings are copied with the job names filled in, and an
+# existing file there is never overwritten.
+def test_init_copies_the_repository_settings():
+    block = " ".join(step(4).split())
+    assert "`<job>`" in block
+    assert "templates/github/repository/" in block
+    rerun = " ".join(step(6).split())
+    assert ".github/repository/" in rerun and "never overwrite" in rerun
+
+
+def test_allow_rules_follow_the_seen_stack():
+    block = " ".join(settings_bullet(step(4)).split())
+    for token in ["Bash(uv *)", "Bash(npm *)", "Bash(docker compose *)"]:
+        assert token in block, token
+    for name in ["compose.yaml", "compose.yml", "docker-compose.yml", "docker-compose.yaml"]:
+        assert name in block, name
+
+
+def test_the_closing_warns_about_empty_hosts():
+    closing = " ".join(step(7).split())
+    assert "`production.hosts`" in closing and "inactive" in closing
+
+
+def test_the_hooks_dir_is_substituted_in_pre_push():
+    hook = bullet(step(4), "- `scripts/git-hooks/pre-push`")
+    assert "<gitHooksDir>" in hook
+    assert "sed -i" not in hook
+    assert "chmod +x" in hook
+
+
+def test_gitignore_is_append_only():
+    scope = section("Write scope (absolute)")
+    assert ".gitignore" in scope and "append" in scope
+    generating = " ".join(step(4).split())
+    for line in [
+        ".claude/settings.local.json",
+        ".venv/",
+        "__pycache__/",
+        ".pytest_cache/",
+        ".ruff_cache/",
+        "node_modules/",
+    ]:
+        assert line in generating, line
+    assert ".gitignore" in " ".join(step(6).split())
+
+
+def test_readme_and_licence_are_closing_todos():
+    closing = " ".join(step(7).split())
+    assert "`TODO:` add a `README.md`" in closing
+    assert "`TODO:` add a licence" in closing
+    assert "README.md" not in step(4)
+
+
+def test_the_adr_template_is_offered_not_copied():
+    closing = " ".join(step(7).split())
+    assert "templates/docs/adr/" in closing and "docs/adr/" in closing
+    assert "templates/docs/adr/" not in step(4)

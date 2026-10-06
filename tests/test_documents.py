@@ -668,3 +668,32 @@ def test_backlog_after_spec_014():
 def test_conventions_say_close_runs_the_cost():
     metrics = section(CONVENTIONS, "## Workflow metrics")
     assert "--close" in metrics and "--record-cost" in metrics
+
+
+# SPEC 015, AC20: the roadmap ticks the 0.10.0 item and records what the owner cut, the
+# decisions record the four choices, and the backlog notes the narrowed interpreter limit and
+# the two debts the plan leaves on purpose.
+def test_spec_015_roadmap_and_backlog():
+    link = "specs/015-bootstrapping-and-guard/SPEC.md"
+    items = [item for item in roadmap_items() if link in item]
+    assert len(items) == 1, items
+    assert items[0].startswith("- [x]"), items
+    for token in ["README", "hosting provider"]:
+        assert token in items[0], token
+    guard = [row for row in read("docs/BACKLOG.md").splitlines() if "interpreters" in row]
+    assert len(guard) == 1 and "SPEC 015" in guard[0] and "names a guardrail" in guard[0], guard
+    backlog = read("docs/BACKLOG.md")
+    assert any("security.yml" in row and "subdirectory" in row for row in backlog.splitlines())
+    assert any("exits 5" in row and "verify.command" in row for row in backlog.splitlines())
+
+
+def test_spec_015_decisions_rows():
+    rows = [row for row in read("docs/DECISIONS.md").splitlines() if "SPEC 015" in row]
+    assert len(rows) == 4, rows
+    for tokens in [
+        ["placeholder", "skeleton"],
+        [".github/repository/", "owner applies"],
+        [".gitignore", "append"],
+        ["interpreter", "guardrail", "known limit"],
+    ]:
+        assert any(all(token in row for token in tokens) for row in rows), tokens
