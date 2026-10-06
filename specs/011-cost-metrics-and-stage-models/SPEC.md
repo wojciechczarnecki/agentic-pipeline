@@ -23,10 +23,10 @@ metrics:
   findings_accepted: 12
   findings_rejected: 0
   finished_at: 2026-09-24T18:00
-  cost_plan_cents: 281
-  cost_plan_review_cents: 122
-  cost_implement_cents: 474
-  cost_final_review_cents: 816
+  cost_plan_cents: 322
+  cost_plan_review_cents: 149
+  cost_implement_cents: 652
+  cost_final_review_cents: 1045
 ---
 
 # SPEC 011 — Cost per stage, a model per stage and targeted reading

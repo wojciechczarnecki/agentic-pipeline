@@ -2,6 +2,33 @@
 
 Semantic versioning. A release is tagged with `claude plugin tag`.
 
+## 0.10.1
+
+`workflow_metrics.py --record-cost` estimates the output tokens Claude Code leaves
+uncounted, so a stage cost no longer misses most of its output.
+
+**consumer impact:** none — no configuration change; update as usual. Costs recorded
+before 0.10.1 price the logged output only; while the stage transcripts are still local,
+`workflow_metrics.py --record-cost <spec-dir>` records them again with the estimate.
+
+### Fixed
+
+- Claude Code often logs a message's `output_tokens` from the start of the stream, and only
+  a message with a final entry (a non-empty `stop_reason`) carries its full count — in the
+  stage subagents of this repository's specs 010–015 about one message in ten. A message
+  without one is now priced at its logged count or an estimate from its logged content,
+  whichever is higher: tokens per 1000 characters of each content block as sorted JSON, at
+  one rate for the visible part and another for the opaque thinking (the `signature` of a
+  `thinking` block, the `data` of a `redacted_thinking` block), because the thinking text is
+  logged empty. The rates are frozen per model in the script (`ESTIMATES`, measured on
+  2026-10-06). On specs 010–015 a stage costs 15–45% more than before.
+- Stdout of `--record-cost` shows the output as logged and what the estimate added
+  (`output_added`), and the cents it added (`cents_added`); every cost line of the report says "output tokens partly estimated from
+  the transcript content" instead of "a lower bound". The warning that compared the logged
+  output with characters / 4 is gone; in its place, when at least 20 messages of one model
+  with a final count disagree with the estimate by more than 25%, stderr names the model and
+  asks to measure its rates again.
+
 ## 0.10.0
 
 SPEC 015, from the first public consumer's `init` report: `init` now writes a scaffold that

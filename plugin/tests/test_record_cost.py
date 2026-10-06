@@ -619,19 +619,21 @@ def test_stdout_shows_tokens_by_type_model_and_cost(repo, tmp_path):
         "cache_write_5m",
         "cache_write_1h",
         "cache_read",
-        "output",
+        "output_logged",
+        "output_added",
         "cents",
+        "cents_added",
     ]
     rows = {
         cells[0]: cells
         for cells in ([cell.strip() for cell in line.strip("|").split("|")] for line in lines[2:])
     }
     assert set(rows) == {"plan", "plan-review", "implement", "final-review"}
-    assert rows["plan"] == ["plan", OPUS, "1000", "2000", "0", "50000", "3000", "8"]
+    assert rows["plan"] == ["plan", OPUS, "1000", "2000", "0", "50000", "3000", "0", "8", "0"]
     assert rows["plan-review"][1] == SONNET
     assert HAIKU_DATED in rows["implement"][1] and "claude-nope-9" in rows["implement"][1]
-    assert rows["implement"][-1] == "-"
-    assert rows["final-review"][-1] == "5"
+    assert rows["implement"][-2:] == ["-", "-"]
+    assert rows["final-review"][-2:] == ["5", "0"]
 
 
 def test_record_cost_output_passes_the_check(repo, tmp_path):
@@ -697,60 +699,166 @@ def test_a_block_followed_by_another_key_keeps_it_outside(repo, tmp_path):
     assert cost_values(spec) == EXPECTED
 
 
-# Claude Code may log a message's `output_tokens` from the start of the stream; the output
-# count is then a lower bound, and the run says so without changing the cost.
-def append_content(source: Path, agent_id: str, message_id: str, text: str) -> None:
+# Claude Code may log a message's `output_tokens` from the start of the stream; only a message
+# with a final entry (a non-empty `stop_reason`) carries its full count, and the others get an
+# estimate from their content.
+def append_message(
+    source: Path,
+    agent_id: str,
+    message_id: str,
+    content: list[dict],
+    output: int = 8,
+    stop_reason: str | None = None,
+    model: str = OPUS,
+) -> None:
     transcript = source / "slug" / "s1" / "subagents" / f"agent-{agent_id}.jsonl"
     line = {
         "type": "assistant",
         "message": {
             "id": message_id,
-            "model": OPUS,
-            "usage": usage(output=8),
-            "content": [{"type": "text", "text": text}],
+            "model": model,
+            "usage": usage(output=output),
+            "content": content,
+            "stop_reason": stop_reason,
         },
     }
     with transcript.open("a") as handle:
         handle.write(json.dumps(line) + "\n")
 
 
-def test_an_output_count_far_below_the_content_warns(repo, tmp_path):
+def text_block(size: int) -> dict:
+    # Written as sorted JSON: {"text": "<size>", "type": "text"}, 28 characters around the text.
+    return {"type": "text", "text": "x" * size}
+
+
+def test_the_estimate_coefficients_are_dated_and_frozen():
+    assert workflow_metrics.ESTIMATE_DATE == "2026-10-06"
+    assert workflow_metrics.ESTIMATE_DEFAULT == (424, 167)
+    assert workflow_metrics.ESTIMATES == {
+        "claude-opus-5": (428, 189),
+        "claude-opus-5-5": (419, 140),
+    }
+
+
+def test_a_message_with_a_final_entry_keeps_its_logged_count(repo, tmp_path):
     source = tmp_path / "projects"
     write_all_stages(source, repo)
-    append_content(source, "rv", "big", "x" * 20_000)
+    append_message(source, "pl", "done", [text_block(20_000)], output=8, stop_reason="end_turn")
+    split = workflow_metrics.OutputSplit()
+    stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source, split)
+    assert stages["plan"][OPUS][-1] == 3000 + 8
+    assert split.added.get("plan", {}).get(OPUS, 0) == 0
+
+
+def test_a_message_without_a_final_entry_is_estimated(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    # Two entries of one message, the first with the content: the content still counts once.
+    append_message(source, "pl", "open", [text_block(20_000)], output=8)
+    append_message(source, "pl", "open", [text_block(20_000)], output=5)
+    split = workflow_metrics.OutputSplit()
+    stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source, split)
+    # Opus 5.5: 419 tokens per 1000 characters × 20 028 = 8391.
+    assert stages["plan"][OPUS][-1] == 3000 + 8391
+    assert split.logged["plan"][OPUS] == 3000 + 8
+    assert split.added["plan"][OPUS] == 8391 - 8
+
+
+def test_a_logged_count_above_the_estimate_is_kept(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    append_message(source, "pl", "open", [text_block(100)], output=900)
+    stages = workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source)
+    assert stages["plan"][OPUS][-1] == 3000 + 900
+
+
+# The thinking text is logged empty, so the signature is the only trace of the thinking tokens:
+# it counts at its own rate, not at the rate of visible content, and so does the `data` of a
+# redacted block.
+def test_the_signature_counts_at_the_opaque_rate():
+    thinking = {"type": "thinking", "thinking": "", "signature": "s" * 10_000}
+    redacted = {"type": "redacted_thinking", "data": "d" * 10_000}
+    blocks = {json.dumps(block, sort_keys=True) for block in (thinking, redacted)}
+    # Visible: {"thinking": "", "type": "thinking"} = 36 and {"type": "redacted_thinking"} = 29.
+    # Opus 5.5: (419 × 65 + 140 × 20 000) // 1000 = 2827.
+    assert workflow_metrics.estimate_output(OPUS, blocks) == 2827
+    without = {json.dumps({"type": "thinking", "thinking": ""}, sort_keys=True)}
+    with_signature = {json.dumps(thinking, sort_keys=True)}
+    # (419 × 36 + 140 × 10 000) // 1000 − 419 × 36 // 1000 = 1415 − 15.
+    assert workflow_metrics.estimate_output(OPUS, with_signature) == 1415
+    assert workflow_metrics.estimate_output(OPUS, without) == 15
+
+
+def test_a_model_without_its_own_coefficients_uses_the_default():
+    blocks = {json.dumps(text_block(9972), sort_keys=True)}
+    # 10 000 characters: Opus 5 at 428, a dated Opus 5.5 at 419, Sonnet 5.5 at the default 424.
+    assert workflow_metrics.estimate_output("claude-opus-5", blocks) == 4280
+    assert workflow_metrics.estimate_output("claude-opus-5-5-20261001", blocks) == 4190
+    assert workflow_metrics.estimate_output("claude-sonnet-5-5", blocks) == 4240
+    assert workflow_metrics.estimate_output("claude-nope-1", blocks) == 4240
+
+
+def test_the_estimate_is_priced_and_shown_apart(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    append_message(source, "rv", "open", [text_block(20_000)], output=8, model="claude-opus-5")
     spec = repo / "specs" / SPEC_NAME
     result = run_record(spec, "--transcripts", str(source), home=tmp_path / "h")
     assert result.returncode == 0, result.stderr
-    warned = [line for line in result.stderr.splitlines() if "lower bound" in line]
-    assert len(warned) == 1, result.stderr
-    assert "final-review" in warned[0] and "cost_final_review_cents" in warned[0]
-    # The 8 logged tokens are priced; the estimate never is: 2 500 000 + 2 000 000 + 8 × 2000
-    # = 4 516 000 → 4.5 → 5.
-    assert cost_values(spec) == EXPECTED
+    # Opus 5: 428 × 20 028 // 1000 = 8571 output tokens, 8 of them logged, 8563 estimated.
+    # 2 500 000 + 2 000 000 + 8571 × 2500 = 25 927 500 → 25.9 → 26; the estimate alone is
+    # 8563 × 2500 = 21 407 500 → 21.
+    assert cost_values(spec) == dict(EXPECTED, cost_final_review_cents=26)
+    rows = {
+        cells[0]: cells
+        for cells in (
+            [cell.strip() for cell in line.strip("|").split("|")]
+            for line in result.stdout.splitlines()[2:]
+            if line.startswith("|")
+        )
+    }
+    assert rows["final-review"][-4:] == ["1008", "8563", "26", "21"]
+    assert rows["plan"][-4:] == ["3000", "0", "8", "0"]
 
 
-def test_small_content_does_not_warn(repo, tmp_path):
+def drift_messages(source: Path, count: int, output: int, model: str = OPUS) -> None:
+    for index in range(count):
+        append_message(
+            source,
+            "pl",
+            f"final-{model}-{index}",
+            [text_block(972)],
+            output=output,
+            stop_reason="end_turn",
+            model=model,
+        )
+
+
+# Each message estimates to 419 × 1000 // 1000 = 419 tokens; logged at 600 the estimate is 30%
+# low, at 500 it is 16% low.
+@pytest.mark.parametrize(
+    ("count", "output", "warns"),
+    [(20, 600, True), (19, 600, False), (20, 500, False)],
+    ids=["drift", "too-few-messages", "within-a-quarter"],
+)
+def test_the_coefficients_are_checked_on_messages_with_a_final_count(
+    repo, tmp_path, count, output, warns
+):
     source = tmp_path / "projects"
     write_all_stages(source, repo)
-    append_content(source, "rv", "small", "x" * 400)
-    result = run_record(
-        repo / "specs" / SPEC_NAME, "--transcripts", str(source), home=tmp_path / "h"
-    )
-    assert "lower bound" not in result.stderr
-
-
-def test_content_estimates_are_per_stage(repo, tmp_path):
-    source = tmp_path / "projects"
-    write_all_stages(source, repo)
-    append_content(source, "rv", "big", "x" * 20_000)
-    append_content(source, "rv", "big", "x" * 20_000)
-    estimates: dict[str, list[int]] = {}
-    workflow_metrics.stage_usage(repo / "specs" / SPEC_NAME, source, estimates)
-    logged, estimated = estimates["final-review"]
-    assert logged == 1000 + 0 + 8
-    # One block, logged twice, counts once.
-    assert 5000 <= estimated < 5100
-    assert estimates["plan"] == [3000, 0]
+    drift_messages(source, count, output)
+    spec = repo / "specs" / SPEC_NAME
+    result = run_record(spec, "--transcripts", str(source), home=tmp_path / "h")
+    assert result.returncode == 0, result.stderr
+    warned = [line for line in result.stderr.splitlines() if "measure its coefficients" in line]
+    assert len(warned) == (1 if warns else 0), result.stderr
+    if warns:
+        assert warned[0].startswith(f"{OPUS}: ")
+        assert "-30%" in warned[0] and "2026-10-06" in warned[0]
+    # The warning never stops the cost, and final counts are priced as logged: the planner's
+    # 8 400 000 plus count × output × 2000, rounded once.
+    plan = (8_400_000 + count * output * 2000 + 500_000) // 1_000_000
+    assert cost_values(spec)["cost_plan_cents"] == plan
 
 
 # The prompt is the first `user` entry, whatever Claude Code writes ahead of it.
@@ -908,3 +1016,18 @@ def test_three_implementer_agents_add_up(repo, tmp_path):
     expected = workflow_metrics.stage_cents({OPUS: [0, 0, 0, 0, 6000]})
     assert expected == 12
     assert cost_values(spec)["cost_implement_cents"] == expected
+
+
+# One model's drift is not hidden by another model that fits: 200 Opus 5 messages at their
+# estimate (428 tokens each) beside 20 Sonnet 5.5 messages 40% under it (424 against 700).
+def test_the_drift_check_is_per_model(repo, tmp_path):
+    source = tmp_path / "projects"
+    write_all_stages(source, repo)
+    drift_messages(source, 200, 428, model="claude-opus-5")
+    drift_messages(source, 20, 700, model="claude-sonnet-5-5-20261001")
+    result = run_record(
+        repo / "specs" / SPEC_NAME, "--transcripts", str(source), home=tmp_path / "h"
+    )
+    warned = [line for line in result.stderr.splitlines() if "measure its coefficients" in line]
+    assert len(warned) == 1, result.stderr
+    assert warned[0].startswith("claude-sonnet-5-5: ") and "-39%" in warned[0]

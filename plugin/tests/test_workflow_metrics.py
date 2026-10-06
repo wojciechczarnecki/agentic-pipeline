@@ -514,7 +514,7 @@ def test_report_shows_cost_per_finding_and_per_step(tmp_path):
     )
     spec_dir(tmp_path, "done", costed(final_review_worth_fixing="9"), name="017-c")
     report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
-    lower = " — a lower bound: output tokens are undercounted"
+    lower = " — output tokens partly estimated from the transcript content"
     assert f"Plan review cost per significant finding: 80 cents (401/5){lower}" in report
     assert f"Final review cost per significant finding: 500 cents (500/1){lower}" in report
     assert f"Cost per plan step: 360 cents (1800/5){lower}" in report
@@ -529,7 +529,7 @@ def test_the_cost_ratio_rounds_half_up(tmp_path):
     )
     report = workflow_metrics.render(workflow_metrics.collect(tmp_path))
     assert "Plan review cost per significant finding: 3 cents (5/2)" in report
-    assert "(5/2) — a lower bound" in report
+    assert "(5/2) — output tokens partly estimated" in report
 
 
 def test_cost_lines_are_hidden_without_data(tmp_path):
@@ -587,8 +587,8 @@ def test_a_column_without_data_is_left_out(tmp_path):
     assert len({line.count("|") for line in rows}) == 1
 
 
-# SPEC 014, AC26: output tokens are undercounted, so every cost line says it is a lower bound.
-def test_cost_lines_are_labelled_a_lower_bound(tmp_path):
+# SPEC 014, AC26, 0.10.1: output tokens are partly estimated, and every cost line says so.
+def test_cost_lines_are_labelled_partly_estimated(tmp_path):
     spec_dir(
         tmp_path,
         "done",
@@ -604,7 +604,7 @@ def test_cost_lines_are_labelled_a_lower_bound(tmp_path):
     cost_lines = [line for line in report.splitlines() if " cents (" in line]
     assert len(cost_lines) == 3, cost_lines
     for line in cost_lines:
-        assert line.endswith(" — a lower bound: output tokens are undercounted"), line
+        assert line.endswith(" — output tokens partly estimated from the transcript content"), line
 
 
 # SPEC 014, AC16: the escalation kinds are optional integer counters.

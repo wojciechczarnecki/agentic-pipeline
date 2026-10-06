@@ -256,10 +256,11 @@ def find_agents(source: Path) -> dict[str, tuple[dict, list[Path]]]:
 # directory as a whole path segment, and it ran inside this repository: a spec with the same
 # number, or even the same name, in another repository is not counted. Its descendants (the
 # final review's perspectives) count toward its stage.
-# `estimates`, when given, gets per stage the logged output tokens and an estimate from the
-# content (see `content_tokens`).
+# The output count of a message without a final entry is raised to its estimate (see
+# `estimate_output`); `split`, when given, gets what was logged, what the estimate added, and
+# the drift check on the messages that do have a final entry.
 def stage_usage(
-    spec_dir: Path, source: Path, estimates: dict[str, list[int]] | None = None
+    spec_dir: Path, source: Path, split: "OutputSplit | None" = None
 ) -> dict[str, dict[str, list[int]]]:
     agents = find_agents(source)
     name = re.compile(rf"(?<![\w.-]){re.escape(spec_dir.resolve().name)}(?![\w.-])")
@@ -288,6 +289,7 @@ def stage_usage(
 
     messages: dict[str, tuple[str, str, tuple[int, ...]]] = {}
     blocks: dict[str, set[str]] = {}
+    final: set[str] = set()
     for agent_id, (_, transcripts) in agents.items():
         stage = owning_stage(agent_id)
         if stage is None:
@@ -305,40 +307,110 @@ def stage_usage(
                 tokens = usage_tokens(usage)
                 if key not in messages or tokens[-1] > messages[key][2][-1]:
                     messages[key] = (stage, model, tokens)
+                if message.get("stop_reason"):
+                    final.add(key)
                 content = message.get("content")
                 if isinstance(content, list):
                     blocks.setdefault(key, set()).update(
-                        json.dumps(block, sort_keys=True) for block in content
+                        json.dumps(block, sort_keys=True)
+                        for block in content
+                        if isinstance(block, dict)
                     )
     stages: dict[str, dict[str, list[int]]] = {}
     for key, (stage, model, tokens) in messages.items():
+        estimate = estimate_output(model, blocks.get(key, set()))
+        added = 0 if key in final else max(0, estimate - tokens[-1])
         totals = stages.setdefault(stage, {}).setdefault(model, [0] * len(TOKEN_TYPES))
         for index, count in enumerate(tokens):
             totals[index] += count
-        if estimates is not None:
-            estimate = estimates.setdefault(stage, [0, 0])
-            estimate[0] += tokens[-1]
-            estimate[1] += content_tokens(blocks.get(key, set()))
+        totals[-1] += added
+        if split is not None:
+            split.add(stage, model, tokens[-1], added)
+            if key in final:
+                split.check(model, tokens[-1], estimate)
     return stages
 
 
-# Claude Code often logs a message's `output_tokens` from the start of the stream, not its
-# final count, so the logged output is a lower bound. Characters / 4 of the logged content is
-# a rough size of what the model wrote, used only to warn, never to price.
-def content_tokens(blocks: set[str]) -> int:
-    return sum(len(block) for block in blocks) // 4
+# Claude Code often logs a message's `output_tokens` from the start of the stream: only a
+# message with a final entry (a non-empty `stop_reason`) carries its full count, and nothing
+# in the transcript carries it for the others. Their output is estimated from the content
+# they logged, measured on the messages that do have a final count: tokens per 1000
+# characters of each content block written as sorted JSON, separately for the visible part
+# and for the opaque thinking (`signature`, the `data` of `redacted_thinking`). The thinking
+# text itself is logged empty, so the signature is the only trace of the thinking tokens, and
+# on the reference set it explains the output the visible content leaves over (r = 0.98).
+# The coefficients are frozen like the rates, so a cost does not move with the transcripts
+# that happen to be on the machine; `drift_warning` says when they stop fitting.
+ESTIMATE_DATE = "2026-10-06"
+ESTIMATE_DEFAULT = (424, 167)
+ESTIMATES: dict[str, tuple[int, int]] = {
+    "claude-opus-5": (428, 189),
+    "claude-opus-5-5": (419, 140),
+}
 
 
-# Warn when the content is at least twice the logged output and more than 1000 tokens apart,
-# so small or empty messages stay quiet.
-def output_shortfall(stage: str, logged: int, estimated: int) -> str | None:
-    if estimated < 2 * logged or estimated - logged <= 1000:
-        return None
-    return (
-        f"stage `{stage}`: transcripts log {logged} output tokens, while the content comes to "
-        f"about {estimated} (characters / 4); Claude Code often logs the output count from "
-        f"the start of the stream, so `{COST_KEYS[stage]}` is a lower bound"
-    )
+def estimate_output(model: str, blocks: set[str]) -> int:
+    visible = opaque = 0
+    for text in blocks:
+        block = json.loads(text)
+        hidden = [block.pop("signature", "")]
+        if block.get("type") == "redacted_thinking":
+            hidden.append(block.pop("data", ""))
+        opaque += sum(len(part) for part in hidden if isinstance(part, str))
+        visible += len(json.dumps(block, sort_keys=True))
+    per_visible, per_opaque = ESTIMATES.get(MODEL_DATE.sub("", model), ESTIMATE_DEFAULT)
+    return (per_visible * visible + per_opaque * opaque) // 1000
+
+
+class OutputSplit:
+    def __init__(self) -> None:
+        self.logged: dict[str, dict[str, int]] = {}
+        self.added: dict[str, dict[str, int]] = {}
+        self.checked: dict[str, list[int]] = {}
+
+    def add(self, stage: str, model: str, logged: int, added: int) -> None:
+        for totals, count in ((self.logged, logged), (self.added, added)):
+            by_model = totals.setdefault(stage, {})
+            by_model[model] = by_model.get(model, 0) + count
+
+    def check(self, model: str, logged: int, estimate: int) -> None:
+        totals = self.checked.setdefault(MODEL_DATE.sub("", model), [0, 0, 0])
+        totals[0] += 1
+        totals[1] += logged
+        totals[2] += estimate
+
+    # The cents the estimate added to a stage, rounded on their own like a stage total.
+    def added_cents(self, stage: str) -> int | None:
+        numerator = 0
+        for model, count in self.added.get(stage, {}).items():
+            rates = rate_for(model)
+            if rates is None:
+                return None
+            numerator += count * rates[-1]
+        return (numerator + 500_000) // 1_000_000
+
+
+DRIFT_MESSAGES = 20
+DRIFT_SHARE = 0.25
+
+
+# Messages with a final entry test the coefficients, per model so that one model's drift is
+# not hidden by another's fit: with enough of them, an estimate more than a quarter off their
+# logged count means the coefficients no longer fit (a new model, a new transcript format) and
+# should be measured again. It only warns: the cost is written.
+def drift_warnings(split: OutputSplit) -> list[str]:
+    warnings = []
+    for model, (messages, logged, estimated) in sorted(split.checked.items()):
+        if messages < DRIFT_MESSAGES or logged <= 0:
+            continue
+        drift = estimated / logged - 1
+        if abs(drift) > DRIFT_SHARE:
+            warnings.append(
+                f"{model}: the output estimate of {ESTIMATE_DATE} is {drift:+.0%} off on "
+                f"{messages} messages with a final count ({estimated} estimated, {logged} "
+                "logged); measure its coefficients again"
+            )
+    return warnings
 
 
 FRONTMATTER = re.compile(r"---\n(.*?)\n---", re.DOTALL)
@@ -545,14 +617,14 @@ def integer(metrics: dict[str, str], key: str) -> int:
     return int(value) if value.isdigit() else 0
 
 
-LOWER_BOUND = " — a lower bound: output tokens are undercounted"
+ESTIMATED = " — output tokens partly estimated from the transcript content"
 
 
 def per_unit(label: str, cents: int, units: int) -> list[str]:
     if units <= 0:
         return []
     average = (2 * cents + units) // (2 * units)
-    return [f"{label}: {average} cents ({cents}/{units}){LOWER_BOUND}"]
+    return [f"{label}: {average} cents ({cents}/{units}){ESTIMATED}"]
 
 
 # Each line only counts specs that carry its cost, so a spec costed on another machine, or
@@ -643,17 +715,30 @@ def write_costs(text: str, values: dict[str, int | str]) -> str | None:
     return "---\n" + "".join(lines) + text[close + 1 :]
 
 
-def usage_table(stages: dict[str, dict[str, list[int]]], cents: dict[str, int | None]) -> str:
-    header = ["stage", "models", *TOKEN_TYPES, "cents"]
+def usage_table(
+    stages: dict[str, dict[str, list[int]]], cents: dict[str, int | None], split: OutputSplit
+) -> str:
+    header = [
+        "stage",
+        "models",
+        *TOKEN_TYPES[:-1],
+        "output_logged",
+        "output_added",
+        "cents",
+        "cents_added",
+    ]
     rows = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
     for stage in COST_KEYS:
         if stage not in stages:
             continue
         by_model = stages[stage]
-        totals = [sum(tokens[index] for tokens in by_model.values()) for index in range(5)]
-        cost = cents[stage]
-        cells = [stage, ", ".join(sorted(by_model)), *map(str, totals)]
+        totals = [sum(tokens[index] for tokens in by_model.values()) for index in range(4)]
+        added = sum(split.added.get(stage, {}).values())
+        logged = sum(split.logged.get(stage, {}).values())
+        cost, cost_added = cents[stage], split.added_cents(stage)
+        cells = [stage, ", ".join(sorted(by_model)), *map(str, totals), str(logged), str(added)]
         cells.append("-" if cost is None else str(cost))
+        cells.append("-" if cost is None or cost_added is None else str(cost_added))
         rows.append("| " + " | ".join(cells) + " |")
     return "\n".join(rows)
 
@@ -667,8 +752,8 @@ def record_cost(spec_dir: Path, source: Path) -> int:
     except (OSError, UnicodeDecodeError) as exc:
         print(f"no readable SPEC.md in {spec_dir}: {exc}", file=sys.stderr)
         return 1
-    estimates: dict[str, list[int]] = {}
-    stages = stage_usage(spec_dir, source, estimates) if source.is_dir() else {}
+    split = OutputSplit()
+    stages = stage_usage(spec_dir, source, split) if source.is_dir() else {}
     if not stages:
         print(
             f"no stage transcripts of {spec_dir.resolve().name} in {source}; "
@@ -692,10 +777,9 @@ def record_cost(spec_dir: Path, source: Path) -> int:
             )
         elif cents[stage] is not None:
             values[key] = cents[stage]
-        shortfall = output_shortfall(stage, *estimates.get(stage, [0, 0]))
-        if shortfall:
-            print(shortfall, file=sys.stderr)
-    print(usage_table(stages, cents))
+    for warning in drift_warnings(split):
+        print(warning, file=sys.stderr)
+    print(usage_table(stages, cents, split))
     if not values:
         return 0
     updated = write_costs(text, values)
